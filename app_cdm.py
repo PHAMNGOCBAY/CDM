@@ -91,7 +91,159 @@ _LAYER_COLORS: dict[str, str] = {
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
 _ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
 
-_PAGES = ["Địa chất", "Thông số", "So sánh PA", "Kết quả", "Xuất"]
+_PAGE_IDS = ["geology", "params", "compare", "result", "export"]
+
+# ─── Bảng dịch VN / EN ────────────────────────────────────────────────────────
+_L: dict[str, tuple[str, str]] = {
+    # Sidebar
+    "app_sub":      ("Thiết kế cọc đất xi măng",    "Cement Deep Mixing Design"),
+    "save_load":    ("Lưu / Mở dự án",              "Save / Load Project"),
+    "download":     ("Tải xuống (.cdm)",             "Download (.cdm)"),
+    "upload":       ("Mở file dự án (.cdm)",         "Open project file (.cdm)"),
+    "load_ok":      ("Đã tải dự án.",               "Project loaded."),
+    "lang_lbl":     ("Ngôn ngữ / Language",          "Language / Ngôn ngữ"),
+    # Pages
+    "p_geology":    ("Địa chất",                    "Geology"),
+    "p_params":     ("Thông số",                    "Parameters"),
+    "p_compare":    ("So sánh PA",                  "Comparison"),
+    "p_result":     ("Kết quả",                     "Results"),
+    "p_export":     ("Xuất",                        "Export"),
+    # Page 1 – Geology
+    "p1_sub":       ("Địa chất – Chọn hố khoan",    "Geology – Borehole Selection"),
+    "zone_lbl":     ("Zone",                        "Zone"),
+    "bh_lbl":       ("Hố khoan",                   "Borehole"),
+    "apply_bh":     ("Áp dụng hố khoan",            "Apply Borehole"),
+    "apply_bh_ok":  ("Đã áp dụng {bh}.",            "Applied {bh}."),
+    "no_bh_warn":   ("Zone này chưa có dữ liệu hố khoan.", "No borehole data for this zone."),
+    "clay_thick":   ("Bề dày lớp bùn sét",          "Soft clay thickness"),
+    "clay_elev":    ("Cao độ đáy lớp bùn",          "Clay base elevation"),
+    "su_avg":       ("Su trung bình (VST)",          "Average Su (VST)"),
+    "strat_title":  ("Địa tầng hố khoan",           "Borehole Stratigraphy"),
+    "no_strat":     ("Hố khoan này chưa có dữ liệu địa tầng trong CSDL.",
+                     "No stratigraphy data in database."),
+    "vst_sel":      ("Chọn hố khoan VST (để trống = toàn bộ)",
+                     "Select VST locations (blank = all)"),
+    "no_bh_col":    ("Chọn hố khoan để xem cột địa chất.", "Select borehole to view soil column."),
+    "cdm_test_exp": ("Kết quả thí nghiệm CDM (R7)", "CDM Test Results (R7)"),
+    "cdm_test_note":("Lưu ý: Kết quả R7 (7 ngày). Cần qu_R90 để tính Ec chính xác.",
+                     "Note: R7 results (7-day). qu_R90 needed for accurate Ec."),
+    "view_mode":    ("Chế độ xem",                  "View Mode"),
+    "view_3d":      ("3D địa chất",                 "3D Geology"),
+    "view_map":     ("Bản đồ vị trí",               "Location Map"),
+    "clay_surf":    ("Mặt đáy lớp bùn",             "Clay Base Surface"),
+    "cdm_top_show": ("Đỉnh trụ CDM",                "CDM Pile Top"),
+    "elev_lbl":     ("Cao độ (m)",                  "Elevation (m)"),
+    "no_zone":      ("Chọn ít nhất một zone.",      "Select at least one zone."),
+    "map_style":    ("Nền bản đồ",                  "Map Style"),
+    "gps_done":     ("Hiệu chỉnh GPS — đã áp dụng", "GPS Calibration — applied"),
+    "gps_needed":   ("Hiệu chỉnh GPS — cần thiết lập lần đầu",
+                     "GPS Calibration — setup required"),
+    "ref_bh":       ("Hố khoan tham chiếu",         "Reference Borehole"),
+    "apply_calib":  ("Áp dụng hiệu chỉnh",          "Apply Calibration"),
+    "no_coords":    ("Không có hố khoan nào có tọa độ.", "No boreholes with coordinates."),
+    "no_plotly":    ("Cài `plotly` để xem bản đồ địa chất.", "Install `plotly` to view geology map."),
+    "no_coords_db": ("Chưa có tọa độ hố khoan trong CSDL (x_coord_m / y_coord_m = NULL).",
+                     "No borehole coordinates in database (x_coord_m / y_coord_m = NULL)."),
+    # Page 2 – Parameters
+    "p2_sub":       ("Thông số CDM",                "CDM Parameters"),
+    "cdm_geom":     ("Hình học trụ CDM",            "CDM Pile Geometry"),
+    "D_lbl":        ("Đường kính D (m)",             "Diameter D (m)"),
+    "Lc_lbl":       ("Chiều dài Lc (m)",             "Length Lc (m)"),
+    "CDTK_lbl":     ("Cao độ đỉnh cọc CDM (m)",     "CDM Top Elevation (m)"),
+    "cdtk_info":    ("CDTK = đỉnh + đệm + đắp = **{v:+.2f} m**",
+                     "CDTK = top + mat + fill = **{v:+.2f} m**"),
+    "arr_lbl":      ("Bố trí lưới",                 "Grid Pattern"),
+    "arr_tri":      ("Tam giác",                    "Triangular"),
+    "arr_sq":       ("Hình vuông",                  "Square"),
+    "material":     ("Vật liệu xi măng đất",        "Cement-Soil Material"),
+    "cement_lbl":   ("Loại xi măng",                "Cement Type"),
+    "dosage_lbl":   ("Hàm lượng XM (kg/m³)",       "Cement Dosage (kg/m³)"),
+    "wc_lbl":       ("Tỷ lệ N/XM",                 "Water/Cement Ratio"),
+    "qu_lbl":       ("qu thiết kế HT (kPa)",        "qu Design Field (kPa)"),
+    "fs_lab":       ("FS quy đổi TN→HT",            "FS Lab→Field Conversion"),
+    "geo_params":   ("Thông số địa kỹ thuật",       "Geotechnical Parameters"),
+    "h_clay_lbl":   ("Bề dày lớp bùn h₁ (m)",      "Soft Clay Thickness h₁ (m)"),
+    "su_lbl":       ("Su trung bình (kPa)",         "Average Su (kPa)"),
+    "gamma_lbl":    ("γ tự nhiên (kN/m³)",          "Unit Weight γ (kN/m³)"),
+    "loads_title":  ("Tải trọng gây lún",           "Settlement Loads"),
+    "q_traf":       ("Hoạt tải (kN/m²)",            "Traffic Load (kN/m²)"),
+    "pavement":     ("*Áo đường:*",                 "*Pavement:*"),
+    "fill":         ("*Cát đắp:*",                  "*Fill:*"),
+    "mat":          ("*Đệm cát:*",                  "*Sand Mat:*"),
+    "h_lbl":        ("h (m)",                       "h (m)"),
+    "punch_exp":    ("Kiểm tra chọc thủng lớp đệm xi măng", "Punching Check – Cement Mat"),
+    "qu_mat_lbl":   ("qu đệm xi măng (kPa)",        "Cement mat qu (kPa)"),
+    "fs_mat_lbl":   ("Hệ số an toàn Fs",            "Safety Factor Fs"),
+    "theta_lbl":    ("Góc đàn hồi dẻo θ (°)",       "Plastic Arch Angle θ (°)"),
+    "qa_lbl":       ("qa vùng không GC (kPa)",      "qa Unimproved Zone (kPa)"),
+    "theory_exp":   ("Lý thuyết tính toán – TCVN 9403:2012",
+                     "Design Theory – TCVN 9403:2012"),
+    # Page 3 – Comparison
+    "p3_sub":       ("So sánh các phương án khoảng cách trụ", "Pile Spacing Alternatives"),
+    "setup_exp":    ("Thiết lập phương án",          "Setup Alternatives"),
+    "sp_title":     ("Khoảng cách trụ",              "Pile Spacing"),
+    "auto_lbl":     ("Tự động",                     "Auto"),
+    "manual_lbl":   ("Nhập tay",                    "Manual"),
+    "e_min":        ("e min (m)",                   "e min (m)"),
+    "e_max":        ("e max (m)",                   "e max (m)"),
+    "step_lbl":     ("Bước (m)",                    "Step (m)"),
+    "sp_list":      ("Danh sách e (m), cách nhau bởi dấu phẩy",
+                     "List of e (m), comma-separated"),
+    "mat_punch":    ("Lớp đệm xi măng – kiểm tra chọc thủng",
+                     "Cement Mat – Punching Check"),
+    "qu_mat_sp":    ("qu đệm (kPa)",                "mat qu (kPa)"),
+    "rec_sel":      ("Chọn phương án thiết kế",     "Select Design Alternative"),
+    "pa_table":     ("Bảng so sánh phương án",      "Alternatives Comparison Table"),
+    "param_sens":   ("Phân tích tham số (giữ nguyên e = PA kiến nghị)",
+                     "Parametric Analysis (fixed e = recommended alt.)"),
+    "qu_comp":      ("So sánh qu thiết kế",         "qu Design Comparison"),
+    "D_comp":       ("So sánh đường kính D",        "Diameter D Comparison"),
+    "hmat_comp":    ("So sánh chiều dày đệm cát",   "Sand Mat Thickness Comparison"),
+    "qu_inp":       ("Các giá trị qu (kPa)",        "qu values (kPa)"),
+    "D_inp":        ("Các giá trị D (m)",           "D values (m)"),
+    "hmat_inp":     ("Các giá trị h_mat (m)",       "h_mat values (m)"),
+    "punch_chart":  ("Kiểm tra chọc thủng đệm xi măng", "Cement Mat Punching Check"),
+    "shear_ax":     ("Ứng suất cắt (kPa)",          "Shear Stress (kPa)"),
+    # Page 4 – Results
+    "p4_sub":       ("Kết quả chi tiết – Phương án kiến nghị",
+                     "Detailed Results – Recommended Alternative"),
+    "no_scenarios": ("Chưa có phương án. Vào tab So sánh PA để tính.",
+                     "No alternatives defined. Go to Comparison tab."),
+    "rec_pa":       ("Phương án kiến nghị: **PA{n} — e = {e} m**",
+                     "Recommended: **Alt.{n} — e = {e} m**"),
+    "settle_calc":  ("Tính toán độ lún",            "Settlement Calculation"),
+    "bearing_calc": ("Kiểm tra sức chịu tải (AIT – TCVN 9403:2012 Phụ lục B)",
+                     "Bearing Capacity Check (AIT – TCVN 9403:2012 Appendix B)"),
+    "punch_res":    ("Kiểm tra chọc thủng lớp đệm xi măng (ALiCC)",
+                     "Cement Mat Punching Check (ALiCC)"),
+    "col_param":    ("Thông số",                    "Parameter"),
+    "col_formula":  ("Công thức",                   "Formula"),
+    "col_value":    ("Giá trị",                     "Value"),
+    "bear_lbl":     ("Sức chịu tải",               "Bearing Capacity"),
+    # Page 5 – Export
+    "p5_sub":       ("Xuất báo cáo",               "Export Report"),
+    "export_sum":   ("Tóm tắt trước khi xuất",     "Summary before export"),
+    "rec_alt":      ("Phương án kiến nghị",         "Recommended Alt."),
+    "settle_metric":("Độ lún S₁",                  "Settlement S₁"),
+    "word_title":   ("Thuyết minh tính toán (Word)", "Calculation Report (Word)"),
+    "word_cap":     ("Tài liệu gồm 6 mục: Cơ sở pháp lý · Địa chất · Thông số · "
+                     "Phương pháp · So sánh PA · Kết quả PA kiến nghị.",
+                     "Document: Legal basis · Geology · Parameters · "
+                     "Method · Comparison · Recommended results."),
+    "create_word":  ("Tạo file Word",              "Generate Word File"),
+    "creating":     ("Đang tạo tài liệu...",        "Generating document..."),
+    "dl_docx":      ("Tải xuống (.docx)",           "Download (.docx)"),
+    # Sidebar summary
+    "si_bh":        ("**HK:**",                    "**BH:**"),
+}
+
+
+def _t(key: str, **kw) -> str:
+    """Trả về chuỗi theo ngôn ngữ hiện tại."""
+    lang = st.session_state.get("lang", "VN")
+    pair = _L.get(key, (key, key))
+    s = pair[0 if lang == "VN" else 1]
+    return s.format(**kw) if kw else s
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -710,6 +862,7 @@ _DEFAULTS = {
     "cdm_Fs_mat": 3.0,
     "cdm_theta":  80.0,
     "cdm_qa_mat": 0.0,
+    "lang": "VN",
     "cdm_loads": {
         "q_traffic": 20.0,
         "h_road": 0.8,   "g_road": 24.0,
@@ -1534,24 +1687,45 @@ def _project_from_dict(data: dict):
 # SIDEBAR
 # ═══════════════════════════════════════════════════════════════════════════════
 st.sidebar.markdown("### CDM Design Tool")
-st.sidebar.markdown("**Thiết kế cọc đất xi măng**")
+st.sidebar.markdown(f"**{_t('app_sub')}**")
+st.sidebar.divider()
+
+# Language toggle
+_lang_sel = st.sidebar.radio(
+    _t("lang_lbl"), ["VN", "EN"],
+    index=["VN", "EN"].index(_get("lang")),
+    horizontal=True, key="_lang_radio",
+)
+if _lang_sel != _get("lang"):
+    st.session_state["lang"] = _lang_sel
+    st.rerun()
+
 st.sidebar.divider()
 
 # Save / Load
-with st.sidebar.expander("Lưu / Mở dự án", expanded=False):
-    st.download_button("Tải xuống (.cdm)", _project_to_json(),
+with st.sidebar.expander(_t("save_load"), expanded=False):
+    st.download_button(_t("download"), _project_to_json(),
                        file_name="cdm_project.cdm", mime="application/json")
-    _up = st.file_uploader("Mở file dự án (.cdm)", type=["cdm"], key="cdm_upload")
+    _up = st.file_uploader(_t("upload"), type=["cdm"], key="cdm_upload")
     if _up:
         try:
             _project_from_dict(json.load(_up))
-            st.success("Đã tải dự án.")
+            st.success(_t("load_ok"))
             st.rerun()
         except Exception as e:
-            st.error(f"Lỗi: {e}")
+            st.error(f"{'Lỗi' if _get('lang')=='VN' else 'Error'}: {e}")
 
 st.sidebar.divider()
-_page = st.sidebar.radio("", _PAGES, label_visibility="collapsed")
+
+_page_labels = [
+    _t("p_geology"), _t("p_params"), _t("p_compare"),
+    _t("p_result"),  _t("p_export"),
+]
+_page = st.sidebar.radio(
+    "", _PAGE_IDS,
+    format_func=lambda pid: _page_labels[_PAGE_IDS.index(pid)],
+    label_visibility="collapsed",
+)
 
 # Info sidebar dưới cùng
 st.sidebar.divider()
@@ -1563,7 +1737,7 @@ _rec   = _get("cdm_rec_idx")
 _sps   = _get("cdm_spacings")
 st.sidebar.caption(
     f"**Zone:** {_get('cdm_zone')}  \n"
-    f"**HK:** {_get('cdm_bh') or '–'}  \n"
+    f"{_t('si_bh')} {_get('cdm_bh') or '–'}  \n"
     f"**q =** {_q_now:.1f} kN/m²  \n"
     f"**Su =** {_Su:.1f} kPa  \n"
     f"**Lc =** {_Lc:.1f} m  \n"
@@ -1574,8 +1748,8 @@ st.sidebar.caption(
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 1 – ĐỊA CHẤT
 # ═══════════════════════════════════════════════════════════════════════════════
-if _page == "Địa chất":
-    st.subheader("Địa chất – Chọn hố khoan")
+if _page == "geology":
+    st.subheader(_t("p1_sub"))
 
     col_sel, col_prof = st.columns([1, 2])
 
@@ -1589,14 +1763,14 @@ if _page == "Địa chất":
         bhs = _load_boreholes_by_zone(zone)
         bh_names = [b["name"] for b in bhs]
         if not bh_names:
-            st.warning("Zone này chưa có dữ liệu hố khoan.")
+            st.warning(_t("no_bh_warn"))
             bh_names = ["(trống)"]
 
         cur_bh = _get("cdm_bh")
         sel_idx = bh_names.index(cur_bh) if cur_bh in bh_names else 0
-        bh_name = st.selectbox("Hố khoan", bh_names, index=sel_idx)
+        bh_name = st.selectbox(_t("bh_lbl"), bh_names, index=sel_idx)
 
-        if st.button("Áp dụng hố khoan", type="primary"):
+        if st.button(_t("apply_bh"), type="primary"):
             st.session_state["cdm_bh"] = bh_name
             # Auto-fill soil params
             cp = _clay_params(bh_name, zone)
@@ -1622,39 +1796,45 @@ if _page == "Địa chất":
                 if _matched:
                     st.session_state["cdm_vst_sel"]  = _matched
                     st.session_state["_vst_loc_sel"] = _matched
-            st.success(f"Đã áp dụng {bh_name}.")
+            st.success(_t("apply_bh_ok", bh=bh_name))
             st.rerun()
 
         # Thông tin nhanh
         if _get("cdm_bh"):
             cp = _clay_params(_get("cdm_bh"), zone)
             if cp:
-                st.metric("Bề dày lớp bùn sét", f"{cp['h_clay']:.1f} m")
-                st.metric("Cao độ đáy lớp bùn",  f"{cp['elev_clay_bot']:.2f} m")
+                st.metric(_t("clay_thick"), f"{cp['h_clay']:.1f} m")
+                st.metric(_t("clay_elev"),  f"{cp['elev_clay_bot']:.2f} m")
             su = _su_avg_in_range(zone, 0, cp.get("depth_clay_bot",30) if cp else 30)
             if su:
-                st.metric("Su trung bình (VST)", f"{su:.1f} kPa")
+                st.metric(_t("su_avg"), f"{su:.1f} kPa")
 
     with col_prof:
         layers = _load_layers(bh_name)
         if layers:
-            st.markdown("**Địa tầng hố khoan**")
+            st.markdown(f"**{_t('strat_title')}**")
             df_lay = pd.DataFrame(layers)
-            df_lay.columns = ["Ký hiệu", "Mô tả", "Đỉnh (m)", "Đáy (m)", "Dày (m)",
-                              "γ (kN/m³)", "c (kPa)", "φ (°)"]
+            if _get("lang") == "VN":
+                df_lay.columns = ["Ký hiệu", "Mô tả", "Đỉnh (m)", "Đáy (m)", "Dày (m)",
+                                  "γ (kN/m³)", "c (kPa)", "φ (°)"]
+                _desc_col = "Mô tả"
+            else:
+                df_lay.columns = ["Symbol", "Description", "Top (m)", "Bot (m)", "Thick (m)",
+                                  "γ (kN/m³)", "c (kPa)", "φ (°)"]
+                _desc_col = "Description"
             st.dataframe(
                 df_lay,
                 use_container_width=True,
                 height=310,
                 column_config={
-                    "Mô tả":    st.column_config.TextColumn(width="large"),
+                    _desc_col:   st.column_config.TextColumn(width="large"),
                     "γ (kN/m³)": st.column_config.NumberColumn(format="%.2f"),
                     "c (kPa)":   st.column_config.NumberColumn(format="%.1f"),
                     "φ (°)":     st.column_config.NumberColumn(format="%.1f"),
                 },
             )
         else:
-            st.info("Hố khoan này chưa có dữ liệu địa tầng trong CSDL.")
+            st.info(_t("no_strat"))
 
     st.divider()
     # VST profile + soil column
@@ -1665,7 +1845,7 @@ if _page == "Địa chất":
             _vst_all_locs = sorted(df_vst["loc_name"].unique().tolist())
             _vst_sel_prev = [l for l in _get("cdm_vst_sel") if l in _vst_all_locs]
             _vst_sel = st.multiselect(
-                "Chọn hố khoan VST (để trống = toàn bộ)",
+                _t("vst_sel"),
                 options=_vst_all_locs,
                 default=_vst_sel_prev,
                 key="_vst_loc_sel",
@@ -1692,18 +1872,24 @@ if _page == "Địa chất":
             except Exception as _e:
                 st.warning(f"Không vẽ được cột địa chất: {_e}")
         else:
-            st.caption("Chọn hố khoan để xem cột địa chất.")
+            st.caption(_t("no_bh_col"))
 
     # CDM test results
     df_cdm = _load_cdm_tests()
     if not df_cdm.empty:
-        with st.expander("Kết quả thí nghiệm CDM (R7)", expanded=False):
-            st.dataframe(df_cdm[["bh_name","cement_type","WC_ratio","dosage_kgm3",
-                                  "qu_R7_kPa","E50_R7_MPa"]].rename(columns={
-                "bh_name":"HK","cement_type":"Xi măng","WC_ratio":"N/XM",
-                "dosage_kgm3":"Hàm lượng (kg/m³)","qu_R7_kPa":"qu R7 (kPa)",
-                "E50_R7_MPa":"E50 R7 (MPa)"}), use_container_width=True)
-            st.caption("Lưu ý: Kết quả R7 (7 ngày). Cần qu_R90 để tính Ec chính xác.")
+        with st.expander(_t("cdm_test_exp"), expanded=False):
+            _cdm_cols = (
+                {"bh_name": "HK", "cement_type": "Xi măng", "WC_ratio": "N/XM",
+                 "dosage_kgm3": "Hàm lượng (kg/m³)", "qu_R7_kPa": "qu R7 (kPa)",
+                 "E50_R7_MPa": "E50 R7 (MPa)"}
+                if _get("lang") == "VN" else
+                {"bh_name": "BH", "cement_type": "Cement", "WC_ratio": "W/C",
+                 "dosage_kgm3": "Dosage (kg/m³)", "qu_R7_kPa": "qu R7 (kPa)",
+                 "E50_R7_MPa": "E50 R7 (MPa)"}
+            )
+            st.dataframe(df_cdm[list(_cdm_cols)].rename(columns=_cdm_cols),
+                         use_container_width=True)
+            st.caption(_t("cdm_test_note"))
 
     # ── 3D / Map toggle ───────────────────────────────────────────────────────
     st.divider()
@@ -1713,35 +1899,35 @@ if _page == "Địa chất":
         _bhs_all, _ = _load_borehole_3d_data()
         _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
         if not _zones_with_coords:
-            st.info("Chưa có tọa độ hố khoan trong CSDL (x_coord_m / y_coord_m = NULL).")
+            st.info(_t("no_coords_db"))
         else:
             # ── Thanh điều khiển ──────────────────────────────────────────────
             _ctrl_a, _ctrl_b = st.columns([3, 2])
+            _view_opts = [_t("view_3d"), _t("view_map")]
             with _ctrl_a:
                 _geo_view = st.radio(
-                    "Chế độ xem",
-                    ["3D địa chất", "Bản đồ vị trí"],
-                    index=["3D địa chất", "Bản đồ vị trí"].index(
-                        _get("cdm_geo_view")),
+                    _t("view_mode"),
+                    _view_opts,
+                    index=0,
                     horizontal=True,
                     key="_geo_view_radio",
                 )
                 st.session_state["cdm_geo_view"] = _geo_view
 
             # ── 3D VIEW ───────────────────────────────────────────────────────
-            if _geo_view == "3D địa chất":
+            if _geo_view == _t("view_3d"):
                 with _ctrl_b:
                     _sel_zones = st.multiselect(
-                        "Zone", _zones_with_coords,
+                        _t("zone_lbl"), _zones_with_coords,
                         default=_zones_with_coords, key="_3d_cdm_zones",
                     )
                 _cb1, _cb2, _cb3 = st.columns(3)
-                _show_clay = _cb1.checkbox("Mặt đáy lớp bùn", value=True, key="_3d_cdm_clay")
-                _show_cdm  = _cb2.checkbox("Đỉnh trụ CDM", value=False, key="_3d_cdm_top")
+                _show_clay = _cb1.checkbox(_t("clay_surf"), value=True, key="_3d_cdm_clay")
+                _show_cdm  = _cb2.checkbox(_t("cdm_top_show"), value=False, key="_3d_cdm_top")
                 _cdm_top_z = float(_get("cdm_CDTK"))
                 if _show_cdm:
                     _cdm_top_z = _cb3.number_input(
-                        "Cao độ (m)", value=_cdm_top_z, step=0.1, key="_3d_cdm_top_z")
+                        _t("elev_lbl"), value=_cdm_top_z, step=0.1, key="_3d_cdm_top_z")
                 _vst_focus = _get("cdm_vst_sel")
                 _focus_bh = _vst_focus[0] if len(_vst_focus) == 1 else None
                 if _sel_zones:
@@ -1753,13 +1939,13 @@ if _page == "Địa chất":
                         use_container_width=True, config={"displayModeBar": True},
                     )
                 else:
-                    st.info("Chọn ít nhất một zone.")
+                    st.info(_t("no_zone"))
 
             # ── MAP VIEW ──────────────────────────────────────────────────────
             else:
                 with _ctrl_b:
                     _map_style_label = st.selectbox(
-                        "Nền bản đồ",
+                        _t("map_style"),
                         list(_MAP_STYLES.keys()),
                         index=list(_MAP_STYLES.keys()).index(
                             _get("cdm_map_style")
@@ -1773,8 +1959,7 @@ if _page == "Địa chất":
                 _ref_default = _get("cdm_map_ref_bh") or ""
                 _calibrated  = bool(_ref_default)
                 with st.expander(
-                    ("Hiệu chỉnh GPS — đã áp dụng" if _calibrated
-                     else "Hiệu chỉnh GPS — cần thiết lập lần đầu"),
+                    _t("gps_done") if _calibrated else _t("gps_needed"),
                     expanded=not _calibrated,
                 ):
                     st.markdown(
@@ -1786,13 +1971,13 @@ if _page == "Địa chất":
                     _bh_names_all = [b["name"] for b in _bhs_all]
                     _ref_idx = _bh_names_all.index(_ref_default) if _ref_default in _bh_names_all else 0
                     _c1, _c2, _c3 = st.columns([2, 1, 1])
-                    _ref_bh  = _c1.selectbox("Hố khoan tham chiếu", _bh_names_all,
+                    _ref_bh  = _c1.selectbox(_t("ref_bh"), _bh_names_all,
                                              index=_ref_idx, key="_map_ref_bh_sel")
                     _ref_lat = _c2.number_input("Latitude", value=float(_get("cdm_map_ref_lat")),
                                                 format="%.6f", step=0.000100, key="_map_ref_lat")
                     _ref_lon = _c3.number_input("Longitude", value=float(_get("cdm_map_ref_lon")),
                                                 format="%.6f", step=0.000100, key="_map_ref_lon")
-                    if st.button("Áp dụng hiệu chỉnh", type="primary", key="_map_calib_btn"):
+                    if st.button(_t("apply_calib"), type="primary", key="_map_calib_btn"):
                         st.session_state.update({
                             "cdm_map_ref_bh":  _ref_bh,
                             "cdm_map_ref_lat": _ref_lat,
@@ -1820,14 +2005,14 @@ if _page == "Địa chất":
                         config={"displayModeBar": True, "scrollZoom": True},
                     )
                 else:
-                    st.warning("Không có hố khoan nào có tọa độ.")
+                    st.warning(_t("no_coords"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 2 – THÔNG SỐ
 # ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "Thông số":
-    st.subheader("Thông số CDM")
+elif _page == "params":
+    st.subheader(_t("p2_sub"))
 
     # Layout: thông số bên trái, hình minh họa bên phải
     _col_inp, _col_sec = st.columns([3, 2], gap="medium")
@@ -1836,26 +2021,26 @@ elif _page == "Thông số":
         c1, c2, c3, c4 = st.columns(4)
 
         with c1:
-            st.markdown("**Hình học trụ CDM**")
-            D    = st.number_input("Đường kính D (m)", 0.5, 1.2, _get("cdm_D"), 0.05)
-            Lc   = st.number_input("Chiều dài Lc (m)", 5.0, 60.0, _get("cdm_Lc"), 0.5)
-            CDTK = st.number_input("Cao độ đỉnh cọc CDM (m)", -5.0, 10.0, _get("cdm_CDTK"), 0.1)
+            st.markdown(f"**{_t('cdm_geom')}**")
+            D    = st.number_input(_t("D_lbl"), 0.5, 1.2, _get("cdm_D"), 0.05)
+            Lc   = st.number_input(_t("Lc_lbl"), 5.0, 60.0, _get("cdm_Lc"), 0.5)
+            CDTK = st.number_input(_t("CDTK_lbl"), -5.0, 10.0, _get("cdm_CDTK"), 0.1)
             _ld0 = _get("cdm_loads")
             _cdtk_cal = CDTK + _ld0.get("h_mat", 0.4) + _ld0.get("h_fill", 1.5)
-            st.info(f"CDTK = đỉnh + đệm + đắp = **{_cdtk_cal:+.2f} m**")
-            arr  = st.radio("Bố trí lưới", ["triangle", "square"],
-                            format_func=lambda x: "Tam giác" if x == "triangle" else "Hình vuông",
+            st.info(_t("cdtk_info", v=_cdtk_cal))
+            arr  = st.radio(_t("arr_lbl"), ["triangle", "square"],
+                            format_func=lambda x: _t("arr_tri") if x == "triangle" else _t("arr_sq"),
                             index=["triangle", "square"].index(_get("cdm_arrangement")))
             st.session_state.update({"cdm_D": D, "cdm_Lc": Lc,
                                       "cdm_CDTK": CDTK, "cdm_arrangement": arr})
 
         with c2:
-            st.markdown("**Vật liệu xi măng đất**")
-            cement = st.text_input("Loại xi măng", _get("cdm_cement_type"))
-            dosage = st.number_input("Hàm lượng XM (kg/m³)", 100, 400, _get("cdm_dosage"), 10)
-            WC     = st.number_input("Tỷ lệ N/XM", 0.5, 2.0, _get("cdm_WC"), 0.1)
-            qu     = st.number_input("qu thiết kế HT (kPa)", 100.0, 5000.0, _get("cdm_qu"), 50.0)
-            FS_lab = st.number_input("FS quy đổi TN→HT", 1.0, 5.0, _get("cdm_FS_lab"), 0.1)
+            st.markdown(f"**{_t('material')}**")
+            cement = st.text_input(_t("cement_lbl"), _get("cdm_cement_type"))
+            dosage = st.number_input(_t("dosage_lbl"), 100, 400, _get("cdm_dosage"), 10)
+            WC     = st.number_input(_t("wc_lbl"), 0.5, 2.0, _get("cdm_WC"), 0.1)
+            qu     = st.number_input(_t("qu_lbl"), 100.0, 5000.0, _get("cdm_qu"), 50.0)
+            FS_lab = st.number_input(_t("fs_lab"), 1.0, 5.0, _get("cdm_FS_lab"), 0.1)
             Cc = qu / 2
             Ec = 100 * Cc
             st.info(f"Cc = {Cc:.0f} kN/m²  |  Ec = {int(Ec):,} kN/m²")
@@ -1863,31 +2048,31 @@ elif _page == "Thông số":
                                       "cdm_WC": WC, "cdm_qu": qu, "cdm_FS_lab": FS_lab})
 
         with c3:
-            st.markdown("**Thông số địa kỹ thuật**")
-            h_clay  = st.number_input("Bề dày lớp bùn h₁ (m)", 1.0, 60.0, _get("cdm_h_clay"), 0.5)
-            Su      = st.number_input("Su trung bình (kPa)", 1.0, 100.0, _get("cdm_Su"), 0.5)
-            gamma   = st.number_input("γ tự nhiên (kN/m³)", 10.0, 22.0, _get("cdm_gamma"), 0.1)
+            st.markdown(f"**{_t('geo_params')}**")
+            h_clay  = st.number_input(_t("h_clay_lbl"), 1.0, 60.0, _get("cdm_h_clay"), 0.5)
+            Su      = st.number_input(_t("su_lbl"), 1.0, 100.0, _get("cdm_Su"), 0.5)
+            gamma   = st.number_input(_t("gamma_lbl"), 10.0, 22.0, _get("cdm_gamma"), 0.1)
             Es_show = 250 * Su
             st.info(f"Es = 250×Su = {int(Es_show):,} kN/m²")
             st.session_state.update({"cdm_h_clay": h_clay, "cdm_Su": Su, "cdm_gamma": gamma})
 
         with c4:
-            st.markdown("**Tải trọng gây lún**")
+            st.markdown(f"**{_t('loads_title')}**")
             ld = _get("cdm_loads").copy()
-            ld["q_traffic"] = st.number_input("Hoạt tải (kN/m²)", 0.0, 200.0,
+            ld["q_traffic"] = st.number_input(_t("q_traf"), 0.0, 200.0,
                                               ld.get("q_traffic", 20.0), 5.0)
-            st.markdown("*Áo đường:*")
-            ld["h_road"] = st.number_input("h (m)", 0.0, 2.0, ld.get("h_road", 0.8), 0.1,
+            st.markdown(_t("pavement"))
+            ld["h_road"] = st.number_input(_t("h_lbl"), 0.0, 2.0, ld.get("h_road", 0.8), 0.1,
                                            key="h_road")
             ld["g_road"] = st.number_input("γ (kN/m³)", 10.0, 30.0, ld.get("g_road", 24.0), 0.5,
                                            key="g_road")
-            st.markdown("*Cát đắp:*")
-            ld["h_fill"] = st.number_input("h (m)", 0.0, 5.0, ld.get("h_fill", 1.5), 0.1,
+            st.markdown(_t("fill"))
+            ld["h_fill"] = st.number_input(_t("h_lbl"), 0.0, 5.0, ld.get("h_fill", 1.5), 0.1,
                                            key="h_fill")
             ld["g_fill"] = st.number_input("γ (kN/m³)", 10.0, 24.0, ld.get("g_fill", 18.0), 0.5,
                                            key="g_fill")
-            st.markdown("*Đệm cát:*")
-            ld["h_mat"] = st.number_input("h (m)", 0.0, 2.0, ld.get("h_mat", 0.4), 0.1,
+            st.markdown(_t("mat"))
+            ld["h_mat"] = st.number_input(_t("h_lbl"), 0.0, 2.0, ld.get("h_mat", 0.4), 0.1,
                                           key="h_mat")
             ld["g_mat"] = st.number_input("γ (kN/m³)", 10.0, 26.0, ld.get("g_mat", 22.5), 0.5,
                                           key="g_mat")
@@ -1896,24 +2081,24 @@ elif _page == "Thông số":
             st.session_state["cdm_loads"] = ld
 
     # ── Kiểm tra chọc thủng – thông số đệm xi măng ───────────────────────────
-    with st.expander("Kiểm tra chọc thủng lớp đệm xi măng", expanded=False):
+    with st.expander(_t("punch_exp"), expanded=False):
         _km1, _km2, _km3, _km4 = st.columns(4)
         with _km1:
-            _quckse = st.number_input("qu đệm xi măng (kPa)", 100.0, 3000.0,
+            _quckse = st.number_input(_t("qu_mat_lbl"), 100.0, 3000.0,
                                       _get("cdm_quckse"), 50.0)
             st.session_state["cdm_quckse"] = _quckse
         with _km2:
-            _Fs_mat = st.number_input("Hệ số an toàn Fs", 1.0, 5.0,
+            _Fs_mat = st.number_input(_t("fs_mat_lbl"), 1.0, 5.0,
                                       _get("cdm_Fs_mat"), 0.5)
             _tase_p = _quckse / (2.0 * _Fs_mat)
             st.info(f"τase = **{_tase_p:.1f} kPa**")
             st.session_state["cdm_Fs_mat"] = _Fs_mat
         with _km3:
-            _theta = st.number_input("Góc đàn hồi dẻo θ (°)", 30.0, 89.0,
+            _theta = st.number_input(_t("theta_lbl"), 30.0, 89.0,
                                      _get("cdm_theta"), 5.0)
             st.session_state["cdm_theta"] = _theta
         with _km4:
-            _qa_mat = st.number_input("qa vùng không GC (kPa)", 0.0, 200.0,
+            _qa_mat = st.number_input(_t("qa_lbl"), 0.0, 200.0,
                                       _get("cdm_qa_mat"), 5.0)
             st.session_state["cdm_qa_mat"] = _qa_mat
 
@@ -1942,34 +2127,35 @@ elif _page == "Thông số":
     _theory_text = _load_theory()
     if _theory_text:
         st.divider()
-        with st.expander("Lý thuyết tính toán – TCVN 9403:2012", expanded=False):
+        with st.expander(_t("theory_exp"), expanded=False):
             st.markdown(_theory_text)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 3 – SO SÁNH PHƯƠNG ÁN
 # ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "So sánh PA":
-    st.subheader("So sánh các phương án khoảng cách trụ")
+elif _page == "compare":
+    st.subheader(_t("p3_sub"))
 
     # Input khoảng cách + thông số đệm xi măng
-    with st.expander("Thiết lập phương án", expanded=True):
+    with st.expander(_t("setup_exp"), expanded=True):
         _col_sp, _col_mat = st.columns([3, 2], gap="large")
 
         with _col_sp:
-            st.markdown("**Khoảng cách trụ**")
-            mode = st.radio("", ["Tự động", "Nhập tay"],
+            st.markdown(f"**{_t('sp_title')}**")
+            _auto_lbl, _manual_lbl = _t("auto_lbl"), _t("manual_lbl")
+            mode = st.radio("", [_auto_lbl, _manual_lbl],
                             horizontal=True, label_visibility="collapsed",
                             key="_sp_mode")
-            if mode == "Tự động":
+            if mode == _auto_lbl:
                 _sc1, _sc2, _sc3 = st.columns(3)
-                e_min  = _sc1.number_input("e min (m)", 1.0, 3.0, 1.2, 0.1)
-                e_max  = _sc2.number_input("e max (m)", 1.0, 4.0, 2.0, 0.1)
-                e_step = _sc3.number_input("Bước (m)",  0.1, 1.0, 0.2, 0.1)
+                e_min  = _sc1.number_input(_t("e_min"), 1.0, 3.0, 1.2, 0.1)
+                e_max  = _sc2.number_input(_t("e_max"), 1.0, 4.0, 2.0, 0.1)
+                e_step = _sc3.number_input(_t("step_lbl"), 0.1, 1.0, 0.2, 0.1)
                 spacings = [round(e_min + i * e_step, 2)
                             for i in range(int(round((e_max - e_min) / e_step)) + 1)]
             else:
-                raw = st.text_input("Danh sách e (m), cách nhau bởi dấu phẩy",
+                raw = st.text_input(_t("sp_list"),
                                     ", ".join(str(s) for s in _get("cdm_spacings")),
                                     label_visibility="visible")
                 try:
@@ -1978,13 +2164,14 @@ elif _page == "So sánh PA":
                     spacings = _get("cdm_spacings")
             spacings = sorted(set(spacings))
             st.session_state["cdm_spacings"] = spacings
-            st.caption(f"Các phương án: {', '.join(f'{e}m' for e in spacings)}")
+            _alts_label = "Các phương án" if _get("lang") == "VN" else "Alternatives"
+            st.caption(f"{_alts_label}: {', '.join(f'{e}m' for e in spacings)}")
 
         with _col_mat:
-            st.markdown("**Lớp đệm xi măng – kiểm tra chọc thủng**")
+            st.markdown(f"**{_t('mat_punch')}**")
             _mc1, _mc2 = st.columns(2)
             with _mc1:
-                _quckse_sp = st.number_input("qu đệm (kPa)", 100.0, 3000.0,
+                _quckse_sp = st.number_input(_t("qu_mat_sp"), 100.0, 3000.0,
                                              _get("cdm_quckse"), 50.0,
                                              key="_sp_quckse")
                 _theta_sp  = st.number_input("θ (°)", 30.0, 89.0,
@@ -2018,11 +2205,12 @@ elif _page == "So sánh PA":
     df = pd.DataFrame(scenarios)
 
     # Chọn PA kiến nghị
+    _alt_prefix = "PA" if _get("lang") == "VN" else "Alt."
     rec_idx = st.selectbox(
-        "Phương án kiến nghị",
+        _t("rec_sel"),
         range(len(scenarios)),
         index=min(_get("cdm_rec_idx"), len(scenarios)-1),
-        format_func=lambda i: f"PA{i+1}: e={scenarios[i]['e (m)']}m  →  S₁={scenarios[i]['S₁ (cm)']:.2f}cm",
+        format_func=lambda i: f"{_alt_prefix}{i+1}: e={scenarios[i]['e (m)']}m  →  S₁={scenarios[i]['S₁ (cm)']:.2f}cm",
     )
     st.session_state["cdm_rec_idx"] = rec_idx
 
@@ -2048,7 +2236,7 @@ elif _page == "So sánh PA":
         df.at[i, "Đạt CT"]     = pr["check_CT"]
 
     # Bảng kết quả
-    st.markdown("**Bảng so sánh phương án**")
+    st.markdown(f"**{_t('pa_table')}**")
     display_cols = ["e (m)", "a (%)", "Etb (kN/m²)", "S₁ (cm)",
                     "Pcol (kN)", "Qa (kN)", "Đạt SCT",
                     "τse (kPa)", "τase (kPa)", "Đạt CT"]
@@ -2096,8 +2284,8 @@ elif _page == "So sánh PA":
             annotation_position="top right",
         )
         _fig_ct.update_layout(
-            title="Kiểm tra chọc thủng đệm xi măng",
-            yaxis_title="Ứng suất cắt (kPa)",
+            title=_t("punch_chart"),
+            yaxis_title=_t("shear_ax"),
             height=340, margin=dict(t=45, b=20),
             showlegend=False,
         )
@@ -2105,7 +2293,7 @@ elif _page == "So sánh PA":
 
     # ── Phân tích tham số ─────────────────────────────────────────────────────
     st.divider()
-    st.markdown("### Phân tích tham số (giữ nguyên e = PA kiến nghị)")
+    st.markdown(f"### {_t('param_sens')}")
 
     _e_rec   = scenarios[rec_idx]["e (m)"]
     _ld_base = _get("cdm_loads").copy()
@@ -2115,8 +2303,8 @@ elif _page == "So sánh PA":
 
     # ── 1. So sánh qu ─────────────────────────────────────────────────────────
     with _pa1:
-        st.markdown("**So sánh qu thiết kế**")
-        _qu_raw = st.text_input("Các giá trị qu (kPa)",
+        st.markdown(f"**{_t('qu_comp')}**")
+        _qu_raw = st.text_input(_t("qu_inp"),
                                 ", ".join(str(v) for v in [200, 300, 400, 500, 600, 700]),
                                 key="_qu_list")
         try:
@@ -2166,8 +2354,8 @@ elif _page == "So sánh PA":
 
     # ── 2. So sánh D ──────────────────────────────────────────────────────────
     with _pa2:
-        st.markdown("**So sánh đường kính D**")
-        _D_raw = st.text_input("Các giá trị D (m)", "0.50, 0.60, 0.70, 0.80, 1.00",
+        st.markdown(f"**{_t('D_comp')}**")
+        _D_raw = st.text_input(_t("D_inp"), "0.50, 0.60, 0.70, 0.80, 1.00",
                                key="_D_list")
         try:
             _D_list = sorted(set(float(x.strip()) for x in _D_raw.split(",") if x.strip()))
@@ -2232,8 +2420,8 @@ elif _page == "So sánh PA":
 
     # ── 3. So sánh h_mat ──────────────────────────────────────────────────────
     with _pa3:
-        st.markdown("**So sánh chiều dày đệm cát**")
-        _hm_raw = st.text_input("Các giá trị h_mat (m)", "0.20, 0.30, 0.40, 0.50, 0.60, 0.80",
+        st.markdown(f"**{_t('hmat_comp')}**")
+        _hm_raw = st.text_input(_t("hmat_inp"), "0.20, 0.30, 0.40, 0.50, 0.60, 0.80",
                                 key="_hmat_list")
         try:
             _hmat_list = sorted(set(float(x.strip()) for x in _hm_raw.split(",") if x.strip()))
@@ -2294,8 +2482,8 @@ elif _page == "So sánh PA":
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 4 – KẾT QUẢ
 # ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "Kết quả":
-    st.subheader("Kết quả chi tiết – Phương án kiến nghị")
+elif _page == "result":
+    st.subheader(_t("p4_sub"))
 
     D   = _get("cdm_D")
     Lc  = _get("cdm_Lc")
@@ -2308,7 +2496,7 @@ elif _page == "Kết quả":
 
     scenarios = build_scenarios(D, Lc, qu, Su, q, sps, arr)
     if not scenarios or rec >= len(scenarios):
-        st.warning("Chưa có phương án. Vào tab So sánh PA để tính.")
+        st.warning(_t("no_scenarios"))
         st.stop()
 
     s   = scenarios[rec]
@@ -2317,7 +2505,8 @@ elif _page == "Kết quả":
     Es  = calc_Es(Su)
     Etb = s["Etb (kN/m²)"]
 
-    st.success(f"Phương án kiến nghị: **PA{rec+1} — e = {s['e (m)']} m**")
+    _alt_pfx = "PA" if _get("lang") == "VN" else "Alt."
+    st.success(_t("rec_pa", n=rec+1, e=s['e (m)']))
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("S₁ (cm)", f"{s['S₁ (cm)']:.2f}")
@@ -2328,51 +2517,81 @@ elif _page == "Kết quả":
     st.divider()
     col_l, col_r = st.columns(2)
 
+    _CP = _t("col_param"); _CF = _t("col_formula"); _CV = _t("col_value")
+
     with col_l:
-        st.markdown("**Tính toán độ lún**")
-        arr_label = "Tam giác: a = π·D²/(2√3·e²)" if arr == "triangle" else "Vuông: a = π·D²/(4·e²)"
-        steps = [
-            ("Khoảng cách trụ", "e", f"{s['e (m)']} m"),
-            ("Tỷ lệ thay thế", arr_label, f"{s['a']:.4f}  ({s['a (%)']:.1f}%)"),
-            ("Mô đun trụ CDM", "Ec = 100·Cc = 100·(qu/2)", f"{int(Ec):,} kN/m²"),
-            ("Mô đun đất nền", "Es = 250·Su", f"{int(Es):,} kN/m²"),
-            ("Mô đun tương đương", "Etb = a·Ec + (1−a)·Es", f"{int(Etb):,} kN/m²"),
-            ("Tải trọng thiết kế", "q", f"{q:.2f} kN/m²"),
-            ("Chiều dài trụ", "Lc", f"{Lc:.1f} m"),
-            ("Độ lún bản thân CDM", "S₁ = q·Lc/Etb × 100", f"{s['S₁ (cm)']:.2f} cm"),
-            ("Độ lún dưới mũi trụ", "S₂ = 0 (trụ xuyên qua lớp bùn)", "0,00 cm"),
-            ("Tổng độ lún", "S = S₁ + S₂", f"{s['S₁ (cm)']:.2f} cm"),
-        ]
-        df_steps = pd.DataFrame(steps, columns=["Thông số", "Công thức", "Giá trị"])
+        st.markdown(f"**{_t('settle_calc')}**")
+        _is_tri = arr == "triangle"
+        arr_label = (_t("arr_tri") + ": a = π·D²/(2√3·e²)"
+                     if _is_tri else _t("arr_sq") + ": a = π·D²/(4·e²)")
+        if _get("lang") == "VN":
+            steps = [
+                ("Khoảng cách trụ", "e", f"{s['e (m)']} m"),
+                ("Tỷ lệ thay thế", arr_label, f"{s['a']:.4f}  ({s['a (%)']:.1f}%)"),
+                ("Mô đun trụ CDM", "Ec = 100·Cc = 100·(qu/2)", f"{int(Ec):,} kN/m²"),
+                ("Mô đun đất nền", "Es = 250·Su", f"{int(Es):,} kN/m²"),
+                ("Mô đun tương đương", "Etb = a·Ec + (1−a)·Es", f"{int(Etb):,} kN/m²"),
+                ("Tải trọng thiết kế", "q", f"{q:.2f} kN/m²"),
+                ("Chiều dài trụ", "Lc", f"{Lc:.1f} m"),
+                ("Độ lún bản thân CDM", "S₁ = q·Lc/Etb × 100", f"{s['S₁ (cm)']:.2f} cm"),
+                ("Độ lún dưới mũi trụ", "S₂ = 0 (trụ xuyên qua lớp bùn)", "0,00 cm"),
+                ("Tổng độ lún", "S = S₁ + S₂", f"{s['S₁ (cm)']:.2f} cm"),
+            ]
+        else:
+            steps = [
+                ("Pile spacing", "e", f"{s['e (m)']} m"),
+                ("Area replacement ratio", arr_label, f"{s['a']:.4f}  ({s['a (%)']:.1f}%)"),
+                ("CDM column modulus", "Ec = 100·Cc = 100·(qu/2)", f"{int(Ec):,} kN/m²"),
+                ("Soil modulus", "Es = 250·Su", f"{int(Es):,} kN/m²"),
+                ("Equivalent modulus", "Etb = a·Ec + (1−a)·Es", f"{int(Etb):,} kN/m²"),
+                ("Design load", "q", f"{q:.2f} kN/m²"),
+                ("Pile length", "Lc", f"{Lc:.1f} m"),
+                ("CDM block settlement", "S₁ = q·Lc/Etb × 100", f"{s['S₁ (cm)']:.2f} cm"),
+                ("Settlement below pile tip", "S₂ = 0 (pile through soft clay)", "0.00 cm"),
+                ("Total settlement", "S = S₁ + S₂", f"{s['S₁ (cm)']:.2f} cm"),
+            ]
+        df_steps = pd.DataFrame(steps, columns=[_CP, _CF, _CV])
         st.dataframe(df_steps, use_container_width=True, hide_index=True,
-                     column_config={"Công thức": st.column_config.TextColumn(width="medium")})
+                     column_config={_CF: st.column_config.TextColumn(width="medium")})
 
     with col_r:
-        st.markdown("**Kiểm tra sức chịu tải (AIT – TCVN 9403:2012 Phụ lục B)**")
+        st.markdown(f"**{_t('bearing_calc')}**")
         bc = calc_bearing(D, Lc, Cc, Su)
-        sct_steps = [
-            ("Diện tích cắt ngang", "Ac = π·D²/4", f"{math.pi*D**2/4:.4f} m²"),
-            ("Sức chịu tải mũi", "Qult_mũi = 9·Cc·Ac", f"{bc['Qult_col']:.1f} kN"),
-            ("Sức chịu tải thân", "Qult_thân = π·D·Lc·Cu", f"{bc['Qult_skin']:.1f} kN"),
-            ("Tổng sức chịu tải", "Qult = Qmũi + Qthân", f"{bc['Qult']:.1f} kN"),
-            ("Sức chịu tải cho phép", "Qa = Qult / FS = Qult / 2", f"{bc['Qa']:.1f} kN"),
-            ("Ứng suất đầu cọc", "σ_col = (Ec/Etb) × q", f"{s['σ_col (kN/m²)']:.1f} kN/m²"),
-            ("Lực nén lên 1 trụ", "Pcol = σ_col × Ac", f"{s['Pcol (kN)']:.1f} kN"),
-            ("Kiểm tra", "Pcol < Qa ?", s["Đạt SCT"]),
-        ]
-        df_sct = pd.DataFrame(sct_steps, columns=["Thông số", "Công thức", "Giá trị"])
+        if _get("lang") == "VN":
+            sct_steps = [
+                ("Diện tích cắt ngang", "Ac = π·D²/4", f"{math.pi*D**2/4:.4f} m²"),
+                ("Sức chịu tải mũi", "Qult_mũi = 9·Cc·Ac", f"{bc['Qult_col']:.1f} kN"),
+                ("Sức chịu tải thân", "Qult_thân = π·D·Lc·Cu", f"{bc['Qult_skin']:.1f} kN"),
+                ("Tổng sức chịu tải", "Qult = Qmũi + Qthân", f"{bc['Qult']:.1f} kN"),
+                ("Sức chịu tải cho phép", "Qa = Qult / FS = Qult / 2", f"{bc['Qa']:.1f} kN"),
+                ("Ứng suất đầu cọc", "σ_col = (Ec/Etb) × q", f"{s['σ_col (kN/m²)']:.1f} kN/m²"),
+                ("Lực nén lên 1 trụ", "Pcol = σ_col × Ac", f"{s['Pcol (kN)']:.1f} kN"),
+                ("Kiểm tra", "Pcol < Qa ?", s["Đạt SCT"]),
+            ]
+        else:
+            sct_steps = [
+                ("Cross-section area", "Ac = π·D²/4", f"{math.pi*D**2/4:.4f} m²"),
+                ("Tip resistance", "Qult_tip = 9·Cc·Ac", f"{bc['Qult_col']:.1f} kN"),
+                ("Skin resistance", "Qult_skin = π·D·Lc·Cu", f"{bc['Qult_skin']:.1f} kN"),
+                ("Total capacity", "Qult = Qtip + Qskin", f"{bc['Qult']:.1f} kN"),
+                ("Allowable capacity", "Qa = Qult / FS = Qult / 2", f"{bc['Qa']:.1f} kN"),
+                ("Stress on pile head", "σ_col = (Ec/Etb) × q", f"{s['σ_col (kN/m²)']:.1f} kN/m²"),
+                ("Load on single pile", "Pcol = σ_col × Ac", f"{s['Pcol (kN)']:.1f} kN"),
+                ("Check", "Pcol < Qa ?", s["Đạt SCT"]),
+            ]
+        df_sct = pd.DataFrame(sct_steps, columns=[_CP, _CF, _CV])
 
         def _color_sct(val):
-            if val == "Đạt":    return "color: green; font-weight: bold"
+            if val == "Đạt":       return "color: green; font-weight: bold"
             if val == "Không đạt": return "color: red; font-weight: bold"
             return ""
 
-        st.dataframe(df_sct.style.map(_color_sct, subset=["Giá trị"]),
+        st.dataframe(df_sct.style.map(_color_sct, subset=[_CV]),
                      use_container_width=True, hide_index=True,
-                     column_config={"Công thức": st.column_config.TextColumn(width="medium")})
+                     column_config={_CF: st.column_config.TextColumn(width="medium")})
 
     st.divider()
-    st.markdown("**Kiểm tra chọc thủng lớp đệm xi măng (ALiCC)**")
+    st.markdown(f"**{_t('punch_res')}**")
     _ld_r   = _get("cdm_loads")
     _pr_r   = calc_punching_check(
         D=D, e=s["e (m)"],
@@ -2385,32 +2604,47 @@ elif _page == "Kết quả":
         gamma_mat=_ld_r.get("g_mat", 22.5),
         qa=_get("cdm_qa_mat"),
     )
-    _punch_steps = [
-        ("Bề dày đệm xi măng",        "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
-        ("Chiều cao đất đắp trên đệm", "He = h_fill",                        f"{_ld_r.get('h_fill',1.5):.2f} m"),
-        ("Cường độ kháng nén đệm XM",  "quckse",                             f"{_get('cdm_quckse'):.0f} kPa"),
-        ("Ứng suất cắt cho phép",      "τase = quckse/(2·Fs)",               f"{_pr_r['tase_kPa']:.2f} kPa"),
-        ("Chiều cao vùng vòm đất",     "Ho = (e−D)·tan(θ/2)",                f"{_pr_r['Ho_m']:.3f} m"),
-        ("So sánh Ho vs He",           "Chọn công thức",                     _pr_r["cong_thuc"]),
-        ("Thể tích đất tác dụng",      "Vsoil",                              f"{_pr_r['Vsoil_m3']:.4f} m³"),
-        ("Thể tích đệm XM tác dụng",   "VCGCXM",                             f"{_pr_r['VCGCXM_m3']:.4f} m³"),
-        ("Áp lực vùng không gia cố",   "PSoil",                              f"{_pr_r['PSoil_kPa']:.3f} kPa"),
-        ("Ứng suất cắt thực tế",       "τse = PSoil·(e²−πD²/4)/(π·D·Hse)",  f"{_pr_r['tse_kPa']:.3f} kPa"),
-        ("Kiểm tra",                   "τse ≤ τase ?",                       _pr_r["check_CT"]),
-    ]
-    _df_punch = pd.DataFrame(_punch_steps, columns=["Thông số", "Công thức", "Giá trị"])
+    if _get("lang") == "VN":
+        _punch_steps = [
+            ("Bề dày đệm xi măng",        "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
+            ("Chiều cao đất đắp trên đệm", "He = h_fill",                        f"{_ld_r.get('h_fill',1.5):.2f} m"),
+            ("Cường độ kháng nén đệm XM",  "quckse",                             f"{_get('cdm_quckse'):.0f} kPa"),
+            ("Ứng suất cắt cho phép",      "τase = quckse/(2·Fs)",               f"{_pr_r['tase_kPa']:.2f} kPa"),
+            ("Chiều cao vùng vòm đất",     "Ho = (e−D)·tan(θ/2)",                f"{_pr_r['Ho_m']:.3f} m"),
+            ("So sánh Ho vs He",           "Chọn công thức",                     _pr_r["cong_thuc"]),
+            ("Thể tích đất tác dụng",      "Vsoil",                              f"{_pr_r['Vsoil_m3']:.4f} m³"),
+            ("Thể tích đệm XM tác dụng",   "VCGCXM",                             f"{_pr_r['VCGCXM_m3']:.4f} m³"),
+            ("Áp lực vùng không gia cố",   "PSoil",                              f"{_pr_r['PSoil_kPa']:.3f} kPa"),
+            ("Ứng suất cắt thực tế",       "τse = PSoil·(e²−πD²/4)/(π·D·Hse)",  f"{_pr_r['tse_kPa']:.3f} kPa"),
+            ("Kiểm tra",                   "τse ≤ τase ?",                       _pr_r["check_CT"]),
+        ]
+    else:
+        _punch_steps = [
+            ("Cement mat thickness",       "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
+            ("Fill height above mat",      "He = h_fill",                        f"{_ld_r.get('h_fill',1.5):.2f} m"),
+            ("Cement mat strength",        "quckse",                             f"{_get('cdm_quckse'):.0f} kPa"),
+            ("Allowable shear stress",     "τase = quckse/(2·Fs)",               f"{_pr_r['tase_kPa']:.2f} kPa"),
+            ("Arch height",               "Ho = (e−D)·tan(θ/2)",                f"{_pr_r['Ho_m']:.3f} m"),
+            ("Ho vs He comparison",        "Select formula",                     _pr_r["cong_thuc"]),
+            ("Soil volume acting",         "Vsoil",                              f"{_pr_r['Vsoil_m3']:.4f} m³"),
+            ("Cement mat volume acting",   "VCGCXM",                             f"{_pr_r['VCGCXM_m3']:.4f} m³"),
+            ("Pressure on unimproved zone","PSoil",                              f"{_pr_r['PSoil_kPa']:.3f} kPa"),
+            ("Actual shear stress",        "τse = PSoil·(e²−πD²/4)/(π·D·Hse)",  f"{_pr_r['tse_kPa']:.3f} kPa"),
+            ("Check",                      "τse ≤ τase ?",                       _pr_r["check_CT"]),
+        ]
+    _df_punch = pd.DataFrame(_punch_steps, columns=[_CP, _CF, _CV])
     st.dataframe(
-        _df_punch.style.map(_color_sct, subset=["Giá trị"]),
+        _df_punch.style.map(_color_sct, subset=[_CV]),
         use_container_width=True, hide_index=True,
-        column_config={"Công thức": st.column_config.TextColumn(width="large")},
+        column_config={_CF: st.column_config.TextColumn(width="large")},
     )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 5 – XUẤT
 # ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "Xuất":
-    st.subheader("Xuất báo cáo")
+elif _page == "export":
+    st.subheader(_t("p5_sub"))
 
     D   = _get("cdm_D")
     Lc  = _get("cdm_Lc")
@@ -2442,27 +2676,26 @@ elif _page == "Xuất":
         "qa_mat":    _get("cdm_qa_mat"),
     }
 
-    st.markdown("### Tóm tắt trước khi xuất")
+    st.markdown(f"### {_t('export_sum')}")
     if scenarios:
         s = scenarios[rec]
         col1, col2, col3 = st.columns(3)
-        col1.metric("Phương án kiến nghị", f"e = {s['e (m)']} m")
-        col2.metric("Độ lún S₁", f"{s['S₁ (cm)']:.2f} cm")
-        col3.metric("Sức chịu tải", s["Đạt SCT"])
+        col1.metric(_t("rec_alt"), f"e = {s['e (m)']} m")
+        col2.metric(_t("settle_metric"), f"{s['S₁ (cm)']:.2f} cm")
+        col3.metric(_t("bear_lbl"), s["Đạt SCT"])
 
     st.divider()
     c_word, c_excel = st.columns(2)
 
     with c_word:
-        st.markdown("#### Thuyết minh tính toán (Word)")
-        st.caption("Tài liệu gồm 6 mục: Cơ sở pháp lý · Địa chất · Thông số · "
-                   "Phương pháp · So sánh PA · Kết quả PA kiến nghị.")
-        if st.button("Tạo file Word", type="primary"):
-            with st.spinner("Đang tạo tài liệu..."):
+        st.markdown(f"#### {_t('word_title')}")
+        st.caption(_t("word_cap"))
+        if st.button(_t("create_word"), type="primary"):
+            with st.spinner(_t("creating")):
                 word_bytes = _export_word_bytes(scenarios, params, rec)
             if word_bytes:
                 st.download_button(
-                    "Tải xuống (.docx)",
+                    _t("dl_docx"),
                     word_bytes,
                     file_name=f"CDM-THUYET-MINH-{params['bh_name']}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
