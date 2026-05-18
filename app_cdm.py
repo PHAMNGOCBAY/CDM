@@ -273,7 +273,10 @@ def _load_layers(bh_name: str) -> list[dict]:
             SELECT l.symbol, l.description, l.depth_top_m, l.depth_bot_m, l.thickness_m,
                    ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
                    ROUND(AVG(lt.c_kPa),      1) AS c_kPa,
-                   ROUND(AVG(lt.phi_deg),     1) AS phi_deg
+                   ROUND(AVG(lt.phi_deg),     1) AS phi_deg,
+                   ROUND(AVG(lt.e0),          3) AS e0,
+                   ROUND(AVG(lt.Cc),          4) AS Cc,
+                   ROUND(AVG(lt.Cs),          4) AS Cs
             FROM layers l
             JOIN boreholes b ON l.borehole_id = b.id
             LEFT JOIN lab_tests lt
@@ -1751,10 +1754,10 @@ st.sidebar.caption(
 if _page == "geology":
     st.subheader(_t("p1_sub"))
 
-    col_sel, col_prof = st.columns([1, 2])
+    col_sel, col_prof = st.columns([1, 4])
 
     with col_sel:
-        zone = st.radio("Zone", list(_ZONE_NAMES.keys()),
+        zone = st.radio(_t("zone_lbl"), list(_ZONE_NAMES.keys()),
                         format_func=lambda z: _ZONE_NAMES[z],
                         index=list(_ZONE_NAMES.keys()).index(_get("cdm_zone")),
                         horizontal=False)
@@ -1816,21 +1819,26 @@ if _page == "geology":
             df_lay = pd.DataFrame(layers)
             if _get("lang") == "VN":
                 df_lay.columns = ["Ký hiệu", "Mô tả", "Đỉnh (m)", "Đáy (m)", "Dày (m)",
-                                  "γ (kN/m³)", "c (kPa)", "φ (°)"]
+                                  "γ (kN/m³)", "c (kPa)", "φ (°)",
+                                  "e₀", "Cc", "Cs"]
                 _desc_col = "Mô tả"
             else:
                 df_lay.columns = ["Symbol", "Description", "Top (m)", "Bot (m)", "Thick (m)",
-                                  "γ (kN/m³)", "c (kPa)", "φ (°)"]
+                                  "γ (kN/m³)", "c (kPa)", "φ (°)",
+                                  "e₀", "Cc", "Cs"]
                 _desc_col = "Description"
             st.dataframe(
                 df_lay,
                 use_container_width=True,
                 height=310,
                 column_config={
-                    _desc_col:   st.column_config.TextColumn(width="large"),
+                    _desc_col:   st.column_config.TextColumn(width="medium"),
                     "γ (kN/m³)": st.column_config.NumberColumn(format="%.2f"),
                     "c (kPa)":   st.column_config.NumberColumn(format="%.1f"),
                     "φ (°)":     st.column_config.NumberColumn(format="%.1f"),
+                    "e₀":        st.column_config.NumberColumn(format="%.3f"),
+                    "Cc":        st.column_config.NumberColumn(format="%.4f"),
+                    "Cs":        st.column_config.NumberColumn(format="%.4f"),
                 },
             )
         else:
