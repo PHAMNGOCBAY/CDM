@@ -246,6 +246,8 @@ PSoil = [(Vsoil − VCGCXM)·γ_đắp + VCGCXM·γ_đệm] / (e² − π·D²/4
 
 ## 7. Ký Hiệu Tổng Hợp
 
+### 7.1 Ký hiệu tính toán CDM (TCVN 9403:2012)
+
 | Ký hiệu | Đơn vị | Mô tả |
 |---------|--------|-------|
 | D | m | Đường kính trụ CDM |
@@ -265,12 +267,30 @@ PSoil = [(Vsoil − VCGCXM)·γ_đắp + VCGCXM·γ_đệm] / (e² − π·D²/4
 | Qa = Qult/2 | kN | Sức chịu tải cho phép (FS = 2) |
 | Pcol = σ_col·Ac | kN | Lực nén tác dụng lên một trụ CDM |
 
+### 7.2 Ký hiệu kiểm tra chọc thủng (ALiCC – PWRI Japan)
+
+| Ký hiệu | Đơn vị | Mô tả |
+| ------- | ------ | ----- |
+| Hse | m | Bề dày lớp đệm xi măng |
+| He | m | Chiều cao lớp đắp phía trên đệm (= h_fill) |
+| quckse | kPa | Cường độ kháng nén nở hông của đệm xi măng |
+| Fs | – | Hệ số an toàn ứng suất cắt (thường = 3) |
+| θ | ° | Góc vòm đất – Plastic arch angle (thường = 80°) |
+| qa | kPa | Sức chịu tải đất nền vùng không gia cố (thường = 0) |
+| τase = quckse/(2·Fs) | kPa | Ứng suất cắt cho phép của đệm xi măng |
+| Ho = (e−D)·tan(θ/2) | m | Chiều cao vùng vòm đất |
+| Vsoil | m³ | Thể tích đất đắp tác dụng lên ô lưới (CT1 hoặc CT2) |
+| VCGCXM | m³ | Thể tích đệm xi măng phân bổ vào vùng không gia cố |
+| PSoil | kPa | Áp lực thẳng đứng lên phần không gia cố |
+| τse | kPa | Ứng suất cắt thực tế tại mặt tiếp xúc đệm – trụ |
+
 ---
 
-## 7. Tiêu Chuẩn và Tài Liệu Tham Khảo
+## 8. Tiêu Chuẩn và Tài Liệu Tham Khảo
 
 1. **TCVN 9403:2012** – Gia cố nền đất yếu – Phương pháp trụ đất xi măng. Bộ Xây dựng, 2012.
 2. **TCVN 4200:2012** – Đất xây dựng – Phương pháp xác định tính nén lún trong phòng thí nghiệm.
 3. **TCVN 8868:2011** – Thí nghiệm xác định sức kháng cắt không cố kết – không thoát nước của đất dính.
 4. **Asian Institute of Technology (AIT)** – Design and Construction of Ground Improvement Works, 2002. (Cơ sở phương pháp tính sức chịu tải Phụ lục B – TCVN 9403:2012.)
 5. **Terashi, M.** – The state of practice in deep mixing methods. Proc. 3rd Int. Conf. Grouting & Ground Treatment, 2003.
+6. **Public Works Research Institute (PWRI), Japan** – Technical Manual of ALiCC Method for Soft Soil Improvement. (Cơ sở kiểm tra chọc thủng lớp đệm xi măng – Mục 6.)
