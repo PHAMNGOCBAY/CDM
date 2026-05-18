@@ -8,17 +8,14 @@ Chạy:  streamlit run app_cdm.py --server.port 8503
 import io
 import json
 import math
-import os
 import sys
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 
 try:
     import plotly.graph_objects as go
-    import plotly.express as px
     _HAS_PLOTLY = True
 except ImportError:
     _HAS_PLOTLY = False
@@ -1302,7 +1299,7 @@ elif _page == "Kết quả":
             if val == "Không đạt": return "color: red; font-weight: bold"
             return ""
 
-        st.dataframe(df_sct.style.applymap(_color_sct, subset=["Giá trị"]),
+        st.dataframe(df_sct.style.map(_color_sct, subset=["Giá trị"]),
                      use_container_width=True, hide_index=True,
                      column_config={"Công thức": st.column_config.TextColumn(width="medium")})
 
