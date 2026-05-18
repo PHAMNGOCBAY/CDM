@@ -291,6 +291,19 @@ def _load_layers(bh_name: str) -> list[dict]:
 
 
 @st.cache_data(ttl=300)
+def _load_spt(bh_name: str) -> list[dict]:
+    with _db() as con:
+        rows = con.execute("""
+            SELECT sv.depth_m, sv.N1, sv.N2, sv.N3, sv.N
+            FROM spt_values sv
+            JOIN boreholes b ON sv.borehole_id = b.id
+            WHERE b.name = ?
+            ORDER BY sv.depth_m
+        """, (bh_name,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+@st.cache_data(ttl=300)
 def _load_vst_su(zone_code: str) -> pd.DataFrame:
     """VST Su toàn zone, dùng để vẽ profile và tính trung bình."""
     with _db() as con:
@@ -1217,8 +1230,18 @@ def _draw_cdm_grid(D: float, arr: str, e_ref: float):
     return fig
 
 
-def _draw_soil_column(layers: list[dict], bh_name: str = "") -> go.Figure:
-    """Cột địa chất dạng thanh màu theo ký hiệu lớp đất (chiều sâu từ trên xuống)."""
+def _draw_soil_column(
+    layers: list[dict], bh_name: str = "",
+    spt: list[dict] | None = None,
+) -> go.Figure:
+    """Cột địa chất + biểu đồ SPT (subplot 2 cột, trục Y dùng chung)."""
+    try:
+        from plotly.subplots import make_subplots
+    except ImportError:
+        make_subplots = None
+
+    has_spt = bool(spt) and make_subplots is not None
+
     if not layers:
         fig = go.Figure()
         fig.update_layout(height=500,
@@ -1232,9 +1255,33 @@ def _draw_soil_column(layers: list[dict], bh_name: str = "") -> go.Figure:
         r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
         return "white" if (0.299 * r + 0.587 * g + 0.114 * b) < 140 else "#212121"
 
+    def _spt_color(n: int) -> str:
+        if n <= 2:   return "#E53935"   # đất rất yếu
+        if n <= 5:   return "#FB8C00"   # yếu
+        if n <= 10:  return "#FDD835"   # trung bình yếu
+        if n <= 30:  return "#66BB6A"   # trung bình
+        return "#1565C0"                 # chặt / cứng
+
+    y_bot = layers[-1]["depth_bot_m"]
+
+    if has_spt:
+        fig = make_subplots(
+            rows=1, cols=2,
+            shared_yaxes=True,
+            column_widths=[0.35, 0.65],
+            horizontal_spacing=0.04,
+            subplot_titles=["Địa chất", "SPT – N"],
+        )
+    else:
+        fig = go.Figure()
+
+    # ── Soil column (col 1) ──────────────────────────────────────────────────
     shapes: list[dict] = []
     annotations: list[dict] = []
     seen: set[float] = set()
+
+    xref_col = "x" if has_spt else "x"
+    yref_col = "y"
 
     for lay in layers:
         y0    = lay["depth_top_m"]
@@ -1245,61 +1292,148 @@ def _draw_soil_column(layers: list[dict], bh_name: str = "") -> go.Figure:
 
         shapes.append(dict(
             type="rect", x0=0, y0=y0, x1=1, y1=y1,
+            xref=xref_col, yref=yref_col,
             fillcolor=color, line=dict(color="#555", width=0.6),
         ))
 
         if y0 not in seen:
             annotations.append(dict(
-                x=1.08, y=y0, text=f"{y0:.1f}",
+                x=1.08 if not has_spt else 1.12, y=y0,
+                xref=xref_col, yref=yref_col,
+                text=f"{y0:.1f}",
                 showarrow=False, font=dict(size=8, color="#555"),
                 xanchor="left", yanchor="middle",
             ))
             seen.add(y0)
 
         if thick >= 0.5:
-            mid  = (y0 + y1) / 2
-            tc   = _tc(color)
+            mid = (y0 + y1) / 2
+            tc  = _tc(color)
             desc = (lay.get("description") or "")
-            lbl  = (f"<b>{sym}</b><br>{desc[:20]}"
+            lbl  = (f"<b>{sym}</b><br>{desc[:18]}"
                     if thick >= 2.5 and desc else f"<b>{sym}</b>")
             annotations.append(dict(
-                x=0.5, y=mid, text=lbl,
+                x=0.5, y=mid,
+                xref=xref_col, yref=yref_col,
+                text=lbl,
                 showarrow=False, font=dict(size=9, color=tc),
                 xanchor="center", yanchor="middle",
             ))
 
-    y_bot = layers[-1]["depth_bot_m"]
     if y_bot not in seen:
         annotations.append(dict(
-            x=1.08, y=y_bot, text=f"{y_bot:.1f}",
+            x=1.08 if not has_spt else 1.12, y=y_bot,
+            xref=xref_col, yref=yref_col,
+            text=f"{y_bot:.1f}",
             showarrow=False, font=dict(size=8, color="#555"),
             xanchor="left", yanchor="middle",
         ))
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=[0.5], y=[y_bot / 2],
-        mode="markers", marker=dict(opacity=0, size=1),
-        showlegend=False,
-    ))
-    fig.update_layout(
-        shapes=shapes,
-        annotations=annotations,
-        title=dict(text=f"Cột ĐC: {bh_name}", font=dict(size=10, color="#1F4E79"), x=0.5),
-        height=500,
-        margin=dict(l=10, r=55, t=35, b=20),
-        xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-0.05, 1.7]),
-        yaxis=dict(
-            range=[y_bot + 1, -0.5],
-            title="Độ sâu (m)", title_font=dict(size=9),
-            tickfont=dict(size=8),
-            showgrid=True, gridcolor="#EEE", gridwidth=0.5,
-            dtick=5,
-        ),
-        plot_bgcolor="white",
-        paper_bgcolor="#FAFAFA",
-        showlegend=False,
+    # Dummy trace để giữ trục y
+    if has_spt:
+        fig.add_trace(go.Scatter(
+            x=[0.5], y=[y_bot / 2],
+            mode="markers", marker=dict(opacity=0, size=1),
+            showlegend=False,
+        ), row=1, col=1)
+    else:
+        fig.add_trace(go.Scatter(
+            x=[0.5], y=[y_bot / 2],
+            mode="markers", marker=dict(opacity=0, size=1),
+            showlegend=False,
+        ))
+
+    # ── SPT chart (col 2) ────────────────────────────────────────────────────
+    if has_spt:
+        _n_max = max((s["N"] or 0 for s in spt), default=10)
+        _x_max = max(60, _n_max + 5)
+
+        _depths = [s["depth_m"] for s in spt]
+        _N_vals = [min(s["N"] or 0, 60) for s in spt]
+        _colors = [_spt_color(n) for n in _N_vals]
+        _labels = [
+            f"N={s['N']}  ({s['N1']}/{s['N2']}/{s['N3']})"
+            for s in spt
+        ]
+
+        # Thanh ngang N
+        fig.add_trace(go.Bar(
+            x=_N_vals, y=_depths,
+            orientation="h",
+            marker_color=_colors,
+            marker_line=dict(color="#444", width=0.5),
+            text=[str(n) for n in _N_vals],
+            textposition="outside",
+            textfont=dict(size=9),
+            customdata=_labels,
+            hovertemplate="%{customdata}<extra></extra>",
+            showlegend=False,
+            width=1.2,
+        ), row=1, col=2)
+
+        # Đường nối N theo chiều sâu
+        fig.add_trace(go.Scatter(
+            x=_N_vals, y=_depths,
+            mode="lines",
+            line=dict(color="#333", width=1, dash="dot"),
+            showlegend=False,
+            hoverinfo="skip",
+        ), row=1, col=2)
+
+        # Đường giới hạn N=4 (đất rất yếu)
+        fig.add_vline(x=4, line_dash="dash", line_color="#E53935",
+                      line_width=1, opacity=0.6,
+                      annotation_text="N=4", annotation_font_size=8,
+                      annotation_position="top right", row=1, col=2)
+
+        fig.update_xaxes(
+            title_text="N (blows/30cm)", title_font=dict(size=9),
+            range=[0, _x_max], tickfont=dict(size=8),
+            showgrid=True, gridcolor="#EEE",
+            row=1, col=2,
+        )
+
+    # ── Layout ───────────────────────────────────────────────────────────────
+    y_range  = [y_bot + 1, -0.5]
+    y_axis   = dict(
+        range=y_range,
+        title="Độ sâu (m)", title_font=dict(size=9),
+        tickfont=dict(size=8),
+        showgrid=True, gridcolor="#EEE", gridwidth=0.5,
+        dtick=5,
     )
+
+    if has_spt:
+        fig.update_yaxes(y_axis, row=1, col=1)
+        fig.update_xaxes(
+            showticklabels=False, showgrid=False, zeroline=False,
+            range=[-0.05, 1.6], row=1, col=1,
+        )
+        fig.update_layout(
+            shapes=shapes,
+            annotations=annotations,
+            title=dict(text=f"Cột ĐC: {bh_name}", font=dict(size=10, color="#1F4E79"), x=0.5),
+            height=550,
+            margin=dict(l=10, r=20, t=55, b=20),
+            plot_bgcolor="white",
+            paper_bgcolor="#FAFAFA",
+            showlegend=False,
+            bargap=0,
+        )
+    else:
+        fig.update_layout(
+            shapes=shapes,
+            annotations=annotations,
+            title=dict(text=f"Cột ĐC: {bh_name}", font=dict(size=10, color="#1F4E79"), x=0.5),
+            height=500,
+            margin=dict(l=10, r=55, t=35, b=20),
+            xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-0.05, 1.7]),
+            yaxis=y_axis,
+            plot_bgcolor="white",
+            paper_bgcolor="#FAFAFA",
+            showlegend=False,
+        )
+
     return fig
 
 
@@ -1872,8 +2006,9 @@ if _page == "geology":
         if _bh_sc and _HAS_PLOTLY:
             try:
                 _sc_layers = _load_layers(_bh_sc)
+                _sc_spt    = _load_spt(_bh_sc)
                 st.plotly_chart(
-                    _draw_soil_column(_sc_layers, _bh_sc),
+                    _draw_soil_column(_sc_layers, _bh_sc, spt=_sc_spt or None),
                     use_container_width=True,
                     config={"displayModeBar": False},
                 )
