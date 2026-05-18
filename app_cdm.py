@@ -600,6 +600,50 @@ def calc_bearing(D: float, Lc: float, Cc: float, Cu: float, FS: float = 2.0) -> 
             "Qult_col": round(Qult_col, 1), "Qult_skin": round(Qult_skin, 1)}
 
 
+def calc_punching_check(
+    D: float, e: float, Hse: float, He: float,
+    quckse: float, Fs: float, theta_deg: float,
+    gamma_fill: float, gamma_mat: float, qa: float = 0.0,
+) -> dict:
+    """Kiểm tra chọc thủng lớp đệm xi măng – phương pháp ALiCC (PWRI Japan)."""
+    tan_t2 = math.tan(math.radians(theta_deg / 2))   # tan(θ/2) cho Ho
+    tan_t  = math.tan(math.radians(theta_deg))        # tan(θ) cho thể tích
+    tase   = quckse / (2.0 * Fs)
+    Ho     = (e - D) * tan_t2
+
+    if Ho <= He:
+        Vsoil = (((e - D) * 0.5 * e**2
+                  - math.pi * (e**3 - D**3) / 24.0
+                  + (4.0 - math.pi) * (math.sqrt(2) - 1.0) * e**3 / 24.0)
+                 * tan_t)
+    else:
+        r0    = He / tan_t + D / 2.0
+        Vsoil = (He * e**2
+                 - (1.0/3.0) * (math.pi * r0**2 * (He + D/2.0 * tan_t)
+                                - math.pi * D / 2.0 * tan_t))
+
+    r_mat  = Hse / tan_t + D / 2.0
+    VCGCXM = (Hse * e**2
+              - (1.0/3.0) * (math.pi * r_mat**2 * (Hse + D/2.0 * tan_t)
+                             - math.pi * D / 2.0 * tan_t))
+
+    A_unit = e**2 - math.pi * D**2 / 4.0
+    PSoil  = ((Vsoil - VCGCXM) * gamma_fill + VCGCXM * gamma_mat) / A_unit
+    tse    = (PSoil - qa) * A_unit / (math.pi * D * Hse)
+
+    return {
+        "tase_kPa":  round(tase, 2),
+        "Ho_m":      round(Ho, 3),
+        "He_m":      round(He, 3),
+        "cong_thuc": "CT(1) Ho≤He" if Ho <= He else "CT(2) Ho>He",
+        "Vsoil_m3":  round(Vsoil, 4),
+        "VCGCXM_m3": round(VCGCXM, 4),
+        "PSoil_kPa": round(PSoil, 3),
+        "tse_kPa":   round(tse, 3),
+        "check_CT":  "Đạt" if tse <= tase else "Không đạt",
+    }
+
+
 def build_scenarios(
     D: float, Lc: float, qu_field: float, Cu: float,
     q: float, spacings: list[float], arrangement: str
@@ -662,6 +706,10 @@ _DEFAULTS = {
     "cdm_map_ref_lon": 106.6800,
     "cdm_map_style": "Đường phố (OSM)",
     "cdm_vst_sel": [],
+    "cdm_quckse": 600.0,
+    "cdm_Fs_mat": 3.0,
+    "cdm_theta":  80.0,
+    "cdm_qa_mat": 0.0,
     "cdm_loads": {
         "q_traffic": 20.0,
         "h_road": 0.8,   "g_road": 24.0,
@@ -1368,6 +1416,97 @@ def _export_word_bytes(scenarios: list[dict], params: dict, rec_idx: int) -> byt
         ]:
             H.body(doc, line, indent=0.3)
 
+    # VII. Kiểm tra chọc thủng lớp đệm xi măng
+    _ld_w   = params.get("loads", {})
+    _pr_w   = calc_punching_check(
+        D=D, e=rec.get("e (m)", 1.8) if rec else 1.8,
+        Hse=_ld_w.get("h_mat", 0.4),
+        He=_ld_w.get("h_fill", 1.5),
+        quckse=params.get("quckse", 600.0),
+        Fs=params.get("Fs_mat", 3.0),
+        theta_deg=params.get("theta", 80.0),
+        gamma_fill=_ld_w.get("g_fill", 18.0),
+        gamma_mat=_ld_w.get("g_mat", 22.5),
+        qa=params.get("qa_mat", 0.0),
+    )
+    H.heading(doc, "VII. KIỂM TRA CHỌC THỦNG LỚP ĐỆM XI MĂNG", size=13)
+    H.body(doc, "Phương pháp: ALiCC (PWRI Japan). Điều kiện: τse ≤ τase.")
+    H.tbl_caption(doc, "Kết quả kiểm tra chọc thủng lớp đệm xi măng")
+    H.make_table(doc,
+        headers=["Thông số", "Công thức", "Giá trị"],
+        rows=[
+            ("Bề dày đệm xi măng Hse",     "—",                              f"{_ld_w.get('h_mat',0.4):.2f} m"),
+            ("Ứng suất cắt cho phép",       "τase = quckse/(2·Fs)",           f"{_pr_w['tase_kPa']:.2f} kPa"),
+            ("Chiều cao vùng vòm Ho",       "Ho = (e−D)·tan(θ/2)",            f"{_pr_w['Ho_m']:.3f} m"),
+            ("Công thức áp dụng",           "So sánh Ho và He",               _pr_w["cong_thuc"]),
+            ("Áp lực vùng không gia cố",    "PSoil",                          f"{_pr_w['PSoil_kPa']:.3f} kPa"),
+            ("Ứng suất cắt thực tế τse",    "τse = PSoil·A/(π·D·Hse)",        f"{_pr_w['tse_kPa']:.3f} kPa"),
+            ("Kết quả kiểm tra",            "τse ≤ τase ?",                   _pr_w["check_CT"]),
+        ])
+
+    # VIII. Biểu đồ so sánh phương án
+    import matplotlib.pyplot as _plt
+    from docx.shared import Inches as _In
+
+    def _bar_to_buf(x_lbls, y_vals, title, y_lbl, hi_idx, ref_line=None):
+        _fig, _ax = _plt.subplots(figsize=(8, 3))
+        _cols = ["#ED7D31" if i == hi_idx else "#4472C4" for i in range(len(y_vals))]
+        _bars = _ax.bar(x_lbls, y_vals, color=_cols)
+        _ax.bar_label(_bars, fmt="%.2f", padding=3, fontsize=9)
+        if ref_line is not None:
+            _ax.axhline(ref_line, color="#E53935", ls="--", lw=1.2,
+                        label=f"Giới hạn = {ref_line:.1f}")
+            _ax.legend(fontsize=9)
+        _ax.set_title(title, fontsize=11)
+        _ax.set_ylabel(y_lbl, fontsize=9)
+        _ax.tick_params(labelsize=9)
+        for _sp in ["top", "right"]:
+            _ax.spines[_sp].set_visible(False)
+        _buf = io.BytesIO()
+        _fig.tight_layout()
+        _fig.savefig(_buf, format="png", dpi=150, bbox_inches="tight")
+        _plt.close(_fig)
+        _buf.seek(0)
+        return _buf
+
+    if scenarios:
+        H.heading(doc, "VIII. BIỂU ĐỒ SO SÁNH PHƯƠNG ÁN", size=13)
+        _xl = [f"e={s['e (m)']}m" for s in scenarios]
+
+        doc.add_picture(
+            _bar_to_buf(_xl, [s["S₁ (cm)"] for s in scenarios],
+                        f"Độ lún S₁ (cm) – D={int(D*1000)}mm, qu={int(qu)}kPa",
+                        "S₁ (cm)", rec_idx),
+            width=_In(5.5))
+        doc.add_paragraph()
+        doc.add_picture(
+            _bar_to_buf(_xl, [s["a (%)"] for s in scenarios],
+                        "Tỷ lệ thay thế a (%)",
+                        "a (%)", rec_idx),
+            width=_In(5.5))
+        doc.add_paragraph()
+
+        _tse_list = []
+        for _s in scenarios:
+            _pr_s = calc_punching_check(
+                D=D, e=_s["e (m)"],
+                Hse=_ld_w.get("h_mat", 0.4),
+                He=_ld_w.get("h_fill", 1.5),
+                quckse=params.get("quckse", 600.0),
+                Fs=params.get("Fs_mat", 3.0),
+                theta_deg=params.get("theta", 80.0),
+                gamma_fill=_ld_w.get("g_fill", 18.0),
+                gamma_mat=_ld_w.get("g_mat", 22.5),
+                qa=params.get("qa_mat", 0.0),
+            )
+            _tse_list.append(_pr_s["tse_kPa"])
+        doc.add_picture(
+            _bar_to_buf(_xl, _tse_list,
+                        "Ứng suất cắt τse – kiểm tra chọc thủng",
+                        "τse (kPa)", rec_idx,
+                        ref_line=_pr_w["tase_kPa"]),
+            width=_In(5.5))
+
     buf = io.BytesIO()
     doc.save(buf)
     return buf.getvalue()
@@ -1378,7 +1517,8 @@ def _export_word_bytes(scenarios: list[dict], params: dict, rec_idx: int) -> byt
 # ═══════════════════════════════════════════════════════════════════════════════
 _SAVE_KEYS = ["cdm_zone","cdm_bh","cdm_h_clay","cdm_Su","cdm_gamma","cdm_elevation",
               "cdm_D","cdm_Lc","cdm_CDTK","cdm_qu","cdm_FS_lab","cdm_arrangement",
-              "cdm_cement_type","cdm_dosage","cdm_WC","cdm_spacings","cdm_rec_idx","cdm_loads"]
+              "cdm_cement_type","cdm_dosage","cdm_WC","cdm_spacings","cdm_rec_idx","cdm_loads",
+              "cdm_quckse","cdm_Fs_mat","cdm_theta","cdm_qa_mat"]
 
 def _project_to_json() -> bytes:
     return json.dumps({k: st.session_state.get(k) for k in _SAVE_KEYS},
@@ -1743,6 +1883,28 @@ elif _page == "Thông số":
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
 
+    # ── Kiểm tra chọc thủng – thông số đệm xi măng ───────────────────────────
+    with st.expander("Kiểm tra chọc thủng lớp đệm xi măng", expanded=False):
+        _km1, _km2, _km3, _km4 = st.columns(4)
+        with _km1:
+            _quckse = st.number_input("qu đệm xi măng (kPa)", 100.0, 3000.0,
+                                      _get("cdm_quckse"), 50.0)
+            st.session_state["cdm_quckse"] = _quckse
+        with _km2:
+            _Fs_mat = st.number_input("Hệ số an toàn Fs", 1.0, 5.0,
+                                      _get("cdm_Fs_mat"), 0.5)
+            _tase_p = _quckse / (2.0 * _Fs_mat)
+            st.info(f"τase = **{_tase_p:.1f} kPa**")
+            st.session_state["cdm_Fs_mat"] = _Fs_mat
+        with _km3:
+            _theta = st.number_input("Góc đàn hồi dẻo θ (°)", 30.0, 89.0,
+                                     _get("cdm_theta"), 5.0)
+            st.session_state["cdm_theta"] = _theta
+        with _km4:
+            _qa_mat = st.number_input("qa vùng không GC (kPa)", 0.0, 200.0,
+                                      _get("cdm_qa_mat"), 5.0)
+            st.session_state["cdm_qa_mat"] = _qa_mat
+
     # ── Hình minh họa bên phải: mặt cắt (trên) + lưới (dưới) ────────────────
     with _col_sec:
         _ld_s = _get("cdm_loads")
@@ -1819,9 +1981,32 @@ elif _page == "So sánh PA":
     )
     st.session_state["cdm_rec_idx"] = rec_idx
 
+    # Tính kiểm tra chọc thủng cho mỗi PA
+    _ld_punch = _get("cdm_loads")
+    _punch = [
+        calc_punching_check(
+            D=D, e=s["e (m)"],
+            Hse=_ld_punch.get("h_mat", 0.4),
+            He=_ld_punch.get("h_fill", 1.5),
+            quckse=_get("cdm_quckse"),
+            Fs=_get("cdm_Fs_mat"),
+            theta_deg=_get("cdm_theta"),
+            gamma_fill=_ld_punch.get("g_fill", 18.0),
+            gamma_mat=_ld_punch.get("g_mat", 22.5),
+            qa=_get("cdm_qa_mat"),
+        )
+        for s in scenarios
+    ]
+    for i, pr in enumerate(_punch):
+        df.at[i, "τse (kPa)"]  = pr["tse_kPa"]
+        df.at[i, "τase (kPa)"] = pr["tase_kPa"]
+        df.at[i, "Đạt CT"]     = pr["check_CT"]
+
     # Bảng kết quả
     st.markdown("**Bảng so sánh phương án**")
-    display_cols = ["e (m)", "a (%)", "Etb (kN/m²)", "S₁ (cm)", "Pcol (kN)", "Qa (kN)", "Đạt SCT"]
+    display_cols = ["e (m)", "a (%)", "Etb (kN/m²)", "S₁ (cm)",
+                    "Pcol (kN)", "Qa (kN)", "Đạt SCT",
+                    "τse (kPa)", "τase (kPa)", "Đạt CT"]
 
     def _row_color(row):
         idx = df.index.get_loc(row.name)
@@ -1847,6 +2032,31 @@ elif _page == "So sánh PA":
             st.plotly_chart(_chart_etb(df, rec_idx), use_container_width=True)
         with cc:
             st.plotly_chart(_chart_combined(df, rec_idx), use_container_width=True)
+
+        # Biểu đồ chọc thủng
+        _x_sp = [f"e={s['e (m)']}m" for s in scenarios]
+        _col_ct = ["#ED7D31" if i == rec_idx else "#4472C4" for i in range(len(scenarios))]
+        _tase_v = _punch[0]["tase_kPa"] if _punch else 100.0
+        _fig_ct = go.Figure()
+        _fig_ct.add_trace(go.Bar(
+            name="τse (kPa)", x=_x_sp,
+            y=[pr["tse_kPa"] for pr in _punch],
+            marker_color=_col_ct,
+            text=[f"{pr['tse_kPa']:.1f}" for pr in _punch],
+            textposition="outside",
+        ))
+        _fig_ct.add_hline(
+            y=_tase_v, line_dash="dash", line_color="#E53935", line_width=1.5,
+            annotation_text=f"τase = {_tase_v:.0f} kPa",
+            annotation_position="top right",
+        )
+        _fig_ct.update_layout(
+            title="Kiểm tra chọc thủng đệm xi măng",
+            yaxis_title="Ứng suất cắt (kPa)",
+            height=340, margin=dict(t=45, b=20),
+            showlegend=False,
+        )
+        st.plotly_chart(_fig_ct, use_container_width=True)
 
     # ── Phân tích tham số ─────────────────────────────────────────────────────
     st.divider()
@@ -2116,6 +2326,40 @@ elif _page == "Kết quả":
                      use_container_width=True, hide_index=True,
                      column_config={"Công thức": st.column_config.TextColumn(width="medium")})
 
+    st.divider()
+    st.markdown("**Kiểm tra chọc thủng lớp đệm xi măng (ALiCC)**")
+    _ld_r   = _get("cdm_loads")
+    _pr_r   = calc_punching_check(
+        D=D, e=s["e (m)"],
+        Hse=_ld_r.get("h_mat", 0.4),
+        He=_ld_r.get("h_fill", 1.5),
+        quckse=_get("cdm_quckse"),
+        Fs=_get("cdm_Fs_mat"),
+        theta_deg=_get("cdm_theta"),
+        gamma_fill=_ld_r.get("g_fill", 18.0),
+        gamma_mat=_ld_r.get("g_mat", 22.5),
+        qa=_get("cdm_qa_mat"),
+    )
+    _punch_steps = [
+        ("Bề dày đệm xi măng",        "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
+        ("Chiều cao đất đắp trên đệm", "He = h_fill",                        f"{_ld_r.get('h_fill',1.5):.2f} m"),
+        ("Cường độ kháng nén đệm XM",  "quckse",                             f"{_get('cdm_quckse'):.0f} kPa"),
+        ("Ứng suất cắt cho phép",      "τase = quckse/(2·Fs)",               f"{_pr_r['tase_kPa']:.2f} kPa"),
+        ("Chiều cao vùng vòm đất",     "Ho = (e−D)·tan(θ/2)",                f"{_pr_r['Ho_m']:.3f} m"),
+        ("So sánh Ho vs He",           "Chọn công thức",                     _pr_r["cong_thuc"]),
+        ("Thể tích đất tác dụng",      "Vsoil",                              f"{_pr_r['Vsoil_m3']:.4f} m³"),
+        ("Thể tích đệm XM tác dụng",   "VCGCXM",                             f"{_pr_r['VCGCXM_m3']:.4f} m³"),
+        ("Áp lực vùng không gia cố",   "PSoil",                              f"{_pr_r['PSoil_kPa']:.3f} kPa"),
+        ("Ứng suất cắt thực tế",       "τse = PSoil·(e²−πD²/4)/(π·D·Hse)",  f"{_pr_r['tse_kPa']:.3f} kPa"),
+        ("Kiểm tra",                   "τse ≤ τase ?",                       _pr_r["check_CT"]),
+    ]
+    _df_punch = pd.DataFrame(_punch_steps, columns=["Thông số", "Công thức", "Giá trị"])
+    st.dataframe(
+        _df_punch.style.map(_color_sct, subset=["Giá trị"]),
+        use_container_width=True, hide_index=True,
+        column_config={"Công thức": st.column_config.TextColumn(width="large")},
+    )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 5 – XUẤT
@@ -2136,16 +2380,21 @@ elif _page == "Xuất":
     rec = min(rec, len(scenarios) - 1) if scenarios else 0
 
     params = {
-        "bh_name": _get("cdm_bh") or "–",
-        "zone": _get("cdm_zone"),
-        "h_clay": _get("cdm_h_clay"),
-        "Su": Su, "gamma": _get("cdm_gamma"),
-        "D": D, "Lc": Lc, "CDTK": _get("cdm_CDTK"),
-        "qu": qu, "FS_lab": _get("cdm_FS_lab"),
-        "dosage": _get("cdm_dosage"),
+        "bh_name":   _get("cdm_bh") or "–",
+        "zone":      _get("cdm_zone"),
+        "h_clay":    _get("cdm_h_clay"),
+        "Su": Su,    "gamma": _get("cdm_gamma"),
+        "D": D,      "Lc": Lc, "CDTK": _get("cdm_CDTK"),
+        "qu": qu,    "FS_lab": _get("cdm_FS_lab"),
+        "dosage":    _get("cdm_dosage"),
         "arrangement": arr,
-        "q_total": q,
-        "rec_idx": rec,
+        "q_total":   q,
+        "rec_idx":   rec,
+        "loads":     _get("cdm_loads"),
+        "quckse":    _get("cdm_quckse"),
+        "Fs_mat":    _get("cdm_Fs_mat"),
+        "theta":     _get("cdm_theta"),
+        "qa_mat":    _get("cdm_qa_mat"),
     }
 
     st.markdown("### Tóm tắt trước khi xuất")

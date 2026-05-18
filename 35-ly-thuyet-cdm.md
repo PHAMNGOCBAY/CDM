@@ -179,7 +179,72 @@ Pcol < Qa    →  Đạt
 
 ---
 
-## 6. Ký Hiệu Tổng Hợp
+## 6. Kiểm Tra Chọc Thủng Lớp Đệm Xi Măng
+
+> Căn cứ: Technical Manual of ALiCC Method for Soft Soil Improvement – Public Works Research Institute (Japan)
+
+### 6.1 Thông số lớp đệm xi măng
+
+| Ký hiệu | Mô tả | Giá trị điển hình |
+|---------|-------|-----------------|
+| `Hse` | Bề dày lớp đệm xi măng | 0,40 m |
+| `He` | Chiều cao cát đắp trên đệm (= h_fill) | m |
+| `quckse` | Cường độ kháng nén đệm xi măng | 600 kPa |
+| `Fs` | Hệ số an toàn ứng suất cắt | 3 |
+| `θ` | Góc đàn hồi dẻo – Plastic arch angle | 80° |
+| `qa` | SCT đất nền vùng không gia cố | 0 kPa |
+
+### 6.2 Ứng suất cắt cho phép
+
+```
+τase = quckse / (2 × Fs)    (kPa)
+```
+
+### 6.3 Chiều cao vùng vòm đất – kiểm tra điều kiện
+
+```
+Ho = (e − D) × tan(θ/2)    (m)
+```
+
+**Nếu Ho ≤ He → dùng Công thức (1):**
+
+```
+Vsoil = [(e−D)·e²/2 − π(e³−D³)/24 + (4−π)(√2−1)e³/24] × tan(θ)    (m³)
+```
+
+**Nếu Ho > He → dùng Công thức (2):**
+
+```
+Vsoil = He·e² − (1/3)·[π·(He/tan θ + D/2)²·(He + D/2·tan θ) − π·D/2·tan θ]    (m³)
+```
+
+### 6.4 Thể tích đệm xi măng tác dụng lên vùng không gia cố
+
+```
+VCGCXM = Hse·e² − (1/3)·[π·(Hse/tan θ + D/2)²·(Hse + D/2·tan θ) − π·D/2·tan θ]    (m³)
+```
+
+### 6.5 Áp lực thẳng đứng lên phần không gia cố
+
+```
+PSoil = [(Vsoil − VCGCXM)·γ_đắp + VCGCXM·γ_đệm] / (e² − π·D²/4)    (kPa)
+```
+
+### 6.6 Ứng suất cắt thực tế và điều kiện chọc thủng
+
+```
+τse = (PSoil − qa) × (e² − π·D²/4) / (π × D × Hse)    (kPa)
+```
+
+**Điều kiện đạt:**
+
+```
+τse ≤ τase    →  Đạt (không xảy ra chọc thủng)
+```
+
+---
+
+## 7. Ký Hiệu Tổng Hợp
 
 | Ký hiệu | Đơn vị | Mô tả |
 |---------|--------|-------|
