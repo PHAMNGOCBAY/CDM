@@ -894,15 +894,18 @@ def _draw_cdm_section(
             ha="center", va="center", fontsize=8.5,
             color="white", fontweight="bold", zorder=4)
 
-    # CDTK = mặt đường (cùng mức hoạt tải)
+    # CDTK = mặt đường (đỉnh cọc + đệm + đắp + mặt đường)
     ax.axhline(z_road, color="#E53935", lw=1.5, ls="--", zorder=5)
-    ax.text(W * 0.02, z_road - 0.15, f"CDTK={z_road:+.1f}m",
-            ha="left", va="top", fontsize=8, color="#E53935", zorder=6,
-            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.8))
+    ax.text(W * 0.98, z_road + 0.08, f"CDTK = {z_road:+.2f} m",
+            ha="right", va="bottom", fontsize=8.5, color="#E53935",
+            fontweight="bold", zorder=7,
+            bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#E53935",
+                      alpha=0.9, lw=0.8))
     # Đỉnh cọc CDM (nét chấm xanh lá)
     ax.axhline(CDTK, color="#2E7D32", lw=0.9, ls=":", zorder=4, alpha=0.8)
-    ax.text(W * 0.98, CDTK - 0.1, f"Đỉnh cọc={CDTK:+.1f}m",
-            ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5)
+    ax.text(W * 0.98, CDTK - 0.1, f"Đỉnh cọc = {CDTK:+.2f} m",
+            ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5,
+            bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
 
     def layer_text(y0, y1, txt, color):
         if (y1 - y0) > 0.4:
@@ -929,11 +932,11 @@ def _draw_cdm_section(
     ax.text(dim_x + W * 0.02, p_mid, f"Lc={Lc:.1f}m",
             ha="left", va="center", fontsize=8, color="#1A237E", zorder=5)
 
-    q_top = z_road + 0.5
-    for xi in [W * 0.2, W * 0.5, W * 0.8]:
+    q_top = z_road + 1.0
+    for xi in [W * 0.25, W * 0.5, W * 0.75]:
         ax.annotate("", xy=(xi, z_road), xytext=(xi, q_top),
                     arrowprops=dict(arrowstyle="-|>", color="#B71C1C", lw=1.8), zorder=6)
-    ax.text(cx, q_top + 0.25, f"q = {q_traffic:.0f} kN/m²",
+    ax.text(cx, q_top + 0.2, f"q = {q_traffic:.0f} kN/m²",
             ha="center", va="bottom", fontsize=10,
             color="#B71C1C", fontweight="bold", zorder=6)
 
