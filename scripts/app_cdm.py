@@ -254,11 +254,16 @@ def _draw_boreholes_3d(
     show_clay_bottom: bool = False,
     show_cdm_top: bool = False,
     cdm_top_z: float = 2.7,
+    focus_bh: str | None = None,
 ) -> "go.Figure":
     from collections import defaultdict
 
     bhs, lays = _load_borehole_3d_data()
     bhs  = [b for b in bhs if b["zone"] in selected_zones]
+    if focus_bh:
+        bhs_focus = [b for b in bhs if b["name"] == focus_bh]
+        if bhs_focus:
+            bhs = bhs_focus
     bh_ids = {b["id"] for b in bhs}
     lays = [l for l in lays if l["borehole_id"] in bh_ids]
 
@@ -646,6 +651,7 @@ _DEFAULTS = {
     "cdm_map_ref_lat": 10.7770,
     "cdm_map_ref_lon": 106.6800,
     "cdm_map_style": "Đường phố (OSM)",
+    "cdm_vst_sel": [],
     "cdm_loads": {
         "q_traffic": 20.0,
         "h_road": 0.8,   "g_road": 24.0,
@@ -693,17 +699,109 @@ def _chart_etb(df: pd.DataFrame, rec_idx: int) -> go.Figure:
     return fig
 
 
-def _chart_su_profile(df_vst: pd.DataFrame) -> go.Figure:
+def _linreg(xs: list, ys: list) -> tuple[float, float]:
+    """Hồi quy tuyến tính đơn giản, trả về (a, b) với y = a*x + b."""
+    n = len(xs)
+    if n < 2:
+        return 0.0, (ys[0] if ys else 0.0)
+    sx  = sum(xs);  sy  = sum(ys)
+    sxy = sum(xi*yi for xi, yi in zip(xs, ys))
+    sxx = sum(xi**2 for xi in xs)
+    denom = n * sxx - sx * sx
+    if abs(denom) < 1e-12:
+        return 0.0, sy / n
+    a = (n * sxy - sx * sy) / denom
+    b = (sy - a * sx) / n
+    return a, b
+
+
+def _chart_su_profile(
+    df_vst: pd.DataFrame,
+    selected_locs: list[str] | None = None,
+) -> go.Figure:
     if df_vst.empty:
         return go.Figure()
+
+    all_locs = sorted(df_vst["loc_name"].unique())
+    show_locs = selected_locs if selected_locs else all_locs
+
+    _colors = [
+        "#E53935","#1565C0","#2E7D32","#F57F17","#6A1B9A",
+        "#00838F","#AD1457","#558B2F","#4527A0","#00695C",
+    ]
+
     fig = go.Figure()
-    for loc, grp in df_vst.groupby("loc_name"):
-        fig.add_trace(go.Scatter(x=grp.Su_kPa, y=-grp.depth_m, mode="lines+markers",
-                                 name=loc, line=dict(width=1.5), marker=dict(size=5)))
-    fig.update_layout(title="Biểu đồ Su – Cắt cánh (VST)",
-                      xaxis_title="Su (kPa)", yaxis_title="Cao độ (m)",
-                      height=420, legend=dict(font_size=10),
-                      margin=dict(t=40, b=20))
+    reg_lines = []   # (loc, a, b, color, y_min, y_max)
+
+    for i, loc in enumerate(all_locs):
+        if loc not in show_locs:
+            continue
+        grp   = df_vst[df_vst["loc_name"] == loc].sort_values("depth_m")
+        color = _colors[i % len(_colors)]
+        depths = grp["depth_m"].tolist()
+        sus    = grp["Su_kPa"].tolist()
+        y_plot = [-d for d in depths]
+
+        # Đường + markers + nhãn giá trị
+        fig.add_trace(go.Scatter(
+            x=sus, y=y_plot,
+            mode="lines+markers+text",
+            name=loc,
+            line=dict(color=color, width=1.8),
+            marker=dict(size=7, color=color),
+            text=[f"{v:.1f}" for v in sus],
+            textposition="middle right",
+            textfont=dict(size=9, color=color),
+            hovertemplate=(
+                f"<b>{loc}</b><br>"
+                "Sâu: %{customdata:.1f} m<br>"
+                "Su: %{x:.1f} kPa<extra></extra>"
+            ),
+            customdata=depths,
+        ))
+
+        # Hồi quy tuyến tính: Su = a*depth + b
+        if len(depths) >= 2:
+            a, b = _linreg(depths, sus)
+            reg_lines.append((loc, a, b, color, min(depths), max(depths)))
+
+    # Vẽ đường hồi quy + annotation phương trình
+    for loc, a, b, color, d_min, d_max in reg_lines:
+        d_ext = (d_max - d_min) * 0.1
+        dd = [d_min - d_ext, d_max + d_ext]
+        su_reg = [a * d + b for d in dd]
+        sign  = "+" if b >= 0 else "−"
+        eq    = f"Su={a:+.2f}z{sign}{abs(b):.2f}".replace("+-", "−")
+        fig.add_trace(go.Scatter(
+            x=su_reg, y=[-d for d in dd],
+            mode="lines",
+            name=f"Hồi quy {loc}",
+            line=dict(color=color, width=1.2, dash="dash"),
+            hovertemplate=f"<b>Hồi quy {loc}</b><br>{eq}<extra></extra>",
+            showlegend=False,
+        ))
+        # Nhãn phương trình ở cuối đường
+        fig.add_annotation(
+            x=su_reg[-1], y=-dd[-1],
+            text=eq,
+            showarrow=False,
+            font=dict(size=9, color=color),
+            xanchor="left",
+            bgcolor="rgba(255,255,255,0.75)",
+            bordercolor=color,
+            borderwidth=1,
+        )
+
+    fig.update_layout(
+        title="Biểu đồ Su – Cắt cánh (VST)" + (
+            f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ"
+        ),
+        xaxis_title="Su (kPa)",
+        yaxis_title="Cao độ (m)",
+        height=500,
+        legend=dict(font_size=10, orientation="v", x=1.01, y=1),
+        margin=dict(t=50, b=20, r=160),
+    )
     return fig
 
 
@@ -1130,10 +1228,26 @@ if _page == "Địa chất":
     st.divider()
     # VST profile
     df_vst = _load_vst_su(zone)
-    if not df_vst.empty and _HAS_PLOTLY:
-        st.plotly_chart(_chart_su_profile(df_vst), use_container_width=True)
-    elif not df_vst.empty:
-        st.dataframe(df_vst)
+    if not df_vst.empty:
+        _vst_all_locs = sorted(df_vst["loc_name"].unique().tolist())
+        _vst_sel_prev = [l for l in _get("cdm_vst_sel") if l in _vst_all_locs]
+        _vst_col1, _vst_col2 = st.columns([3, 1])
+        with _vst_col1:
+            _vst_sel = st.multiselect(
+                "Chọn hố khoan VST (để trống = toàn bộ)",
+                options=_vst_all_locs,
+                default=_vst_sel_prev,
+                key="_vst_loc_sel",
+            )
+        st.session_state["cdm_vst_sel"] = _vst_sel
+        _vst_pass = _vst_sel if _vst_sel else None
+        if _HAS_PLOTLY:
+            st.plotly_chart(
+                _chart_su_profile(df_vst, _vst_pass),
+                use_container_width=True,
+            )
+        else:
+            st.dataframe(df_vst)
 
     # CDM test results
     df_cdm = _load_cdm_tests()
@@ -1183,9 +1297,14 @@ if _page == "Địa chất":
                 if _show_cdm:
                     _cdm_top_z = _cb3.number_input(
                         "Cao độ (m)", value=_cdm_top_z, step=0.1, key="_3d_cdm_top_z")
+                _vst_focus = _get("cdm_vst_sel")
+                _focus_bh = _vst_focus[0] if len(_vst_focus) == 1 else None
                 if _sel_zones:
                     st.plotly_chart(
-                        _draw_boreholes_3d(_sel_zones, _show_clay, _show_cdm, _cdm_top_z),
+                        _draw_boreholes_3d(
+                            _sel_zones, _show_clay, _show_cdm, _cdm_top_z,
+                            focus_bh=_focus_bh,
+                        ),
                         use_container_width=True, config={"displayModeBar": True},
                     )
                 else:
