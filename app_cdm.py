@@ -1524,15 +1524,19 @@ if _page == "Địa chất":
             else:
                 st.dataframe(df_vst)
     with _sc_col:
-        _bh_sc = _get("cdm_bh")
+        _bh_sc = bh_name if bh_name != "(trống)" else None
         if _bh_sc and _HAS_PLOTLY:
-            st.plotly_chart(
-                _draw_soil_column(_load_layers(_bh_sc), _bh_sc),
-                use_container_width=True,
-                config={"displayModeBar": False},
-            )
-        elif not _bh_sc:
-            st.caption("Chọn hố khoan ở trên để xem cột địa chất.")
+            try:
+                _sc_layers = _load_layers(_bh_sc)
+                st.plotly_chart(
+                    _draw_soil_column(_sc_layers, _bh_sc),
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                )
+            except Exception as _e:
+                st.warning(f"Không vẽ được cột địa chất: {_e}")
+        else:
+            st.caption("Chọn hố khoan để xem cột địa chất.")
 
     # CDM test results
     df_cdm = _load_cdm_tests()
