@@ -1848,6 +1848,193 @@ elif _page == "So sánh PA":
         with cc:
             st.plotly_chart(_chart_combined(df, rec_idx), use_container_width=True)
 
+    # ── Phân tích tham số ─────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("### Phân tích tham số (giữ nguyên e = PA kiến nghị)")
+
+    _e_rec   = scenarios[rec_idx]["e (m)"]
+    _ld_base = _get("cdm_loads").copy()
+    _hmat_cur = _ld_base.get("h_mat", 0.4)
+
+    _pa1, _pa2, _pa3 = st.columns(3)
+
+    # ── 1. So sánh qu ─────────────────────────────────────────────────────────
+    with _pa1:
+        st.markdown("**So sánh qu thiết kế**")
+        _qu_raw = st.text_input("Các giá trị qu (kPa)",
+                                ", ".join(str(v) for v in [200, 300, 400, 500, 600, 700]),
+                                key="_qu_list")
+        try:
+            _qu_list = sorted(set(float(x.strip()) for x in _qu_raw.split(",") if x.strip()))
+        except ValueError:
+            _qu_list = [200, 300, 400, 500]
+
+        _qu_rows = []
+        for _qv in _qu_list:
+            _Ec_v  = calc_Ec(_qv)
+            _Es_v  = calc_Es(Su)
+            _a_v   = calc_a(D, _e_rec, arr)
+            _Etb_v = calc_Etb(_a_v, _Ec_v, _Es_v)
+            _S1_v  = calc_S1(q, Lc, _Etb_v)
+            _sc_v  = calc_sigma_col(q, _Ec_v, _Etb_v)
+            _Pcol_v = calc_Pcol(_sc_v, D)
+            _bc_v  = calc_bearing(D, Lc, _qv / 2, Su)
+            _qu_rows.append({
+                "qu (kPa)": int(_qv),
+                "Ec (kN/m²)": int(_Ec_v),
+                "Etb (kN/m²)": int(_Etb_v),
+                "S₁ (cm)": round(_S1_v, 2),
+                "Pcol (kN)": round(_Pcol_v, 1),
+                "Qa (kN)": _bc_v["Qa"],
+                "Đạt SCT": "Đạt" if _Pcol_v < _bc_v["Qa"] else "Không đạt",
+            })
+        _df_qu = pd.DataFrame(_qu_rows)
+        st.dataframe(_df_qu, use_container_width=True, hide_index=True,
+                     column_config={"Etb (kN/m²)": st.column_config.NumberColumn(format="%,d"),
+                                    "Ec (kN/m²)":  st.column_config.NumberColumn(format="%,d")})
+        if _HAS_PLOTLY:
+            _col_qu = ["#ED7D31" if r["qu (kPa)"] == int(qu) else "#4472C4"
+                       for r in _qu_rows]
+            _fig_qu = go.Figure(go.Bar(
+                x=[f"{r['qu (kPa)']} kPa" for r in _qu_rows],
+                y=_df_qu["S₁ (cm)"],
+                marker_color=_col_qu,
+                text=_df_qu["S₁ (cm)"].apply(lambda v: f"{v:.2f}"),
+                textposition="outside",
+            ))
+            _fig_qu.update_layout(
+                title=f"S₁ theo qu  (e={_e_rec}m, D={D}m)",
+                yaxis_title="S₁ (cm)", height=300,
+                margin=dict(t=45, b=20),
+            )
+            st.plotly_chart(_fig_qu, use_container_width=True)
+
+    # ── 2. So sánh D ──────────────────────────────────────────────────────────
+    with _pa2:
+        st.markdown("**So sánh đường kính D**")
+        _D_raw = st.text_input("Các giá trị D (m)", "0.50, 0.60, 0.70, 0.80, 1.00",
+                               key="_D_list")
+        try:
+            _D_list = sorted(set(float(x.strip()) for x in _D_raw.split(",") if x.strip()))
+        except ValueError:
+            _D_list = [0.5, 0.6, 0.7, 0.8]
+
+        _D_rows = []
+        for _Dv in _D_list:
+            _Ec_v  = calc_Ec(qu)
+            _Es_v  = calc_Es(Su)
+            _a_v   = calc_a(_Dv, _e_rec, arr)
+            _Etb_v = calc_Etb(_a_v, _Ec_v, _Es_v)
+            _S1_v  = calc_S1(q, Lc, _Etb_v)
+            _sc_v  = calc_sigma_col(q, _Ec_v, _Etb_v)
+            _Pcol_v = calc_Pcol(_sc_v, _Dv)
+            _bc_v  = calc_bearing(_Dv, Lc, qu / 2, Su)
+            _D_rows.append({
+                "D (m)": _Dv,
+                "a (%)": round(_a_v * 100, 1),
+                "Etb (kN/m²)": int(_Etb_v),
+                "S₁ (cm)": round(_S1_v, 2),
+                "Pcol (kN)": round(_Pcol_v, 1),
+                "Qa (kN)": _bc_v["Qa"],
+                "Đạt SCT": "Đạt" if _Pcol_v < _bc_v["Qa"] else "Không đạt",
+            })
+        _df_D = pd.DataFrame(_D_rows)
+        st.dataframe(_df_D, use_container_width=True, hide_index=True,
+                     column_config={"a (%)": st.column_config.NumberColumn(format="%.1f%%"),
+                                    "Etb (kN/m²)": st.column_config.NumberColumn(format="%,d")})
+        if _HAS_PLOTLY:
+            _col_D = ["#ED7D31" if abs(_Dv - D) < 0.001 else "#4472C4"
+                      for _Dv in _D_list]
+            _fig_D = go.Figure()
+            _fig_D.add_trace(go.Bar(
+                name="a (%)",
+                x=[f"{r['D (m)']}m" for r in _D_rows],
+                y=_df_D["a (%)"],
+                marker_color=_col_D,
+                text=_df_D["a (%)"].apply(lambda v: f"{v:.1f}%"),
+                textposition="outside",
+                yaxis="y1",
+            ))
+            _fig_D.add_trace(go.Scatter(
+                name="S₁ (cm)",
+                x=[f"{r['D (m)']}m" for r in _D_rows],
+                y=_df_D["S₁ (cm)"],
+                mode="lines+markers+text",
+                text=_df_D["S₁ (cm)"].apply(lambda v: f"{v:.2f}"),
+                textposition="top center",
+                yaxis="y2",
+                line=dict(color="#E53935", width=2),
+                marker=dict(size=8, color="#E53935"),
+            ))
+            _fig_D.update_layout(
+                title=f"a(%) và S₁ theo D  (e={_e_rec}m, qu={int(qu)}kPa)",
+                yaxis=dict(title="a (%)"),
+                yaxis2=dict(title="S₁ (cm)", overlaying="y", side="right"),
+                height=300, margin=dict(t=45, b=20),
+                legend=dict(orientation="h"),
+            )
+            st.plotly_chart(_fig_D, use_container_width=True)
+
+    # ── 3. So sánh h_mat ──────────────────────────────────────────────────────
+    with _pa3:
+        st.markdown("**So sánh chiều dày đệm cát**")
+        _hm_raw = st.text_input("Các giá trị h_mat (m)", "0.20, 0.30, 0.40, 0.50, 0.60, 0.80",
+                                key="_hmat_list")
+        try:
+            _hmat_list = sorted(set(float(x.strip()) for x in _hm_raw.split(",") if x.strip()))
+        except ValueError:
+            _hmat_list = [0.2, 0.3, 0.4, 0.5]
+
+        _hm_rows = []
+        for _hm in _hmat_list:
+            _ld_v = _ld_base.copy()
+            _ld_v["h_mat"] = _hm
+            _q_v   = q_total(_ld_v)
+            _Ec_v  = calc_Ec(qu)
+            _Es_v  = calc_Es(Su)
+            _a_v   = calc_a(D, _e_rec, arr)
+            _Etb_v = calc_Etb(_a_v, _Ec_v, _Es_v)
+            _S1_v  = calc_S1(_q_v, Lc, _Etb_v)
+            _hm_rows.append({
+                "h_mat (m)": _hm,
+                "q (kN/m²)": round(_q_v, 2),
+                "ΔS₁ (cm)": round(_S1_v, 2),
+            })
+        _df_hm = pd.DataFrame(_hm_rows)
+        st.dataframe(_df_hm, use_container_width=True, hide_index=True)
+        if _HAS_PLOTLY:
+            _col_hm = ["#ED7D31" if abs(_hm - _hmat_cur) < 0.001 else "#4472C4"
+                       for _hm in _hmat_list]
+            _fig_hm = go.Figure()
+            _fig_hm.add_trace(go.Bar(
+                name="q (kN/m²)",
+                x=[f"{r['h_mat (m)']}m" for r in _hm_rows],
+                y=_df_hm["q (kN/m²)"],
+                marker_color=_col_hm,
+                text=_df_hm["q (kN/m²)"].apply(lambda v: f"{v:.1f}"),
+                textposition="outside",
+                yaxis="y1",
+            ))
+            _fig_hm.add_trace(go.Scatter(
+                name="S₁ (cm)",
+                x=[f"{r['h_mat (m)']}m" for r in _hm_rows],
+                y=_df_hm["ΔS₁ (cm)"],
+                mode="lines+markers+text",
+                text=_df_hm["ΔS₁ (cm)"].apply(lambda v: f"{v:.2f}"),
+                textposition="top center",
+                yaxis="y2",
+                line=dict(color="#E53935", width=2),
+                marker=dict(size=8, color="#E53935"),
+            ))
+            _fig_hm.update_layout(
+                title=f"q và S₁ theo h_mat  (e={_e_rec}m, D={D}m)",
+                yaxis=dict(title="q (kN/m²)"),
+                yaxis2=dict(title="S₁ (cm)", overlaying="y", side="right"),
+                height=300, margin=dict(t=45, b=20),
+                legend=dict(orientation="h"),
+            )
+            st.plotly_chart(_fig_hm, use_container_width=True)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 4 – KẾT QUẢ
