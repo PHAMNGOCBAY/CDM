@@ -64,11 +64,31 @@ _CLAY_SYMBOLS = {        # symbol lớp bùn sét yếu theo zone
 }
 _ZONE_NAMES = {"KE": "Kè Công Viên (KE)", "BXN": "Bãi Đỗ Xe Ngầm (BXN)", "NHC": "Nhà Hành Chính (NHC)"}
 
-_LAYER_COLORS = {
-    "F":"#9E9E9E","1":"#81D4FA","1b":"#4FC3F7","2":"#1565C0",
-    "2a":"#66BB6A","2b":"#FDD835","3":"#8D6E63","4":"#5C85D6",
-    "5":"#FFA726","6":"#6D4C41","XMD":"#E91E63",
+_LAYER_COLORS: dict[str, str] = {
+    "F":    "#9E9E9E",
+    "1":    "#81D4FA",
+    "1b":   "#4FC3F7",
+    "2":    "#1565C0",
+    "2a":   "#66BB6A",
+    "2b":   "#FDD835",
+    "2c":   "#C5E1A5",
+    "3":    "#8D6E63",
+    "3a":   "#A5D6A7",
+    "3b":   "#69B578",
+    "3c":   "#43A047",
+    "4":    "#5C85D6",
+    "5":    "#FFA726",
+    "5a":   "#FB8C00",
+    "5b":   "#E65100",
+    "6":    "#6D4C41",
+    "7":    "#795548",
+    "8":    "#BCAAA4",
+    "TK6a": "#FFD54F",
+    "TK6b": "#FFB300",
+    "XMD":  "#E91E63",
 }
+_LAYER_DEFAULT_COLOR = "#EEEEEE"
+_ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
 
 _PAGES = ["Địa chất", "Thông số", "So sánh PA", "Kết quả", "Xuất"]
 
@@ -172,6 +192,235 @@ def _gamma_avg(bh_name: str) -> float:
     if df.empty or df.gamma_kNm3.dropna().empty:
         return 15.0
     return round(float(df.gamma_kNm3.dropna().mean()), 3)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 3D BOREHOLE MAP
+# ═══════════════════════════════════════════════════════════════════════════════
+@st.cache_data(ttl=300, show_spinner=False)
+def _load_borehole_3d_data() -> tuple[list[dict], list[dict]]:
+    if not _DB.exists():
+        return [], []
+    conn = sqlite3.connect(_DB)
+    conn.row_factory = sqlite3.Row
+    bhs = [dict(r) for r in conn.execute(
+        "SELECT b.id, b.name, z.code zone, b.elevation_m, b.depth_m, "
+        "b.x_coord_m, b.y_coord_m "
+        "FROM boreholes b JOIN zones z ON z.id=b.zone_id "
+        "WHERE b.x_coord_m IS NOT NULL "
+        "ORDER BY z.id, b.name"
+    ).fetchall()]
+    ids = [b["id"] for b in bhs]
+    if not ids:
+        conn.close()
+        return [], []
+    ph = ",".join("?" * len(ids))
+    lays = [dict(r) for r in conn.execute(
+        f"SELECT borehole_id, symbol, description, depth_top_m, depth_bot_m "
+        f"FROM layers WHERE borehole_id IN ({ph}) ORDER BY borehole_id, depth_top_m",
+        ids,
+    ).fetchall()]
+    conn.close()
+    return bhs, lays
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _load_clay_bottom_3d() -> list[dict]:
+    """Đáy lớp bùn sét yếu cho mỗi hố khoan có tọa độ."""
+    if not _DB.exists():
+        return []
+    conn = sqlite3.connect(_DB)
+    conn.row_factory = sqlite3.Row
+    rows = [dict(r) for r in conn.execute("""
+        SELECT b.name, z.code zone, b.elevation_m, b.x_coord_m, b.y_coord_m,
+               ROUND(MAX(l.depth_bot_m), 3) clay_bot_depth,
+               ROUND(b.elevation_m - MAX(l.depth_bot_m), 3) clay_bot_elev
+        FROM boreholes b
+        JOIN zones z ON z.id=b.zone_id
+        JOIN layers l ON l.borehole_id=b.id
+        WHERE b.x_coord_m IS NOT NULL
+          AND ((z.code='KE'  AND l.symbol IN ('1','1b'))
+            OR (z.code IN ('BXN','NHC') AND l.symbol='2'))
+        GROUP BY b.id
+        ORDER BY z.id, b.name
+    """).fetchall()]
+    conn.close()
+    return rows
+
+
+def _draw_boreholes_3d(
+    selected_zones: list[str],
+    show_clay_bottom: bool = False,
+    show_cdm_top: bool = False,
+    cdm_top_z: float = 2.7,
+) -> "go.Figure":
+    from collections import defaultdict
+
+    bhs, lays = _load_borehole_3d_data()
+    bhs  = [b for b in bhs if b["zone"] in selected_zones]
+    bh_ids = {b["id"] for b in bhs}
+    lays = [l for l in lays if l["borehole_id"] in bh_ids]
+
+    fig = go.Figure()
+    if not bhs:
+        fig.update_layout(title="Không có dữ liệu tọa độ hố khoan")
+        return fig
+
+    lay_by_bh: dict[int, list[dict]] = defaultdict(list)
+    for l in lays:
+        lay_by_bh[l["borehole_id"]].append(l)
+
+    # Một trace / symbol → gộp legend
+    all_syms: list[str] = []
+    for l in lays:
+        if l["symbol"] not in all_syms:
+            all_syms.append(l["symbol"])
+
+    added_legends: set[str] = set()
+    for sym in all_syms:
+        color = _LAYER_COLORS.get(sym, _LAYER_DEFAULT_COLOR)
+        xs, ys, zs, texts = [], [], [], []
+        for bh in bhs:
+            for l in lay_by_bh[bh["id"]]:
+                if l["symbol"] != sym:
+                    continue
+                z0 = bh["elevation_m"] - l["depth_top_m"]
+                z1 = bh["elevation_m"] - l["depth_bot_m"]
+                desc = l.get("description") or sym
+                hover = (
+                    f"<b>{bh['name']}</b><br>"
+                    f"Lớp {sym}: {desc}<br>"
+                    f"Sâu {l['depth_top_m']:.1f}–{l['depth_bot_m']:.1f} m<br>"
+                    f"Cao độ {z0:.2f} → {z1:.2f} m"
+                )
+                xs += [bh["x_coord_m"], bh["x_coord_m"], None]
+                ys += [bh["y_coord_m"], bh["y_coord_m"], None]
+                zs += [z0, z1, None]
+                texts += [hover, hover, None]
+
+        show_leg = sym not in added_legends
+        added_legends.add(sym)
+        fig.add_trace(go.Scatter3d(
+            x=xs, y=ys, z=zs, mode="lines",
+            line=dict(color=color, width=10),
+            name=f"Lớp {sym}", legendgroup=sym, showlegend=show_leg,
+            hovertemplate="%{text}<extra></extra>", text=texts,
+        ))
+
+    # Labels tên hố khoan
+    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32"}
+    fig.add_trace(go.Scatter3d(
+        x=[b["x_coord_m"] for b in bhs],
+        y=[b["y_coord_m"] for b in bhs],
+        z=[b["elevation_m"] + 3 for b in bhs],
+        mode="text+markers",
+        text=[b["name"].replace("BXN-CV-", "").replace("KE-", "") for b in bhs],
+        textposition="top center",
+        textfont=dict(size=9, color="#212121"),
+        marker=dict(
+            size=5,
+            color=[_zone_colors.get(b["zone"], "#333") for b in bhs],
+            symbol=[_ZONE_MARKER.get(b["zone"], "circle") for b in bhs],
+        ),
+        name="Vị trí HK", showlegend=True,
+        hovertemplate="<b>%{text}</b><extra></extra>",
+    ))
+
+    # Đáy lớp bùn
+    if show_clay_bottom:
+        _clay = [c for c in _load_clay_bottom_3d() if c["zone"] in selected_zones]
+        if len(_clay) >= 3:
+            cx = [c["x_coord_m"] for c in _clay]
+            cy = [c["y_coord_m"] for c in _clay]
+            cz = [c["clay_bot_elev"] for c in _clay]
+            ct = [
+                f"<b>{c['name']}</b><br>"
+                f"Đáy bùn sâu: {c['clay_bot_depth']:.1f} m<br>"
+                f"Cao độ đáy: {c['clay_bot_elev']:.2f} m"
+                for c in _clay
+            ]
+            fig.add_trace(go.Mesh3d(
+                x=cx, y=cy, z=cz, delaunayaxis="z",
+                intensity=cz,
+                colorscale=[[0, "#0D47A1"], [0.5, "#42A5F5"], [1, "#BBDEFB"]],
+                showscale=False, opacity=0.55,
+                name="Đáy lớp bùn", legendgroup="clay_bot", showlegend=True,
+                hovertemplate="%{text}<extra></extra>", text=ct,
+            ))
+            fig.add_trace(go.Scatter3d(
+                x=cx, y=cy, z=cz, mode="markers",
+                marker=dict(size=6, color="#0D47A1", symbol="diamond"),
+                name="Điểm đáy bùn", legendgroup="clay_bot", showlegend=False,
+                hovertemplate="%{text}<extra></extra>", text=ct,
+            ))
+            vx, vy, vz, vt = [], [], [], []
+            for c in _clay:
+                vx += [c["x_coord_m"], c["x_coord_m"], None]
+                vy += [c["y_coord_m"], c["y_coord_m"], None]
+                vz += [c["elevation_m"], c["clay_bot_elev"], None]
+                lbl = f"<b>{c['name']}</b><br>Bùn dày {c['clay_bot_depth']:.1f} m"
+                vt += [lbl, lbl, None]
+            fig.add_trace(go.Scatter3d(
+                x=vx, y=vy, z=vz, mode="lines",
+                line=dict(color="#1565C0", width=3, dash="dot"),
+                name="Chiều dày bùn", legendgroup="clay_bot", showlegend=False,
+                hovertemplate="%{text}<extra></extra>", text=vt,
+            ))
+
+    # Mặt phẳng đỉnh trụ CDM
+    if show_cdm_top:
+        all_x = [b["x_coord_m"] for b in bhs]
+        all_y = [b["y_coord_m"] for b in bhs]
+        pad = 20.0
+        mx, Mx = min(all_x) - pad, max(all_x) + pad
+        my, My = min(all_y) - pad, max(all_y) + pad
+        fig.add_trace(go.Mesh3d(
+            x=[mx, Mx, Mx, mx], y=[my, my, My, My],
+            z=[cdm_top_z]*4, i=[0, 0], j=[1, 2], k=[2, 3],
+            color="#E91E63", opacity=0.25,
+            name=f"Đỉnh trụ CDM +{cdm_top_z:.2f} m",
+            showlegend=True, flatshading=True,
+            hovertemplate=f"Đỉnh trụ CDM: <b>{cdm_top_z:.2f} m</b><extra></extra>",
+        ))
+        fig.add_trace(go.Scatter3d(
+            x=[mx, Mx, Mx, mx, mx], y=[my, my, My, My, my],
+            z=[cdm_top_z]*5, mode="lines",
+            line=dict(color="#C2185B", width=3),
+            name="Viền đỉnh CDM", showlegend=False,
+        ))
+
+    # Layout
+    all_x = [b["x_coord_m"] for b in bhs]
+    all_y = [b["y_coord_m"] for b in bhs]
+    span_x = max(all_x) - min(all_x) or 1
+    span_y = max(all_y) - min(all_y) or 1
+    max_z = max(b["elevation_m"] for b in bhs) + 5
+    min_z = min(b["elevation_m"] - b["depth_m"] for b in bhs) - 2
+
+    fig.update_layout(
+        height=660,
+        margin=dict(l=0, r=0, t=30, b=0),
+        legend=dict(
+            x=1.01, y=0.95,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#ccc", borderwidth=1,
+            font=dict(size=11),
+        ),
+        scene=dict(
+            xaxis=dict(title="X — Easting (m)", tickformat=".0f"),
+            yaxis=dict(title="Y — Northing (m)", tickformat=".0f"),
+            zaxis=dict(title="Cao độ (m)", range=[min_z, max_z + 5]),
+            aspectmode="manual",
+            aspectratio=dict(
+                x=span_x / max(span_x, span_y),
+                y=span_y / max(span_x, span_y),
+                z=0.35,
+            ),
+            camera=dict(eye=dict(x=1.4, y=-1.4, z=0.8)),
+        ),
+        paper_bgcolor="#FAFAFA",
+    )
+    return fig
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -776,6 +1025,57 @@ if _page == "Địa chất":
                 "dosage_kgm3":"Hàm lượng (kg/m³)","qu_R7_kPa":"qu R7 (kPa)",
                 "E50_R7_MPa":"E50 R7 (MPa)"}), use_container_width=True)
             st.caption("Lưu ý: Kết quả R7 (7 ngày). Cần qu_R90 để tính Ec chính xác.")
+
+    # ── 3D Địa chất ──────────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("#### Bản đồ 3D địa chất – Hố khoan")
+    if _HAS_PLOTLY:
+        _bhs_all, _ = _load_borehole_3d_data()
+        _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
+        if not _zones_with_coords:
+            st.info("Chưa có tọa độ hố khoan trong CSDL (x_coord_m / y_coord_m = NULL).")
+        else:
+            _c3d_a, _c3d_b, _c3d_c = st.columns([2, 1, 1])
+            with _c3d_a:
+                _sel_zones = st.multiselect(
+                    "Hiển thị zone",
+                    _zones_with_coords,
+                    default=_zones_with_coords,
+                    key="_3d_cdm_zones",
+                )
+            with _c3d_b:
+                _show_clay = st.checkbox(
+                    "Mặt đáy lớp bùn",
+                    value=True,
+                    key="_3d_cdm_clay",
+                )
+            with _c3d_c:
+                _show_cdm = st.checkbox(
+                    "Mặt phẳng đỉnh trụ CDM",
+                    value=False,
+                    key="_3d_cdm_top",
+                )
+            _cdm_top_z = _get("cdm_CDTK")
+            if _show_cdm:
+                _cdm_top_z = st.number_input(
+                    "Cao độ đỉnh trụ CDM (m)",
+                    value=float(_get("cdm_CDTK")),
+                    step=0.1,
+                    key="_3d_cdm_top_z",
+                )
+            if _sel_zones:
+                _fig3d = _draw_boreholes_3d(
+                    selected_zones=_sel_zones,
+                    show_clay_bottom=_show_clay,
+                    show_cdm_top=_show_cdm,
+                    cdm_top_z=_cdm_top_z,
+                )
+                st.plotly_chart(_fig3d, use_container_width=True,
+                                config={"displayModeBar": True})
+            else:
+                st.info("Chọn ít nhất một zone để hiển thị.")
+    else:
+        st.caption("Cài `plotly` để xem bản đồ 3D hố khoan.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
