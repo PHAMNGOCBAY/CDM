@@ -1610,6 +1610,18 @@ if _page == "Địa chất":
             g = _gamma_avg(bh_name)
             if g:
                 st.session_state["cdm_gamma"] = g
+            # Liên kết VST: tự động chọn VST location khớp với hố khoan
+            _df_vst_link = _load_vst_su(zone)
+            if not _df_vst_link.empty:
+                _vst_locs = sorted(_df_vst_link["loc_name"].unique().tolist())
+                _matched = [l for l in _vst_locs if l == bh_name]
+                if not _matched:
+                    _bh_low = bh_name.lower()
+                    _matched = [l for l in _vst_locs
+                                if _bh_low in l.lower() or l.lower() in _bh_low]
+                if _matched:
+                    st.session_state["cdm_vst_sel"]  = _matched
+                    st.session_state["_vst_loc_sel"] = _matched
             st.success(f"Đã áp dụng {bh_name}.")
             st.rerun()
 
