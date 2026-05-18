@@ -1205,34 +1205,46 @@ if _page == "Địa chất":
                     )
                     st.session_state["cdm_map_style"] = _map_style_label
 
-                # Hiệu chỉnh GPS (tuỳ chọn — mặc định dùng VN-2000 CM=105°45')
-                with st.expander("Hiệu chỉnh GPS (tuỳ chọn)", expanded=False):
-                    st.caption(
-                        "Mặc định dùng VN-2000 kinh tuyến trục 105°45'E — tự động, "
-                        "không cần nhập. Chỉ hiệu chỉnh nếu vị trí lệch trên bản đồ."
+                # Hiệu chỉnh GPS
+                _ref_default = _get("cdm_map_ref_bh") or ""
+                _calibrated  = bool(_ref_default)
+                with st.expander(
+                    ("Hiệu chỉnh GPS — đã áp dụng" if _calibrated
+                     else "Hiệu chỉnh GPS — cần thiết lập lần đầu"),
+                    expanded=not _calibrated,
+                ):
+                    st.markdown(
+                        "**Cách lấy toạ độ GPS:**  \n"
+                        "1. Mở [Google Maps](https://maps.google.com) → tìm vị trí hố khoan trên thực địa  \n"
+                        "2. **Chuột phải** vào điểm đó → copy dòng số đầu tiên (ví dụ: `10.782341, 106.718560`)  \n"
+                        "3. Chọn hố khoan tương ứng bên dưới → nhập lat/lon → **Áp dụng**"
                     )
                     _bh_names_all = [b["name"] for b in _bhs_all]
-                    _ref_default = _get("cdm_map_ref_bh") or ""
-                    _use_gps = st.checkbox("Bật hiệu chỉnh GPS", value=bool(_ref_default),
-                                           key="_map_use_gps")
-                    if _use_gps:
-                        _ref_idx = _bh_names_all.index(_ref_default) if _ref_default in _bh_names_all else 0
-                        _c1, _c2, _c3 = st.columns([2, 1, 1])
-                        _ref_bh  = _c1.selectbox("Hố khoan tham chiếu", _bh_names_all,
-                                                 index=_ref_idx, key="_map_ref_bh")
-                        _ref_lat = _c2.number_input("Latitude", value=float(_get("cdm_map_ref_lat")),
-                                                    format="%.6f", step=0.000100, key="_map_ref_lat")
-                        _ref_lon = _c3.number_input("Longitude", value=float(_get("cdm_map_ref_lon")),
-                                                    format="%.6f", step=0.000100, key="_map_ref_lon")
-                        if st.button("Áp dụng", type="primary"):
-                            st.session_state.update({
-                                "cdm_map_ref_bh":  _ref_bh,
-                                "cdm_map_ref_lat": _ref_lat,
-                                "cdm_map_ref_lon": _ref_lon,
-                            })
-                            st.rerun()
-                    else:
-                        _ref_bh, _ref_lat, _ref_lon = "", 0.0, 0.0
+                    _ref_idx = _bh_names_all.index(_ref_default) if _ref_default in _bh_names_all else 0
+                    _c1, _c2, _c3 = st.columns([2, 1, 1])
+                    _ref_bh  = _c1.selectbox("Hố khoan tham chiếu", _bh_names_all,
+                                             index=_ref_idx, key="_map_ref_bh_sel")
+                    _ref_lat = _c2.number_input("Latitude", value=float(_get("cdm_map_ref_lat")),
+                                                format="%.6f", step=0.000100, key="_map_ref_lat")
+                    _ref_lon = _c3.number_input("Longitude", value=float(_get("cdm_map_ref_lon")),
+                                                format="%.6f", step=0.000100, key="_map_ref_lon")
+                    if st.button("Áp dụng hiệu chỉnh", type="primary", key="_map_calib_btn"):
+                        st.session_state.update({
+                            "cdm_map_ref_bh":  _ref_bh,
+                            "cdm_map_ref_lat": _ref_lat,
+                            "cdm_map_ref_lon": _ref_lon,
+                        })
+                        st.rerun()
+                    if _calibrated:
+                        st.success(
+                            f"Đang dùng: {_get('cdm_map_ref_bh')} → "
+                            f"lat={_get('cdm_map_ref_lat'):.6f}, "
+                            f"lon={_get('cdm_map_ref_lon'):.6f}"
+                        )
+                _use_gps = True
+                _ref_bh  = _get("cdm_map_ref_bh") or (_bh_names_all[0] if _bh_names_all else "")
+                _ref_lat = float(_get("cdm_map_ref_lat"))
+                _ref_lon = float(_get("cdm_map_ref_lon"))
 
                 _bhs_ll = _project_to_latlon(
                     _bhs_all, _ref_bh, _ref_lat, _ref_lon, use_gps_ref=_use_gps
