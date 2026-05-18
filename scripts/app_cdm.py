@@ -424,6 +424,99 @@ def _draw_boreholes_3d(
     return fig
 
 
+def _project_to_latlon(
+    bhs: list[dict], ref_bh_name: str, ref_lat: float, ref_lon: float
+) -> list[dict] | None:
+    """Chuyển tọa độ VN-2000 (mét) → lat/lon dùng 1 điểm tham chiếu GPS.
+
+    Gốc: x_coord_m ≈ Northing, y_coord_m ≈ Easting trong hệ chiếu địa phương.
+    Với phạm vi dự án ~500m, sai số tuyến tính < 0,5 m.
+    """
+    ref = next((b for b in bhs if b["name"] == ref_bh_name), None)
+    if not ref or ref.get("x_coord_m") is None:
+        return None
+    cos_lat = math.cos(math.radians(ref_lat))
+    result = []
+    for b in bhs:
+        if b.get("x_coord_m") is None:
+            continue
+        lat = ref_lat + (b["x_coord_m"] - ref["x_coord_m"]) / 110_574.0
+        lon = ref_lon + (b["y_coord_m"] - ref["y_coord_m"]) / (110_574.0 * cos_lat)
+        result.append({**b, "lat": lat, "lon": lon})
+    return result
+
+
+_MAP_STYLES = {
+    "Đường phố (OSM)": "open-street-map",
+    "Bản đồ sáng": "carto-positron",
+    "Vệ tinh (Esri)": "__esri__",
+}
+
+
+def _draw_map_2d(bhs_ll: list[dict], style_key: str) -> "go.Figure":
+    """Bản đồ 2D vị trí hố khoan, hỗ trợ OSM / Esri satellite."""
+    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32"}
+    fig = go.Figure()
+
+    for zone, color in _zone_colors.items():
+        grp = [b for b in bhs_ll if b["zone"] == zone]
+        if not grp:
+            continue
+        fig.add_trace(go.Scattermap(
+            lat=[b["lat"] for b in grp],
+            lon=[b["lon"] for b in grp],
+            mode="markers+text",
+            text=[b["name"].replace("BXN-CV-", "").replace("KE-", "") for b in grp],
+            textposition="top right",
+            textfont=dict(size=10),
+            marker=dict(size=13, color=color),
+            name=zone,
+            hovertemplate=(
+                "<b>%{text}</b><br>"
+                "lat=%{lat:.6f}<br>lon=%{lon:.6f}"
+                "<extra></extra>"
+            ),
+        ))
+
+    c_lat = sum(b["lat"] for b in bhs_ll) / len(bhs_ll)
+    c_lon = sum(b["lon"] for b in bhs_ll) / len(bhs_ll)
+
+    if style_key == "__esri__":
+        map_cfg = dict(
+            style="white-bg",
+            layers=[{
+                "below": "traces",
+                "sourcetype": "raster",
+                "source": [
+                    "https://server.arcgisonline.com/ArcGIS/rest/services/"
+                    "World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                ],
+                "sourceattribution": "Esri World Imagery",
+            }],
+            center=dict(lat=c_lat, lon=c_lon),
+            zoom=17,
+        )
+    else:
+        map_cfg = dict(
+            style=style_key,
+            center=dict(lat=c_lat, lon=c_lon),
+            zoom=17,
+        )
+
+    fig.update_layout(
+        map=map_cfg,
+        height=600,
+        margin=dict(l=0, r=0, t=10, b=0),
+        legend=dict(
+            orientation="h", x=0.01, y=0.01,
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#ccc", borderwidth=1,
+        ),
+        paper_bgcolor="#FAFAFA",
+    )
+    return fig
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # CDM CALCULATIONS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -527,6 +620,11 @@ _DEFAULTS = {
     "cdm_WC": 1.0,
     "cdm_spacings": [1.4, 1.6, 1.8],
     "cdm_rec_idx": 1,
+    "cdm_geo_view": "3D địa chất",
+    "cdm_map_ref_bh": "",
+    "cdm_map_ref_lat": 10.7770,
+    "cdm_map_ref_lon": 106.6800,
+    "cdm_map_style": "Đường phố (OSM)",
     "cdm_loads": {
         "q_traffic": 20.0,
         "h_road": 0.8,   "g_road": 24.0,
@@ -1027,56 +1125,101 @@ if _page == "Địa chất":
                 "E50_R7_MPa":"E50 R7 (MPa)"}), use_container_width=True)
             st.caption("Lưu ý: Kết quả R7 (7 ngày). Cần qu_R90 để tính Ec chính xác.")
 
-    # ── 3D Địa chất ──────────────────────────────────────────────────────────
+    # ── 3D / Map toggle ───────────────────────────────────────────────────────
     st.divider()
-    st.markdown("#### Bản đồ 3D địa chất – Hố khoan")
-    if _HAS_PLOTLY:
+    if not _HAS_PLOTLY:
+        st.caption("Cài `plotly` để xem bản đồ địa chất.")
+    else:
         _bhs_all, _ = _load_borehole_3d_data()
         _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
         if not _zones_with_coords:
             st.info("Chưa có tọa độ hố khoan trong CSDL (x_coord_m / y_coord_m = NULL).")
         else:
-            _c3d_a, _c3d_b, _c3d_c = st.columns([2, 1, 1])
-            with _c3d_a:
-                _sel_zones = st.multiselect(
-                    "Hiển thị zone",
-                    _zones_with_coords,
-                    default=_zones_with_coords,
-                    key="_3d_cdm_zones",
+            # ── Thanh điều khiển ──────────────────────────────────────────────
+            _ctrl_a, _ctrl_b = st.columns([3, 2])
+            with _ctrl_a:
+                _geo_view = st.radio(
+                    "Chế độ xem",
+                    ["3D địa chất", "Bản đồ vị trí"],
+                    index=["3D địa chất", "Bản đồ vị trí"].index(
+                        _get("cdm_geo_view")),
+                    horizontal=True,
+                    key="_geo_view_radio",
                 )
-            with _c3d_b:
-                _show_clay = st.checkbox(
-                    "Mặt đáy lớp bùn",
-                    value=True,
-                    key="_3d_cdm_clay",
-                )
-            with _c3d_c:
-                _show_cdm = st.checkbox(
-                    "Mặt phẳng đỉnh trụ CDM",
-                    value=False,
-                    key="_3d_cdm_top",
-                )
-            _cdm_top_z = _get("cdm_CDTK")
-            if _show_cdm:
-                _cdm_top_z = st.number_input(
-                    "Cao độ đỉnh trụ CDM (m)",
-                    value=float(_get("cdm_CDTK")),
-                    step=0.1,
-                    key="_3d_cdm_top_z",
-                )
-            if _sel_zones:
-                _fig3d = _draw_boreholes_3d(
-                    selected_zones=_sel_zones,
-                    show_clay_bottom=_show_clay,
-                    show_cdm_top=_show_cdm,
-                    cdm_top_z=_cdm_top_z,
-                )
-                st.plotly_chart(_fig3d, use_container_width=True,
-                                config={"displayModeBar": True})
+                st.session_state["cdm_geo_view"] = _geo_view
+
+            # ── 3D VIEW ───────────────────────────────────────────────────────
+            if _geo_view == "3D địa chất":
+                with _ctrl_b:
+                    _sel_zones = st.multiselect(
+                        "Zone", _zones_with_coords,
+                        default=_zones_with_coords, key="_3d_cdm_zones",
+                    )
+                _cb1, _cb2, _cb3 = st.columns(3)
+                _show_clay = _cb1.checkbox("Mặt đáy lớp bùn", value=True, key="_3d_cdm_clay")
+                _show_cdm  = _cb2.checkbox("Đỉnh trụ CDM", value=False, key="_3d_cdm_top")
+                _cdm_top_z = float(_get("cdm_CDTK"))
+                if _show_cdm:
+                    _cdm_top_z = _cb3.number_input(
+                        "Cao độ (m)", value=_cdm_top_z, step=0.1, key="_3d_cdm_top_z")
+                if _sel_zones:
+                    st.plotly_chart(
+                        _draw_boreholes_3d(_sel_zones, _show_clay, _show_cdm, _cdm_top_z),
+                        use_container_width=True, config={"displayModeBar": True},
+                    )
+                else:
+                    st.info("Chọn ít nhất một zone.")
+
+            # ── MAP VIEW ──────────────────────────────────────────────────────
             else:
-                st.info("Chọn ít nhất một zone để hiển thị.")
-    else:
-        st.caption("Cài `plotly` để xem bản đồ 3D hố khoan.")
+                with _ctrl_b:
+                    _map_style_label = st.selectbox(
+                        "Nền bản đồ",
+                        list(_MAP_STYLES.keys()),
+                        index=list(_MAP_STYLES.keys()).index(
+                            _get("cdm_map_style")
+                            if _get("cdm_map_style") in _MAP_STYLES else "Đường phố (OSM)"
+                        ),
+                        key="_map_style_sel",
+                    )
+                    st.session_state["cdm_map_style"] = _map_style_label
+
+                # Calibration
+                with st.expander("Hiệu chỉnh tọa độ GPS", expanded=_get("cdm_map_ref_bh") == ""):
+                    st.caption(
+                        "Nhập lat/lon của 1 hố khoan bất kỳ (tra Google Maps) "
+                        "để căn chỉnh vị trí trên bản đồ."
+                    )
+                    _bh_names_all = [b["name"] for b in _bhs_all]
+                    _ref_default  = _get("cdm_map_ref_bh") or (_bh_names_all[0] if _bh_names_all else "")
+                    _ref_idx = _bh_names_all.index(_ref_default) if _ref_default in _bh_names_all else 0
+                    _c1, _c2, _c3 = st.columns([2, 1, 1])
+                    _ref_bh  = _c1.selectbox("Hố khoan tham chiếu", _bh_names_all,
+                                             index=_ref_idx, key="_map_ref_bh")
+                    _ref_lat = _c2.number_input("Latitude", value=float(_get("cdm_map_ref_lat")),
+                                                format="%.6f", step=0.000100, key="_map_ref_lat")
+                    _ref_lon = _c3.number_input("Longitude", value=float(_get("cdm_map_ref_lon")),
+                                                format="%.6f", step=0.000100, key="_map_ref_lon")
+                    if st.button("Áp dụng hiệu chỉnh", type="primary"):
+                        st.session_state.update({
+                            "cdm_map_ref_bh":  _ref_bh,
+                            "cdm_map_ref_lat": _ref_lat,
+                            "cdm_map_ref_lon": _ref_lon,
+                        })
+                        st.rerun()
+
+                _ref_bh  = _get("cdm_map_ref_bh") or (_bh_names_all[0] if _bh_names_all else "")
+                _ref_lat = float(_get("cdm_map_ref_lat"))
+                _ref_lon = float(_get("cdm_map_ref_lon"))
+                _bhs_ll = _project_to_latlon(_bhs_all, _ref_bh, _ref_lat, _ref_lon)
+                if _bhs_ll:
+                    st.plotly_chart(
+                        _draw_map_2d(_bhs_ll, _MAP_STYLES[_map_style_label]),
+                        use_container_width=True,
+                        config={"displayModeBar": True, "scrollZoom": True},
+                    )
+                else:
+                    st.warning("Không tìm thấy hố khoan tham chiếu có tọa độ.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
