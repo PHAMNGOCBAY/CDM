@@ -894,14 +894,18 @@ def _draw_cdm_section(
             ha="center", va="center", fontsize=8.5,
             color="white", fontweight="bold", zorder=4)
 
-    # CDTK = đỉnh cọc + đệm + đắp (vẽ tại đỉnh lớp cát đắp)
-    ax.axhline(z_fill, color="#E53935", lw=1.5, ls="--", zorder=5)
-    ax.text(W * 0.98, z_fill + 0.1, f"CDTK={z_fill:+.1f}m",
-            ha="right", va="bottom", fontsize=8, color="#E53935", zorder=5)
+    # CDTK = mặt đường (đỉnh cọc + đệm + đắp + mặt đường)
+    ax.axhline(z_road, color="#E53935", lw=1.5, ls="--", zorder=5)
+    ax.text(W * 0.98, z_road + 0.08, f"CDTK = {z_road:+.2f} m",
+            ha="right", va="bottom", fontsize=8.5, color="#E53935",
+            fontweight="bold", zorder=7,
+            bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#E53935",
+                      alpha=0.9, lw=0.8))
     # Đỉnh cọc CDM (nét chấm xanh lá)
     ax.axhline(CDTK, color="#2E7D32", lw=0.9, ls=":", zorder=4, alpha=0.8)
-    ax.text(W * 0.98, CDTK - 0.1, f"Đỉnh cọc={CDTK:+.1f}m",
-            ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5)
+    ax.text(W * 0.98, CDTK - 0.1, f"Đỉnh cọc = {CDTK:+.2f} m",
+            ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5,
+            bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
 
     def layer_text(y0, y1, txt, color):
         if (y1 - y0) > 0.4:
@@ -928,13 +932,13 @@ def _draw_cdm_section(
     ax.text(dim_x + W * 0.02, p_mid, f"Lc={Lc:.1f}m",
             ha="left", va="center", fontsize=8, color="#1A237E", zorder=5)
 
-    q_top = z_road + 0.5
-    for xi in [W * 0.2, W * 0.5, W * 0.8]:
-        ax.annotate("", xy=(xi, z_road + 0.05), xytext=(xi, q_top),
-                    arrowprops=dict(arrowstyle="-|>", color="#B71C1C", lw=1.8), zorder=5)
-    ax.text(cx, q_top + 0.25, f"q = {q_traffic:.0f} kN/m²",
+    q_top = z_road + 1.0
+    for xi in [W * 0.25, W * 0.5, W * 0.75]:
+        ax.annotate("", xy=(xi, z_road), xytext=(xi, q_top),
+                    arrowprops=dict(arrowstyle="-|>", color="#B71C1C", lw=1.8), zorder=6)
+    ax.text(cx, q_top + 0.2, f"q = {q_traffic:.0f} kN/m²",
             ha="center", va="bottom", fontsize=10,
-            color="#B71C1C", fontweight="bold", zorder=5)
+            color="#B71C1C", fontweight="bold", zorder=6)
 
     plt.tight_layout(pad=0.5)
     return fig
@@ -1006,6 +1010,92 @@ def _draw_cdm_grid(D: float, arr: str, e_ref: float):
     ax.set_xlim(min(all_px) - pad, max(all_px) + pad)
     ax.set_ylim(min(all_py) - pad * 1.8, max(all_py) + pad * 0.8)
     plt.tight_layout(pad=0.5)
+    return fig
+
+
+def _draw_soil_column(layers: list[dict], bh_name: str = "") -> go.Figure:
+    """Cột địa chất dạng thanh màu theo ký hiệu lớp đất (chiều sâu từ trên xuống)."""
+    if not layers:
+        fig = go.Figure()
+        fig.update_layout(height=500,
+                          title=dict(text=f"Cột ĐC: {bh_name}", font=dict(size=10), x=0.5))
+        return fig
+
+    def _tc(hex_color: str) -> str:
+        h = hex_color.lstrip("#")
+        if len(h) < 6:
+            return "#212121"
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return "white" if (0.299 * r + 0.587 * g + 0.114 * b) < 140 else "#212121"
+
+    shapes: list[dict] = []
+    annotations: list[dict] = []
+    seen: set[float] = set()
+
+    for lay in layers:
+        y0    = lay["depth_top_m"]
+        y1    = lay["depth_bot_m"]
+        sym   = (lay.get("symbol") or "?").strip()
+        color = _LAYER_COLORS.get(sym, _LAYER_DEFAULT_COLOR)
+        thick = y1 - y0
+
+        shapes.append(dict(
+            type="rect", x0=0, y0=y0, x1=1, y1=y1,
+            fillcolor=color, line=dict(color="#555", width=0.6),
+        ))
+
+        if y0 not in seen:
+            annotations.append(dict(
+                x=1.08, y=y0, text=f"{y0:.1f}",
+                showarrow=False, font=dict(size=8, color="#555"),
+                xanchor="left", yanchor="middle",
+            ))
+            seen.add(y0)
+
+        if thick >= 0.5:
+            mid  = (y0 + y1) / 2
+            tc   = _tc(color)
+            desc = (lay.get("description") or "")
+            lbl  = (f"<b>{sym}</b><br>{desc[:20]}"
+                    if thick >= 2.5 and desc else f"<b>{sym}</b>")
+            annotations.append(dict(
+                x=0.5, y=mid, text=lbl,
+                showarrow=False, font=dict(size=9, color=tc),
+                xanchor="center", yanchor="middle",
+            ))
+
+    y_bot = layers[-1]["depth_bot_m"]
+    if y_bot not in seen:
+        annotations.append(dict(
+            x=1.08, y=y_bot, text=f"{y_bot:.1f}",
+            showarrow=False, font=dict(size=8, color="#555"),
+            xanchor="left", yanchor="middle",
+        ))
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=[0.5], y=[y_bot / 2],
+        mode="markers", marker=dict(opacity=0, size=1),
+        showlegend=False,
+    ))
+    fig.update_layout(
+        shapes=shapes,
+        annotations=annotations,
+        title=dict(text=f"Cột ĐC: {bh_name}", font=dict(size=10, color="#1F4E79"), x=0.5),
+        height=500,
+        margin=dict(l=10, r=55, t=35, b=20),
+        xaxis=dict(showticklabels=False, showgrid=False, zeroline=False, range=[-0.05, 1.7]),
+        yaxis=dict(
+            range=[y_bot + 1, -0.5],
+            title="Độ sâu (m)", title_font=dict(size=9),
+            tickfont=dict(size=8),
+            showgrid=True, gridcolor="#EEE", gridwidth=0.5,
+            dtick=5,
+        ),
+        plot_bgcolor="white",
+        paper_bgcolor="#FAFAFA",
+        showlegend=False,
+    )
     return fig
 
 
@@ -1415,28 +1505,42 @@ if _page == "Địa chất":
             st.info("Hố khoan này chưa có dữ liệu địa tầng trong CSDL.")
 
     st.divider()
-    # VST profile
-    df_vst = _load_vst_su(zone)
-    if not df_vst.empty:
-        _vst_all_locs = sorted(df_vst["loc_name"].unique().tolist())
-        _vst_sel_prev = [l for l in _get("cdm_vst_sel") if l in _vst_all_locs]
-        _vst_col1, _vst_col2 = st.columns([3, 1])
-        with _vst_col1:
+    # VST profile + soil column
+    _su_col, _sc_col = st.columns([2, 1])
+    with _su_col:
+        df_vst = _load_vst_su(zone)
+        if not df_vst.empty:
+            _vst_all_locs = sorted(df_vst["loc_name"].unique().tolist())
+            _vst_sel_prev = [l for l in _get("cdm_vst_sel") if l in _vst_all_locs]
             _vst_sel = st.multiselect(
                 "Chọn hố khoan VST (để trống = toàn bộ)",
                 options=_vst_all_locs,
                 default=_vst_sel_prev,
                 key="_vst_loc_sel",
             )
-        st.session_state["cdm_vst_sel"] = _vst_sel
-        _vst_pass = _vst_sel if _vst_sel else None
-        if _HAS_PLOTLY:
-            st.plotly_chart(
-                _chart_su_profile(df_vst, _vst_pass),
-                use_container_width=True,
-            )
+            st.session_state["cdm_vst_sel"] = _vst_sel
+            _vst_pass = _vst_sel if _vst_sel else None
+            if _HAS_PLOTLY:
+                st.plotly_chart(
+                    _chart_su_profile(df_vst, _vst_pass),
+                    use_container_width=True,
+                )
+            else:
+                st.dataframe(df_vst)
+    with _sc_col:
+        _bh_sc = bh_name if bh_name != "(trống)" else None
+        if _bh_sc and _HAS_PLOTLY:
+            try:
+                _sc_layers = _load_layers(_bh_sc)
+                st.plotly_chart(
+                    _draw_soil_column(_sc_layers, _bh_sc),
+                    use_container_width=True,
+                    config={"displayModeBar": False},
+                )
+            except Exception as _e:
+                st.warning(f"Không vẽ được cột địa chất: {_e}")
         else:
-            st.dataframe(df_vst)
+            st.caption("Chọn hố khoan để xem cột địa chất.")
 
     # CDM test results
     df_cdm = _load_cdm_tests()
@@ -1585,8 +1689,8 @@ elif _page == "Thông số":
             Lc   = st.number_input("Chiều dài Lc (m)", 5.0, 60.0, _get("cdm_Lc"), 0.5)
             CDTK = st.number_input("Cao độ đỉnh cọc CDM (m)", -5.0, 10.0, _get("cdm_CDTK"), 0.1)
             _ld0 = _get("cdm_loads")
-            _cdtk_cal = CDTK + _ld0.get("h_mat", 0.4) + _ld0.get("h_fill", 1.5)
-            st.info(f"CDTK = đỉnh + đệm + đắp = **{_cdtk_cal:+.2f} m**")
+            _cdtk_cal = CDTK + _ld0.get("h_mat", 0.4) + _ld0.get("h_fill", 1.5) + _ld0.get("h_road", 0.8)
+            st.info(f"CDTK = đỉnh + đệm + đắp + đường = **{_cdtk_cal:+.2f} m**")
             arr  = st.radio("Bố trí lưới", ["triangle", "square"],
                             format_func=lambda x: "Tam giác" if x == "triangle" else "Hình vuông",
                             index=["triangle", "square"].index(_get("cdm_arrangement")))
