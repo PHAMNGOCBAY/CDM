@@ -118,9 +118,19 @@ def _load_boreholes_by_zone(zone_code: str) -> list[dict]:
 def _load_layers(bh_name: str) -> list[dict]:
     with _db() as con:
         rows = con.execute("""
-            SELECT l.symbol, l.description, l.depth_top_m, l.depth_bot_m, l.thickness_m
-            FROM layers l JOIN boreholes b ON l.borehole_id=b.id
-            WHERE b.name=? ORDER BY l.depth_top_m
+            SELECT l.symbol, l.description, l.depth_top_m, l.depth_bot_m, l.thickness_m,
+                   ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
+                   ROUND(AVG(lt.c_kPa),      1) AS c_kPa,
+                   ROUND(AVG(lt.phi_deg),     1) AS phi_deg
+            FROM layers l
+            JOIN boreholes b ON l.borehole_id = b.id
+            LEFT JOIN lab_tests lt
+                   ON lt.borehole_id = b.id
+                  AND lt.depth_from_m < l.depth_bot_m
+                  AND lt.depth_to_m   > l.depth_top_m
+            WHERE b.name = ?
+            GROUP BY l.id
+            ORDER BY l.depth_top_m
         """, (bh_name,)).fetchall()
     return [dict(r) for r in rows]
 
@@ -1388,9 +1398,19 @@ if _page == "Địa chất":
         if layers:
             st.markdown("**Địa tầng hố khoan**")
             df_lay = pd.DataFrame(layers)
-            df_lay.columns = ["Ký hiệu", "Mô tả", "Đỉnh (m)", "Đáy (m)", "Dày (m)"]
-            st.dataframe(df_lay, use_container_width=True, height=280,
-                         column_config={"Mô tả": st.column_config.TextColumn(width="large")})
+            df_lay.columns = ["Ký hiệu", "Mô tả", "Đỉnh (m)", "Đáy (m)", "Dày (m)",
+                              "γ (kN/m³)", "c (kPa)", "φ (°)"]
+            st.dataframe(
+                df_lay,
+                use_container_width=True,
+                height=310,
+                column_config={
+                    "Mô tả":    st.column_config.TextColumn(width="large"),
+                    "γ (kN/m³)": st.column_config.NumberColumn(format="%.2f"),
+                    "c (kPa)":   st.column_config.NumberColumn(format="%.1f"),
+                    "φ (°)":     st.column_config.NumberColumn(format="%.1f"),
+                },
+            )
         else:
             st.info("Hố khoan này chưa có dữ liệu địa tầng trong CSDL.")
 
