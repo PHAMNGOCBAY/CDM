@@ -1952,26 +1952,59 @@ elif _page == "Thông số":
 elif _page == "So sánh PA":
     st.subheader("So sánh các phương án khoảng cách trụ")
 
-    # Input khoảng cách
-    with st.expander("Thiết lập khoảng cách trụ", expanded=True):
-        mode = st.radio("Chế độ nhập", ["Tự động (min/max/bước)", "Nhập tay"],
-                        horizontal=True)
-        if mode == "Tự động (min/max/bước)":
-            c1, c2, c3 = st.columns(3)
-            e_min  = c1.number_input("e min (m)", 1.0, 3.0, 1.2, 0.1)
-            e_max  = c2.number_input("e max (m)", 1.0, 4.0, 2.0, 0.1)
-            e_step = c3.number_input("Bước (m)",  0.1, 1.0, 0.2, 0.1)
-            spacings = [round(e_min + i * e_step, 2)
-                        for i in range(int(round((e_max - e_min) / e_step)) + 1)]
-        else:
-            raw = st.text_input("Danh sách khoảng cách (m, cách nhau bởi dấu phẩy)",
-                                ", ".join(str(s) for s in _get("cdm_spacings")))
-            try:
-                spacings = [float(x.strip()) for x in raw.split(",") if x.strip()]
-            except ValueError:
-                spacings = _get("cdm_spacings")
-        spacings = sorted(set(spacings))
-        st.session_state["cdm_spacings"] = spacings
+    # Input khoảng cách + thông số đệm xi măng
+    with st.expander("Thiết lập phương án", expanded=True):
+        _col_sp, _col_mat = st.columns([3, 2], gap="large")
+
+        with _col_sp:
+            st.markdown("**Khoảng cách trụ**")
+            mode = st.radio("", ["Tự động", "Nhập tay"],
+                            horizontal=True, label_visibility="collapsed",
+                            key="_sp_mode")
+            if mode == "Tự động":
+                _sc1, _sc2, _sc3 = st.columns(3)
+                e_min  = _sc1.number_input("e min (m)", 1.0, 3.0, 1.2, 0.1)
+                e_max  = _sc2.number_input("e max (m)", 1.0, 4.0, 2.0, 0.1)
+                e_step = _sc3.number_input("Bước (m)",  0.1, 1.0, 0.2, 0.1)
+                spacings = [round(e_min + i * e_step, 2)
+                            for i in range(int(round((e_max - e_min) / e_step)) + 1)]
+            else:
+                raw = st.text_input("Danh sách e (m), cách nhau bởi dấu phẩy",
+                                    ", ".join(str(s) for s in _get("cdm_spacings")),
+                                    label_visibility="visible")
+                try:
+                    spacings = [float(x.strip()) for x in raw.split(",") if x.strip()]
+                except ValueError:
+                    spacings = _get("cdm_spacings")
+            spacings = sorted(set(spacings))
+            st.session_state["cdm_spacings"] = spacings
+            st.caption(f"Các phương án: {', '.join(f'{e}m' for e in spacings)}")
+
+        with _col_mat:
+            st.markdown("**Lớp đệm xi măng – kiểm tra chọc thủng**")
+            _mc1, _mc2 = st.columns(2)
+            with _mc1:
+                _quckse_sp = st.number_input("qu đệm (kPa)", 100.0, 3000.0,
+                                             _get("cdm_quckse"), 50.0,
+                                             key="_sp_quckse")
+                _theta_sp  = st.number_input("θ (°)", 30.0, 89.0,
+                                             _get("cdm_theta"), 5.0,
+                                             key="_sp_theta")
+            with _mc2:
+                _Fs_sp     = st.number_input("Fs", 1.0, 5.0,
+                                             _get("cdm_Fs_mat"), 0.5,
+                                             key="_sp_Fs")
+                _qa_sp     = st.number_input("qa (kPa)", 0.0, 200.0,
+                                             _get("cdm_qa_mat"), 5.0,
+                                             key="_sp_qa")
+            _tase_sp = _quckse_sp / (2.0 * _Fs_sp)
+            st.info(f"τase = qu/(2·Fs) = **{_tase_sp:.1f} kPa**")
+            st.session_state.update({
+                "cdm_quckse": _quckse_sp,
+                "cdm_Fs_mat": _Fs_sp,
+                "cdm_theta":  _theta_sp,
+                "cdm_qa_mat": _qa_sp,
+            })
 
     # Tính toán
     D   = _get("cdm_D")
