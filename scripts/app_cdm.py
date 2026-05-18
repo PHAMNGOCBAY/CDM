@@ -830,6 +830,163 @@ def _chart_combined(df: pd.DataFrame, rec_idx: int) -> go.Figure:
     return fig
 
 
+def _draw_cdm_schematic(
+    D: float, Lc: float, CDTK: float, arr: str,
+    h_clay: float, h_road: float, h_fill: float, h_mat: float,
+    q_traffic: float, e_ref: float = 1.6,
+):
+    """Hình minh họa mặt cắt ngang + sơ đồ lưới CDM."""
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
+    z_mat      = CDTK + h_mat
+    z_fill     = z_mat + h_fill
+    z_road     = z_fill + h_road
+    z_clay_bot = CDTK - h_clay
+    z_pile_bot = CDTK - Lc
+    z_base     = min(z_clay_bot, z_pile_bot) - 1.5
+
+    W  = max(4.0 * D, 2.5)
+    cx = W / 2
+    r  = D / 2
+
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, figsize=(12, 7), gridspec_kw={"width_ratios": [0.55, 0.45]}
+    )
+    fig.patch.set_facecolor("#FAFAFA")
+
+    # ── Mặt cắt ngang ─────────────────────────────────────────────────────
+    ax1.set_facecolor("white")
+    ax1.set_xlim(0, W)
+    ax1.set_ylim(z_base, z_road + 2.5)
+    ax1.set_ylabel("Cao độ (m)", fontsize=9)
+    ax1.set_xticks([])
+    ax1.tick_params(axis="y", labelsize=8)
+    ax1.set_title("Mặt cắt ngang CDM", fontsize=11, fontweight="bold", pad=8)
+    for s in ["top", "right", "bottom"]:
+        ax1.spines[s].set_visible(False)
+
+    def hrect(y0, y1, fc, ec="#666", zo=1):
+        if y1 > y0:
+            ax1.add_patch(mpatches.Rectangle(
+                (0, y0), W, y1 - y0, fc=fc, ec=ec, lw=0.7, zorder=zo
+            ))
+
+    hrect(z_base,     z_clay_bot, "#BCAAA4", "#795548")
+    hrect(z_clay_bot, CDTK,       "#BBDEFB", "#1565C0")
+    if h_mat > 0:
+        hrect(CDTK,   z_mat,      "#FFA726", "#E65100")
+    hrect(z_mat,      z_fill,     "#FFD54F", "#E6BE00")
+    hrect(z_fill,     z_road,     "#90A4AE", "#546E7A")
+
+    p_bot = max(z_pile_bot, z_base + 0.1)
+    ax1.add_patch(mpatches.Rectangle(
+        (cx - r, p_bot), D, CDTK - p_bot, fc="#66BB6A", ec="#2E7D32", lw=1.2, zorder=3
+    ))
+    p_mid = (CDTK + p_bot) / 2
+    ax1.text(cx, p_mid, f"CDM\nD={D:.2f}m\nLc={Lc:.1f}m",
+             ha="center", va="center", fontsize=8.5,
+             color="white", fontweight="bold", zorder=4)
+
+    ax1.axhline(CDTK, color="#E53935", lw=1.5, ls="--", zorder=5)
+    ax1.text(W * 0.98, CDTK + 0.1, f"CDTK={CDTK:+.1f}m",
+             ha="right", va="bottom", fontsize=8, color="#E53935", zorder=5)
+
+    def layer_text(y0, y1, txt, color):
+        if (y1 - y0) > 0.4:
+            ax1.text(W * 0.03, (y0 + y1) / 2, txt,
+                     ha="left", va="center", fontsize=8, color=color, zorder=6)
+
+    layer_text(z_base,     z_clay_bot, "Đất tốt",              "#5D4037")
+    layer_text(z_clay_bot, CDTK,       f"Bùn sét  h={h_clay:.1f}m", "#0D47A1")
+    if h_mat > 0:
+        layer_text(CDTK,   z_mat,      f"Đệm cát  h={h_mat:.1f}m",  "#E65100")
+    layer_text(z_mat,      z_fill,     f"Cát đắp  h={h_fill:.1f}m",  "#827717")
+    layer_text(z_fill,     z_road,     f"Mặt đường h={h_road:.1f}m", "#37474F")
+
+    dim_yD = (CDTK + z_mat) / 2 if h_mat > 0.2 else CDTK + 0.25
+    ax1.annotate("", xy=(cx + r, dim_yD), xytext=(cx - r, dim_yD),
+                 arrowprops=dict(arrowstyle="<->", color="#2E7D32", lw=1.5), zorder=5)
+    ax1.text(cx, dim_yD + 0.12, f"D={D:.2f}m",
+             ha="center", va="bottom", fontsize=8, color="#2E7D32", zorder=5,
+             bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
+
+    dim_x = cx + r + W * 0.07
+    ax1.annotate("", xy=(dim_x, p_bot), xytext=(dim_x, CDTK),
+                 arrowprops=dict(arrowstyle="<->", color="#1A237E", lw=1.5), zorder=5)
+    ax1.text(dim_x + W * 0.02, p_mid, f"Lc={Lc:.1f}m",
+             ha="left", va="center", fontsize=8, color="#1A237E", zorder=5)
+
+    q_top = z_road + 0.5
+    for xi in [W * 0.2, W * 0.5, W * 0.8]:
+        ax1.annotate("", xy=(xi, z_road + 0.05), xytext=(xi, q_top),
+                     arrowprops=dict(arrowstyle="-|>", color="#B71C1C", lw=1.8), zorder=5)
+    ax1.text(cx, q_top + 0.25, f"q = {q_traffic:.0f} kN/m²",
+             ha="center", va="bottom", fontsize=10,
+             color="#B71C1C", fontweight="bold", zorder=5)
+
+    # ── Sơ đồ lưới cọc ────────────────────────────────────────────────────
+    ax2.set_aspect("equal")
+    ax2.set_facecolor("#F0F4F8")
+    ax2.set_xticks([])
+    ax2.set_yticks([])
+    arr_lbl = "Tam giác" if arr == "triangle" else "Hình vuông"
+    ax2.set_title(f"Sơ đồ lưới {arr_lbl}  (e = {e_ref:.2f} m)",
+                  fontsize=11, fontweight="bold", pad=8)
+    for s in ax2.spines.values():
+        s.set_visible(False)
+
+    centers = []
+    for ri in range(4):
+        for ci in range(4):
+            if arr == "triangle":
+                px = ci * e_ref + (e_ref / 2 if ri % 2 else 0)
+                py = ri * (e_ref * (3 ** 0.5) / 2)
+            else:
+                px = ci * e_ref
+                py = ri * e_ref
+            centers.append((px, py))
+
+    if arr == "square":
+        ax2.add_patch(mpatches.Rectangle(
+            (-e_ref / 2, -e_ref / 2), e_ref, e_ref,
+            fc="#BBDEFB", ec="#1565C0", lw=1.5, ls="--", alpha=0.4, zorder=1
+        ))
+    else:
+        e_h = e_ref * (3 ** 0.5) / 2
+        ax2.add_patch(mpatches.Polygon(
+            [(0, 0), (e_ref, 0), (e_ref / 2, e_h)],
+            closed=True, fc="#BBDEFB", ec="#1565C0", lw=1.5, ls="--", alpha=0.35, zorder=1
+        ))
+
+    for px, py in centers:
+        ax2.add_patch(mpatches.Circle(
+            (px, py), r, fc="#A5D6A7", ec="#2E7D32", lw=1.2, zorder=3
+        ))
+
+    p0x, p0y = centers[0]
+    p1x, p1y = centers[1]
+    d_y = p0y - r - 0.2
+    ax2.annotate("", xy=(p1x, d_y), xytext=(p0x, d_y),
+                 arrowprops=dict(arrowstyle="<->", color="#E53935", lw=1.5))
+    ax2.text((p0x + p1x) / 2, d_y - 0.12, f"e = {e_ref:.2f} m",
+             ha="center", va="top", fontsize=8.5, color="#E53935")
+
+    a_val = calc_a(D, e_ref, arr)
+    all_px = [p[0] for p in centers]
+    all_py = [p[1] for p in centers]
+    ax2.text((min(all_px) + max(all_px)) / 2, max(all_py) + r + 0.35,
+             f"a = {a_val * 100:.1f}%",
+             ha="center", va="bottom", fontsize=12, color="#1A237E", fontweight="bold")
+
+    pad = e_ref * 0.8
+    ax2.set_xlim(min(all_px) - pad, max(all_px) + pad)
+    ax2.set_ylim(min(all_py) - pad * 1.8, max(all_py) + pad * 0.8)
+
+    plt.tight_layout(pad=1.5)
+    return fig
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # EXPORT HELPERS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1440,6 +1597,24 @@ elif _page == "Thông số":
         q_tot = q_total(ld)
         st.success(f"**q = {q_tot:.2f} kN/m²**")
         st.session_state["cdm_loads"] = ld
+
+    # ── Hình minh họa động ───────────────────────────────────────────────────
+    st.divider()
+    _ld_now   = _get("cdm_loads")
+    _sps_now  = _get("cdm_spacings")
+    _rec_now  = min(_get("cdm_rec_idx"), len(_sps_now) - 1) if _sps_now else 0
+    _e_ref_now = _sps_now[_rec_now] if _sps_now else 1.6
+    _fig_sch  = _draw_cdm_schematic(
+        D=_get("cdm_D"), Lc=_get("cdm_Lc"), CDTK=_get("cdm_CDTK"),
+        arr=_get("cdm_arrangement"), h_clay=_get("cdm_h_clay"),
+        h_road=_ld_now.get("h_road", 0.8),
+        h_fill=_ld_now.get("h_fill", 1.5),
+        h_mat=_ld_now.get("h_mat", 0.4),
+        q_traffic=_ld_now.get("q_traffic", 20.0),
+        e_ref=_e_ref_now,
+    )
+    st.pyplot(_fig_sch, use_container_width=True)
+    _fig_sch.clf()
 
     # ── Lý thuyết tính toán ──────────────────────────────────────────────────
     _theory_text = _load_theory()
