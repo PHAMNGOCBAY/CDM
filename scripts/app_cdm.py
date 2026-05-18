@@ -884,9 +884,14 @@ def _draw_cdm_section(
             ha="center", va="center", fontsize=8.5,
             color="white", fontweight="bold", zorder=4)
 
-    ax.axhline(CDTK, color="#E53935", lw=1.5, ls="--", zorder=5)
-    ax.text(W * 0.98, CDTK + 0.1, f"CDTK={CDTK:+.1f}m",
+    # CDTK = đỉnh cọc + đệm + đắp (vẽ tại đỉnh lớp cát đắp)
+    ax.axhline(z_fill, color="#E53935", lw=1.5, ls="--", zorder=5)
+    ax.text(W * 0.98, z_fill + 0.1, f"CDTK={z_fill:+.1f}m",
             ha="right", va="bottom", fontsize=8, color="#E53935", zorder=5)
+    # Đỉnh cọc CDM (nét chấm xanh lá)
+    ax.axhline(CDTK, color="#2E7D32", lw=0.9, ls=":", zorder=4, alpha=0.8)
+    ax.text(W * 0.98, CDTK - 0.1, f"Đỉnh cọc={CDTK:+.1f}m",
+            ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5)
 
     def layer_text(y0, y1, txt, color):
         if (y1 - y0) > 0.4:
@@ -1055,7 +1060,7 @@ def _export_excel(scenarios: list[dict], params: dict) -> bytes:
         ("Dung trọng tự nhiên TB", "γ (kN/m³)", params.get("gamma", 0)),
         ("Đường kính trụ CDM", "D (mm)", int(params.get("D", 0.8)*1000)),
         ("Chiều dài trụ CDM", "Lc (m)", params.get("Lc", 0)),
-        ("Cao độ thiết kế", "CĐTK (m)", params.get("CDTK", 2.7)),
+        ("Cao độ đỉnh cọc CDM", "Đỉnh cọc (m)", params.get("CDTK", 2.7)),
         ("Bố trí", "–", "Tam giác" if params.get("arrangement","triangle")=="triangle" else "Vuông"),
         ("Cường độ TK hiện trường", "qu,tk (kPa)", params.get("qu", 800)),
         ("Hệ số quy đổi TN→HT", "FS", params.get("FS_lab", 2.0)),
@@ -1558,7 +1563,10 @@ elif _page == "Thông số":
             st.markdown("**Hình học trụ CDM**")
             D    = st.number_input("Đường kính D (m)", 0.5, 1.2, _get("cdm_D"), 0.05)
             Lc   = st.number_input("Chiều dài Lc (m)", 5.0, 60.0, _get("cdm_Lc"), 0.5)
-            CDTK = st.number_input("Cao độ thiết kế (m)", -5.0, 10.0, _get("cdm_CDTK"), 0.1)
+            CDTK = st.number_input("Cao độ đỉnh cọc CDM (m)", -5.0, 10.0, _get("cdm_CDTK"), 0.1)
+            _ld0 = _get("cdm_loads")
+            _cdtk_cal = CDTK + _ld0.get("h_mat", 0.4) + _ld0.get("h_fill", 1.5)
+            st.info(f"CDTK = đỉnh + đệm + đắp = **{_cdtk_cal:+.2f} m**")
             arr  = st.radio("Bố trí lưới", ["triangle", "square"],
                             format_func=lambda x: "Tam giác" if x == "triangle" else "Hình vuông",
                             index=["triangle", "square"].index(_get("cdm_arrangement")))
