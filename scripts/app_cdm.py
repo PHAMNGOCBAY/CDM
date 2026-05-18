@@ -48,6 +48,10 @@ st.markdown("""
 <style>
 [data-testid="stSidebar"] { min-width: 220px; max-width: 280px; }
 div[data-testid="stMetricValue"] { font-size: 1.1rem; }
+#MainMenu { visibility: hidden; }
+[data-testid="stToolbar"] { display: none; }
+[data-testid="stDecoration"] { display: none; }
+footer { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
