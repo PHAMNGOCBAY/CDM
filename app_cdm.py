@@ -647,7 +647,7 @@ _DEFAULTS = {
     "cdm_elevation": 0.0,
     "cdm_D": 0.8,
     "cdm_Lc": 26.2,
-    "cdm_CDTK": 2.7,
+    "cdm_CDTK": 0.8,
     "cdm_qu": 800.0,
     "cdm_FS_lab": 2.0,
     "cdm_arrangement": "triangle",
@@ -894,9 +894,9 @@ def _draw_cdm_section(
             ha="center", va="center", fontsize=8.5,
             color="white", fontweight="bold", zorder=4)
 
-    # CDTK = mặt đường (đỉnh cọc + đệm + đắp + mặt đường)
-    ax.axhline(z_road, color="#E53935", lw=1.5, ls="--", zorder=5)
-    ax.text(W * 0.98, z_road + 0.08, f"CDTK = {z_road:+.2f} m",
+    # CDTK = đỉnh cọc + đệm + đắp (đỉnh lớp cát đắp, dưới mặt đường)
+    ax.axhline(z_fill, color="#E53935", lw=1.5, ls="--", zorder=5)
+    ax.text(W * 0.98, z_fill + 0.08, f"CDTK = {z_fill:+.2f} m",
             ha="right", va="bottom", fontsize=8.5, color="#E53935",
             fontweight="bold", zorder=7,
             bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#E53935",
@@ -1689,8 +1689,8 @@ elif _page == "Thông số":
             Lc   = st.number_input("Chiều dài Lc (m)", 5.0, 60.0, _get("cdm_Lc"), 0.5)
             CDTK = st.number_input("Cao độ đỉnh cọc CDM (m)", -5.0, 10.0, _get("cdm_CDTK"), 0.1)
             _ld0 = _get("cdm_loads")
-            _cdtk_cal = CDTK + _ld0.get("h_mat", 0.4) + _ld0.get("h_fill", 1.5) + _ld0.get("h_road", 0.8)
-            st.info(f"CDTK = đỉnh + đệm + đắp + đường = **{_cdtk_cal:+.2f} m**")
+            _cdtk_cal = CDTK + _ld0.get("h_mat", 0.4) + _ld0.get("h_fill", 1.5)
+            st.info(f"CDTK = đỉnh + đệm + đắp = **{_cdtk_cal:+.2f} m**")
             arr  = st.radio("Bố trí lưới", ["triangle", "square"],
                             format_func=lambda x: "Tam giác" if x == "triangle" else "Hình vuông",
                             index=["triangle", "square"].index(_get("cdm_arrangement")))
