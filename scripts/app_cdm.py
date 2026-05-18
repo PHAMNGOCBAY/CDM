@@ -1032,9 +1032,9 @@ st.sidebar.divider()
 
 # Save / Load
 with st.sidebar.expander("Lưu / Mở dự án", expanded=False):
-    st.download_button("Tải xuống (.json)", _project_to_json(),
-                       file_name="cdm_project.json", mime="application/json")
-    _up = st.file_uploader("Mở file dự án", type="json", key="cdm_upload")
+    st.download_button("Tải xuống (.cdm)", _project_to_json(),
+                       file_name="cdm_project.cdm", mime="application/json")
+    _up = st.file_uploader("Mở file dự án (.cdm)", type=["cdm", "json"], key="cdm_upload")
     if _up:
         try:
             _project_from_dict(json.load(_up))
