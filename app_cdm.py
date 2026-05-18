@@ -332,6 +332,33 @@ def _load_lab(bh_name: str) -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
+def _load_consol_summary(zone_code: str) -> pd.DataFrame:
+    """Per-borehole summary: số mẫu và trung bình các chỉ tiêu nén cố kết."""
+    with _db() as con:
+        rows = con.execute("""
+            SELECT
+                b.name AS borehole,
+                COUNT(lt.id) AS n_mau,
+                SUM(CASE WHEN lt.Cc IS NOT NULL THEN 1 ELSE 0 END) AS n_Cc,
+                ROUND(AVG(CASE WHEN lt.Cc  IS NOT NULL THEN lt.Cc  END), 4) AS Cc_tb,
+                ROUND(AVG(CASE WHEN lt.Cs  IS NOT NULL THEN lt.Cs  END), 4) AS Cs_tb,
+                ROUND(AVG(CASE WHEN lt.Cv_cm2s IS NOT NULL THEN lt.Cv_cm2s END), 12) AS Cv_tb,
+                ROUND(AVG(CASE WHEN lt.k_cm_s  IS NOT NULL THEN lt.k_cm_s  END), 12) AS k_tb,
+                ROUND(MIN(CASE WHEN lt.PC_kPa  IS NOT NULL THEN lt.PC_kPa  END), 1) AS PC_min,
+                ROUND(MAX(CASE WHEN lt.PC_kPa  IS NOT NULL THEN lt.PC_kPa  END), 1) AS PC_max,
+                ROUND(AVG(CASE WHEN lt.e0      IS NOT NULL THEN lt.e0      END), 3) AS e0_tb
+            FROM boreholes b
+            JOIN zones z ON b.zone_id = z.id
+            LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
+            WHERE z.code = ?
+            GROUP BY b.name
+            HAVING n_Cc > 0
+            ORDER BY b.name
+        """, (zone_code,)).fetchall()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+@st.cache_data(ttl=300)
 def _load_cdm_tests() -> pd.DataFrame:
     with _db() as con:
         rows = con.execute("""
@@ -2033,6 +2060,88 @@ if _page == "geology":
             st.dataframe(df_cdm[list(_cdm_cols)].rename(columns=_cdm_cols),
                          use_container_width=True)
             st.caption(_t("cdm_test_note"))
+
+    # ── Nén cố kết – thống kê hố khoan có dữ liệu ─────────────────────────────
+    _df_consol = _load_consol_summary(zone)
+    if not _df_consol.empty:
+        _is_vn = _get("lang") == "VN"
+        _consol_title = (
+            "Nén cố kết – Hố khoan có dữ liệu tính lún theo thời gian"
+            if _is_vn else
+            "Consolidation – Boreholes with time-settlement data"
+        )
+        with st.expander(_consol_title, expanded=True):
+            # Format Cv and k in scientific notation for readability
+            _df_disp = _df_consol.copy()
+            _df_disp["Cv_tb"] = _df_disp["Cv_tb"].apply(
+                lambda x: f"{x:.2e}" if pd.notna(x) else "–"
+            )
+            _df_disp["k_tb"] = _df_disp["k_tb"].apply(
+                lambda x: f"{x:.2e}" if pd.notna(x) else "–"
+            )
+            _df_disp["PC_kPa"] = _df_disp.apply(
+                lambda r: f"{r['PC_min']:.0f}–{r['PC_max']:.0f}"
+                if pd.notna(r["PC_min"]) else "–", axis=1
+            )
+
+            if _is_vn:
+                _df_disp = _df_disp.rename(columns={
+                    "borehole": "Hố khoan",
+                    "n_mau":   "Tổng mẫu",
+                    "n_Cc":    "Mẫu NCK",
+                    "Cc_tb":   "Cc TB",
+                    "Cs_tb":   "Cs TB",
+                    "Cv_tb":   "Cv TB (cm²/s)",
+                    "k_tb":    "k TB (cm/s)",
+                    "PC_kPa":  "PC (kPa)",
+                    "e0_tb":   "e₀ TB",
+                })
+                _note = (
+                    "NCK = Nén cố kết. Cc: chỉ số nén. Cs: chỉ số nở lại. "
+                    "Cv: hệ số cố kết. k: hệ số thấm. PC: áp lực tiền cố kết. "
+                    "Các giá trị là trung bình số học của các mẫu trong hố khoan."
+                )
+            else:
+                _df_disp = _df_disp.rename(columns={
+                    "borehole": "Borehole",
+                    "n_mau":   "Total",
+                    "n_Cc":    "Consol.",
+                    "Cc_tb":   "Cc avg",
+                    "Cs_tb":   "Cs avg",
+                    "Cv_tb":   "Cv avg (cm²/s)",
+                    "k_tb":    "k avg (cm/s)",
+                    "PC_kPa":  "PC (kPa)",
+                    "e0_tb":   "e₀ avg",
+                })
+                _note = (
+                    "Consol. = samples with consolidation data. Cv: coefficient of consolidation. "
+                    "k: permeability. PC: preconsolidation pressure. Values are arithmetic means per borehole."
+                )
+
+            _drop_cols = ["PC_min", "PC_max"]
+            _df_disp = _df_disp.drop(columns=[c for c in _drop_cols if c in _df_disp.columns])
+
+            st.dataframe(
+                _df_disp,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    _df_disp.columns[2]: st.column_config.NumberColumn(format="%d"),
+                    "Cc TB" if _is_vn else "Cc avg": st.column_config.NumberColumn(format="%.4f"),
+                    "Cs TB" if _is_vn else "Cs avg": st.column_config.NumberColumn(format="%.4f"),
+                    "e₀ TB" if _is_vn else "e₀ avg": st.column_config.NumberColumn(format="%.3f"),
+                },
+            )
+            st.caption(_note)
+
+            # Tóm tắt số hố có dữ liệu
+            _n_bh_ok  = len(_df_consol)
+            _n_bh_all = len(_load_boreholes_by_zone(zone))
+            st.info(
+                f"{'Zone' if not _is_vn else 'Zone'} **{_ZONE_NAMES[zone]}**: "
+                f"{_n_bh_ok}/{_n_bh_all} "
+                f"{'hố khoan có thí nghiệm nén cố kết (Cc/Cs/Cv/k/PC).' if _is_vn else 'boreholes have consolidation test data (Cc/Cs/Cv/k/PC).'}"
+            )
 
     # ── 3D / Map toggle ───────────────────────────────────────────────────────
     st.divider()
