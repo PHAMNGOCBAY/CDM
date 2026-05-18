@@ -424,26 +424,47 @@ def _draw_boreholes_3d(
     return fig
 
 
-def _project_to_latlon(
-    bhs: list[dict], ref_bh_name: str, ref_lat: float, ref_lon: float
-) -> list[dict] | None:
-    """Chuyển tọa độ VN-2000 (mét) → lat/lon dùng 1 điểm tham chiếu GPS.
+_VN2000_CM  = 105.75          # kinh tuyến trục TP.HCM: 105°45'E
+_VN2000_FE  = 500_000.0       # False Easting
+_M_PER_DEG  = 110_574.0       # m/độ vĩ tuyến (xích đạo ≈ 110,574 m)
 
-    Gốc: x_coord_m ≈ Northing, y_coord_m ≈ Easting trong hệ chiếu địa phương.
-    Với phạm vi dự án ~500m, sai số tuyến tính < 0,5 m.
+
+def _vn2000_to_latlon(northing: float, easting: float) -> tuple[float, float]:
+    """VN-2000 TP.HCM (CM=105°45', FE=500000) → WGS84 (lat, lon).
+    Sai số <1 m trong phạm vi TP.HCM; đủ dùng cho overlay bản đồ.
     """
-    ref = next((b for b in bhs if b["name"] == ref_bh_name), None)
-    if not ref or ref.get("x_coord_m") is None:
-        return None
-    cos_lat = math.cos(math.radians(ref_lat))
+    lat = northing / _M_PER_DEG
+    lon = _VN2000_CM + (easting - _VN2000_FE) / (_M_PER_DEG * math.cos(math.radians(lat)))
+    return lat, lon
+
+
+def _project_to_latlon(
+    bhs: list[dict],
+    ref_bh_name: str = "",
+    ref_lat: float = 0.0,
+    ref_lon: float = 0.0,
+    use_gps_ref: bool = False,
+) -> list[dict] | None:
+    """Chuyển tọa độ VN-2000 → lat/lon.
+
+    Mặc định dùng công thức trực tiếp CM=105°45'.
+    Nếu use_gps_ref=True và có điểm tham chiếu GPS → hiệu chỉnh thêm offset.
+    """
     result = []
     for b in bhs:
         if b.get("x_coord_m") is None:
             continue
-        lat = ref_lat + (b["x_coord_m"] - ref["x_coord_m"]) / 110_574.0
-        lon = ref_lon + (b["y_coord_m"] - ref["y_coord_m"]) / (110_574.0 * cos_lat)
+        lat, lon = _vn2000_to_latlon(b["x_coord_m"], b["y_coord_m"])
         result.append({**b, "lat": lat, "lon": lon})
-    return result
+
+    if use_gps_ref and ref_bh_name and result:
+        ref_calc = next((b for b in result if b["name"] == ref_bh_name), None)
+        if ref_calc:
+            dlat = ref_lat - ref_calc["lat"]
+            dlon = ref_lon - ref_calc["lon"]
+            result = [{**b, "lat": b["lat"] + dlat, "lon": b["lon"] + dlon}
+                      for b in result]
+    return result or None
 
 
 _MAP_STYLES = {
@@ -1184,34 +1205,38 @@ if _page == "Địa chất":
                     )
                     st.session_state["cdm_map_style"] = _map_style_label
 
-                # Calibration
-                with st.expander("Hiệu chỉnh tọa độ GPS", expanded=_get("cdm_map_ref_bh") == ""):
+                # Hiệu chỉnh GPS (tuỳ chọn — mặc định dùng VN-2000 CM=105°45')
+                with st.expander("Hiệu chỉnh GPS (tuỳ chọn)", expanded=False):
                     st.caption(
-                        "Nhập lat/lon của 1 hố khoan bất kỳ (tra Google Maps) "
-                        "để căn chỉnh vị trí trên bản đồ."
+                        "Mặc định dùng VN-2000 kinh tuyến trục 105°45'E — tự động, "
+                        "không cần nhập. Chỉ hiệu chỉnh nếu vị trí lệch trên bản đồ."
                     )
                     _bh_names_all = [b["name"] for b in _bhs_all]
-                    _ref_default  = _get("cdm_map_ref_bh") or (_bh_names_all[0] if _bh_names_all else "")
-                    _ref_idx = _bh_names_all.index(_ref_default) if _ref_default in _bh_names_all else 0
-                    _c1, _c2, _c3 = st.columns([2, 1, 1])
-                    _ref_bh  = _c1.selectbox("Hố khoan tham chiếu", _bh_names_all,
-                                             index=_ref_idx, key="_map_ref_bh")
-                    _ref_lat = _c2.number_input("Latitude", value=float(_get("cdm_map_ref_lat")),
-                                                format="%.6f", step=0.000100, key="_map_ref_lat")
-                    _ref_lon = _c3.number_input("Longitude", value=float(_get("cdm_map_ref_lon")),
-                                                format="%.6f", step=0.000100, key="_map_ref_lon")
-                    if st.button("Áp dụng hiệu chỉnh", type="primary"):
-                        st.session_state.update({
-                            "cdm_map_ref_bh":  _ref_bh,
-                            "cdm_map_ref_lat": _ref_lat,
-                            "cdm_map_ref_lon": _ref_lon,
-                        })
-                        st.rerun()
+                    _ref_default = _get("cdm_map_ref_bh") or ""
+                    _use_gps = st.checkbox("Bật hiệu chỉnh GPS", value=bool(_ref_default),
+                                           key="_map_use_gps")
+                    if _use_gps:
+                        _ref_idx = _bh_names_all.index(_ref_default) if _ref_default in _bh_names_all else 0
+                        _c1, _c2, _c3 = st.columns([2, 1, 1])
+                        _ref_bh  = _c1.selectbox("Hố khoan tham chiếu", _bh_names_all,
+                                                 index=_ref_idx, key="_map_ref_bh")
+                        _ref_lat = _c2.number_input("Latitude", value=float(_get("cdm_map_ref_lat")),
+                                                    format="%.6f", step=0.000100, key="_map_ref_lat")
+                        _ref_lon = _c3.number_input("Longitude", value=float(_get("cdm_map_ref_lon")),
+                                                    format="%.6f", step=0.000100, key="_map_ref_lon")
+                        if st.button("Áp dụng", type="primary"):
+                            st.session_state.update({
+                                "cdm_map_ref_bh":  _ref_bh,
+                                "cdm_map_ref_lat": _ref_lat,
+                                "cdm_map_ref_lon": _ref_lon,
+                            })
+                            st.rerun()
+                    else:
+                        _ref_bh, _ref_lat, _ref_lon = "", 0.0, 0.0
 
-                _ref_bh  = _get("cdm_map_ref_bh") or (_bh_names_all[0] if _bh_names_all else "")
-                _ref_lat = float(_get("cdm_map_ref_lat"))
-                _ref_lon = float(_get("cdm_map_ref_lon"))
-                _bhs_ll = _project_to_latlon(_bhs_all, _ref_bh, _ref_lat, _ref_lon)
+                _bhs_ll = _project_to_latlon(
+                    _bhs_all, _ref_bh, _ref_lat, _ref_lon, use_gps_ref=_use_gps
+                )
                 if _bhs_ll:
                     st.plotly_chart(
                         _draw_map_2d(_bhs_ll, _MAP_STYLES[_map_style_label]),
@@ -1219,7 +1244,7 @@ if _page == "Địa chất":
                         config={"displayModeBar": True, "scrollZoom": True},
                     )
                 else:
-                    st.warning("Không tìm thấy hố khoan tham chiếu có tọa độ.")
+                    st.warning("Không có hố khoan nào có tọa độ.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
