@@ -3740,7 +3740,7 @@ if _page == "settlement":
         st.error(f"Không tải được settlement_calc: {_exc}")
 
     if _HAS_SC:
-        st.subheader("Lún nền – So sánh phương án xử lý (TCCS 41:2022)")
+        st.subheader("Dự báo độ lún – So sánh phương án xử lý (TCCS 41:2022)")
 
         # ── PHẦN 1: So sánh phương án ────────────────────────────────────────
         if True:
