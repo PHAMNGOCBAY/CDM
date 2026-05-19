@@ -20,6 +20,12 @@ try:
 except ImportError:
     _HAS_PLOTLY = False
 
+try:
+    import matplotlib.pyplot as plt
+    _HAS_MPL = True
+except ImportError:
+    _HAS_MPL = False
+
 import sqlite3
 
 # ── Đường dẫn ────────────────────────────────────────────────────────────────
@@ -27,6 +33,118 @@ _ROOT    = Path(__file__).parent.parent
 _DB      = _ROOT / "data" / "TTHC.sqlite"
 _CDM_SC  = _ROOT / "CDM" / "scripts"
 _THEORY  = _ROOT / "35-ly-thuyet-cdm.md"
+
+
+# ── Pile schematic (GEO5 style) — dùng cho tab Cọc ván SW mục C ──────────────
+def draw_pile_schematic(
+    L_m, water_lvl, top_elev, H_kN, M_kNm, layers, bc_type,
+    pile_H_mm=840,
+    soil_lvl_front=None,
+    soil_lvl_back=None,
+    back_layers=None,
+    gamma_fill=18.0,
+    phi_fill=25.0,
+    c_fill=5.0,
+    water_lvl_back=None,
+):
+    if not _HAS_MPL:
+        return None
+    bot  = top_elev - L_m
+    ypad = max(L_m * 0.06, 0.8)
+    y_top = top_elev + ypad * 2.2
+    y_bot = bot - ypad * 1.2
+
+    fig, ax = plt.subplots(figsize=(4.5, 5.5), dpi=90)
+    ax.set_facecolor("white")
+    fig.patch.set_facecolor("white")
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(y_bot, y_top)
+    ax.set_ylabel("Elevation [m]", fontsize=9)
+    ax.set_xticks([])
+    ax.tick_params(axis="y", labelsize=8)
+    for sp in ["top", "right", "bottom"]:
+        ax.spines[sp].set_visible(False)
+
+    _fill_label = f"Fill\nγ={gamma_fill:.0f} kN/m³\nφ={phi_fill:.0f}°  c={c_fill:.0f} kPa"
+    if soil_lvl_front is not None and top_elev > soil_lvl_front:
+        ax.fill_between(
+            [-4.8, 0], [soil_lvl_front, soil_lvl_front], [top_elev, top_elev],
+            color="#c8a96e", alpha=0.35, hatch="\\\\", zorder=2,
+            linewidth=0.5, edgecolor="#a07040",
+        )
+        ax.text(-2.4, (soil_lvl_front + top_elev) / 2, _fill_label,
+                fontsize=7, color="#7a5020", ha="center", va="center",
+                style="italic", linespacing=1.4)
+
+    if soil_lvl_front is not None:
+        ax.plot([-4.8, 0], [soil_lvl_front, soil_lvl_front],
+                color="saddlebrown", lw=1.8, solid_capstyle="round", zorder=6)
+        ax.text(-4.8, soil_lvl_front + ypad * 0.15, "Ground F",
+                fontsize=8, color="saddlebrown", va="bottom", fontweight="bold")
+    if soil_lvl_back is not None:
+        ax.plot([0, 4.8], [soil_lvl_back, soil_lvl_back],
+                color="saddlebrown", lw=1.8, solid_capstyle="round", zorder=6)
+        ax.text(0.2, soil_lvl_back + ypad * 0.15, "Ground B",
+                fontsize=8, color="saddlebrown", va="bottom", fontweight="bold")
+
+    ax.plot([0, 0], [bot, top_elev], color="red", lw=3.5, solid_capstyle="butt", zorder=10)
+    ax.plot([-4.8, 5], [top_elev, top_elev], color="#888", lw=1.0, ls="--", zorder=5)
+    ax.plot([-0.25], [top_elev], "v", color="#444", ms=7, zorder=11,
+            markerfacecolor="none", markeredgewidth=1.5)
+    ax.text(-4.8, top_elev + ypad * 0.22, "SP Top", fontsize=9, color="#333", va="bottom")
+    ax.text(0.25, top_elev + ypad * 0.05, f"{top_elev:.2f} m", fontsize=7.5, color="#555", va="bottom")
+
+    for i, (nm, zt, zb, gm, ph, *_) in enumerate(layers):
+        if i > 0:
+            ax.plot([-4.8, 0], [zt, zt], color="goldenrod", lw=1.0, ls="--", zorder=5)
+            ax.plot([-0.25], [zt], "v", color="goldenrod", ms=7, zorder=11,
+                    markerfacecolor="none", markeredgewidth=1.5)
+            ax.text(-4.8, zt + ypad * 0.12, f"Soil {i}", fontsize=9, color="goldenrod", va="bottom")
+
+    if back_layers:
+        for i, (nm, zt, zb, gm, ph, *_) in enumerate(back_layers):
+            if i > 0:
+                ax.plot([0, 4.8], [zt, zt], color="goldenrod", lw=0.9, ls=":", zorder=4, alpha=0.8)
+                ax.text(0.3, zt + ypad * 0.12, f"Back {i}", fontsize=8, color="goldenrod", va="bottom", alpha=0.85)
+
+    ax.text(0.25, bot - ypad * 0.05, f"{bot:.2f} m", fontsize=7.5, color="#555", va="top")
+
+    w_gap = ypad * 0.18
+    ax.plot([-4.2, -0.8], [water_lvl, water_lvl], color="steelblue", lw=2.0, zorder=7)
+    ax.plot([-3.8, -1.1], [water_lvl - w_gap, water_lvl - w_gap], color="steelblue", lw=1.5, zorder=7)
+    ax.text(-4.8, water_lvl + ypad * 0.15, f"Water F  {water_lvl:.2f} m", fontsize=8, color="steelblue")
+    _wlb = water_lvl_back if water_lvl_back is not None else water_lvl
+    ax.plot([0.8, 4.2], [_wlb, _wlb], color="steelblue", lw=2.0, zorder=7, ls="--")
+    ax.plot([1.1, 3.8], [_wlb - w_gap, _wlb - w_gap], color="steelblue", lw=1.5, zorder=7, ls="--")
+    ax.text(0.3, _wlb + ypad * 0.15, f"Water B  {_wlb:.2f} m", fontsize=8, color="steelblue")
+
+    if bc_type == "Fixed":
+        ax.plot([-0.6, 0.6], [bot, bot], color="#333", lw=1.8, zorder=8)
+        for k in range(6):
+            x0 = -0.40 + k * 0.16
+            ax.plot([x0, x0 - 0.12], [bot, bot - ypad * 0.25], color="#333", lw=0.8, zorder=7)
+    elif bc_type == "Cantilever":
+        ax.plot([0], [bot], "^", ms=12, color="#333", zorder=8,
+                markerfacecolor="none", markeredgewidth=2.0)
+        ax.plot([-0.5, 0.5], [bot - ypad * 0.12, bot - ypad * 0.12], "#333", lw=1.0, zorder=7)
+    elif bc_type == "Free":
+        ax.plot([-0.2, 0.2], [bot, bot], "#333", lw=1.5, ls=":", zorder=7)
+
+    if abs(H_kN) > 1e-3:
+        sign = 1 if H_kN > 0 else -1
+        ax.annotate("", xy=(0, top_elev), xytext=(-sign * 2.8, top_elev),
+                    arrowprops=dict(arrowstyle="->, head_width=0.35, head_length=0.20",
+                                   color="red", lw=2.2), zorder=12)
+        ax.text(-sign * 1.4, top_elev + ypad * 0.50, f"H = {H_kN:.0f} kN",
+                fontsize=9, color="red", ha="center", fontweight="bold")
+    if abs(M_kNm) > 1e-3:
+        ax.text(0.4, top_elev + ypad * 1.2, f"M = {M_kNm:.0f} kN.m",
+                fontsize=8.5, color="darkorange", ha="left", fontweight="bold")
+
+    ax.text(-4.0, y_bot + ypad * 0.4, "Front", fontsize=10, color="#666", style="italic")
+    ax.text(1.5,  y_bot + ypad * 0.4, "Back",  fontsize=10, color="#666", style="italic")
+    plt.tight_layout()
+    return fig
 
 
 @st.cache_data(show_spinner=False)
@@ -4111,32 +4229,51 @@ if _page == "ke_sw":
     # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
     st.divider()
     st.markdown("### C. Kiểm tra NT1 / NT2 — nhập thông số tùy chỉnh")
-
-    _img_geodata = _ROOT / "images" / "geodata_lateral_pile.png"
-    if _img_geodata.exists():
-        st.image(str(_img_geodata), caption="Giao diện nhập liệu tab Geo Data — ứng dụng phân tích cọc chịu tải trọng ngang (SW Prestressed Concrete)", use_container_width=True)
-
     st.info(
         "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
         "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
         "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
     )
 
-    _c1, _c2, _c3 = st.columns(3)
-    with _c1:
-        _sw_sel   = st.selectbox("Loại cọc SW", _sw_names,
-                                 index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
-                                 key="sw_sel")
-        _L_des    = st.number_input("Chiều dài thiết kế L (m)", 10.0, 35.0, 29.0, 0.5, key="sw_L")
-        _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
-    with _c2:
-        _Z_nat    = st.number_input("Cao độ mặt đất tự nhiên (m)", -5.0, 3.0, -0.80, 0.05, key="sw_Z")
-        _H_lyr1   = st.number_input("Chiều dày lớp bùn sét H₁ (m)", 5.0, 35.0, 22.0, 0.5, key="sw_H1")
-        _su_avg   = st.number_input("Su trung bình lớp bùn (kN/m²)", 5.0, 50.0, 10.0, 1.0, key="sw_su")
-    with _c3:
-        _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
-        _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
-        _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
+    _col_form, _col_schem = st.columns([3, 2], gap="large")
+
+    with _col_form:
+        _c1, _c2, _c3 = st.columns(3)
+        with _c1:
+            _sw_sel   = st.selectbox("Loại cọc SW", _sw_names,
+                                     index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
+                                     key="sw_sel")
+            _L_des    = st.number_input("Chiều dài thiết kế L (m)", 10.0, 35.0, 29.0, 0.5, key="sw_L")
+            _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
+        with _c2:
+            _Z_nat    = st.number_input("Cao độ mặt đất tự nhiên (m)", -5.0, 3.0, -0.80, 0.05, key="sw_Z")
+            _H_lyr1   = st.number_input("Chiều dày lớp bùn sét H₁ (m)", 5.0, 35.0, 22.0, 0.5, key="sw_H1")
+            _su_avg   = st.number_input("Su trung bình lớp bùn (kN/m²)", 5.0, 50.0, 10.0, 1.0, key="sw_su")
+        with _c3:
+            _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
+            _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
+            _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
+        _wc1, _wc2 = st.columns(2)
+        _water_lvl_c = _wc1.number_input("Mực nước (m)", -5.0, 3.0, -1.0, 0.5, key="sw_wlvl")
+        _bc_type_c   = _wc2.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"], key="sw_bc")
+
+    with _col_schem:
+        if _HAS_MPL:
+            _lyr_mid = _Z_nat - _H_lyr1
+            _pile_tip = _top_ke - _L_des
+            _layers_sch = [
+                ("Bùn sét", _Z_nat,    _lyr_mid,  16.0, 0.0),
+                ("Lớp cứng", _lyr_mid, _pile_tip,  18.0, 20.0),
+            ]
+            _fig_sch = draw_pile_schematic(
+                L_m=_L_des, water_lvl=_water_lvl_c, top_elev=_top_ke,
+                H_kN=0, M_kNm=0, layers=_layers_sch, bc_type=_bc_type_c,
+                soil_lvl_front=_Z_nat, soil_lvl_back=_Z_nat,
+                water_lvl_back=_water_lvl_c,
+            )
+            if _fig_sch:
+                st.pyplot(_fig_sch, use_container_width=True)
+                plt.close(_fig_sch)
 
     if st.button("Kiểm tra NT1 / NT2", type="primary", key="sw_check"):
         _pile = _sw_by_name(_sw_sel)
