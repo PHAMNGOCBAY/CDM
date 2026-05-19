@@ -226,8 +226,6 @@ _LAYER_COLORS: dict[str, str] = {
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
 _ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
 
-_PAGE_IDS = ["geology", "sample_check", "params", "compare", "result", "export", "settlement", "ke_sw", "cdm_bvt", "sw_bvt"]
-
 # ─── Bảng dịch VN / EN ────────────────────────────────────────────────────────
 _L: dict[str, tuple[str, str]] = {
     # Sidebar
@@ -4056,7 +4054,11 @@ if _page == "ke_sw":
             return {}
 
     _sw_piles  = _load_sw_catalog()
-    _ke_data   = _load_ke_sw(_KE_JSON.stat().st_mtime if _KE_JSON.exists() else 0)
+    try:
+        _mtime = _KE_JSON.stat().st_mtime
+    except OSError:
+        _mtime = 0
+    _ke_data   = _load_ke_sw(_mtime)
     _sw_names  = sorted({p["name"] for p in _sw_piles})
     _Ec_table  = {
         "fc30 MPa": 26_561_000,
@@ -4223,7 +4225,7 @@ if _page == "ke_sw":
                 "L_max (m)":         _opt_Lmax,
                 "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
                 "Cọc kiến nghị":     _rec,
-                "L thiết kế (m)":    float(_ltk) if _ltk else _opt_Lmax,
+                "L thiết kế (m)":    float(_ltk) if _ltk is not None else _opt_Lmax,
                 "NT1":               _bh.get("NT1"),
                 "NT2":               _bh.get("NT2"),
                 "Rs (kN)":           _nt2.get("Rs_kN", "–"),
@@ -4264,11 +4266,13 @@ if _page == "ke_sw":
                 use_container_width=True,
                 key="ke_b_editor",
             )
-            # Lưu chỉnh sửa vào session state
-            for _, _row in _edited_b.iterrows():
-                _bh_n = _row["Hố khoan"]
-                st.session_state[_rec_key][_bh_n] = _row["Cọc kiến nghị"]
-                st.session_state[_ltk_key][_bh_n] = _row["L thiết kế (m)"]
+            # Lưu chỉnh sửa vào session state — chỉ khi người dùng thay đổi
+            _edit_cols = ["Cọc kiến nghị", "L thiết kế (m)"]
+            if not _edited_b[_edit_cols].equals(_df_b[_edit_cols]):
+                for _, _row in _edited_b.iterrows():
+                    _bh_n = _row["Hố khoan"]
+                    st.session_state[_rec_key][_bh_n] = _row["Cọc kiến nghị"]
+                    st.session_state[_ltk_key][_bh_n] = _row["L thiết kế (m)"]
 
         # Kết luận phương án
         _sc1, _sc2 = st.columns(2)
