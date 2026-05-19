@@ -296,8 +296,7 @@ _L: dict[str, tuple[str, str]] = {
     "p_sample_check":("Kiểm tra mẫu TN",            "Sample Check"),
     "p_tkcs_cdm":   ("TKCS CDM",                    "CDM Prelim Design"),
     "p_params":     ("Thông số",                    "Parameters"),
-    "p_compare":    ("So sánh PA",                  "Comparison"),
-    "p_result":     ("Kết quả",                     "Results"),
+    "p_compare":    ("Kết quả CDM",                 "CDM Results"),
     "p_settlement": ("Lún nền",                     "Settlement"),
     "p_export":     ("Xuất kết quả",                "Export Results"),
     "p_cdm_bvt":    ("TKBVT CDM",                   "CDM Detail Design"),
@@ -2291,7 +2290,6 @@ _nav(_t("p_sample_check"), "sample_check")
 st.sidebar.markdown(f"**{_t('p_tkcs_cdm')}**")
 _nav(_t("p_params"),    "params",     indent=True)
 _nav(_t("p_compare"),   "compare",    indent=True)
-_nav(_t("p_result"),    "result",     indent=True)
 _nav(_t("p_settlement"),"settlement", indent=True)
 _nav(_t("p_export"),    "export",     indent=True)
 _nav(_t("p_cdm_bvt"),   "cdm_bvt")
@@ -3457,35 +3455,24 @@ elif _page == "compare":
             )
             st.plotly_chart(_fig_hm, use_container_width=True)
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE 4 – KẾT QUẢ
-# ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "result":
+    # ── Kết quả chi tiết PA kiến nghị ─────────────────────────────────────────
+    st.divider()
     st.subheader(_t("p4_sub"))
 
-    D   = _get("cdm_D")
-    Lc  = _get("cdm_Lc")
-    qu  = _get("cdm_qu")
-    Su  = _get("cdm_Su")
-    arr = _get("cdm_arrangement")
-    q   = q_total(_get("cdm_loads"))
-    sps = _get("cdm_spacings")
-    rec = _get("cdm_rec_idx")
-
-    scenarios = build_scenarios(D, Lc, qu, Su, q, sps, arr)
-    if not scenarios or rec >= len(scenarios):
-        st.warning(_t("no_scenarios"))
-        st.stop()
-
-    s   = scenarios[rec]
+    s   = scenarios[rec_idx]
     Cc  = qu / 2
     Ec  = calc_Ec(qu)
     Es  = calc_Es(Su)
     Etb = s["Etb (kN/m²)"]
 
-    _alt_pfx = "PA" if _get("lang") == "VN" else "Alt."
-    st.success(_t("rec_pa", n=rec+1, e=s['e (m)']))
+    _CP = _t("col_param"); _CF = _t("col_formula"); _CV = _t("col_value")
+
+    def _color_sct(val):
+        if val == "Đạt":       return "color: green; font-weight: bold"
+        if val == "Không đạt": return "color: red; font-weight: bold"
+        return ""
+
+    st.success(_t("rec_pa", n=rec_idx+1, e=s['e (m)']))
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("S₁ (cm)", f"{s['S₁ (cm)']:.2f}")
@@ -3495,8 +3482,6 @@ elif _page == "result":
 
     st.divider()
     col_l, col_r = st.columns(2)
-
-    _CP = _t("col_param"); _CF = _t("col_formula"); _CV = _t("col_value")
 
     with col_l:
         st.markdown(f"**{_t('settle_calc')}**")
@@ -3572,17 +3557,7 @@ elif _page == "result":
     st.divider()
     st.markdown(f"**{_t('punch_res')}**")
     _ld_r   = _get("cdm_loads")
-    _pr_r   = calc_punching_check(
-        D=D, e=s["e (m)"],
-        Hse=_ld_r.get("h_mat", 0.4),
-        He=_ld_r.get("h_fill", 1.5),
-        quckse=_get("cdm_quckse"),
-        Fs=_get("cdm_Fs_mat"),
-        theta_deg=_get("cdm_theta"),
-        gamma_fill=_ld_r.get("g_fill", 18.0),
-        gamma_mat=_ld_r.get("g_mat", 22.5),
-        qa=_get("cdm_qa_mat"),
-    )
+    _pr_r   = _punch[rec_idx]
     if _get("lang") == "VN":
         _punch_steps = [
             ("Bề dày đệm xi măng",        "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
