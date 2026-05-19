@@ -1421,6 +1421,7 @@ def _draw_cdm_section(
     D: float, Lc: float, CDTK: float,
     h_clay: float, h_road: float, h_fill: float, h_mat: float,
     q_traffic: float,
+    top_clay: float | None = None,
 ):
     """Mặt cắt ngang CDM: các lớp đất, trụ CDM, mũi tên tải, kích thước D/Lc."""
     import matplotlib.pyplot as plt
@@ -1483,6 +1484,17 @@ def _draw_cdm_section(
     ax.text(W * 0.98, CDTK - 0.1, f"Đỉnh cọc = {CDTK:+.2f} m",
             ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5,
             bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
+
+    # Đỉnh lớp bùn (nét gạch nâu) — chỉ vẽ khi khác CDTK > 0.05 m
+    if top_clay is not None and abs(top_clay - CDTK) > 0.05:
+        ax.axhline(top_clay, color="#6D4C41", lw=1.2, ls="-.", zorder=4, alpha=0.85)
+        _va = "bottom" if top_clay > CDTK else "top"
+        _dy = 0.08 if top_clay > CDTK else -0.08
+        ax.text(W * 0.02, top_clay + _dy,
+                f"Đỉnh lớp bùn = {top_clay:+.2f} m",
+                ha="left", va=_va, fontsize=7.5, color="#6D4C41", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#6D4C41",
+                          alpha=0.9, lw=0.6))
 
     def layer_text(y0, y1, txt, color):
         if (y1 - y0) > 0.4:
@@ -3083,6 +3095,7 @@ elif _page == "params":
             h_fill=_ld_s.get("h_fill", 1.5),
             h_mat=_ld_s.get("h_mat", 0.4),
             q_traffic=_ld_s.get("q_traffic", 20.0),
+            top_clay=_get("cdm_top_clay"),
         )
         st.pyplot(_fig_sec, use_container_width=True)
         _fig_sec.clf()
