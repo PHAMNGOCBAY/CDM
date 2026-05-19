@@ -527,6 +527,7 @@ def _load_borehole_3d_data() -> tuple[list[dict], list[dict]]:
         "b.x_coord_m, b.y_coord_m "
         "FROM boreholes b JOIN zones z ON z.id=b.zone_id "
         "WHERE b.x_coord_m IS NOT NULL "
+        "  AND b.elevation_m IS NOT NULL AND b.depth_m IS NOT NULL "
         "ORDER BY z.id, b.name"
     ).fetchall()]
     ids = [b["id"] for b in bhs]
