@@ -66,6 +66,7 @@ _CLAY_SYMBOLS = {        # symbol lớp bùn sét yếu theo zone
 _ZONE_NAMES = {"KE": "Kè Công Viên (KE)", "BXN": "Bãi Đỗ Xe Ngầm (BXN)", "NHC": "Nhà Hành Chính (NHC)"}
 
 _LAYER_COLORS: dict[str, str] = {
+    # Ký hiệu địa tầng Việt Nam (TCVN)
     "F":    "#9E9E9E",
     "1":    "#81D4FA",
     "1b":   "#4FC3F7",
@@ -87,6 +88,22 @@ _LAYER_COLORS: dict[str, str] = {
     "TK6a": "#FFD54F",
     "TK6b": "#FFB300",
     "XMD":  "#E91E63",
+    # USCS symbols (NHC lab_tests.symbol_tcvn)
+    "CH":   "#1A237E",   # High-plasticity clay – xanh đậm
+    "CL":   "#1565C0",   # Low-plasticity clay
+    "MH":   "#29B6F6",   # High-plasticity silt – xanh nhạt
+    "ML":   "#81D4FA",   # Low-plasticity silt
+    "OH":   "#4527A0",   # Organic high-plasticity
+    "OL":   "#7E57C2",   # Organic low-plasticity
+    "SM":   "#8D6E63",   # Silty sand – nâu
+    "SC":   "#A1887F",   # Clayey sand
+    "SW":   "#D4AC0D",   # Well-graded sand – vàng
+    "SP":   "#F9E79F",   # Poorly-graded sand
+    "GW":   "#5C85D6",   # Well-graded gravel
+    "GP":   "#AED6F1",   # Poorly-graded gravel
+    "GM":   "#7FB3D3",   # Silty gravel
+    "GC":   "#5DADE2",   # Clayey gravel
+    "PT":   "#2E7D32",   # Peat – xanh lá
 }
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
 _ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
@@ -269,6 +286,7 @@ def _load_boreholes_by_zone(zone_code: str) -> list[dict]:
 @st.cache_data(ttl=300)
 def _load_layers(bh_name: str) -> list[dict]:
     with _db() as con:
+        # Thử bảng layers cũ (KE / BXN)
         rows = con.execute("""
             SELECT l.symbol, l.description, l.depth_top_m, l.depth_bot_m, l.thickness_m,
                    ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
@@ -276,7 +294,9 @@ def _load_layers(bh_name: str) -> list[dict]:
                    ROUND(AVG(lt.phi_deg),     1) AS phi_deg,
                    ROUND(AVG(lt.e0),          3) AS e0,
                    ROUND(AVG(lt.Cc),          4) AS Cc,
-                   ROUND(AVG(lt.Cs),          4) AS Cs
+                   ROUND(AVG(lt.Cs),          4) AS Cs,
+                   ROUND(AVG(lt.PC_kPa),      1) AS PC_kPa,
+                   AVG(lt.Cv_cm2s)               AS Cv_cm2s
             FROM layers l
             JOIN boreholes b ON l.borehole_id = b.id
             LEFT JOIN lab_tests lt
@@ -287,18 +307,107 @@ def _load_layers(bh_name: str) -> list[dict]:
             GROUP BY l.id
             ORDER BY l.depth_top_m
         """, (bh_name,)).fetchall()
-    return [dict(r) for r in rows]
+        if rows:
+            return [dict(r) for r in rows]
+
+        # Fallback: strat_layers (NHC – import từ DXF)
+        rows = con.execute("""
+            SELECT
+                COALESCE(
+                    (SELECT lt2.symbol_tcvn FROM lab_tests lt2
+                     WHERE lt2.borehole_id = b.id
+                       AND lt2.depth_from_m < sl.depth_bot_m
+                       AND lt2.depth_to_m   > sl.depth_top_m
+                     ORDER BY lt2.depth_from_m LIMIT 1),
+                    'L' || sl.layer_no
+                ) AS symbol,
+                sl.description,
+                sl.depth_top_m,
+                sl.depth_bot_m,
+                ROUND(sl.depth_bot_m - sl.depth_top_m, 2) AS thickness_m,
+                ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
+                ROUND(AVG(lt.c_kPa),      1) AS c_kPa,
+                ROUND(AVG(lt.phi_deg),     1) AS phi_deg,
+                ROUND(AVG(lt.e0),          3) AS e0,
+                ROUND(AVG(lt.Cc),          4) AS Cc,
+                ROUND(AVG(lt.Cs),          4) AS Cs,
+                ROUND(AVG(lt.PC_kPa),      1) AS PC_kPa,
+                AVG(lt.Cv_cm2s)               AS Cv_cm2s
+            FROM strat_layers sl
+            JOIN boreholes b ON sl.borehole_id = b.id
+            LEFT JOIN lab_tests lt
+                   ON lt.borehole_id = b.id
+                  AND lt.depth_from_m < sl.depth_bot_m
+                  AND lt.depth_to_m   > sl.depth_top_m
+            WHERE b.name = ?
+            GROUP BY sl.id
+            ORDER BY sl.depth_top_m
+        """, (bh_name,)).fetchall()
+        if rows:
+            return [dict(r) for r in rows]
+
+        # Fallback cuối: build từ lab_tests (gom run liên tiếp cùng symbol)
+        rows = con.execute("""
+            SELECT
+                symbol_tcvn AS symbol,
+                COALESCE(description_vi, symbol_tcvn) AS description,
+                MIN(depth_from_m) AS depth_top_m,
+                MAX(depth_to_m)   AS depth_bot_m,
+                ROUND(AVG(gamma_kNm3), 2) AS gamma_kNm3,
+                ROUND(AVG(c_kPa),      1) AS c_kPa,
+                ROUND(AVG(phi_deg),    1) AS phi_deg,
+                ROUND(AVG(e0),         3) AS e0,
+                ROUND(AVG(Cc),         4) AS Cc,
+                ROUND(AVG(Cs),         4) AS Cs,
+                ROUND(AVG(PC_kPa),     1) AS PC_kPa,
+                AVG(Cv_cm2s)             AS Cv_cm2s
+            FROM (
+                SELECT *,
+                    ROW_NUMBER() OVER (ORDER BY depth_from_m) -
+                    ROW_NUMBER() OVER (PARTITION BY symbol_tcvn ORDER BY depth_from_m) AS grp
+                FROM lab_tests
+                WHERE borehole_id = (SELECT id FROM boreholes WHERE name = ?)
+                  AND symbol_tcvn IS NOT NULL
+                  AND depth_from_m IS NOT NULL
+            )
+            GROUP BY symbol_tcvn, grp
+            ORDER BY depth_top_m
+        """, (bh_name,)).fetchall()
+
+    if not rows:
+        return []
+    result = [dict(r) for r in rows]
+    # Lấp khoảng trống giữa các run: kéo đáy lớp trước = đỉnh lớp sau
+    for i in range(len(result) - 1):
+        result[i]["depth_bot_m"] = result[i + 1]["depth_top_m"]
+    for r in result:
+        r["thickness_m"] = round(r["depth_bot_m"] - r["depth_top_m"], 2)
+    return result
 
 
 @st.cache_data(ttl=300)
 def _load_spt(bh_name: str) -> list[dict]:
     with _db() as con:
+        # Thử spt_values cũ (KE / BXN)
         rows = con.execute("""
             SELECT sv.depth_m, sv.N1, sv.N2, sv.N3, sv.N
             FROM spt_values sv
             JOIN boreholes b ON sv.borehole_id = b.id
             WHERE b.name = ?
             ORDER BY sv.depth_m
+        """, (bh_name,)).fetchall()
+        if rows:
+            return [dict(r) for r in rows]
+
+        # Fallback: spt_tests (NHC – import từ DXF)
+        rows = con.execute("""
+            SELECT st.depth_from_m AS depth_m,
+                   st.N1, st.N2, st.N3,
+                   st.N_value AS N
+            FROM spt_tests st
+            JOIN boreholes b ON st.borehole_id = b.id
+            WHERE b.name = ?
+            ORDER BY st.depth_from_m
         """, (bh_name,)).fetchall()
     return [dict(r) for r in rows]
 
@@ -328,6 +437,33 @@ def _load_lab(bh_name: str) -> pd.DataFrame:
                 SELECT id FROM boreholes WHERE name=?
             ) ORDER BY depth_from_m
         """, (bh_name,)).fetchall()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+@st.cache_data(ttl=300)
+def _load_consol_summary(zone_code: str) -> pd.DataFrame:
+    """Per-borehole summary: số mẫu và trung bình các chỉ tiêu nén cố kết."""
+    with _db() as con:
+        rows = con.execute("""
+            SELECT
+                b.name AS borehole,
+                COUNT(lt.id) AS n_mau,
+                SUM(CASE WHEN lt.Cc IS NOT NULL THEN 1 ELSE 0 END) AS n_Cc,
+                ROUND(AVG(CASE WHEN lt.Cc  IS NOT NULL THEN lt.Cc  END), 4) AS Cc_tb,
+                ROUND(AVG(CASE WHEN lt.Cs  IS NOT NULL THEN lt.Cs  END), 4) AS Cs_tb,
+                ROUND(AVG(CASE WHEN lt.Cv_cm2s IS NOT NULL THEN lt.Cv_cm2s END), 12) AS Cv_tb,
+                ROUND(AVG(CASE WHEN lt.k_cm_s  IS NOT NULL THEN lt.k_cm_s  END), 12) AS k_tb,
+                ROUND(MIN(CASE WHEN lt.PC_kPa  IS NOT NULL THEN lt.PC_kPa  END), 1) AS PC_min,
+                ROUND(MAX(CASE WHEN lt.PC_kPa  IS NOT NULL THEN lt.PC_kPa  END), 1) AS PC_max,
+                ROUND(AVG(CASE WHEN lt.e0      IS NOT NULL THEN lt.e0      END), 3) AS e0_tb
+            FROM boreholes b
+            JOIN zones z ON b.zone_id = z.id
+            LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
+            WHERE z.code = ?
+            GROUP BY b.name
+            HAVING n_Cc > 0
+            ORDER BY b.name
+        """, (zone_code,)).fetchall()
     return pd.DataFrame([dict(r) for r in rows])
 
 
@@ -1286,8 +1422,10 @@ def _draw_soil_column(
     for lay in layers:
         y0    = lay["depth_top_m"]
         y1    = lay["depth_bot_m"]
-        sym   = (lay.get("symbol") or "?").strip()
-        color = _LAYER_COLORS.get(sym, _LAYER_DEFAULT_COLOR)
+        sym   = (lay.get("symbol") or "").strip()
+        color = _LAYER_COLORS.get(sym,
+                _LAYER_COLORS.get(sym[:2] if len(sym) > 2 else sym,
+                _LAYER_DEFAULT_COLOR))
         thick = y1 - y0
 
         shapes.append(dict(
@@ -1310,8 +1448,9 @@ def _draw_soil_column(
             mid = (y0 + y1) / 2
             tc  = _tc(color)
             desc = (lay.get("description") or "")
-            lbl  = (f"<b>{sym}</b><br>{desc[:18]}"
-                    if thick >= 2.5 and desc else f"<b>{sym}</b>")
+            sym_lbl = sym if sym else f"L{layers.index(lay)+1}"
+            lbl  = (f"<b>{sym_lbl}</b><br>{desc[:18]}"
+                    if thick >= 2.5 and desc else f"<b>{sym_lbl}</b>")
             annotations.append(dict(
                 x=0.5, y=mid,
                 xref=xref_col, yref=yref_col,
@@ -1352,7 +1491,7 @@ def _draw_soil_column(
         _N_vals = [min(s["N"] or 0, 60) for s in spt]
         _colors = [_spt_color(n) for n in _N_vals]
         _labels = [
-            f"N={s['N']}  ({s['N1']}/{s['N2']}/{s['N3']})"
+            f"N={s['N']}  ({s['N1']}/{s['N2']}/{'–' if s['N3'] is None else s['N3']})"
             for s in spt
         ]
 
@@ -1951,28 +2090,38 @@ if _page == "geology":
         if layers:
             st.markdown(f"**{_t('strat_title')}**")
             df_lay = pd.DataFrame(layers)
-            if _get("lang") == "VN":
+            _is_vn = _get("lang") == "VN"
+            if _is_vn:
                 df_lay.columns = ["Ký hiệu", "Mô tả", "Đỉnh (m)", "Đáy (m)", "Dày (m)",
                                   "γ (kN/m³)", "c (kPa)", "φ (°)",
-                                  "e₀", "Cc", "Cs"]
+                                  "e₀", "Cc", "Cs", "PC (kPa)", "Cv (cm²/s)"]
                 _desc_col = "Mô tả"
             else:
                 df_lay.columns = ["Symbol", "Description", "Top (m)", "Bot (m)", "Thick (m)",
                                   "γ (kN/m³)", "c (kPa)", "φ (°)",
-                                  "e₀", "Cc", "Cs"]
+                                  "e₀", "Cc", "Cs", "PC (kPa)", "Cv (cm²/s)"]
                 _desc_col = "Description"
+
+            # Format Cv scientific notation
+            _cv_col = "Cv (cm²/s)"
+            df_lay[_cv_col] = df_lay[_cv_col].apply(
+                lambda x: f"{x:.2e}" if pd.notna(x) and x is not None else "–"
+            )
+
             st.dataframe(
                 df_lay,
                 use_container_width=True,
                 height=310,
                 column_config={
-                    _desc_col:   st.column_config.TextColumn(width="medium"),
-                    "γ (kN/m³)": st.column_config.NumberColumn(format="%.2f"),
-                    "c (kPa)":   st.column_config.NumberColumn(format="%.1f"),
-                    "φ (°)":     st.column_config.NumberColumn(format="%.1f"),
-                    "e₀":        st.column_config.NumberColumn(format="%.3f"),
-                    "Cc":        st.column_config.NumberColumn(format="%.4f"),
-                    "Cs":        st.column_config.NumberColumn(format="%.4f"),
+                    _desc_col:    st.column_config.TextColumn(width="medium"),
+                    "γ (kN/m³)":  st.column_config.NumberColumn(format="%.2f"),
+                    "c (kPa)":    st.column_config.NumberColumn(format="%.1f"),
+                    "φ (°)":      st.column_config.NumberColumn(format="%.1f"),
+                    "e₀":         st.column_config.NumberColumn(format="%.3f"),
+                    "Cc":         st.column_config.NumberColumn(format="%.4f"),
+                    "Cs":         st.column_config.NumberColumn(format="%.4f"),
+                    "PC (kPa)":   st.column_config.NumberColumn(format="%.1f"),
+                    _cv_col:      st.column_config.TextColumn(width="small"),
                 },
             )
         else:
@@ -2033,6 +2182,88 @@ if _page == "geology":
             st.dataframe(df_cdm[list(_cdm_cols)].rename(columns=_cdm_cols),
                          use_container_width=True)
             st.caption(_t("cdm_test_note"))
+
+    # ── Nén cố kết – thống kê hố khoan có dữ liệu ─────────────────────────────
+    _df_consol = _load_consol_summary(zone)
+    if not _df_consol.empty:
+        _is_vn = _get("lang") == "VN"
+        _consol_title = (
+            "Nén cố kết – Hố khoan có dữ liệu tính lún theo thời gian"
+            if _is_vn else
+            "Consolidation – Boreholes with time-settlement data"
+        )
+        with st.expander(_consol_title, expanded=True):
+            # Format Cv and k in scientific notation for readability
+            _df_disp = _df_consol.copy()
+            _df_disp["Cv_tb"] = _df_disp["Cv_tb"].apply(
+                lambda x: f"{x:.2e}" if pd.notna(x) else "–"
+            )
+            _df_disp["k_tb"] = _df_disp["k_tb"].apply(
+                lambda x: f"{x:.2e}" if pd.notna(x) else "–"
+            )
+            _df_disp["PC_kPa"] = _df_disp.apply(
+                lambda r: f"{r['PC_min']:.0f}–{r['PC_max']:.0f}"
+                if pd.notna(r["PC_min"]) else "–", axis=1
+            )
+
+            if _is_vn:
+                _df_disp = _df_disp.rename(columns={
+                    "borehole": "Hố khoan",
+                    "n_mau":   "Tổng mẫu",
+                    "n_Cc":    "Mẫu NCK",
+                    "Cc_tb":   "Cc TB",
+                    "Cs_tb":   "Cs TB",
+                    "Cv_tb":   "Cv TB (cm²/s)",
+                    "k_tb":    "k TB (cm/s)",
+                    "PC_kPa":  "PC (kPa)",
+                    "e0_tb":   "e₀ TB",
+                })
+                _note = (
+                    "NCK = Nén cố kết. Cc: chỉ số nén. Cs: chỉ số nở lại. "
+                    "Cv: hệ số cố kết. k: hệ số thấm. PC: áp lực tiền cố kết. "
+                    "Các giá trị là trung bình số học của các mẫu trong hố khoan."
+                )
+            else:
+                _df_disp = _df_disp.rename(columns={
+                    "borehole": "Borehole",
+                    "n_mau":   "Total",
+                    "n_Cc":    "Consol.",
+                    "Cc_tb":   "Cc avg",
+                    "Cs_tb":   "Cs avg",
+                    "Cv_tb":   "Cv avg (cm²/s)",
+                    "k_tb":    "k avg (cm/s)",
+                    "PC_kPa":  "PC (kPa)",
+                    "e0_tb":   "e₀ avg",
+                })
+                _note = (
+                    "Consol. = samples with consolidation data. Cv: coefficient of consolidation. "
+                    "k: permeability. PC: preconsolidation pressure. Values are arithmetic means per borehole."
+                )
+
+            _drop_cols = ["PC_min", "PC_max"]
+            _df_disp = _df_disp.drop(columns=[c for c in _drop_cols if c in _df_disp.columns])
+
+            st.dataframe(
+                _df_disp,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    _df_disp.columns[2]: st.column_config.NumberColumn(format="%d"),
+                    "Cc TB" if _is_vn else "Cc avg": st.column_config.NumberColumn(format="%.4f"),
+                    "Cs TB" if _is_vn else "Cs avg": st.column_config.NumberColumn(format="%.4f"),
+                    "e₀ TB" if _is_vn else "e₀ avg": st.column_config.NumberColumn(format="%.3f"),
+                },
+            )
+            st.caption(_note)
+
+            # Tóm tắt số hố có dữ liệu
+            _n_bh_ok  = len(_df_consol)
+            _n_bh_all = len(_load_boreholes_by_zone(zone))
+            st.info(
+                f"{'Zone' if not _is_vn else 'Zone'} **{_ZONE_NAMES[zone]}**: "
+                f"{_n_bh_ok}/{_n_bh_all} "
+                f"{'hố khoan có thí nghiệm nén cố kết (Cc/Cs/Cv/k/PC).' if _is_vn else 'boreholes have consolidation test data (Cc/Cs/Cv/k/PC).'}"
+            )
 
     # ── 3D / Map toggle ───────────────────────────────────────────────────────
     st.divider()
