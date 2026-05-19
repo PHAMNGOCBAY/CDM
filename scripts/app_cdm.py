@@ -3125,14 +3125,18 @@ elif _page == "compare":
                 "cdm_qa_mat": _qa_sp,
             })
 
-    # Hình minh họa phương pháp tính
+    # Hình minh họa phương pháp tính (40% width mỗi cột)
     _img_load = _ROOT / "giao dien" / "PNBAY-TAI TRONG NEN DAP LEN PHAN KHÔNG GIA CO.png"
     _img_tse  = _ROOT / "giao dien" / "PNBAY-Tse.png"
     _ic1, _ic2 = st.columns(2)
     if _img_load.exists():
-        _ic1.image(str(_img_load), use_container_width=True)
+        with _ic1:
+            _s1, _ = st.columns([2, 3])
+            _s1.image(str(_img_load), use_container_width=True)
     if _img_tse.exists():
-        _ic2.image(str(_img_tse), use_container_width=True)
+        with _ic2:
+            _s2, _ = st.columns([2, 3])
+            _s2.image(str(_img_tse), use_container_width=True)
 
     # Tính toán
     D   = _get("cdm_D")
