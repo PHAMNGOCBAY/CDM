@@ -1,0 +1,177 @@
+{
+  "_meta": {
+    "source": "BENTO6-THONG SO KY THUAT SW.pdf + BENTO6-DAC TRUNG HINH HOC SW.pdf",
+    "version": "Ver.2015",
+    "manufacturer": "BETON 6",
+    "updated": "2026-05-13",
+    "notes": {
+      "width_996": "SW-120 đến SW-940: spacing chuẩn = 996 mm khi cọc chạm nhau",
+      "width_1246": "SW-1100 và SW-1200: spacing chuẩn = 1246 mm",
+      "Atd_Itd": "Đã bao gồm đóng góp cáp DUL quy đổi về bê tông",
+      "Mcr_unit": "T.m (1 T.m = 9.81 kN.m)",
+      "weight_unit": "T/cọc tại chiều dài L_std"
+    }
+  },
+  "Ec_table": {
+    "fc30_MPa":  { "Ec_MPa": 26561,  "Ec_kNm2": 26561000  },
+    "fc40_MPa":  { "Ec_MPa": 31623,  "Ec_kNm2": 31623000  },
+    "fc60_MPa":  { "Ec_MPa": 38730,  "Ec_kNm2": 38730000  },
+    "fc70_MPa":  { "Ec_MPa": 43628,  "Ec_kNm2": 43628130  }
+  },
+  "piles": [
+    {
+      "id": 1,  "name": "SW-120",  "width_mm": 996,  "H_mm": 120,  "t_mm": 60,
+      "n_strands": 8,  "phi_strand_mm": 9.53,
+      "Atd_cm2": 548.0,  "Itd_cm4": 6514,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 1.53,  "weight_T": 0.83,  "L_std_m": 5,  "L_min_m": 3,  "L_max_m": 7,
+      "perimeter_mm": null
+    },
+    {
+      "id": 2,  "name": "SW-120",  "width_mm": 996,  "H_mm": 120,  "t_mm": 60,
+      "n_strands": 10,  "phi_strand_mm": 9.00,
+      "Atd_cm2": 556.0,  "Itd_cm4": 6544,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 1.53,  "weight_T": 0.83,  "L_std_m": 5,  "L_min_m": 3,  "L_max_m": 7,
+      "perimeter_mm": null
+    },
+    {
+      "id": 3,  "name": "SW-160",  "width_mm": 996,  "H_mm": 160,  "t_mm": 80,
+      "n_strands": 8,  "phi_strand_mm": 9.53,
+      "Atd_cm2": 723.0,  "Itd_cm4": 15336,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 2.04,  "weight_T": 1.30,  "L_std_m": 6,  "L_min_m": 4,  "L_max_m": 8,
+      "perimeter_mm": null
+    },
+    {
+      "id": 4,  "name": "SW-160",  "width_mm": 996,  "H_mm": 160,  "t_mm": 80,
+      "n_strands": 8,  "phi_strand_mm": 9.00,
+      "Atd_cm2": 727.0,  "Itd_cm4": 15389,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 2.04,  "weight_T": 1.30,  "L_std_m": 6,  "L_min_m": 4,  "L_max_m": 8,
+      "perimeter_mm": null
+    },
+    {
+      "id": 5,  "name": "SW-225",  "width_mm": 996,  "H_mm": 225,  "t_mm": 100,
+      "n_strands": 8,  "phi_strand_mm": 11.10,
+      "Atd_cm2": 954.0,  "Itd_cm4": 42780,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 4.28,  "weight_T": 2.38,  "L_std_m": 8,  "L_min_m": 5,  "L_max_m": 9,
+      "perimeter_mm": null
+    },
+    {
+      "id": 6,  "name": "SW-225",  "width_mm": 996,  "H_mm": 225,  "t_mm": 100,
+      "n_strands": 8,  "phi_strand_mm": 10.70,
+      "Atd_cm2": 959.0,  "Itd_cm4": 43003,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 4.28,  "weight_T": 2.38,  "L_std_m": 8,  "L_min_m": 5,  "L_max_m": 9,
+      "perimeter_mm": null
+    },
+    {
+      "id": 7,  "name": "SW-300",  "width_mm": 996,  "H_mm": 300,  "t_mm": 110,
+      "n_strands": 10,  "phi_strand_mm": 12.70,
+      "Atd_cm2": 1168.0,  "Itd_cm4": 101168,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 9.58,  "weight_T": 3.38,  "L_std_m": 10,  "L_min_m": 7,  "L_max_m": 12,
+      "perimeter_mm": null
+    },
+    {
+      "id": 8,  "name": "SW-350A",  "width_mm": 996,  "H_mm": 350,  "t_mm": 120,
+      "n_strands": 14,  "phi_strand_mm": 12.70,
+      "Atd_cm2": 1376.0,  "Itd_cm4": 162003,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 16.31,  "weight_T": 5.00,  "L_std_m": 13,  "L_min_m": 9,  "L_max_m": 15,
+      "perimeter_mm": null
+    },
+    {
+      "id": 9,  "name": "SW-350B",  "width_mm": 996,  "H_mm": 350,  "t_mm": 120,
+      "n_strands": 16,  "phi_strand_mm": 12.70,
+      "Atd_cm2": 1385.0,  "Itd_cm4": 162756,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 17.33,  "weight_T": 5.38,  "L_std_m": 14,  "L_min_m": 10,  "L_max_m": 15,
+      "perimeter_mm": null
+    },
+    {
+      "id": 10,  "name": "SW-400A",  "width_mm": 996,  "H_mm": 400,  "t_mm": 120,
+      "n_strands": 16,  "phi_strand_mm": 12.70,
+      "Atd_cm2": 1543.0,  "Itd_cm4": 240449,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 20.39,  "weight_T": 6.28,  "L_std_m": 15,  "L_min_m": 10,  "L_max_m": 16,
+      "perimeter_mm": null
+    },
+    {
+      "id": 11,  "name": "SW-400B",  "width_mm": 996,  "H_mm": 400,  "t_mm": 120,
+      "n_strands": 18,  "phi_strand_mm": 12.70,
+      "Atd_cm2": 1552.0,  "Itd_cm4": 240449,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 23.45,  "weight_T": 6.68,  "L_std_m": 16,  "L_min_m": 11,  "L_max_m": 16,
+      "perimeter_mm": null
+    },
+    {
+      "id": 12,  "name": "SW-450A",  "width_mm": 996,  "H_mm": 450,  "t_mm": 120,
+      "n_strands": 18,  "phi_strand_mm": 12.70,
+      "Atd_cm2": 1787.0,  "Itd_cm4": 341010,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 27.52,  "weight_T": 7.65,  "L_std_m": 16,  "L_min_m": 11,  "L_max_m": 17,
+      "perimeter_mm": null
+    },
+    {
+      "id": 13,  "name": "SW-450B",  "width_mm": 996,  "H_mm": 450,  "t_mm": 120,
+      "n_strands": 16,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 1808.0,  "Itd_cm4": 348089,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 31.60,  "weight_T": 8.13,  "L_std_m": 17,  "L_min_m": 12,  "L_max_m": 17,
+      "perimeter_mm": null
+    },
+    {
+      "id": 14,  "name": "SW-500A",  "width_mm": 996,  "H_mm": 500,  "t_mm": 120,
+      "n_strands": 16,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 1885.0,  "Itd_cm4": 467240,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 35.68,  "weight_T": 8.13,  "L_std_m": 17,  "L_min_m": 12,  "L_max_m": 19,
+      "perimeter_mm": null
+    },
+    {
+      "id": 15,  "name": "SW-500B",  "width_mm": 996,  "H_mm": 500,  "t_mm": 120,
+      "n_strands": 20,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 1910.0,  "Itd_cm4": 469288,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 40.77,  "weight_T": 8.58,  "L_std_m": 18,  "L_min_m": 13,  "L_max_m": 20,
+      "perimeter_mm": null
+    },
+    {
+      "id": 16,  "name": "SW-600A",  "width_mm": 996,  "H_mm": 600,  "t_mm": 120,
+      "n_strands": 20,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 2262.0,  "Itd_cm4": 795348,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 50.97,  "weight_T": 10.38,  "L_std_m": 19,  "L_min_m": 14,  "L_max_m": 22,
+      "perimeter_mm": 3724.397
+    },
+    {
+      "id": 17,  "name": "SW-600B",  "width_mm": 996,  "H_mm": 600,  "t_mm": 120,
+      "n_strands": 24,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 2288.0,  "Itd_cm4": 797396,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 60.14,  "weight_T": 10.88,  "L_std_m": 20,  "L_min_m": 15,  "L_max_m": 24,
+      "perimeter_mm": 3724.397
+    },
+    {
+      "id": 18,  "name": "SW-740",  "width_mm": 996,  "H_mm": 740,  "t_mm": 160,
+      "n_strands": 20,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 2794.0,  "Itd_cm4": 1480428,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 60.40,  "weight_T": 14.55,  "L_std_m": 21,  "L_min_m": 16,  "L_max_m": 28,
+      "perimeter_mm": 4205.853
+    },
+    {
+      "id": 19,  "name": "SW-840",  "width_mm": 996,  "H_mm": 840,  "t_mm": 160,
+      "n_strands": 22,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 3107.0,  "Itd_cm4": 2125017,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 77.10,  "weight_T": 16.35,  "L_std_m": 22,  "L_min_m": 17,  "L_max_m": 29,
+      "perimeter_mm": 4594.913
+    },
+    {
+      "id": 20,  "name": "SW-940",  "width_mm": 996,  "H_mm": 940,  "t_mm": 160,
+      "n_strands": 24,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 3544.0,  "Itd_cm4": 2983488,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 93.30,  "weight_T": 18.31,  "L_std_m": 23,  "L_min_m": 17,  "L_max_m": 30,
+      "perimeter_mm": null
+    },
+    {
+      "id": 21,  "name": "SW-1100",  "width_mm": 1246,  "H_mm": 1100,  "t_mm": 200,
+      "n_strands": 28,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 5327.0,  "Itd_cm4": 5663367,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 136.00,  "weight_T": 25.80,  "L_std_m": 24,  "L_min_m": 17,  "L_max_m": 32,
+      "perimeter_mm": null
+    },
+    {
+      "id": 22,  "name": "SW-1200",  "width_mm": 1246,  "H_mm": 1200,  "t_mm": 200,
+      "n_strands": 30,  "phi_strand_mm": 15.24,
+      "Atd_cm2": 5789.7,  "Itd_cm4": 7318551,  "Yt_cm": null,  "Yb_cm": null,
+      "Mcr_Tm": 158.00,  "weight_T": 28.75,  "L_std_m": 25,  "L_min_m": 17,  "L_max_m": 34,
+      "perimeter_mm": null
+    }
+  ]
+}
