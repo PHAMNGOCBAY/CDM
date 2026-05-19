@@ -3936,298 +3936,276 @@ if _page == "ke_sw":
 
     st.subheader("Cọc ván thép dự ứng lực SW — Kè Công Viên (KE)")
 
-    _sw_tab1, _sw_tab2, _sw_tab3 = st.tabs([
-        "Catalog tiết diện",
-        "Kết quả thiết kế TTHC",
-        "Kiểm tra NT1 / NT2",
-    ])
+    # ── A. Catalog tiết diện ────────────────────────────────────────────────────
+    st.markdown("### A. Catalog tiết diện SW")
+    if not _sw_piles:
+        st.warning("Không tải được catalog. Kiểm tra `data/sw_pile_catalog.json`.")
+    else:
+        _fc_sel = st.selectbox("Cường độ bê tông (cho tính Ec)", list(_Ec_table.keys()),
+                               index=2, key="sw_fc")
+        _Ec_sel = _Ec_table[_fc_sel]
 
-    # ── Tab 1: Catalog ──────────────────────────────────────────────────────────
-    with _sw_tab1:
-        st.markdown("**Danh mục cọc ván thép dự ứng lực SW** — thông số kỹ thuật")
-        if not _sw_piles:
-            st.warning("Không tải được catalog. Kiểm tra `data/sw_pile_catalog.json`.")
-        else:
-            _fc_sel = st.selectbox("Cường độ bê tông (cho tính Ec)", list(_Ec_table.keys()),
-                                   index=2, key="sw_fc")
-            _Ec_sel = _Ec_table[_fc_sel]
+        _cat_rows = []
+        for p in _sw_piles:
+            _Itd  = p.get("Itd_cm4", 0) or 0
+            _Atd  = p.get("Atd_cm2", 0) or 0
+            _Mcr  = p.get("Mcr_Tm", 0) or 0
+            _EI   = _Ec_sel * _Itd * 1e-8
+            _EI_m = _EI / (p.get("width_mm", 996) / 1000)
+            _cat_rows.append({
+                "Loại cọc":         p["name"],
+                "H (mm)":           p.get("H_mm"),
+                "t (mm)":           p.get("t_mm"),
+                "Cáp (sợi)":        p.get("n_strands"),
+                "φ cáp (mm)":       p.get("phi_strand_mm"),
+                "Atd (cm²)":        _Atd,
+                "Itd (cm⁴)":        _Itd,
+                "Mcr (T.m)":        _Mcr,
+                "Mcr (kN.m)":       round(_Mcr * 9.81, 1),
+                "EI (kN·m²/m)":     round(_EI_m, 0),
+                "TL (T/cọc)":       p.get("weight_T"),
+                "L tc (m)":         p.get("L_std_m"),
+                "L min (m)":        p.get("L_min_m"),
+                "L max (m)":        p.get("L_max_m"),
+                "Spacing (mm)":     p.get("width_mm", 996),
+            })
 
-            _cat_rows = []
-            for p in _sw_piles:
-                _Itd  = p.get("Itd_cm4", 0) or 0
-                _Atd  = p.get("Atd_cm2", 0) or 0
-                _Mcr  = p.get("Mcr_Tm", 0) or 0
-                _EI   = _Ec_sel * _Itd * 1e-8          # kN·m²/m (chia spacing 0.996 m)
-                _EI_m = _EI / (p.get("width_mm", 996) / 1000)
-                _cat_rows.append({
-                    "Loại cọc":        p["name"],
-                    "H (mm)":          p.get("H_mm"),
-                    "t (mm)":          p.get("t_mm"),
-                    "Cáp (sợi)":       p.get("n_strands"),
-                    "φ cáp (mm)":      p.get("phi_strand_mm"),
-                    "Atd (cm²)":       _Atd,
-                    "Itd (cm⁴)":       _Itd,
-                    "Mcr (T.m)":       _Mcr,
-                    "Mcr (kN.m)":      round(_Mcr * 9.81, 1),
-                    "EI (kN·m²/m)":    round(_EI_m, 0),
-                    "TL (T/cọc)":      p.get("weight_T"),
-                    "L tiêu chuẩn (m)":p.get("L_std_m"),
-                    "L min (m)":       p.get("L_min_m"),
-                    "L max (m)":       p.get("L_max_m"),
-                    "Spacing (mm)":    p.get("width_mm", 996),
-                })
+        def _hi_sw(row):
+            if row["Loại cọc"] in ("SW-840", "SW-940"):
+                return ["background-color:#fff3cd"] * len(row)
+            return [""] * len(row)
 
-            _df_cat = pd.DataFrame(_cat_rows)
-            # Highlight hàng SW-840 và SW-940 (cọc được chọn cho TTHC)
-            def _hi_sw(row):
-                if row["Loại cọc"] in ("SW-840", "SW-940"):
-                    return ["background-color:#fff3cd"] * len(row)
-                return [""] * len(row)
-
-            st.dataframe(
-                _df_cat.style.apply(_hi_sw, axis=1),
-                use_container_width=True, hide_index=True,
-            )
-            st.caption(
-                f"Ec = {_Ec_sel/1000:.0f} MPa ({_fc_sel}). "
-                "Hàng vàng = cọc đã chọn cho dự án TTHC (SW-840 / SW-940). "
-                "EI tính trên 1 m dài tường (chia spacing)."
-            )
-
-            # Biểu đồ Mcr vs H
-            if _HAS_PLOTLY:
-                _fig_cat = go.Figure()
-                _xs = [p.get("H_mm") for p in _sw_piles]
-                _ys = [round((p.get("Mcr_Tm") or 0) * 9.81, 1) for p in _sw_piles]
-                _nm = [p["name"] for p in _sw_piles]
-                _fig_cat.add_trace(go.Scatter(
-                    x=_xs, y=_ys, mode="markers+text", text=_nm,
-                    textposition="top center",
-                    marker=dict(size=10,
-                                color=["#FF6B35" if n in ("SW-840","SW-940") else "#4A90D9"
-                                       for n in _nm]),
-                    name="Mcr (kN·m/cọc)",
-                ))
-                _fig_cat.update_layout(
-                    title="Mô men nứt Mcr theo chiều cao tiết diện",
-                    xaxis_title="Chiều cao H (mm)",
-                    yaxis_title="Mcr (kN·m/cọc)",
-                    height=350, margin=dict(t=40, b=40),
-                )
-                st.plotly_chart(_fig_cat, use_container_width=True)
-
-    # ── Tab 2: Kết quả TTHC ─────────────────────────────────────────────────────
-    with _sw_tab2:
-        st.markdown("**Kết quả thiết kế cọc ván SW — Kè Công Viên TTHC**")
-        if not _ke_data:
-            st.warning("Không tải được dữ liệu. Kiểm tra `data/ke_sw_202605_TTHC.json`.")
-        else:
-            _dc = _ke_data.get("design_conditions", {})
-            _bhs_ke = _ke_data.get("boreholes", [])
-            _sum_ke = _ke_data.get("pile_selection_summary", {})
-
-            # Điều kiện thiết kế
-            _d1, _d2, _d3 = st.columns(3)
-            _d1.metric("Cao độ đỉnh kè (m)", _dc.get("top_ke_elevation_m", "–"))
-            _d2.metric("Lớp bùn sét yếu", _dc.get("soft_clay_layer_symbol", "–"))
-            _d3.metric("Xuyên qua lớp yếu (m)", _dc.get("min_penetration_below_soft_clay_m", "–"))
-
-            st.divider()
-
-            # Bảng tổng hợp hố khoan
-            _ke_rows = []
-            for _bh in _bhs_ke:
-                _nt2 = _bh.get("NT2_multilayer") or {}
-                _ke_rows.append({
-                    "Hố khoan":         _bh["name"],
-                    "Z mặt đất (m)":    _bh.get("Z_m"),
-                    "H lớp 1 (m)":      _bh.get("H_layer1_m"),
-                    "L yêu cầu NT1 (m)":_bh.get("L_req_m"),
-                    "Cọc kiến nghị":    _bh.get("recommended_pile"),
-                    "L thiết kế (m)":   _bh.get("recommended_L_m"),
-                    "NT1":              _bh.get("NT1"),
-                    "NT2":              _bh.get("NT2"),
-                    "RR/W":             round(_nt2.get("ratio", 0), 2) if _nt2 else "–",
-                    "Ghi chú":          _bh.get("note", ""),
-                })
-
-            _df_ke = pd.DataFrame(_ke_rows)
-
-            def _color_nt(val):
-                if val in ("PASS", True):
-                    return "background-color:#d4edda; color:#155724"
-                if val == "PASS_CRITICAL":
-                    return "background-color:#fff3cd; color:#856404"
-                if val in ("FAIL", False):
-                    return "background-color:#f8d7da; color:#721c24"
-                if val == "SPECIAL":
-                    return "background-color:#e2e3e5; color:#383d41"
-                return ""
-
-            st.dataframe(
-                _df_ke.style.map(_color_nt, subset=["NT1", "NT2"]),
-                use_container_width=True, hide_index=True,
-            )
-
-            # Kết luận chọn cọc
-            st.divider()
-            _sc1, _sc2 = st.columns(2)
-            with _sc1:
-                st.markdown("**Phương án A — Đồng nhất tuyến**")
-                _oA = _sum_ke.get("option_A", {})
-                st.info(
-                    f"Cọc: **{_oA.get('pile_type')}**  \n"
-                    f"Chiều dài: **{_oA.get('L_m')} m**  \n"
-                    f"Áp dụng: {', '.join(_oA.get('applies_to', []))}"
-                )
-            with _sc2:
-                st.markdown("**Phương án B — Khu vực HK10**")
-                _oB = _sum_ke.get("option_B", {})
-                st.warning(
-                    f"Cọc: **{_oB.get('pile_type')}**  \n"
-                    f"Chiều dài: **{_oB.get('L_m')} m**  \n"
-                    f"Lý do: {_oB.get('note', '')}"
-                )
-
-            # Biểu đồ NT2 ratio
-            if _HAS_PLOTLY and _ke_rows:
-                _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
-                _ratios_plot = [float(r["RR/W"]) for r in _ke_rows if r["RR/W"] != "–"]
-                _colors_plot = [
-                    "#FF6B35" if v == min(_ratios_plot) else "#4A90D9"
-                    for v in _ratios_plot
-                ]
-                _fig_nt2 = go.Figure()
-                _fig_nt2.add_trace(go.Bar(
-                    x=_names_plot, y=_ratios_plot,
-                    marker_color=_colors_plot,
-                    text=[f"{v:.2f}" for v in _ratios_plot],
-                    textposition="outside",
-                    name="RR/W",
-                ))
-                _fig_nt2.add_hline(y=1.0, line_dash="dash", line_color="red",
-                                   annotation_text="Giới hạn NT2 (RR ≥ W)")
-                _fig_nt2.update_layout(
-                    title="Tỷ số NT2: RR/W theo hố khoan",
-                    yaxis_title="RR / W", xaxis_title="Hố khoan",
-                    height=350, margin=dict(t=40, b=40),
-                    yaxis=dict(range=[0, max(_ratios_plot) * 1.2 if _ratios_plot else 3]),
-                )
-                st.plotly_chart(_fig_nt2, use_container_width=True)
-            st.caption(
-                "Hố kiểm soát NT2: HK8 (tỷ số 1.86 — mũi cọc dừng ở cát 2b, "
-                "lớp 1 ngắn nhất H=19.5m). Nguồn: ke_sw_202605_TTHC.json."
-            )
-
-    # ── Tab 3: Kiểm tra NT1 / NT2 tùy chỉnh ─────────────────────────────────
-    with _sw_tab3:
-        st.markdown("**Kiểm tra sức chịu tải cọc SW — nhập thông số tùy chỉnh**")
-        st.info(
-            "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
-            "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
-            "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
+        st.dataframe(
+            pd.DataFrame(_cat_rows).style.apply(_hi_sw, axis=1),
+            use_container_width=True, hide_index=True,
+        )
+        st.caption(
+            f"Ec = {_Ec_sel/1000:.0f} MPa ({_fc_sel}). "
+            "Hàng vàng = cọc đã chọn cho dự án TTHC (SW-840 / SW-940). "
+            "EI tính trên 1 m dài tường (chia spacing)."
         )
 
-        _c1, _c2, _c3 = st.columns(3)
-        with _c1:
-            _sw_sel   = st.selectbox("Loại cọc SW", _sw_names, index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0, key="sw_sel")
-            _L_des    = st.number_input("Chiều dài thiết kế L (m)", 10.0, 35.0, 29.0, 0.5, key="sw_L")
-            _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
-        with _c2:
-            _Z_nat    = st.number_input("Cao độ mặt đất tự nhiên (m)", -5.0, 3.0, -0.80, 0.05, key="sw_Z")
-            _H_lyr1   = st.number_input("Chiều dày lớp bùn sét H₁ (m)", 5.0, 35.0, 22.0, 0.5, key="sw_H1")
-            _su_avg   = st.number_input("Su trung bình lớp bùn (kN/m²)", 5.0, 50.0, 10.0, 1.0, key="sw_su")
-        with _c3:
-            _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
-            _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
-            _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
+        if _HAS_PLOTLY:
+            _fig_cat = go.Figure()
+            _xs = [p.get("H_mm") for p in _sw_piles]
+            _ys = [round((p.get("Mcr_Tm") or 0) * 9.81, 1) for p in _sw_piles]
+            _nm = [p["name"] for p in _sw_piles]
+            _fig_cat.add_trace(go.Scatter(
+                x=_xs, y=_ys, mode="markers+text", text=_nm,
+                textposition="top center",
+                marker=dict(size=10,
+                            color=["#FF6B35" if n in ("SW-840", "SW-940") else "#4A90D9"
+                                   for n in _nm]),
+                name="Mcr (kN·m/cọc)",
+            ))
+            _fig_cat.update_layout(
+                title="Mô men nứt Mcr theo chiều cao tiết diện",
+                xaxis_title="Chiều cao H (mm)",
+                yaxis_title="Mcr (kN·m/cọc)",
+                height=320, margin=dict(t=40, b=40),
+            )
+            st.plotly_chart(_fig_cat, use_container_width=True)
 
-        if st.button("Kiểm tra NT1 / NT2", type="primary", key="sw_check"):
-            _pile = _sw_by_name(_sw_sel)
-            if _pile is None:
-                st.error(f"Không tìm thấy cọc {_sw_sel} trong catalog.")
-            else:
-                # Thông số cọc
-                _TL_T   = _pile.get("weight_T", 0) or 0
-                _Lstd   = _pile.get("L_std_m", 1) or 1
-                _spc_m  = (_pile.get("width_mm", 996)) / 1000
-                _peri_m = (_pile.get("perimeter_mm") or 0) / 1000
-                _Ap_m2  = (_pile.get("Atd_cm2", 0) or 0) * 1e-4
-                _Mcr_kNm = (_pile.get("Mcr_Tm", 0) or 0) * 9.81
+    # ── B. Kết quả thiết kế TTHC ────────────────────────────────────────────────
+    st.divider()
+    st.markdown("### B. Kết quả thiết kế — Kè Công Viên TTHC")
+    if not _ke_data:
+        st.warning("Không tải được dữ liệu. Kiểm tra `data/ke_sw_202605_TTHC.json`.")
+    else:
+        _dc     = _ke_data.get("design_conditions", {})
+        _bhs_ke = _ke_data.get("boreholes", [])
+        _sum_ke = _ke_data.get("pile_selection_summary", {})
 
-                # Trọng lượng cọc
-                _w_per_pile = _TL_T * 9.81 / _Lstd         # kN/m/cọc
-                _W_pile     = _w_per_pile * _L_des          # kN/cọc
+        _d1, _d2, _d3 = st.columns(3)
+        _d1.metric("Cao độ đỉnh kè (m)", _dc.get("top_ke_elevation_m", "–"))
+        _d2.metric("Lớp bùn sét yếu", _dc.get("soft_clay_layer_symbol", "–"))
+        _d3.metric("Xuyên qua lớp yếu (m)", _dc.get("min_penetration_below_soft_clay_m", "–"))
 
-                # NT1: chiều dài tối thiểu
-                _L_req_nt1  = _top_ke - _Z_nat + _H_lyr1 + _min_pen
-                _nt1_ok     = _L_des >= _L_req_nt1
-                _nt1_margin = _L_des - _L_req_nt1
+        # Bảng tổng hợp 12 hố khoan — trải phẳng NT2
+        _ke_rows = []
+        for _bh in _bhs_ke:
+            _nt2 = _bh.get("NT2_multilayer") or {}
+            _ke_rows.append({
+                "Hố khoan":          _bh["name"],
+                "Tuyến kè":          "Có" if _bh.get("on_sw_alignment") else "–",
+                "Z (m)":             _bh.get("Z_m"),
+                "H lớp 1 (m)":       _bh.get("H_layer1_m"),
+                "L yêu cầu (m)":     _bh.get("L_req_m"),
+                "Cọc kiến nghị":     _bh.get("recommended_pile"),
+                "L thiết kế (m)":    _bh.get("recommended_L_m"),
+                "NT1":               _bh.get("NT1"),
+                "NT2":               _bh.get("NT2"),
+                "Rs (kN)":           _nt2.get("Rs_kN", "–"),
+                "Rp (kN)":           _nt2.get("Rp_kN", "–"),
+                "RR (kN)":           _nt2.get("RR_kN", "–"),
+                "W (kN)":            round(_bh.get("W_pile_kN", 0), 1),
+                "RR/W":              round(_nt2.get("ratio", 0), 2) if _nt2 else "–",
+                "Ghi chú":           _bh.get("note", ""),
+            })
 
-                # NT2: alpha-method
-                _fill_m   = _top_ke - _Z_nat
-                _L_soil_m = max(0.0, _L_des - _fill_m)
-                _Rs_kN    = _alpha_sw * _su_avg * _peri_m * _L_soil_m if _peri_m > 0 else 0
-                _Rp_kN    = 9.0 * _su_avg * _Ap_m2
-                _Rn_kN    = _Rs_kN + _Rp_kN
-                _RR_kN    = _phi_stat * _Rn_kN
-                _nt2_ok   = _RR_kN >= _W_pile
-                _ratio_nt2 = _RR_kN / _W_pile if _W_pile > 0 else 0
+        def _color_nt(val):
+            if val in ("PASS", True):   return "background-color:#d4edda; color:#155724"
+            if val == "PASS_CRITICAL":  return "background-color:#fff3cd; color:#856404"
+            if val in ("FAIL", False):  return "background-color:#f8d7da; color:#721c24"
+            if val == "SPECIAL":        return "background-color:#e2e3e5; color:#383d41"
+            return ""
 
-                # Hiển thị
-                _r1, _r2, _r3, _r4 = st.columns(4)
-                _r1.metric("NT1 — L yêu cầu (m)", f"{_L_req_nt1:.1f}",
-                           f"{'Đạt' if _nt1_ok else 'Không đạt'} (biên {_nt1_margin:+.1f} m)",
-                           delta_color="normal" if _nt1_ok else "inverse")
-                _r2.metric("W cọc (kN)", f"{_W_pile:.1f}",
-                           f"{_TL_T:.2f} T × 9.81 / {_Lstd}m × {_L_des}m")
-                _r3.metric("RR = φ(Rs+Rp) (kN)", f"{_RR_kN:.1f}",
-                           f"Rs={_Rs_kN:.0f}  Rp={_Rp_kN:.0f}",
-                           delta_color="normal" if _nt2_ok else "inverse")
-                _r4.metric("NT2 — Tỷ số RR/W", f"{_ratio_nt2:.2f}",
-                           "Đạt" if _nt2_ok else "Không đạt",
-                           delta_color="normal" if _nt2_ok else "inverse")
+        st.dataframe(
+            pd.DataFrame(_ke_rows).style.map(_color_nt, subset=["NT1", "NT2"]),
+            use_container_width=True, hide_index=True,
+        )
 
-                st.divider()
-                _det = {
+        # Kết luận phương án
+        _sc1, _sc2 = st.columns(2)
+        with _sc1:
+            st.markdown("**Phương án A — Đồng nhất tuyến**")
+            _oA = _sum_ke.get("option_A", {})
+            st.info(
+                f"Cọc: **{_oA.get('pile_type')}**  \n"
+                f"Chiều dài: **{_oA.get('L_m')} m**  \n"
+                f"Áp dụng: {', '.join(_oA.get('applies_to', []))}"
+            )
+        with _sc2:
+            st.markdown("**Phương án B — Khu vực KE-HK10**")
+            _oB = _sum_ke.get("option_B", {})
+            st.warning(
+                f"Cọc: **{_oB.get('pile_type')}**  \n"
+                f"Chiều dài: **{_oB.get('L_m')} m**  \n"
+                f"Lý do: {_oB.get('note', '')}"
+            )
+
+        if _HAS_PLOTLY and _ke_rows:
+            _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
+            _ratios_plot = [float(r["RR/W"]) for r in _ke_rows if r["RR/W"] != "–"]
+            _on_align    = [r["Tuyến kè"] == "Có" for r in _ke_rows if r["RR/W"] != "–"]
+            _colors_plot = [
+                "#FF6B35" if v == min(_ratios_plot)
+                else "#2E7D32" if on else "#4A90D9"
+                for v, on in zip(_ratios_plot, _on_align)
+            ]
+            _fig_nt2 = go.Figure()
+            _fig_nt2.add_trace(go.Bar(
+                x=_names_plot, y=_ratios_plot,
+                marker_color=_colors_plot,
+                text=[f"{v:.2f}" for v in _ratios_plot],
+                textposition="outside",
+                name="RR/W",
+            ))
+            _fig_nt2.add_hline(y=1.0, line_dash="dash", line_color="red",
+                               annotation_text="Giới hạn NT2 (RR ≥ W)")
+            _fig_nt2.update_layout(
+                title="Tỷ số NT2: RR/W theo hố khoan  (xanh lá = trên tuyến kè | xanh dương = ngoài tuyến | cam = kiểm soát)",
+                yaxis_title="RR / W", xaxis_title="Hố khoan",
+                height=350, margin=dict(t=50, b=40),
+                yaxis=dict(range=[0, max(_ratios_plot) * 1.2 if _ratios_plot else 3]),
+            )
+            st.plotly_chart(_fig_nt2, use_container_width=True)
+        st.caption(
+            "Xanh lá = hố khoan trên tuyến kè SW (7 HK). "
+            "Cam = HK kiểm soát (tỷ số nhỏ nhất). "
+            "Nguồn: ke_sw_202605_TTHC.json + borehole_name_mapping (on_sw_alignment)."
+        )
+
+    # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
+    st.divider()
+    st.markdown("### C. Kiểm tra NT1 / NT2 — nhập thông số tùy chỉnh")
+    st.info(
+        "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
+        "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
+        "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
+    )
+
+    _c1, _c2, _c3 = st.columns(3)
+    with _c1:
+        _sw_sel   = st.selectbox("Loại cọc SW", _sw_names,
+                                 index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
+                                 key="sw_sel")
+        _L_des    = st.number_input("Chiều dài thiết kế L (m)", 10.0, 35.0, 29.0, 0.5, key="sw_L")
+        _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
+    with _c2:
+        _Z_nat    = st.number_input("Cao độ mặt đất tự nhiên (m)", -5.0, 3.0, -0.80, 0.05, key="sw_Z")
+        _H_lyr1   = st.number_input("Chiều dày lớp bùn sét H₁ (m)", 5.0, 35.0, 22.0, 0.5, key="sw_H1")
+        _su_avg   = st.number_input("Su trung bình lớp bùn (kN/m²)", 5.0, 50.0, 10.0, 1.0, key="sw_su")
+    with _c3:
+        _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
+        _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
+        _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
+
+    if st.button("Kiểm tra NT1 / NT2", type="primary", key="sw_check"):
+        _pile = _sw_by_name(_sw_sel)
+        if _pile is None:
+            st.error(f"Không tìm thấy cọc {_sw_sel} trong catalog.")
+        else:
+            _TL_T    = _pile.get("weight_T", 0) or 0
+            _Lstd    = _pile.get("L_std_m", 1) or 1
+            _spc_m   = (_pile.get("width_mm", 996)) / 1000
+            _peri_m  = (_pile.get("perimeter_mm") or 0) / 1000
+            _Ap_m2   = (_pile.get("Atd_cm2", 0) or 0) * 1e-4
+
+            _w_per_pile = _TL_T * 9.81 / _Lstd
+            _W_pile     = _w_per_pile * _L_des
+
+            _L_req_nt1  = _top_ke - _Z_nat + _H_lyr1 + _min_pen
+            _nt1_ok     = _L_des >= _L_req_nt1
+            _nt1_margin = _L_des - _L_req_nt1
+
+            _fill_m    = _top_ke - _Z_nat
+            _L_soil_m  = max(0.0, _L_des - _fill_m)
+            _Rs_kN     = _alpha_sw * _su_avg * _peri_m * _L_soil_m if _peri_m > 0 else 0
+            _Rp_kN     = 9.0 * _su_avg * _Ap_m2
+            _RR_kN     = _phi_stat * (_Rs_kN + _Rp_kN)
+            _nt2_ok    = _RR_kN >= _W_pile
+            _ratio_nt2 = _RR_kN / _W_pile if _W_pile > 0 else 0
+
+            _r1, _r2, _r3, _r4 = st.columns(4)
+            _r1.metric("NT1 — L yêu cầu (m)", f"{_L_req_nt1:.1f}",
+                       f"{'Đạt' if _nt1_ok else 'Không đạt'} (biên {_nt1_margin:+.1f} m)",
+                       delta_color="normal" if _nt1_ok else "inverse")
+            _r2.metric("W cọc (kN)", f"{_W_pile:.1f}",
+                       f"{_TL_T:.2f} T × 9.81 / {_Lstd}m × {_L_des}m")
+            _r3.metric("RR = φ(Rs+Rp) (kN)", f"{_RR_kN:.1f}",
+                       f"Rs={_Rs_kN:.0f}  Rp={_Rp_kN:.0f}",
+                       delta_color="normal" if _nt2_ok else "inverse")
+            _r4.metric("NT2 — Tỷ số RR/W", f"{_ratio_nt2:.2f}",
+                       "Đạt" if _nt2_ok else "Không đạt",
+                       delta_color="normal" if _nt2_ok else "inverse")
+
+            st.dataframe(
+                pd.DataFrame({
                     "Thông số": [
-                        "Loại cọc", "Chiều dài L (m)", "Spacing (m)", "Chu vi (m)",
-                        "Diện tích mũi Ap (cm²)", "Trọng lượng w (kN/m/cọc)", "W cọc (kN)",
-                        "Phần đất đắp fill (m)", "Phần trong đất L_soil (m)",
-                        "Rs (kN)", "Rp (kN)", "RR = φ×(Rs+Rp) (kN)",
-                        "Kết quả NT2",
+                        "Loại cọc", "Chiều dài L (m)", "Spacing (m)", "Chu vi P (m)",
+                        "Diện tích mũi Ap (cm²)", "w (kN/m/cọc)", "W cọc (kN)",
+                        "Phần đất đắp (m)", "Phần trong đất L_soil (m)",
+                        "Rs (kN)", "Rp (kN)", "RR = φ×(Rs+Rp) (kN)", "Kết quả NT2",
                     ],
                     "Giá trị": [
                         _sw_sel, f"{_L_des:.1f}", f"{_spc_m:.3f}",
-                        f"{_peri_m:.4f}" if _peri_m > 0 else "– (thiếu trong catalog)",
+                        f"{_peri_m:.4f}" if _peri_m > 0 else "– (chưa có trong catalog)",
                         f"{_Ap_m2*1e4:.0f}",
                         f"{_w_per_pile:.2f}", f"{_W_pile:.1f}",
                         f"{_fill_m:.2f}", f"{_L_soil_m:.2f}",
                         f"{_Rs_kN:.1f}", f"{_Rp_kN:.1f}", f"{_RR_kN:.1f}",
                         "Đạt" if _nt2_ok else "Không đạt",
                     ],
-                }
-                st.dataframe(
-                    pd.DataFrame(_det).style.apply(
-                        lambda col: [
-                            "background-color:#d4edda" if "Đạt" in str(v) and "Không" not in str(v)
-                            else "background-color:#f8d7da" if "Không đạt" in str(v)
-                            else "" for v in col
-                        ],
-                        subset=["Giá trị"],
-                    ),
-                    use_container_width=True, hide_index=True,
-                )
+                }).style.apply(
+                    lambda col: [
+                        "background-color:#d4edda" if "Đạt" in str(v) and "Không" not in str(v)
+                        else "background-color:#f8d7da" if "Không đạt" in str(v)
+                        else "" for v in col
+                    ],
+                    subset=["Giá trị"],
+                ),
+                use_container_width=True, hide_index=True,
+            )
 
-                if _peri_m == 0:
-                    st.warning(
-                        f"Cọc {_sw_sel} chưa có chu vi trong catalog (perimeter_mm = null). "
-                        "Rs = 0. Cần bổ sung thông số từ nhà sản xuất để tính NT2 chính xác."
-                    )
-
-                st.caption(
-                    "Công thức: Rs = α × Su × P × L_soil  |  "
-                    "Rp = 9 × Su × Ap  |  RR = 0,35 × (Rs + Rp)  |  "
-                    "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
+            if _peri_m == 0:
+                st.warning(
+                    f"Cọc {_sw_sel} chưa có chu vi trong catalog (perimeter_mm = null). "
+                    "Rs = 0. Cần bổ sung thông số từ nhà sản xuất để tính NT2 chính xác."
                 )
+            st.caption(
+                "Công thức: Rs = α × Su × P × L_soil  |  "
+                "Rp = 9 × Su × Ap  |  RR = 0,35 × (Rs + Rp)  |  "
+                "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
+            )
 
