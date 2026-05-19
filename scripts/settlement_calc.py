@@ -713,7 +713,8 @@ def check_samples_vs_tccs41(zone_code: str) -> dict:
         params_out = {}
 
         for db_col, label, _desc, soft_only in _PARAMS_537:
-            vals = [r[db_col] for r in sample_list if r[db_col] is not None]
+            vals = [r[db_col] for r in sample_list
+                    if r[db_col] is not None and isinstance(r[db_col], (int, float))]
             n = len(vals)
             if n == 0:
                 params_out[label] = {"n": 0, "ok": None}
