@@ -4165,6 +4165,7 @@ if _page == "ke_sw":
             if _p["name"] not in _seen_names:
                 _seen_names.add(_p["name"])
                 _catalog_sorted.append(_p)
+        _pile_options = [_p["name"] for _p in _catalog_sorted]
 
         def _optimal_pile(L_req: float) -> tuple[str, float]:
             """Cọc nhỏ nhất có L_max ≥ L_req. Trả (name, L_max)."""
@@ -4174,22 +4175,41 @@ if _page == "ke_sw":
             last = _catalog_sorted[-1] if _catalog_sorted else {}
             return "Vượt catalog", last.get("L_max_m", 0)
 
+        # Session state: lưu lựa chọn "Cọc kiến nghị" của người dùng
+        _rec_key = "ke_sw_rec_piles"
+        if _rec_key not in st.session_state:
+            st.session_state[_rec_key] = {}
+
         # Bảng tổng hợp — chỉ các HK trên tuyến kè SW (on_sw_alignment=True)
         _bhs_on_alignment = [b for b in _bhs_ke if b.get("on_sw_alignment")]
+
+        # Nút tự động điền cọc tối ưu
+        _btn_opt = st.button("Dùng cọc tối ưu cho tất cả", key="btn_use_optimal")
+        if _btn_opt:
+            for _bh in _bhs_on_alignment:
+                _on, _ = _optimal_pile(_bh.get("L_req_m") or 0)
+                st.session_state[_rec_key][_bh["name"]] = _on
+            st.rerun()
+
         _ke_rows = []
         for _bh in _bhs_on_alignment:
             _nt2    = _bh.get("NT2_multilayer") or {}
             _L_req  = _bh.get("L_req_m") or 0
             _opt_name, _opt_Lmax = _optimal_pile(_L_req)
+            # "Cọc kiến nghị": session_state → JSON default → optimal
+            _rec = st.session_state[_rec_key].get(
+                _bh["name"],
+                _bh.get("recommended_pile") or _opt_name,
+            )
             _ke_rows.append({
                 "Hố khoan":          _bh["name"],
                 "Z (m)":             _bh.get("Z_m"),
                 "H lớp 1 (m)":       _bh.get("H_layer1_m"),
                 "L yêu cầu (m)":     _L_req,
                 "Cọc tối ưu":        _opt_name,
-                "L_max cọc (m)":     _opt_Lmax,
+                "L_max (m)":         _opt_Lmax,
                 "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
-                "Cọc kiến nghị":     _bh.get("recommended_pile"),
+                "Cọc kiến nghị":     _rec,
                 "L thiết kế (m)":    _bh.get("recommended_L_m"),
                 "NT1":               _bh.get("NT1"),
                 "NT2":               _bh.get("NT2"),
@@ -4201,24 +4221,30 @@ if _page == "ke_sw":
                 "Ghi chú":           _bh.get("note", ""),
             })
 
-        def _color_nt(val):
-            if val in ("PASS", True, "Đạt"):   return "background-color:#d4edda; color:#155724"
-            if val == "PASS_CRITICAL":          return "background-color:#fff3cd; color:#856404"
-            if val in ("FAIL", False, "Không đạt", "Vượt catalog"):
-                return "background-color:#f8d7da; color:#721c24"
-            if val == "SPECIAL":               return "background-color:#e2e3e5; color:#383d41"
-            return ""
-
         if not _ke_rows:
             st.warning("Không có hố khoan nào có on_sw_alignment=True trong dữ liệu.")
         else:
-            st.dataframe(
-                pd.DataFrame(_ke_rows).style.map(
-                    _color_nt,
-                    subset=["NT1", "NT2", "Đủ chiều dài"],
-                ),
-                use_container_width=True, hide_index=True,
+            _df_b = pd.DataFrame(_ke_rows)
+            _disabled_b = [c for c in _df_b.columns if c != "Cọc kiến nghị"]
+            _edited_b = st.data_editor(
+                _df_b,
+                column_config={
+                    "Cọc kiến nghị": st.column_config.SelectboxColumn(
+                        "Cọc kiến nghị",
+                        options=_pile_options,
+                        required=True,
+                        width="medium",
+                    ),
+                    "Đủ chiều dài": st.column_config.Column(width="small"),
+                },
+                disabled=_disabled_b,
+                hide_index=True,
+                use_container_width=True,
+                key="ke_b_editor",
             )
+            # Lưu chỉnh sửa vào session state
+            for _, _row in _edited_b.iterrows():
+                st.session_state[_rec_key][_row["Hố khoan"]] = _row["Cọc kiến nghị"]
 
         # Kết luận phương án
         _sc1, _sc2 = st.columns(2)
