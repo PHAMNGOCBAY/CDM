@@ -4111,6 +4111,11 @@ if _page == "ke_sw":
     # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
     st.divider()
     st.markdown("### C. Kiểm tra NT1 / NT2 — nhập thông số tùy chỉnh")
+
+    _img_geodata = _ROOT / "images" / "geodata_lateral_pile.png"
+    if _img_geodata.exists():
+        st.image(str(_img_geodata), caption="Giao diện nhập liệu tab Geo Data — ứng dụng phân tích cọc chịu tải trọng ngang (SW Prestressed Concrete)", use_container_width=True)
+
     st.info(
         "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
         "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
