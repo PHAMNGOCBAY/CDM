@@ -545,7 +545,95 @@ def compare_methods(bh_name: str,
 
 
 # ──────────────────────────────────────────────────────────────────
-# 6. KIỂM TRA SỐ LƯỢNG MẪU vs TCCS41 Điều 5.3.7
+# 6. TÍNH LÚN SƠ BỘ TKCS — Điều 9.2.3 TCCS 41:2022 (VÒNG LẶP)
+# ──────────────────────────────────────────────────────────────────
+
+def calc_settlement_iterative_9_2_3(
+    bh_name: str,
+    zone_code: str,
+    H_fill_m: float = 3.0,
+    gamma_fill: float = 20.0,
+    gwt_depth_m: float = 0.0,
+    S_gt_init_pct: float = 7.5,
+    tolerance_cm: float = 1.0,
+    max_iter: int = 20,
+) -> dict:
+    """
+    Tính lún sơ bộ TKCS theo trình tự lặp Điều 9.2.3 TCCS 41:2022.
+
+    Trình tự:
+      1. Giả thiết S_gt = S_gt_init_pct% × H_soft  (5-10% đất thường, 20-30% than bùn)
+      2. H'_tk = H_fill + S_gt_m  (chiều cao đắp hiệu dụng, gồm phần đắp lún vào)
+      3. Δσ = H'_tk × γ_fill  → tính S_c = Σ Cc-formula per layer
+      4. Nếu |S_c - S_gt| < tolerance → hội tụ; else S_gt = S_c, quay bước 2
+
+    Trả về dict với iterations list và S_final_cm (có hiệu chỉnh).
+    """
+    cfg = _load_cfg()
+    zone_params = cfg["zone_soil_params"].get(zone_code, cfg["zone_soil_params"]["NHC"])
+    d_range = zone_params.get("soft_clay_depth_m", [0, 30])
+    H_soft_m = float(d_range[1] - d_range[0])
+
+    # Tham chiếu: S không lặp (Δσ = H_fill × γ_fill)
+    result_ref = calc_settlement_from_db(
+        bh_name, H_fill_m=H_fill_m, gamma_fill=gamma_fill,
+        gwt_depth_m=gwt_depth_m, fallback_zone_params=zone_params,
+    )
+    S_ref_cm = result_ref["S_total_cm"] or 0.0
+
+    # Bước 1: Khởi tạo S_gt
+    S_gt_cm = (S_gt_init_pct / 100.0) * H_soft_m * 100.0
+
+    iterations = []
+    converged = False
+    S_calc_cm = S_gt_cm
+
+    for i in range(max_iter):
+        S_gt_m = S_gt_cm / 100.0
+        H_eff  = H_fill_m + S_gt_m          # H'_tk = H_tk + S_gt
+        result = calc_settlement_from_db(
+            bh_name, H_fill_m=H_eff, gamma_fill=gamma_fill,
+            gwt_depth_m=gwt_depth_m, fallback_zone_params=zone_params,
+        )
+        S_calc_cm = result["S_total_cm"] or 0.0
+        delta     = abs(S_calc_cm - S_gt_cm)
+
+        iterations.append({
+            "iter":       i + 1,
+            "S_gt_cm":    round(S_gt_cm,   1),
+            "H_eff_m":    round(H_eff,     3),
+            "Dsigma_kPa": round(H_eff * gamma_fill, 1),
+            "S_calc_cm":  round(S_calc_cm, 1),
+            "delta_cm":   round(delta,     2),
+            "converged":  delta < tolerance_cm,
+        })
+
+        if delta < tolerance_cm:
+            converged = True
+            break
+        S_gt_cm = S_calc_cm
+
+    S_increase_pct = ((S_calc_cm - S_ref_cm) / S_ref_cm * 100) if S_ref_cm > 0 else 0.0
+
+    return {
+        "bh_name":         bh_name,
+        "zone_code":       zone_code,
+        "H_fill_m":        H_fill_m,
+        "H_soft_m":        H_soft_m,
+        "S_gt_init_cm":    round((S_gt_init_pct / 100.0) * H_soft_m * 100, 1),
+        "S_gt_init_pct":   S_gt_init_pct,
+        "S_ref_cm":        round(S_ref_cm, 1),
+        "S_final_cm":      round(S_calc_cm, 1),
+        "S_increase_pct":  round(S_increase_pct, 1),
+        "converged":       converged,
+        "n_iterations":    len(iterations),
+        "tolerance_cm":    tolerance_cm,
+        "iterations":      iterations,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────
+# 7. KIỂM TRA SỐ LƯỢNG MẪU vs TCCS41 Điều 5.3.7
 # ──────────────────────────────────────────────────────────────────
 
 # Thông số cần kiểm tra: (cột DB, nhãn ngắn, mô tả, chỉ dùng cho lớp yếu?)

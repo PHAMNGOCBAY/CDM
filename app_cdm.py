@@ -3139,6 +3139,7 @@ if _page == "settlement":
         from settlement_calc import (
             compare_methods as _sc_compare,
             check_samples_vs_tccs41 as _sc_check,
+            calc_settlement_iterative_9_2_3 as _sc_iter923,
         )
         _HAS_SC = True
     except Exception as _exc:
@@ -3466,6 +3467,93 @@ nhung khong thay doi S_total duoi tai thiet ke.
 TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
 (duong cap 1 doan thong thuong) sau khi lam xong mat duong.
 """)
+
+        # ── PHẦN 1b: Lún sơ bộ TKCS — Điều 9.2.3 TCCS 41:2022 ──────────────
+        st.divider()
+        st.markdown("### Tinh lun so bo TKCS — Dieu 9.2.3 TCCS 41:2022 (vong lap)")
+        st.caption(
+            "H'_tk = H_fill + S_gt — chieu cao dap hieu dung bao gom phan dap lun vao dat yeu. "
+            "Lap lai den khi |S_calc - S_gt| < tolerance. "
+            "Ket qua lon hon tinh toan mot lan (khong lap) do trong luong dap phan lun."
+        )
+        _it1, _it2, _it3 = st.columns([1, 1, 2])
+        with _it1:
+            _it_zone = st.radio("Zone", list(_ZONE_NAMES.keys()),
+                                format_func=lambda z: _ZONE_NAMES[z],
+                                key="it_zone")
+            _it_bhs = [b["name"] for b in _load_boreholes_by_zone(_it_zone)]
+            _it_bh  = st.selectbox("Ho khoan", _it_bhs, key="it_bh")
+        with _it2:
+            _it_H    = st.number_input("H_fill (m)", 1.0, 10.0, 3.0, 0.5, key="it_H")
+            _it_pct  = st.number_input("S_gt ban dau (% H_soft)", 1.0, 30.0, 7.5, 0.5,
+                                        key="it_pct",
+                                        help="Dat thuong: 5-10%; Than bun: 20-30% (Dieu 9.2.3)")
+            _it_tol  = st.number_input("Tolerance (cm)", 0.1, 5.0, 1.0, 0.1, key="it_tol")
+        with _it3:
+            st.caption(
+                "**Cong thuc:** H'_tk = H_fill + S_gt  →  Delta_sigma = H'_tk × gamma_fill  →  "
+                "S_c = Sum Cc-formula  →  kiem tra |S_c - S_gt| < tol"
+            )
+            st.caption("**Khi nao dung:** TKCS khi chua co mau Cc chi tiet — dung thong so trung binh zone.")
+
+        if st.button("Tinh lun so bo 9.2.3", type="secondary", key="it_calc"):
+            with st.spinner("Dang lap..."):
+                try:
+                    _iter_res = _sc_iter923(
+                        _it_bh, _it_zone,
+                        H_fill_m=float(_it_H),
+                        S_gt_init_pct=float(_it_pct),
+                        tolerance_cm=float(_it_tol),
+                    )
+                    st.session_state["it_result"] = _iter_res
+                except Exception as _e:
+                    st.error(f"Loi tinh toan 9.2.3: {_e}")
+
+        _iter_res = st.session_state.get("it_result")
+        if _iter_res:
+            _im1, _im2, _im3 = st.columns(3)
+            with _im1:
+                st.metric("Lun khong lap (tham chieu)",
+                          f"{_iter_res['S_ref_cm']:.0f} cm",
+                          help="Delta_sigma = H_fill × gamma (khong tinh phan dap lun vao)")
+            with _im2:
+                st.metric("Lun so bo TKCS (Dieu 9.2.3)",
+                          f"{_iter_res['S_final_cm']:.0f} cm",
+                          f"+{_iter_res['S_increase_pct']:.0f}% so voi khong lap",
+                          delta_color="inverse",
+                          help="Delta_sigma = H'_tk × gamma; H'_tk = H_fill + S_hoi_tu")
+            with _im3:
+                _cv_str = "Hoi tu" if _iter_res["converged"] else "Chua hoi tu"
+                st.metric(f"Vong lap ({_cv_str})",
+                          f"{_iter_res['n_iterations']} vong",
+                          f"tol={_iter_res['tolerance_cm']} cm | S_gt_init={_iter_res['S_gt_init_cm']:.0f} cm")
+
+            st.markdown(f"**Chi tiet vong lap** — Zone {_iter_res['zone_code']}, "
+                        f"HK {_iter_res['bh_name']}, H_fill={_iter_res['H_fill_m']}m, "
+                        f"H_soft={_iter_res['H_soft_m']}m")
+            _df_iter = pd.DataFrame(_iter_res["iterations"]).rename(columns={
+                "iter":       "Vong",
+                "S_gt_cm":    "S_gt (cm)",
+                "H_eff_m":    "H'_tk (m)",
+                "Dsigma_kPa": "Delta_sigma (kPa)",
+                "S_calc_cm":  "S_calc (cm)",
+                "delta_cm":   "Delta (cm)",
+                "converged":  "Hoi tu",
+            })
+            st.dataframe(
+                _df_iter.style.apply(
+                    lambda col: ["background-color:#d4edda" if v is True
+                                 else "background-color:#fff3cd" if v is False
+                                 else "" for v in col],
+                    subset=["Hoi tu"]
+                ),
+                use_container_width=True, hide_index=True,
+            )
+            st.caption(
+                f"Lun so bo TKCS = {_iter_res['S_final_cm']:.0f} cm "
+                f"(lon hon {_iter_res['S_increase_pct']:.0f}% so voi tinh mot lan). "
+                "Nguyen nhan: dat yeu bi nao xuong, can them dap bu → tang tai trong → tang lun them."
+            )
 
         # ── PHẦN 2: Kiểm tra mẫu vs TCCS41 Điều 5.3.7 ──────────────────────
         st.divider()
