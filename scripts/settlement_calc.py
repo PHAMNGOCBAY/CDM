@@ -1,0 +1,643 @@
+"""
+settlement_calc.py — Tính lún cố kết theo TCCS 41:2022/TCĐBVN
+
+Công thức từ Điều 9, Phụ lục A, B, D.
+Engine thuần Python — không phụ thuộc pandas/numpy để có thể gọi từ Streamlit.
+
+Hàm public:
+  calc_settlement_from_db(bh_name, H_fill_m, method, **kwargs) -> dict
+  calc_time_series(params, t_months_list) -> list[dict]
+  compare_methods(bh_name, H_fill_m, zone_params) -> list[dict]
+  check_samples_vs_tccs41(zone_code) -> dict
+"""
+
+from __future__ import annotations
+import math
+import sqlite3
+import json
+import os
+from pathlib import Path
+from typing import Optional
+
+_ROOT = Path(__file__).parent.parent
+_DB   = _ROOT / "data" / "TTHC.sqlite"
+_CFG  = _ROOT / "data" / "tccs41_params.json"
+
+GAMMA_W = 9.81          # kN/m³
+CM2_S_TO_M2_YR = 3.1536e7 / 1e4   # 1 cm²/s = 3 153.6 m²/yr
+
+
+# ──────────────────────────────────────────────────────────────────
+# 1. ĐỌC DỮ LIỆU TỪ SQLite
+# ──────────────────────────────────────────────────────────────────
+
+def _db():
+    return sqlite3.connect(_DB)
+
+
+def load_consol_samples(bh_name: str) -> list[dict]:
+    """Trả về danh sách mẫu nén cố kết của hố khoan, sắp xếp theo chiều sâu."""
+    with _db() as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute("""
+            SELECT lt.depth_from_m, lt.depth_to_m,
+                   lt.Cc, lt.Cs, lt.e0, lt.Cv_cm2s,
+                   lt.k_cm_s, lt.PC_kPa, lt.gamma_kNm3, lt.w_pct
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name = ?
+              AND lt.Cc IS NOT NULL
+            ORDER BY lt.depth_from_m
+        """, (bh_name,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def load_all_lab_tests(bh_name: str) -> list[dict]:
+    """Trả về tất cả mẫu lab (kể cả không có Cc) — dùng cho phân tích mẫu."""
+    with _db() as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute("""
+            SELECT lt.depth_from_m, lt.depth_to_m,
+                   lt.Cc, lt.Cs, lt.e0, lt.Cv_cm2s, lt.PC_kPa,
+                   lt.gamma_kNm3, lt.phi_deg, lt.c_kPa, lt.Cu_UU_kPa
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name = ?
+            ORDER BY lt.depth_from_m
+        """, (bh_name,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _load_cfg() -> dict:
+    with open(_CFG, encoding="utf-8") as f:
+        return json.load(f)
+
+
+# ──────────────────────────────────────────────────────────────────
+# 2. CÔNG THỨC CƠ BẢN
+# ──────────────────────────────────────────────────────────────────
+
+def calc_sigma_v0(depth_mid_m: float, gamma_sat: float,
+                  gwt_depth_m: float = 0.0) -> float:
+    """
+    Ứng suất hữu hiệu ban đầu tại độ sâu depth_mid_m.
+    Giả thiết: GWT tại gwt_depth_m, toàn bộ phía dưới bão hòa.
+    """
+    if depth_mid_m <= gwt_depth_m:
+        return gamma_sat * depth_mid_m
+    gamma_prime = gamma_sat - GAMMA_W
+    sigma = gamma_sat * gwt_depth_m + gamma_prime * (depth_mid_m - gwt_depth_m)
+    return max(sigma, 1.0)   # tránh log(0)
+
+
+def calc_delta_sigma(H_fill_m: float, gamma_fill: float = 20.0) -> float:
+    """
+    Ứng suất tăng thêm do đắp (kPa).
+    Dùng tải đều: Δσ = γ × H (theo TCCS41 Điều 9.1 cho B_fill >> H_soil).
+    """
+    return gamma_fill * H_fill_m
+
+
+def calc_settlement_layer(H_i: float, e0: float, Cc: float, Cs: float,
+                           sigma_v0: float, sigma_vf: float, PC: float) -> float:
+    """
+    Độ lún cố kết sơ cấp lớp i (m).
+    Phụ lục A — TCCS 41:2022.
+    """
+    if sigma_vf <= sigma_v0 or H_i <= 0:
+        return 0.0
+    if e0 <= 0:
+        e0 = 1.0
+    if PC is None or PC <= 0:
+        PC = sigma_v0 * 1.2   # giả thiết OCR=1.2 nếu không có PC
+
+    if sigma_vf <= PC:
+        # Quá cố kết hoàn toàn
+        S = H_i * Cs / (1 + e0) * math.log10(sigma_vf / sigma_v0)
+    elif sigma_v0 < PC:
+        # Cắt qua áp lực tiền cố kết
+        S = H_i * (
+            Cs / (1 + e0) * math.log10(PC / sigma_v0) +
+            Cc / (1 + e0) * math.log10(sigma_vf / PC)
+        )
+    else:
+        # Bình thường cố kết
+        S = H_i * Cc / (1 + e0) * math.log10(sigma_vf / sigma_v0)
+    return max(S, 0.0)
+
+
+def calc_Uv(Tv: float) -> float:
+    """Độ cố kết phương đứng Uv từ nhân tố thời gian Tv (TCCS41 Điều 9.3)."""
+    if Tv <= 0:
+        return 0.0
+    if Tv < 0.217:   # Uv < ~52.6%
+        Uv = 2.0 * math.sqrt(Tv / math.pi)
+    else:
+        Uv = 1.0 - (8.0 / math.pi ** 2) * math.exp(-math.pi ** 2 * Tv / 4.0)
+    return min(Uv, 0.9999)
+
+
+def calc_Uh(Ch_m2yr: float, t_yr: float, de_m: float, dw_m: float,
+             smear_ratio: float = 2.0, kh_ks: float = 3.0) -> float:
+    """
+    Độ cố kết phương ngang Uh — bấc thấm hoặc giếng cát.
+    Công thức 38 TCCS41 Điều 7.5.1 (có smear).
+
+    Ch_m2yr: hệ số cố kết ngang (m²/năm)
+    de_m   : đường kính ảnh hưởng (m)
+    dw_m   : đường kính bấc/giếng tương đương (m)
+    """
+    if de_m <= 0 or dw_m <= 0 or t_yr <= 0:
+        return 0.0
+    n = de_m / dw_m
+    s = smear_ratio
+    if s >= n:
+        s = max(1.5, n / 2)
+    Fn = math.log(n / s) + kh_ks * math.log(s) - 0.75
+    if Fn <= 0.01:
+        Fn = max(math.log(n) - 0.75, 0.01)
+    Th = Ch_m2yr * t_yr / de_m ** 2
+    Uh = 1.0 - math.exp(-8.0 * Th / Fn)
+    return min(max(Uh, 0.0), 0.9999)
+
+
+def calc_combined_U(Uv: float, Uh: float) -> float:
+    """Độ cố kết kết hợp U = 1 − (1−Uv)(1−Uh) — TCCS41 công thức 38."""
+    return 1.0 - (1.0 - Uv) * (1.0 - Uh)
+
+
+# ──────────────────────────────────────────────────────────────────
+# 3. TÍNH LÚN TỔNG TỪ DB
+# ──────────────────────────────────────────────────────────────────
+
+def calc_settlement_from_db(bh_name: str,
+                             H_fill_m: float = 3.0,
+                             gamma_fill: float = 20.0,
+                             gwt_depth_m: float = 0.0,
+                             fallback_zone_params: Optional[dict] = None
+                             ) -> dict:
+    """
+    Tính tổng lún sơ cấp cho hố khoan từ dữ liệu lab_tests.
+
+    Trả về:
+      {
+        'S_total_m': float,
+        'S_total_cm': float,
+        'layers': [{'depth_mid', 'H_i', 'sigma_v0', 'sigma_vf', 'PC', 'Si_cm', 'OC_status'}]
+        'n_layers': int,
+        'delta_sigma': float,
+        'warning': str | None
+      }
+    """
+    samples = load_consol_samples(bh_name)
+    delta_sigma = calc_delta_sigma(H_fill_m, gamma_fill)
+
+    if not samples and fallback_zone_params:
+        # Dùng thông số trung bình của zone
+        return _calc_settlement_zone_avg(fallback_zone_params, H_fill_m, gamma_fill, gwt_depth_m)
+
+    if not samples:
+        return {
+            "S_total_m": None, "S_total_cm": None, "layers": [],
+            "n_layers": 0, "delta_sigma": delta_sigma,
+            "warning": "Không có mẫu nén cố kết cho hố khoan này"
+        }
+
+    S_total = 0.0
+    layers_out = []
+    warning = None
+
+    # Tính chiều dày đại diện theo boundary trung điểm giữa các mẫu
+    # Mỗi mẫu đại diện cho vùng từ midpoint trên → midpoint dưới
+    d_mids = [(s["depth_from_m"] + (s["depth_to_m"] or s["depth_from_m"] + 1.0)) / 2.0
+              for s in samples]
+    bounds = [0.0]
+    for i in range(len(d_mids) - 1):
+        bounds.append((d_mids[i] + d_mids[i + 1]) / 2.0)
+    # Lớp cuối: kéo dài thêm khoảng cách giống lớp trước (hoặc 5m nếu chỉ 1 mẫu)
+    last_gap = (d_mids[-1] - bounds[-1]) if len(d_mids) > 1 else 5.0
+    bounds.append(min(d_mids[-1] + last_gap, d_mids[-1] + 10.0))
+
+    for i, s in enumerate(samples):
+        H_i   = bounds[i + 1] - bounds[i]
+        d_mid = d_mids[i]
+
+        gamma_sat = s["gamma_kNm3"] or 16.5
+        Cc   = s["Cc"] or 0.48
+        Cs   = s["Cs"] or (Cc * 0.18)
+        e0   = s["e0"] or 1.5
+        PC   = s["PC_kPa"]
+
+        sigma_v0 = calc_sigma_v0(d_mid, gamma_sat, gwt_depth_m)
+        sigma_vf = sigma_v0 + delta_sigma
+
+        if PC is None:
+            oc_status = "unknown"
+            warning = "Một số mẫu thiếu PC_kPa — giả thiết gần NC"
+            PC_use = sigma_v0 * 0.9
+        else:
+            PC_use = PC
+            if sigma_vf <= PC_use:
+                oc_status = "OC"
+            elif sigma_v0 < PC_use:
+                oc_status = "cross_PC"
+            else:
+                oc_status = "NC"
+
+        Si = calc_settlement_layer(H_i, e0, Cc, Cs, sigma_v0, sigma_vf, PC_use)
+        S_total += Si
+
+        layers_out.append({
+            "depth_mid_m":  round(d_mid, 1),
+            "H_i_m":        round(H_i, 1),
+            "sigma_v0_kPa": round(sigma_v0, 1),
+            "sigma_vf_kPa": round(sigma_vf, 1),
+            "PC_kPa":       round(PC_use, 1) if PC_use else None,
+            "Cc": round(Cc, 3), "Cs": round(Cs, 4), "e0": round(e0, 3),
+            "Si_cm":        round(Si * 100, 1),
+            "OC_status":    oc_status,
+        })
+
+    return {
+        "S_total_m":   round(S_total, 4),
+        "S_total_cm":  round(S_total * 100, 1),
+        "layers":      layers_out,
+        "n_layers":    len(layers_out),
+        "delta_sigma": round(delta_sigma, 1),
+        "warning":     warning,
+    }
+
+
+def _calc_settlement_zone_avg(zone_params: dict, H_fill_m: float,
+                               gamma_fill: float, gwt_depth_m: float) -> dict:
+    """Tính lún dùng thông số trung bình của zone (khi không có mẫu cụ thể)."""
+    delta_sigma = calc_delta_sigma(H_fill_m, gamma_fill)
+    gamma_sat   = zone_params.get("gamma_sat_kNm3", 16.5)
+    gamma_prime = gamma_sat - GAMMA_W
+    Cc  = zone_params.get("Cc_avg", 0.48)
+    Cs  = zone_params.get("Cs_avg", 0.09)
+    e0  = zone_params.get("e0_avg", 1.50)
+    PC  = zone_params.get("PC_avg_kPa", 80.0)
+    d_range = zone_params.get("soft_clay_depth_m", [0, 30])
+    Hdr = zone_params.get("Hdr_m", 15.0)
+
+    # Chia lớp 2m
+    layer_step = 2.0
+    z = max(d_range[0], layer_step / 2)
+    z_max = d_range[1]
+    S_total = 0.0
+    layers_out = []
+    while z < z_max:
+        H_i = min(layer_step, z_max - (z - layer_step / 2))
+        sigma_v0 = gamma_sat * gwt_depth_m + gamma_prime * (z - gwt_depth_m) if z > gwt_depth_m else gamma_sat * z
+        sigma_v0 = max(sigma_v0, 1.0)
+        sigma_vf = sigma_v0 + delta_sigma
+        Si = calc_settlement_layer(H_i, e0, Cc, Cs, sigma_v0, sigma_vf, PC)
+        S_total += Si
+        layers_out.append({
+            "depth_mid_m": round(z, 1),
+            "H_i_m": H_i,
+            "sigma_v0_kPa": round(sigma_v0, 1),
+            "sigma_vf_kPa": round(sigma_vf, 1),
+            "PC_kPa": PC,
+            "Cc": Cc, "Cs": Cs, "e0": e0,
+            "Si_cm": round(Si * 100, 2),
+            "OC_status": "NC" if sigma_v0 >= PC else ("cross_PC" if sigma_v0 < PC < sigma_vf else "OC"),
+        })
+        z += layer_step
+
+    return {
+        "S_total_m":   round(S_total, 4),
+        "S_total_cm":  round(S_total * 100, 1),
+        "layers":      layers_out,
+        "n_layers":    len(layers_out),
+        "delta_sigma": round(delta_sigma, 1),
+        "warning":     "Dùng thông số trung bình zone (không có mẫu nén cố kết cụ thể)",
+    }
+
+
+# ──────────────────────────────────────────────────────────────────
+# 4. TÍNH ĐỘ CỐ KẾT + LÚN THEO THỜI GIAN
+# ──────────────────────────────────────────────────────────────────
+
+def calc_time_series(S_total_cm: float,
+                     method: str,
+                     zone_params: dict,
+                     t_months_list: list[float],
+                     pvd_spacing_m: float = 1.2,
+                     pvd_pattern: str = "triangular",
+                     sd_diameter_mm: float = 400.0,
+                     sd_spacing_m: float = 1.5,
+                     cdm_area_ratio: float = 0.25,
+                     ) -> list[dict]:
+    """
+    Tính S(t) cho từng phương án xử lý.
+
+    method: 'no_treat' | 'pvd' | 'sand_drain' | 'cdm'
+
+    Trả về: [{'t_months', 't_years', 'U_pct', 'S_cm'}]
+    """
+    Cv_m2yr = zone_params.get("Cv_m2yr", 138.7)
+    Ch_cm2s = zone_params.get("Ch_cm2s", 6.6e-4)
+    Ch_m2yr = Ch_cm2s * CM2_S_TO_M2_YR
+    Hdr_m   = zone_params.get("Hdr_m", 15.0)
+    drainage = zone_params.get("drainage", "two_way")
+    Hdr_eff = Hdr_m / 2 if drainage == "two_way" else Hdr_m
+
+    # S_effective: lún dưới tải THIẾT KẾ (không phải tải surcharge)
+    # Surcharge chỉ tăng tốc độ cố kết, không thay đổi S_total dưới tải thiết kế
+    # CDM: giảm lún theo tỷ lệ diện tích thay thế (as=25% → giảm ~21%)
+    if method == "cdm":
+        reduction = 1.0 - cdm_area_ratio * 0.85
+        S_effective = S_total_cm * reduction
+    else:
+        S_effective = S_total_cm
+
+    result = []
+    for t_m in t_months_list:
+        t_yr = t_m / 12.0
+
+        if method == "no_treat":
+            Tv  = Cv_m2yr * t_yr / Hdr_eff ** 2
+            Uv  = calc_Uv(Tv)
+            Uh  = 0.0
+            U   = Uv
+
+        elif method == "pvd":
+            Tv  = Cv_m2yr * t_yr / Hdr_eff ** 2
+            Uv  = calc_Uv(Tv)
+            de  = (1.05 if pvd_pattern == "triangular" else 1.13) * pvd_spacing_m
+            dw  = 0.0668    # bấc thấm 100×5mm
+            Uh  = calc_Uh(Ch_m2yr, t_yr, de, dw, smear_ratio=2.0, kh_ks=3.0)
+            U   = calc_combined_U(Uv, Uh)
+
+        elif method == "sand_drain":
+            Tv  = Cv_m2yr * t_yr / Hdr_eff ** 2
+            Uv  = calc_Uv(Tv)
+            dw  = sd_diameter_mm / 1000.0
+            de  = 1.05 * sd_spacing_m
+            Uh  = calc_Uh(Ch_m2yr, t_yr, de, dw, smear_ratio=2.0, kh_ks=3.0)
+            U   = calc_combined_U(Uv, Uh)
+
+        elif method == "cdm":
+            # CDM không thoát nước ngang; cố kết đứng trong vùng giữa các cột
+            Tv  = Cv_m2yr * t_yr / Hdr_eff ** 2
+            Uv  = calc_Uv(Tv)
+            Uh  = 0.0
+            U   = Uv
+
+        else:
+            U = 0.0
+
+        S_t = S_effective * U
+        result.append({
+            "t_months":  t_m,
+            "t_years":   round(t_yr, 2),
+            "U_pct":     round(U * 100, 1),
+            "S_cm":      round(S_t, 1),
+            "Uv_pct":    round(calc_Uv(Cv_m2yr * t_yr / Hdr_eff ** 2) * 100, 1),
+        })
+
+    return result
+
+
+# ──────────────────────────────────────────────────────────────────
+# 5. SO SÁNH CÁC PHƯƠNG ÁN
+# ──────────────────────────────────────────────────────────────────
+
+def compare_methods(bh_name: str,
+                    zone_code: str,
+                    H_fill_m: float = 3.0,
+                    gamma_fill: float = 20.0,
+                    residual_limit_cm: float = 30.0,
+                    t_construction_months: float = 6.0,
+                    ) -> dict:
+    """
+    So sánh 5 phương án: no_treat, pvd_1.2, pvd_1.5, sand_drain, cdm.
+
+    Trả về dict với:
+      'S_total_cm': tổng lún tự nhiên
+      'scenarios'  : [{'method', 'label', 'S_cm_at_construction',
+                       'residual_cm', 'U_at_construction_pct',
+                       't_90_months', 'feasible'}]
+      'time_series': {'no_treat': [...], 'pvd': [...], ...}
+    """
+    cfg = _load_cfg()
+    zone_params = cfg["zone_soil_params"].get(zone_code, cfg["zone_soil_params"]["NHC"])
+
+    # Tính tổng lún từ mẫu DB
+    result = calc_settlement_from_db(bh_name, H_fill_m, gamma_fill,
+                                     fallback_zone_params=zone_params)
+    S_total = result["S_total_cm"] or 80.0
+
+    t_list = cfg["time_checkpoints_months"]
+    scenarios_cfg = cfg["scenario_defaults"]
+
+    scenarios_out = []
+    time_series_out = {}
+
+    for sc in scenarios_cfg:
+        method = sc["id"]
+        label  = sc["label"]
+        H_sur  = sc.get("H_surcharge_m", 0.0)
+        pvd_s  = sc.get("pvd_spacing_m") or 1.2
+        pvd_pat = sc.get("pvd_pattern", "triangular")
+        sd_d   = sc.get("sd_diameter_mm") or 400.0
+        sd_s   = sc.get("sd_spacing_m") or 1.5
+
+        method_type = sc.get("method", "no_treat")   # 'pvd'|'sand_drain'|'cdm'|'no_treat'
+        ts = calc_time_series(
+            S_total, method_type, zone_params, t_list,
+            pvd_spacing_m=pvd_s, pvd_pattern=pvd_pat,
+            sd_diameter_mm=sd_d, sd_spacing_m=sd_s,
+        )
+        time_series_out[method] = ts
+
+        # U và S tại thời điểm kết thúc thi công
+        t_idx = min(range(len(t_list)),
+                    key=lambda i: abs(t_list[i] - t_construction_months))
+        U_constr = ts[t_idx]["U_pct"]
+        S_constr = ts[t_idx]["S_cm"]
+
+        # Lún còn lại sau thi công = S_effective_final − S_at_construction
+        S_final  = ts[-1]["S_cm"]   # ~100% U (20 năm)
+        residual = max(S_final - S_constr, 0.0)
+
+        # Tìm t_90% (U ≥ 90%)
+        t_90 = next((pt["t_months"] for pt in ts if pt["U_pct"] >= 90.0), None)
+
+        scenarios_out.append({
+            "method":            method,
+            "label":             label,
+            "S_total_cm":        round(S_final, 1),
+            "S_at_constr_cm":    round(S_constr, 1),
+            "U_at_constr_pct":   U_constr,
+            "residual_cm":       round(residual, 1),
+            "t_90_months":       t_90,
+            "feasible":          residual <= residual_limit_cm,
+            "H_surcharge_m":     H_sur,
+        })
+
+    return {
+        "bh_name":       bh_name,
+        "zone_code":     zone_code,
+        "H_fill_m":      H_fill_m,
+        "S_total_cm":    S_total,
+        "S_detail":      result,
+        "residual_limit_cm": residual_limit_cm,
+        "t_construction_months": t_construction_months,
+        "scenarios":     scenarios_out,
+        "time_series":   time_series_out,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────
+# 6. KIỂM TRA SỐ LƯỢNG MẪU vs TCCS41
+# ──────────────────────────────────────────────────────────────────
+
+def _required_consol_samples(soft_layer_thickness_m: float) -> int:
+    """Số mẫu nén cố kết tối thiểu theo TCCS41 Điều 5.3.3 + Bảng 7.4.2."""
+    h = soft_layer_thickness_m
+    if h < 3:
+        return 1
+    elif h < 6:
+        return 2
+    elif h < 15:
+        return max(3, math.ceil(h / 3))
+    else:
+        return math.ceil(h / 3)
+
+
+def check_samples_vs_tccs41(zone_code: str) -> dict:
+    """
+    Kiểm tra số lượng mẫu nén cố kết hiện có vs TCCS41 cho từng hố khoan.
+
+    Trả về:
+      {
+        'zone': str,
+        'boreholes': [{
+          'name', 'depth_m',
+          'n_Cc_actual', 'n_Cc_required', 'n_Cc_gap',
+          'n_SPT_actual', 'n_VST_actual',
+          'status': 'Dat'|'Khong dat'
+        }],
+        'zone_summary': {...}
+      }
+    """
+    with _db() as con:
+        con.row_factory = sqlite3.Row
+
+        # Danh sách hố khoan trong zone
+        bhs = con.execute("""
+            SELECT b.id, b.name, b.depth_m
+            FROM boreholes b JOIN zones z ON b.zone_id=z.id
+            WHERE z.code=?
+            ORDER BY b.name
+        """, (zone_code,)).fetchall()
+
+        # Tổng số mẫu Cc per borehole
+        cc_counts = {r["name"]: r["n_Cc"] for r in con.execute("""
+            SELECT b.name,
+                   SUM(CASE WHEN lt.Cc IS NOT NULL THEN 1 ELSE 0 END) AS n_Cc
+            FROM boreholes b JOIN zones z ON b.zone_id=z.id
+            LEFT JOIN lab_tests lt ON lt.borehole_id=b.id
+            WHERE z.code=?
+            GROUP BY b.name
+        """, (zone_code,)).fetchall()}
+
+        # SPT per borehole
+        spt_counts = {r["name"]: r["n_spt"] for r in con.execute("""
+            SELECT b.name, COUNT(st.id) AS n_spt
+            FROM boreholes b JOIN zones z ON b.zone_id=z.id
+            LEFT JOIN spt_tests st ON st.borehole_id=b.id
+            WHERE z.code=?
+            GROUP BY b.name
+        """, (zone_code,)).fetchall()}
+
+        # VST per zone (vst_locations không có borehole_id — lưu zone total)
+        n_vst_zone = (con.execute("""
+            SELECT COUNT(v.id) FROM vane_shear_tests v
+            JOIN vst_locations vl ON v.vst_loc_id=vl.id
+            JOIN zones z ON vl.zone_id=z.id
+            WHERE z.code=?
+        """, (zone_code,)).fetchone() or [0])[0]
+
+    cfg = _load_cfg()
+    bh_list = []
+    n_pass = 0
+
+    for bh in bhs:
+        bh_name  = bh["name"]
+        depth_m  = bh["depth_m"] or 30.0
+        # Giả thiết chiều dày lớp đất yếu ≈ depth_m (hố khoan TTHC toàn đất yếu)
+        soft_h   = min(depth_m, 35.0)
+
+        n_Cc_act = cc_counts.get(bh_name, 0) or 0
+        n_Cc_req = _required_consol_samples(soft_h)
+        n_gap    = max(n_Cc_req - n_Cc_act, 0)
+        status   = "Dat" if n_Cc_act >= n_Cc_req else "Khong dat"
+        if status == "Dat":
+            n_pass += 1
+
+        bh_list.append({
+            "name":          bh_name,
+            "depth_m":       depth_m,
+            "soft_h_m":      round(soft_h, 1),
+            "n_Cc_actual":   n_Cc_act,
+            "n_Cc_required": n_Cc_req,
+            "n_Cc_gap":      n_gap,
+            "n_SPT_actual":  spt_counts.get(bh_name, 0) or 0,
+            "status":        status,
+        })
+
+    n_total  = len(bh_list)
+    n_fail   = n_total - n_pass
+    total_gap = sum(b["n_Cc_gap"] for b in bh_list)
+
+    return {
+        "zone":      zone_code,
+        "boreholes": bh_list,
+        "zone_summary": {
+            "n_boreholes":     n_total,
+            "n_pass":          n_pass,
+            "n_fail":          n_fail,
+            "pass_rate_pct":   round(100 * n_pass / n_total, 1) if n_total else 0,
+            "total_Cc_gap":    total_gap,
+            "n_Cc_actual":     sum(b["n_Cc_actual"] for b in bh_list),
+            "n_Cc_required":   sum(b["n_Cc_required"] for b in bh_list),
+            "n_VST_zone":      n_vst_zone,
+        },
+    }
+
+
+# ──────────────────────────────────────────────────────────────────
+# 7. DEMO
+# ──────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    import sys
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+    bh = "NHC-BH-03"
+    print(f"=== Tính lún cho {bh} ===")
+    res = calc_settlement_from_db(bh, H_fill_m=3.0)
+    print(f"S_total = {res['S_total_cm']} cm  (n_layers={res['n_layers']})")
+    if res["warning"]:
+        print(f"Canh bao: {res['warning']}")
+
+    print("\n=== So sanh phuong an ===")
+    cmp = compare_methods(bh, "NHC", H_fill_m=3.0)
+    for sc in cmp["scenarios"]:
+        t90 = f"{sc['t_90_months']} thang" if sc["t_90_months"] else ">20 nam"
+        print(f"  {sc['label']:35s}  lun={sc['S_total_cm']:5.1f}cm  "
+              f"du=({sc['residual_cm']:5.1f}cm)  t90={t90:15s}  "
+              f"{'Dat' if sc['feasible'] else 'Khong dat'}")
+
+    print("\n=== Kiem tra mau TCCS41 ===")
+    chk = check_samples_vs_tccs41("NHC")
+    s = chk["zone_summary"]
+    print(f"  NHC: {s['n_pass']}/{s['n_boreholes']} ho khoan dat  "
+          f"(thieu {s['total_Cc_gap']} mau Cc)")
+    chk2 = check_samples_vs_tccs41("KE")
+    s2 = chk2["zone_summary"]
+    print(f"  KE:  {s2['n_pass']}/{s2['n_boreholes']} ho khoan dat  "
+          f"(thieu {s2['total_Cc_gap']} mau Cc)")

@@ -108,7 +108,7 @@ _LAYER_COLORS: dict[str, str] = {
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
 _ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
 
-_PAGE_IDS = ["geology", "params", "compare", "result", "export"]
+_PAGE_IDS = ["geology", "params", "compare", "result", "export", "settlement"]
 
 # ─── Bảng dịch VN / EN ────────────────────────────────────────────────────────
 _L: dict[str, tuple[str, str]] = {
@@ -125,6 +125,7 @@ _L: dict[str, tuple[str, str]] = {
     "p_compare":    ("So sánh PA",                  "Comparison"),
     "p_result":     ("Kết quả",                     "Results"),
     "p_export":     ("Xuất",                        "Export"),
+    "p_settlement": ("Lún nền",                     "Settlement"),
     # Page 1 – Geology
     "p1_sub":       ("Địa chất – Chọn hố khoan",    "Geology – Borehole Selection"),
     "zone_lbl":     ("Zone",                        "Zone"),
@@ -1995,7 +1996,7 @@ st.sidebar.divider()
 
 _page_labels = [
     _t("p_geology"), _t("p_params"), _t("p_compare"),
-    _t("p_result"),  _t("p_export"),
+    _t("p_result"),  _t("p_export"), _t("p_settlement"),
 ]
 _page = st.sidebar.radio(
     "", _PAGE_IDS,
@@ -3126,3 +3127,221 @@ elif _page == "export":
                 unsafe_allow_html=True,
             )
             st.markdown(_theory_text)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE 6 – LÚN NỀN (TCCS 41:2022)
+# ═══════════════════════════════════════════════════════════════════════════════
+if _page == "settlement":
+    import sys as _sys
+    _sys.path.insert(0, str(_ROOT / "scripts"))
+    try:
+        from settlement_calc import (
+            compare_methods as _sc_compare,
+            check_samples_vs_tccs41 as _sc_check,
+        )
+        _HAS_SC = True
+    except Exception as _exc:
+        _HAS_SC = False
+        st.error(f"Khong tai duoc settlement_calc: {_exc}")
+
+    if _HAS_SC:
+        st.subheader("Lun nen – So sanh phuong an xu ly (TCCS 41:2022)")
+
+        _stab1, _stab2 = st.tabs(["So sanh phuong an", "Kiem tra mau vs TCCS41"])
+
+        # ── TAB 1: So sánh phương án ─────────────────────────────────────────
+        with _stab1:
+            _sc1, _sc2, _sc3 = st.columns([1, 1, 2])
+            with _sc1:
+                _sl_zone = st.radio("Zone", list(_ZONE_NAMES.keys()),
+                                    format_func=lambda z: _ZONE_NAMES[z],
+                                    key="sl_zone")
+                _sl_bhs = [b["name"] for b in _load_boreholes_by_zone(_sl_zone)]
+                _sl_bh  = st.selectbox("Ho khoan tinh lun", _sl_bhs, key="sl_bh")
+            with _sc2:
+                _sl_H   = st.number_input("Chieu cao dap H (m)", 1.0, 10.0, 3.0, 0.5, key="sl_H")
+                _sl_lim = st.number_input("Gioi han lun con lai (cm)", 10, 50, 30, 5, key="sl_lim")
+                _sl_tc  = st.number_input("Thoi gian thi cong (thang)", 3, 36, 6, 1, key="sl_tc")
+            with _sc3:
+                st.caption("**Phuong phap tinh:** TCCS 41:2022 — Phu luc A (lun so cap), Dieu 9.3-9.4 (do co ket)")
+                st.caption("**Lun con lai DS** = lun tong − lun tai thoi diem ket thuc thi cong")
+
+            if st.button("Tinh toan lun", type="primary", key="sl_calc"):
+                with st.spinner("Dang tinh..."):
+                    try:
+                        _cmp = _sc_compare(
+                            _sl_bh, _sl_zone,
+                            H_fill_m=float(_sl_H),
+                            residual_limit_cm=float(_sl_lim),
+                            t_construction_months=float(_sl_tc),
+                        )
+                        st.session_state["sl_result"] = _cmp
+                    except Exception as _e:
+                        st.error(f"Loi tinh toan: {_e}")
+
+            _cmp = st.session_state.get("sl_result")
+
+            if _cmp:
+                st.markdown(f"**Tong lun tu nhien: {_cmp['S_total_cm']:.0f} cm** "
+                            f"(H_fill={_cmp['H_fill_m']}m, {_cmp['bh_name']})")
+
+                # Bảng so sánh phương án
+                _sc_rows = []
+                for _sc_item in _cmp["scenarios"]:
+                    _t90_str = f"{_sc_item['t_90_months']:.0f}" if _sc_item["t_90_months"] else ">240"
+                    _sc_rows.append({
+                        "Phuong an":       _sc_item["label"],
+                        "Lun tong (cm)":   _sc_item["S_total_cm"],
+                        "Lun tai TC (cm)": _sc_item["S_at_constr_cm"],
+                        "U tai TC (%)":    _sc_item["U_at_constr_pct"],
+                        "Lun con lai (cm)":_sc_item["residual_cm"],
+                        "t90% (thang)":    _t90_str,
+                        "Surcharge (m)":   _sc_item["H_surcharge_m"],
+                        "Danh gia":        "Dat" if _sc_item["feasible"] else "Khong dat",
+                    })
+                _df_sc = pd.DataFrame(_sc_rows)
+                st.dataframe(
+                    _df_sc.style.apply(
+                        lambda col: ["background-color:#d4edda" if v == "Dat"
+                                     else "background-color:#f8d7da" if v == "Khong dat"
+                                     else "" for v in col],
+                        subset=["Danh gia"]
+                    ),
+                    use_container_width=True, hide_index=True
+                )
+
+                # Biểu đồ S(t)
+                if _HAS_PLOTLY:
+                    _colors_sl = {
+                        "no_treat":   "#636EFA",
+                        "pvd_1200":   "#EF553B",
+                        "pvd_1500":   "#00CC96",
+                        "sand_drain": "#AB63FA",
+                        "cdm":        "#FFA15A",
+                    }
+                    _fig_sl = go.Figure()
+                    for _sc_item in _cmp["scenarios"]:
+                        _mid = _sc_item["method"]
+                        _ts  = _cmp["time_series"].get(_mid, [])
+                        if not _ts:
+                            continue
+                        _fig_sl.add_trace(go.Scatter(
+                            x=[p["t_months"] for p in _ts],
+                            y=[p["S_cm"] for p in _ts],
+                            mode="lines+markers",
+                            name=_sc_item["label"],
+                            line=dict(color=_colors_sl.get(_mid, "#888"), width=2),
+                            marker=dict(size=4),
+                        ))
+                    _S_ref = _cmp["S_total_cm"] - float(_sl_lim)
+                    _fig_sl.add_hline(
+                        y=max(_S_ref, 0),
+                        line_dash="dash", line_color="red",
+                        annotation_text=f"S min de dat DS<={_sl_lim}cm",
+                        annotation_position="bottom right",
+                    )
+                    _fig_sl.add_vline(
+                        x=float(_sl_tc),
+                        line_dash="dot", line_color="gray",
+                        annotation_text=f"Ket thuc TC ({_sl_tc}th)",
+                    )
+                    _fig_sl.update_layout(
+                        title="Quan he S-t theo phuong an xu ly nen",
+                        xaxis_title="Thoi gian (thang)",
+                        yaxis_title="Do lun S (cm)",
+                        height=420,
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02),
+                        margin=dict(t=60),
+                    )
+                    st.plotly_chart(_fig_sl, use_container_width=True)
+
+                # Chi tiết lún từng lớp
+                with st.expander("Chi tiet lun tung lop"):
+                    _detail = _cmp["S_detail"]
+                    if _detail.get("warning"):
+                        st.warning(_detail["warning"])
+                    if _detail.get("layers"):
+                        _df_lay = pd.DataFrame(_detail["layers"])
+                        _df_lay.columns = [
+                            "Do sau (m)", "H lop (m)",
+                            "sv0 (kPa)", "svf (kPa)", "PC (kPa)",
+                            "Cc", "Cs", "e0", "Si (cm)", "Trang thai OC"
+                        ]
+                        st.dataframe(_df_lay, use_container_width=True, hide_index=True)
+
+        # ── TAB 2: Kiểm tra mẫu vs TCCS41 ───────────────────────────────────
+        with _stab2:
+            st.markdown("**Kiem tra so luong mau nen co ket hien co vs TCCS 41:2022 (Dieu 5.3.3)**")
+            st.caption("Yeu cau: >=1 mau/lop hoac >=1 mau/3m voi lop day; "
+                       "chieu sau dat yeu ~ chieu sau ho khoan (toi da 35m).")
+
+            _chk_cols = st.columns(3)
+            for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+                with _chk_cols[_ci]:
+                    try:
+                        _chk = _sc_check(_zc)
+                        _s   = _chk["zone_summary"]
+                        st.metric(
+                            f"Zone {_zc}",
+                            f"{_s['n_pass']}/{_s['n_boreholes']} HK dat",
+                            f"Thieu {_s['total_Cc_gap']} mau Cc",
+                            delta_color="normal" if _s["pass_rate_pct"] >= 80 else "inverse",
+                        )
+                        st.caption(
+                            f"Cc hien co: **{_s['n_Cc_actual']}**  \n"
+                            f"Cc can co:  **{_s['n_Cc_required']}**  \n"
+                            f"VST zone: **{_s['n_VST_zone']}** diem"
+                        )
+                        _df_chk = pd.DataFrame(_chk["boreholes"])[[
+                            "name", "depth_m", "soft_h_m",
+                            "n_Cc_actual", "n_Cc_required", "n_Cc_gap",
+                            "n_SPT_actual", "status"
+                        ]].rename(columns={
+                            "name":          "Ho khoan",
+                            "depth_m":       "Sau (m)",
+                            "soft_h_m":      "H dat yeu (m)",
+                            "n_Cc_actual":   "Cc co",
+                            "n_Cc_required": "Cc can",
+                            "n_Cc_gap":      "Thieu",
+                            "n_SPT_actual":  "SPT co",
+                            "status":        "Ket qua",
+                        })
+                        st.dataframe(
+                            _df_chk.style.apply(
+                                lambda col: ["color:green" if v == "Dat"
+                                             else "color:red" if v == "Khong dat"
+                                             else "" for v in col],
+                                subset=["Ket qua"]
+                            ),
+                            use_container_width=True, hide_index=True,
+                        )
+                    except Exception as _ex:
+                        st.error(f"Zone {_zc}: {_ex}")
+
+            st.divider()
+            st.markdown("**Tom tat yeu cau bo sung thi nghiem**")
+            _sum_rows = []
+            for _zc in ["NHC", "BXN", "KE"]:
+                try:
+                    _chk = _sc_check(_zc)
+                    _s   = _chk["zone_summary"]
+                    _sum_rows.append({
+                        "Zone":          _zc,
+                        "So HK":         _s["n_boreholes"],
+                        "HK dat Cc":     _s["n_pass"],
+                        "HK chua dat":   _s["n_fail"],
+                        "Cc hien co":    _s["n_Cc_actual"],
+                        "Cc can them":   _s["total_Cc_gap"],
+                        "VST zone":      _s["n_VST_zone"],
+                        "Ty le dat (%)": _s["pass_rate_pct"],
+                    })
+                except Exception:
+                    pass
+            if _sum_rows:
+                st.dataframe(pd.DataFrame(_sum_rows), use_container_width=True, hide_index=True)
+
+            st.info(
+                "**Uu tien bo sung mau Cc:** Zone KE chua co mau nen co ket nao (0 mau). "
+                "NHC va BXN can bo sung them mau tai cac ho khoan chua du so luong theo TCCS41."
+            )
