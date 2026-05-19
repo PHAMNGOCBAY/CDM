@@ -4441,13 +4441,22 @@ if _page == "ke_sw":
 
         # ── Chi tiết NT1/NT2 từng hố khoan (SQLite) ─────────────────────────────
         with st.expander("Chi tiết tính toán NT1/NT2 từng hố khoan"):
+            _SRC_BADGE = {
+                "VST":     "🟢 VST",
+                "lab":     "🔵 Lab",
+                "default": "🟡 Giả định",
+                "sand":    "⬛ Cát",
+                "unknown": "🔴 Không rõ",
+            }
             try:
                 _con_nt = sqlite3.connect(str(_DB))
                 _cur_nt = _con_nt.cursor()
                 _cur_nt.execute(
-                    "SELECT bh_name, pile_type, L_design_m, Z_m, fill_m, L_soil_m, "
-                    "tip_depth_m, L_req_nt1_m, margin_nt1_m, nt1_result, "
-                    "Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN, ratio_nt2, nt2_result "
+                    "SELECT bh_name, pile_type, L_design_m, Z_m, Z_source, "
+                    "fill_m, L_soil_m, tip_depth_m, H_layer1_m, H_source, "
+                    "L_req_nt1_m, margin_nt1_m, nt1_result, "
+                    "Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN, "
+                    "ratio_nt2, nt2_result, su_warnings "
                     "FROM ke_sw_nt_detail ORDER BY bh_name"
                 )
                 _nt_rows = _cur_nt.fetchall()
@@ -4460,11 +4469,22 @@ if _page == "ke_sw":
                 else:
                     for _nt in _nt_rows:
                         (
-                            _bh_n, _pile_t, _L_d, _Z_m, _fill_m, _L_soil, _tip_d,
+                            _bh_n, _pile_t, _L_d, _Z_m, _Z_src,
+                            _fill_m, _L_soil, _tip_d, _H1, _H_src,
                             _L_req1, _marg1, _res1,
-                            _Rs, _tip_sym, _tip_su, _Rp, _RR, _W, _rat2, _res2,
+                            _Rs, _tip_sym, _tip_su, _Rp, _RR, _W,
+                            _rat2, _res2, _warns,
                         ) = _nt
                         st.markdown(f"#### {_bh_n}")
+
+                        # Cảnh báo su mặc định (nếu có)
+                        if _warns:
+                            st.warning(
+                                "**Cảnh báo — su giả định:** Một số lớp không có dữ liệu "
+                                "VST/lab trong SQLite, đã dùng giá trị mặc định theo ký hiệu.\n\n"
+                                + "\n\n".join(f"- {w}" for w in _warns.split("; "))
+                            )
+
                         _cn1, _cn2 = st.columns(2)
                         with _cn1:
                             st.markdown("**NT1 — Chiều dài xuyên qua lớp yếu**")
@@ -4475,11 +4495,12 @@ if _page == "ke_sw":
                             )
                             st.caption(
                                 f"L thiết kế = **{_L_d:.1f} m** | L yêu cầu = {_L_req1:.1f} m  \n"
-                                f"Z mặt đất tự nhiên = {_Z_m:.3f} m | "
+                                f"H lớp mềm = {_H1:.2f} m [{_H_src}]  \n"
+                                f"Z mặt đất = {_Z_m:.3f} m [{_Z_src}] | "
                                 f"Đất đắp = {_fill_m:.2f} m | Trong đất = {_L_soil:.2f} m"
                             )
                         with _cn2:
-                            st.markdown("**NT2 — Sức kháng nhổ (TCVN 11823-10:2017, α-method)**")
+                            st.markdown("**NT2 — Sức kháng nhổ (TCVN 11823-10:2017)**")
                             st.metric(
                                 "Kết quả NT2", _res2,
                                 delta=f"RR/W = {_rat2:.2f}",
@@ -4490,13 +4511,15 @@ if _page == "ke_sw":
                                 f"RR = φ × (Rs + Rp) = {_RR:.0f} kN | W = {_W:.0f} kN  \n"
                                 f"Lớp mũi cọc: **{_tip_sym}** (su = {_tip_su:.0f} kPa)"
                             )
-                        # Bảng lớp đất NT2
+
+                        # Bảng lớp đất NT2 — join với ke_sw_nt_detail (không ke_sw_design)
                         _con2 = sqlite3.connect(str(_DB))
                         _cur2 = _con2.cursor()
                         _cur2.execute(
-                            "SELECT l.symbol, l.L_m, l.su_kPa, l.Rs_kN, l.note "
+                            "SELECT l.symbol, l.L_m, l.su_kPa, l.su_source, "
+                            "l.alpha, l.Rs_kN, l.note "
                             "FROM ke_sw_nt2_layers l "
-                            "JOIN ke_sw_design d ON l.sw_design_id = d.id "
+                            "JOIN ke_sw_nt_detail d ON l.sw_design_id = d.id "
                             "WHERE d.bh_name=? ORDER BY l.layer_order",
                             (_bh_n,),
                         )
@@ -4504,22 +4527,15 @@ if _page == "ke_sw":
                         _con2.close()
                         if _lyrs:
                             _ldf = []
-                            for _sym, _Llyr, _su, _Rs_lyr, _note in _lyrs:
-                                if _su <= 0:
-                                    _alp = "—"
-                                elif _su <= 25:
-                                    _alp = "1,000"
-                                elif _su >= 70:
-                                    _alp = "0,500"
-                                else:
-                                    _alp = f"{1.0 - (_su - 25) / 90:.3f}".replace(".", ",")
+                            for _sym, _Llyr, _su, _su_src, _alp, _Rs_lyr, _note in _lyrs:
                                 _ldf.append({
                                     "Lớp đất": _sym,
                                     "L (m)": round(_Llyr, 2),
-                                    "su (kPa)": round(_su, 0),
-                                    "α (Tomlinson)": _alp,
+                                    "su (kPa)": round(_su, 1) if _su else 0,
+                                    "Nguồn su": _SRC_BADGE.get(_su_src or "", _su_src or ""),
+                                    "α": round(_alp, 3) if _alp else 0,
                                     "Rs lớp (kN)": round(_Rs_lyr, 1),
-                                    "Phạm vi chiều sâu": _note,
+                                    "Chiều sâu": _note,
                                 })
                             st.dataframe(
                                 pd.DataFrame(_ldf),
@@ -4528,7 +4544,9 @@ if _page == "ke_sw":
                             )
                         st.caption(
                             f"Cọc: {_pile_t} | L thiết kế = {_L_d:.1f} m | "
-                            f"Tổng chiều sâu đầu mũi = {_tip_d:.2f} m"
+                            f"Chiều sâu mũi cọc = {_tip_d:.2f} m  \n"
+                            "Nguồn su: 🟢 VST (cắt cánh) · 🔵 Lab (Cu/c thí nghiệm) · "
+                            "🟡 Giả định theo ký hiệu lớp (cần bổ sung thí nghiệm)"
                         )
                         st.divider()
             except Exception as _exc_nt:
