@@ -3183,8 +3183,23 @@ if _page == "settlement":
             _cmp = st.session_state.get("sl_result")
 
             if _cmp:
-                st.markdown(f"**Tong lun tu nhien: {_cmp['S_total_cm']:.0f} cm** "
-                            f"(H_fill={_cmp['H_fill_m']}m, {_cmp['bh_name']})")
+                _cdm_beta = _cmp.get("cdm_beta", 1.0)
+                _cdm_a    = _cmp.get("cdm_area_ratio", 0.25)
+                _col_info1, _col_info2, _col_info3 = st.columns(3)
+                with _col_info1:
+                    st.metric("Lun tu nhien (Cc)", f"{_cmp['S_total_cm']:.0f} cm",
+                              help="Tong lun co ket so cap tinh tu mau thi nghiem theo TCCS41 Phu luc A")
+                with _col_info2:
+                    st.metric("CDM beta (TCVN 9403)", f"{_cdm_beta:.3f}",
+                              f"Ung suat vao dat = {_cdm_beta*100:.0f}% tai trong",
+                              help="beta = Es/(a*Ec+(1-a)*Es); Ec=75*Cc_col; Es=250*Cu")
+                with _col_info3:
+                    _cdm_sc = next((s for s in _cmp["scenarios"] if s["method"] == "cdm"), None)
+                    if _cdm_sc:
+                        _cdm_red = (1 - _cdm_sc["S_total_cm"] / _cmp["S_total_cm"]) * 100
+                        st.metric("CDM lun dan hoi (S1)", f"{_cdm_sc['S_total_cm']:.0f} cm",
+                                  f"-{_cdm_red:.0f}% so voi khong xu ly | S2=0",
+                                  help="S1 = q×H/(a×Ec+(1-a)×Es) — dan hoi tuc thoi; S2=0 (CDM den lop cung). TCVN 9403:2012 Phu luc C")
 
                 # Bảng so sánh phương án
                 _sc_rows = []
@@ -3209,6 +3224,16 @@ if _page == "settlement":
                         subset=["Danh gia"]
                     ),
                     use_container_width=True, hide_index=True
+                )
+                _cdm_S1 = _cmp.get("cdm_S1_cm", 0)
+                _cdm_Ec = _cmp.get("cdm_Ec_kPa", 0)
+                _cdm_Es = _cmp.get("cdm_Es_kPa", 0)
+                _cdm_Etb = _cmp.get("cdm_composite_kPa", 0)
+                st.caption(
+                    f"CDM (TCVN 9403 Phu luc C): S1={_cdm_S1:.0f} cm (dan hoi), S2=0 cm. "
+                    f"Ec={_cdm_Ec:.0f} kPa | Es={_cdm_Es:.0f} kPa | Etb={_cdm_Etb:.0f} kPa (a={_cdm_a:.2f}). "
+                    "Khong xu ly/Bac tham/Gieng cat: Cc co ket (Terzaghi+Barron). "
+                    "Giai thich: xem 'Ly thuyet tinh lun' cuoi trang."
                 )
 
                 # Biểu đồ S(t)
@@ -3269,6 +3294,180 @@ if _page == "settlement":
                             "Cc", "Cs", "e0", "Si (cm)", "Trang thai OC"
                         ]
                         st.dataframe(_df_lay, use_container_width=True, hide_index=True)
+
+                # ── Biểu đồ ứng suất theo chiều sâu ──────────────────────────
+                _layers = _cmp["S_detail"].get("layers", [])
+                if _layers and _HAS_PLOTLY:
+                    st.markdown("##### Bieu do ung suat theo chieu sau (pham vi anh huong)")
+                    _beta_plot = _cmp.get("cdm_beta", 1.0)
+                    _dsig = _layers[0]["sigma_vf_kPa"] - _layers[0]["sigma_v0_kPa"]  # Delta_sigma
+
+                    _depths  = [ly["depth_mid_m"]   for ly in _layers]
+                    _sv0_arr = [ly["sigma_v0_kPa"]  for ly in _layers]
+                    _svf_arr = [ly["sigma_vf_kPa"]  for ly in _layers]
+                    _pc_arr  = [ly["PC_kPa"]         for ly in _layers]
+                    # CDM: stress giam theo beta
+                    _svf_cdm = [ly["sigma_v0_kPa"] + _beta_plot * (ly["sigma_vf_kPa"] - ly["sigma_v0_kPa"])
+                                for ly in _layers]
+                    # OC status color mapping
+                    _oc_colors = {
+                        "OC": "#2196F3", "cross_PC": "#FF9800", "NC": "#F44336", "unknown": "#9E9E9E"
+                    }
+                    _oc_vals = [ly["OC_status"] for ly in _layers]
+
+                    _fig_str = go.Figure()
+                    # Fill OC zone (sigma_v0 to sigma_vf, blue)
+                    # Plot sigma_v0
+                    _fig_str.add_trace(go.Scatter(
+                        x=_sv0_arr, y=_depths, mode="lines+markers",
+                        name="sv0 (ung suat ban dau)",
+                        line=dict(color="#1565C0", width=2),
+                        marker=dict(size=5, symbol="circle"),
+                    ))
+                    # Plot sigma_vf (no treat)
+                    _fig_str.add_trace(go.Scatter(
+                        x=_svf_arr, y=_depths, mode="lines+markers",
+                        name="svf (sau dap, khong xu ly)",
+                        line=dict(color="#C62828", width=2, dash="dot"),
+                        marker=dict(size=5, symbol="square"),
+                    ))
+                    # Plot sigma_vf_cdm
+                    _fig_str.add_trace(go.Scatter(
+                        x=_svf_cdm, y=_depths, mode="lines+markers",
+                        name=f"svf CDM (beta={_beta_plot:.3f})",
+                        line=dict(color="#E65100", width=2, dash="dash"),
+                        marker=dict(size=5, symbol="diamond"),
+                    ))
+                    # Plot PC
+                    _fig_str.add_trace(go.Scatter(
+                        x=[p for p in _pc_arr if p is not None],
+                        y=[_depths[i] for i, p in enumerate(_pc_arr) if p is not None],
+                        mode="lines+markers",
+                        name="PC (ap luc tien co ket)",
+                        line=dict(color="#2E7D32", width=2, dash="longdash"),
+                        marker=dict(size=7, symbol="triangle-up"),
+                    ))
+
+                    # Shade OC/cross/NC zones với màu nền
+                    _oc_zone_color = {"OC": "rgba(33,150,243,0.08)",
+                                      "cross_PC": "rgba(255,152,0,0.12)",
+                                      "NC": "rgba(244,67,54,0.10)",
+                                      "unknown": "rgba(200,200,200,0.05)"}
+                    for _li, _ly in enumerate(_layers):
+                        _oc = _ly["OC_status"]
+                        _y0 = _ly["depth_mid_m"] - _ly["H_i_m"] / 2
+                        _y1 = _ly["depth_mid_m"] + _ly["H_i_m"] / 2
+                        _fig_str.add_hrect(
+                            y0=_y0, y1=_y1,
+                            fillcolor=_oc_zone_color.get(_oc, "rgba(200,200,200,0.05)"),
+                            line_width=0,
+                        )
+
+                    _fig_str.update_layout(
+                        xaxis_title="Ung suat huu hieu (kPa)",
+                        yaxis_title="Do sau (m)",
+                        yaxis=dict(autorange="reversed", ticksuffix=" m"),
+                        height=480,
+                        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+                        margin=dict(t=80, l=70),
+                        annotations=[dict(
+                            x=0.02, y=0.02, xref="paper", yref="paper",
+                            text="<b>Mau vung:</b> Xanh=OC | Cam=cat qua PC | Do=NC",
+                            showarrow=False, font=dict(size=10),
+                            bgcolor="rgba(255,255,255,0.7)", bordercolor="gray",
+                        )],
+                    )
+                    st.plotly_chart(_fig_str, use_container_width=True)
+                    st.caption(
+                        f"Delta_sigma = {_dsig:.0f} kPa (dap H={_cmp['H_fill_m']}m, gamma=20 kN/m3). "
+                        f"Duong 'svf CDM (beta={_beta_plot:.3f})' minh hoa ung suat vao dat giua cot — "
+                        "CDM tinh lun theo S1 dan hoi (TCVN 9403 Phu luc C), khong phai Cc co ket. "
+                        "Vung NC/cat qua PC la vung co lun Cc lon nhat neu khong xu ly."
+                    )
+
+                # ── Lý thuyết tính lún ────────────────────────────────────────
+                with st.expander("Ly thuyet tinh lun va giai thich ket qua CDM"):
+                    _beta_txt = _cmp.get("cdm_beta", 1.0)
+                    _a_txt    = _cmp.get("cdm_area_ratio", 0.25)
+                    _S1_txt   = _cmp.get("cdm_S1_cm", 0)
+                    _Ec_txt   = _cmp.get("cdm_Ec_kPa", 0)
+                    _Es_txt   = _cmp.get("cdm_Es_kPa", 0)
+                    _Etb_txt  = _cmp.get("cdm_composite_kPa", 0)
+                    st.markdown(f"""
+**1. Lun co ket so cap (khong xu ly / bac tham / gieng cat) — Phu luc A TCCS 41:2022**
+
+Moi lop i duoc tinh theo trang thai co ket:
+
+| Trang thai | Dieu kien | Cong thuc |
+|---|---|---|
+| Qua co ket (OC) | svf <= PC | Si = Hi × Cs/(1+e0) × log(svf/sv0) |
+| Cat qua PC | sv0 < PC < svf | Si = Hi × [Cs/(1+e0)×log(PC/sv0) + Cc/(1+e0)×log(svf/PC)] |
+| Binh thuong co ket (NC) | sv0 >= PC | Si = Hi × Cc/(1+e0) × log(svf/sv0) |
+
+Trong do: sv0 = ung suat huu hieu ban dau; svf = sv0 + Delta_sigma; PC = ap luc tien co ket.
+
+Pham vi tinh: tat ca lop dat yeu (mau nen co ket co Cc). Chieu day dai dien H_i dung
+boundary trung diem giua cac mau lien ke (khong phai chieu day mau 0.6m).
+
+---
+
+**2. Lun CDM — TCVN 9403:2012 Phu luc C (lun dan hoi khoi gia co)**
+
+CDM thay the dat yeu bang nen hop dong (composite ground). Lun tinh theo:
+
+```
+S = S1 + S2
+S1 = q x H_soft / (a*Ec + (1-a)*Es)   [dan hoi tuc thoi trong khoi gia co]
+S2 = lun co ket ben duoi cot            [= 0 neu CDM cam den lop cung]
+```
+
+Trong do:
+```
+Ec = 75 x Cc_col = 75 x (field_lab_ratio x qu_lab / 2)   [TCVN 9403 B.5.1]
+Es = 250 x Cu                                              [tuong quan Mesri]
+```
+
+**Ket qua cho zone nay (a = {_a_txt:.2f}):**
+- Ec = {_Ec_txt:.0f} kPa | Es = {_Es_txt:.0f} kPa | E_tong_hop = {_Etb_txt:.0f} kPa
+- **S1 = {_S1_txt:.1f} cm** (dan hoi, xay ra tuc thoi trong qua trinh thi cong)
+- **S2 = 0 cm** (gia thiet CDM cam den lop cung)
+
+*He so beta = {_beta_txt:.3f}* (ty le ung suat vao dat giua cot — chi de tham khao bien do ung suat).
+
+---
+
+**3. Tai sao lun CDM thap hon rat nhieu so voi khong xu ly?**
+
+| Phuong phap | Co so vat ly | Bien do |
+|---|---|---|
+| Khong xu ly | Cc co ket (log) | {_cmp['S_total_cm']:.0f} cm (lun dai han) |
+| CDM | S1 dan hoi (tuyen tinh) | {_S1_txt:.0f} cm (tuc thoi) |
+
+Lun Cc phu thuoc log(svf/sv0) — tang manh khi dat NC va H_soft lon.
+Lun dan hoi CDM phu thuoc E_tong_hop — cang cao (cot cung hon, mat do lon hon) thi lun cang nho.
+
+**De giam S1 them:** Tang dien tich thay the a (cat chat hon), hoac tang qu_lab (> 1 MPa).
+
+---
+
+**4. Lun con lai sau thi cong (Delta_S)**
+
+CDM: S1 la lun dan hoi — xay ra NGAY trong qua trinh dap. Delta_S ~ 0 (khong co lun con lai).
+
+Cac phuong an khac:
+```
+Delta_S = S_total x (1 - U(t_tc))
+```
+U(t) phu thuoc vao phuong phap xu ly:
+- Khong xu ly: chi Uv (Terzaghi, Cv, Hdr)
+- Bac tham / Gieng cat: U = 1-(1-Uv)(1-Uh) (co ket ket hop)
+
+**Surcharge**: tang ung suat → tang toc do co ket trong thoi gian gia tai,
+nhung khong thay doi S_total duoi tai thiet ke.
+
+TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
+(duong cap 1 doan thong thuong) sau khi lam xong mat duong.
+""")
 
         # ── TAB 2: Kiểm tra mẫu vs TCCS41 ───────────────────────────────────
         with _stab2:

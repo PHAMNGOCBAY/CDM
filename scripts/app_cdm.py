@@ -3197,9 +3197,9 @@ if _page == "settlement":
                     _cdm_sc = next((s for s in _cmp["scenarios"] if s["method"] == "cdm"), None)
                     if _cdm_sc:
                         _cdm_red = (1 - _cdm_sc["S_total_cm"] / _cmp["S_total_cm"]) * 100
-                        st.metric("CDM giam lun", f"{_cdm_sc['S_total_cm']:.0f} cm",
-                                  f"-{_cdm_red:.0f}% so voi khong xu ly",
-                                  help="Lun CDM = tai tinh lai voi Delta_sigma×beta (nho hon do cot chiu bot tai)")
+                        st.metric("CDM lun dan hoi (S1)", f"{_cdm_sc['S_total_cm']:.0f} cm",
+                                  f"-{_cdm_red:.0f}% so voi khong xu ly | S2=0",
+                                  help="S1 = q×H/(a×Ec+(1-a)×Es) — dan hoi tuc thoi; S2=0 (CDM den lop cung). TCVN 9403:2012 Phu luc C")
 
                 # Bảng so sánh phương án
                 _sc_rows = []
@@ -3225,11 +3225,15 @@ if _page == "settlement":
                     ),
                     use_container_width=True, hide_index=True
                 )
+                _cdm_S1 = _cmp.get("cdm_S1_cm", 0)
+                _cdm_Ec = _cmp.get("cdm_Ec_kPa", 0)
+                _cdm_Es = _cmp.get("cdm_Es_kPa", 0)
+                _cdm_Etb = _cmp.get("cdm_composite_kPa", 0)
                 st.caption(
-                    f"CDM (a={_cdm_a:.2f}): beta={_cdm_beta:.3f} — "
-                    "co ket dung Cv (khong co thoat nuoc ngang); "
-                    "Bac tham/Gieng cat: Uv+Uh; Khong xu ly: chi Uv. "
-                    "Giai thich: xem phan 'Ly thuyet tinh lun' cuoi trang."
+                    f"CDM (TCVN 9403 Phu luc C): S1={_cdm_S1:.0f} cm (dan hoi), S2=0 cm. "
+                    f"Ec={_cdm_Ec:.0f} kPa | Es={_cdm_Es:.0f} kPa | Etb={_cdm_Etb:.0f} kPa (a={_cdm_a:.2f}). "
+                    "Khong xu ly/Bac tham/Gieng cat: Cc co ket (Terzaghi+Barron). "
+                    "Giai thich: xem 'Ly thuyet tinh lun' cuoi trang."
                 )
 
                 # Biểu đồ S(t)
@@ -3376,16 +3380,21 @@ if _page == "settlement":
                     st.plotly_chart(_fig_str, use_container_width=True)
                     st.caption(
                         f"Delta_sigma = {_dsig:.0f} kPa (dap H={_cmp['H_fill_m']}m, gamma=20 kN/m3). "
-                        f"CDM giam ung suat trong dat xuong {_beta_plot*100:.0f}% — "
-                        "vung NC/cat qua PC la vung dong gop lun chinh."
+                        f"Duong 'svf CDM (beta={_beta_plot:.3f})' minh hoa ung suat vao dat giua cot — "
+                        "CDM tinh lun theo S1 dan hoi (TCVN 9403 Phu luc C), khong phai Cc co ket. "
+                        "Vung NC/cat qua PC la vung co lun Cc lon nhat neu khong xu ly."
                     )
 
                 # ── Lý thuyết tính lún ────────────────────────────────────────
                 with st.expander("Ly thuyet tinh lun va giai thich ket qua CDM"):
                     _beta_txt = _cmp.get("cdm_beta", 1.0)
                     _a_txt    = _cmp.get("cdm_area_ratio", 0.25)
+                    _S1_txt   = _cmp.get("cdm_S1_cm", 0)
+                    _Ec_txt   = _cmp.get("cdm_Ec_kPa", 0)
+                    _Es_txt   = _cmp.get("cdm_Es_kPa", 0)
+                    _Etb_txt  = _cmp.get("cdm_composite_kPa", 0)
                     st.markdown(f"""
-**1. Lun co ket so cap — Phu luc A TCCS 41:2022**
+**1. Lun co ket so cap (khong xu ly / bac tham / gieng cat) — Phu luc A TCCS 41:2022**
 
 Moi lop i duoc tinh theo trang thai co ket:
 
@@ -3402,50 +3411,56 @@ boundary trung diem giua cac mau lien ke (khong phai chieu day mau 0.6m).
 
 ---
 
-**2. Tai sao CDM khong giam lun nhieu?**
+**2. Lun CDM — TCVN 9403:2012 Phu luc C (lun dan hoi khoi gia co)**
 
-CDM hoat dong bang cach chia tai trong giua cot xi mang (do cung Ec) va dat xung quanh (do cung Es).
-Theo TCVN 9403:2012 Phu luc C (co ket tuong duong):
+CDM thay the dat yeu bang nen hop dong (composite ground). Lun tinh theo:
 
 ```
-beta = Es / (a*Ec + (1-a)*Es)
-Ec = 75 * Cc_col = 75 * qu_field/2    (TCVN 9403 muc B.5.1)
-Es = 250 * Cu                          (tuong quan Mesri)
+S = S1 + S2
+S1 = q x H_soft / (a*Ec + (1-a)*Es)   [dan hoi tuc thoi trong khoi gia co]
+S2 = lun co ket ben duoi cot            [= 0 neu CDM cam den lop cung]
 ```
 
-**Ket qua cho zone nay: beta = {_beta_txt:.3f}**
+Trong do:
+```
+Ec = 75 x Cc_col = 75 x (field_lab_ratio x qu_lab / 2)   [TCVN 9403 B.5.1]
+Es = 250 x Cu                                              [tuong quan Mesri]
+```
 
-Nghia la dat giua cot chi chiu **{_beta_txt*100:.0f}% tai trong** thay vi 100%.
-Lun CDM duoc tinh lai voi Delta_sigma_cdm = Delta_sigma × beta — nho hon nen lun nho hon.
+**Ket qua cho zone nay (a = {_a_txt:.2f}):**
+- Ec = {_Ec_txt:.0f} kPa | Es = {_Es_txt:.0f} kPa | E_tong_hop = {_Etb_txt:.0f} kPa
+- **S1 = {_S1_txt:.1f} cm** (dan hoi, xay ra tuc thoi trong qua trinh thi cong)
+- **S2 = 0 cm** (gia thiet CDM cam den lop cung)
 
-*Tai sao beta van con lon?* Vi Ec va Es qua gan nhau:
-- Cu_avg qua lon → Es = 250×Cu kha cao
-- Hoac qu_lab qua nho → Ec = 75×Cc_col con yeu
-- Can tang ham luong xi mang (>15%) hoac dung CDM sieu cung (qu > 1 MPa)
-
-**De giam lun them:** Tang dien tich thay the a (cat chat hon) hoac dung co cau tram CDM lien ket cap.
+*He so beta = {_beta_txt:.3f}* (ty le ung suat vao dat giua cot — chi de tham khao bien do ung suat).
 
 ---
 
-**3. Tai sao lun tong CDM van lon (> 100 cm)?**
+**3. Tai sao lun CDM thap hon rat nhieu so voi khong xu ly?**
 
-Lun Cc la lun co ket — phu thuoc log(svf/sv0). Du CDM giam Delta_sigma theo beta,
-neu dat da o trang thai NC (sv0 >= PC) thi lun van theo Cc — la chi so lon.
+| Phuong phap | Co so vat ly | Bien do |
+|---|---|---|
+| Khong xu ly | Cc co ket (log) | {_cmp['S_total_cm']:.0f} cm (lun dai han) |
+| CDM | S1 dan hoi (tuyen tinh) | {_S1_txt:.0f} cm (tuc thoi) |
 
-Cach duy nhat de giam lun tong: (a) CDM den lop cung (tiet dien 100% thay the), hoac
-(b) Cat giam tai trong (giam H_fill), hoac (c) Chon tuyen tranh vung NC sau.
+Lun Cc phu thuoc log(svf/sv0) — tang manh khi dat NC va H_soft lon.
+Lun dan hoi CDM phu thuoc E_tong_hop — cang cao (cot cung hon, mat do lon hon) thi lun cang nho.
+
+**De giam S1 them:** Tang dien tich thay the a (cat chat hon), hoac tang qu_lab (> 1 MPa).
 
 ---
 
 **4. Lun con lai sau thi cong (Delta_S)**
 
-```
-Delta_S = S_total - S_tai_ket_thuc_thi_cong = S_total × (1 - U(t_tc))
-```
+CDM: S1 la lun dan hoi — xay ra NGAY trong qua trinh dap. Delta_S ~ 0 (khong co lun con lai).
 
+Cac phuong an khac:
+```
+Delta_S = S_total x (1 - U(t_tc))
+```
 U(t) phu thuoc vao phuong phap xu ly:
-- Khong xu ly / CDM: chi Uv (Terzaghi, Cv, Hdr)
-- Bac tham / Gieng cat: U = 1 - (1-Uv)(1-Uh) (co ket ket hop)
+- Khong xu ly: chi Uv (Terzaghi, Cv, Hdr)
+- Bac tham / Gieng cat: U = 1-(1-Uv)(1-Uh) (co ket ket hop)
 
 **Surcharge**: tang ung suat → tang toc do co ket trong thoi gian gia tai,
 nhung khong thay doi S_total duoi tai thiet ke.
