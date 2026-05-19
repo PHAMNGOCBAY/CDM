@@ -4050,10 +4050,13 @@ if _page == "ke_sw":
             if val == "SPECIAL":        return "background-color:#e2e3e5; color:#383d41"
             return ""
 
-        st.dataframe(
-            pd.DataFrame(_ke_rows).style.map(_color_nt, subset=["NT1", "NT2"]),
-            use_container_width=True, hide_index=True,
-        )
+        if not _ke_rows:
+            st.warning("Không có hố khoan nào có on_sw_alignment=True trong dữ liệu.")
+        else:
+            st.dataframe(
+                pd.DataFrame(_ke_rows).style.map(_color_nt, subset=["NT1", "NT2"]),
+                use_container_width=True, hide_index=True,
+            )
 
         # Kết luận phương án
         _sc1, _sc2 = st.columns(2)
