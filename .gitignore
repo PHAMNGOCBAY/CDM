@@ -1,7 +1,62 @@
+# Large binary / sensitive files - do NOT push to GitHub
+*.pdf
+*.dwg
+*.dxf
+*.xls
+*.xlsx
+*.xlsm
+*.docx
+*.doc
+*.png
+*.jpg
+*.jpeg
+
+# CDM folder (proprietary reports)
+CDM/
+
+# DIA CHAT raw files (large DWG/PDF)
+DIA CHAT/
+
+# giao dien screenshots
+giao dien/
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
-.env
+.pytest_cache/
+
+# Streamlit secrets (keep config.toml)
+.streamlit/secrets.toml
+
+# Temp / log files
 *.log
-.DS_Store
+streamlit_run.log
+streamlit_error.log
+
+# Local env
+.env
+*.env
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Claude AI settings (local only)
+.claude/
+
+# Embedded git repos / deploy artifacts
+cdm-deploy/
+
+# Batch scripts (local paths)
+start_app.bat
+
+# Backups and logs
+*.zip
+logs/
+
+# Duplicate SQLite at root (use data/TTHC.sqlite)
+/TTHC.sqlite
+
+# Windows
 Thumbs.db
+desktop.ini

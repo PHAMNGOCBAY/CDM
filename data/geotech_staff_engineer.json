@@ -1,0 +1,366 @@
+{
+  "_meta": {
+    "source": "geotech-staff-engineer 4.6.0 — __init__.py inspection + import test",
+    "rule": "Module names dung truc tiep: import lateral_pile (khong phai geotech_staff_engineer.lateral_pile)",
+    "updated": "2026-05-16",
+    "version": "v1",
+    "install": "python -m pip install geotech-staff-engineer",
+    "numpy_note": "Yeu cau numpy>=2.0 nhung chay duoc voi numpy 1.26.4 (tuong thich voi openpile <2.0)",
+    "md_file": "28-geotech-staff-engineer.md",
+    "py_file": "scripts/geotech_staff_engineer_demo.py"
+  },
+  "categories": {
+    "pile_axial": {
+      "label": "Coc chiu tai doc truc",
+      "modules": {
+        "axial_pile": {
+          "import": "from axial_pile import AxialPileAnalysis, AxialSoilLayer, AxialSoilProfile, PileSection, make_pipe_pile",
+          "reference": "FHWA GEC-12 (FHWA-NHI-16-009), Chapters 7-8",
+          "methods": ["Nordlund (cat roi)", "Tomlinson alpha-method (dat set)", "Beta effective-stress (moi loai dat)"],
+          "key_classes": ["PileSection", "AxialSoilLayer", "AxialSoilProfile", "AxialPileAnalysis", "AxialPileResult"],
+          "pile_types": ["make_pipe_pile", "make_concrete_pile", "make_h_pile"],
+          "use_case": "Suc chiu tai doc: Rs (ma sat than coc) + Rp (suc khang mui)",
+          "vs_project": "So sanh voi TCVN 11823-10 alpha-method trong scripts/ke_sw_TTHC.py"
+        },
+        "drilled_shaft": {
+          "import": "from drilled_shaft import DrillShaftAnalysis, DrillShaft, ShaftSoilLayer, ShaftSoilProfile",
+          "reference": "FHWA GEC-10 (FHWA-NHI-10-016), Brown et al. (2010/2018)",
+          "methods": ["Alpha (set)", "Beta (cat)", "Rock socket (da)", "End bearing (clay/sand/rock)"],
+          "key_classes": ["DrillShaft", "ShaftSoilLayer", "ShaftSoilProfile", "DrillShaftAnalysis", "DrillShaftResult"],
+          "use_case": "Coc khoan nhoi — phan bien voi coc dong"
+        },
+        "downdrag": {
+          "import": "from downdrag import DowndragAnalysis, DowndragSoilLayer, DowndragSoilProfile",
+          "reference": "Fellenius (2006); AASHTO LRFD 10.7.3.7",
+          "methods": ["Fellenius unified method — neutral plane"],
+          "triggers": ["Fill placement", "Groundwater drawdown"],
+          "use_case": "Co long am (NSF) trong nen san / dat san",
+          "key_outputs": ["Neutral plane depth", "Dragload", "Settlement at pile head"]
+        },
+        "wave_equation": {
+          "import": "from wave_equation import generate_bearing_graph, drivability_study, get_hammer",
+          "reference": "Smith (1960); FHWA GEC-12 Chapter 12; WEAP87",
+          "methods": ["Smith 1-D wave equation", "Explicit time integration"],
+          "use_case": "Dong coc: du doan blow count, ung suat dong, tinh dong coc",
+          "key_functions": ["get_hammer", "generate_bearing_graph", "drivability_study"],
+          "hammer_db": "Vulcan, Delmag, ICE — co san trong thu vien",
+          "vs_project": "Kiem tra dong coc SW tren nen dat TTHC"
+        },
+        "pile_group": {
+          "import": "from pile_group import analyze_vertical_group_simple, analyze_group_6dof, GroupPile, GroupLoad",
+          "reference": "USACE EM 1110-2-2906; FHWA GEC-12 Chapter 9",
+          "methods": ["Simplified elastic: Pi = V/n +/- M*xi/SUM(xi^2)", "6-DOF stiffness matrix (coc xieng)"],
+          "efficiency": ["Converse-Labarre", "Block failure", "p-multipliers"],
+          "use_case": "Nhom coc + cap cung: phan bo tai + kiem tra tung coc"
+        }
+      }
+    },
+    "pile_lateral": {
+      "label": "Coc chiu tai ngang",
+      "modules": {
+        "lateral_pile": {
+          "import": "from lateral_pile import LateralPileAnalysis, Pile, SoilLayer",
+          "reference": "FHWA COM624P (FHWA-SA-91-048); FHWA GEC-13; Jeanjean (2009) OTC-20158",
+          "methods": ["p-y curves COM624P", "Reese soft clay", "Reese stiff clay", "API sand", "Jeanjean (2009) soft clay"],
+          "vs_openpile": {
+            "lateral_pile": "COM624P-based FHWA methods, Jeanjean (2009), FDM solver",
+            "openpile": "Matlock (1970) / API RP 2GEO, FEM Euler-Bernoulli/Timoshenko, OOP ro rang",
+            "recommendation": "Dung openpile cho thiet ke co ban; lateral_pile de so sanh phuong phap p-y"
+          },
+          "key_classes": ["Pile", "SoilLayer", "LateralPileAnalysis", "ReinforcedConcreteSection"],
+          "use_case": "So sanh ket qua p-y voi openpile; kiem tra coc BTCT co cot thep"
+        }
+      }
+    },
+    "shallow_foundation": {
+      "label": "Mong nong + do lun",
+      "modules": {
+        "bearing_capacity": {
+          "import": "from bearing_capacity import BearingCapacityAnalysis, Footing, SoilLayer, BearingSoilProfile",
+          "reference": "FHWA-SA-94-034 (CBEAR); FHWA GEC-6; FHWA Vol II Chapter 8",
+          "methods": ["Meyerhof", "Vesic — general bearing capacity equation"],
+          "features": ["Strip/rectangular/square/circular", "2-layer soil", "Eccentric loading (effective area)", "Inclined load, tilted base, sloping ground", "Groundwater at any elevation"],
+          "key_classes": ["Footing", "SoilLayer", "BearingSoilProfile", "BearingCapacityAnalysis", "BearingCapacityResult"],
+          "use_case": "Mong don, mong bang — tinh q_ult, q_allow"
+        },
+        "settlement": {
+          "import": "from settlement import SettlementAnalysis, ConsolidationLayer, SchmertmannLayer",
+          "reference": "FHWA GEC-6; USACE EM 1110-1-1904; FHWA-TS-86-205 (CSETT)",
+          "methods": {
+            "immediate": ["Elastic method", "Schmertmann (1978)"],
+            "consolidation": ["Cc/Cr e-log(p) layer summation"],
+            "time_rate": ["Terzaghi 1-D theory — Tv, U, t"],
+            "secondary": ["C_alpha creep"],
+            "stress_distribution": ["2:1 approximate", "Boussinesq (rectangular center)", "Westergaard"]
+          },
+          "key_functions": ["stress_at_depth", "elastic_settlement", "schmertmann_settlement",
+                            "consolidation_settlement_layer", "time_factor", "degree_of_consolidation",
+                            "secondary_settlement"],
+          "use_case": "Do lun mong nong, nen duong, dat san"
+        }
+      }
+    },
+    "retaining_excavation": {
+      "label": "Tuong chan dat + Ho dao",
+      "modules": {
+        "retaining_walls": {
+          "import": "from retaining_walls import analyze_cantilever_wall, analyze_mse_wall, CantileverWallGeometry",
+          "reference": "AASHTO LRFD Section 11; FHWA GEC-11 (MSE Walls)",
+          "types": ["Tuong consolle (cantilever)", "MSE wall (co cot dai)"],
+          "checks": ["Sliding", "Overturning", "Bearing"],
+          "use_case": "Kiem tra on dinh tuong chan — khong ap dung truc tiep cho ke coc SW"
+        },
+        "sheet_pile": {
+          "import": "from sheet_pile import analyze_cantilever, analyze_anchored, WallSoilLayer",
+          "reference": "USACE EM 1110-2-2504; USS Steel Sheet Piling Manual; CWALSHT",
+          "methods": ["Rankine", "Coulomb — Ka, Kp, K0"],
+          "types": ["Consolle (cantilever) — chieu sau ngam tu do", "Neo (anchored) — luc neo + moment max"],
+          "key_functions": ["rankine_Ka", "rankine_Kp", "coulomb_Ka", "coulomb_Kp",
+                            "active_pressure", "passive_pressure", "tension_crack_depth",
+                            "analyze_cantilever", "analyze_anchored"],
+          "vs_project": "So sanh voi tinh toan ap luc dat thu cong trong scripts/earth_pressure.py",
+          "use_case": "Chieu sau ngam coc bang, luc neo, moment uon max — ke SW consolle / co neo"
+        },
+        "soe": {
+          "import": "from soe import analyze_braced_excavation, analyze_cantilever_excavation, ExcavationGeometry",
+          "reference": "Terzaghi & Peck (1967); FHWA GEC-4 (FHWA-IF-99-015); USACE EM 1110-2-2504; AISC 16th Ed",
+          "methods": ["Terzaghi-Peck apparent earth pressure envelopes", "Tributary area method"],
+          "soil_profiles": ["Cat (Sand)", "Set mem (Soft Clay)", "Set cung (Stiff Clay)"],
+          "supports": ["Strut (chong ngang)", "Anchor (neo dat)", "Raker (chong xien)"],
+          "stability_checks": ["Basal heave (Terzaghi + Bjerrum-Eide)", "Bottom blowout", "Piping"],
+          "section_selection": ["HP section", "Sheet pile", "W section"],
+          "key_functions": ["analyze_braced_excavation", "analyze_cantilever_excavation",
+                            "compute_embedment", "check_basal_heave_terzaghi", "check_basal_heave_bjerrum_eide",
+                            "check_bottom_blowout", "check_piping",
+                            "select_hp_section", "select_sheet_pile", "check_flexural_demand"],
+          "use_case": "Ho dao co chong / neo da tang — rat phu hop voi ke SW TTHC",
+          "vs_project": "Thay the tinh thu cong chong/neo, kiem tra Fs heave tu dong"
+        }
+      }
+    },
+    "slope_stability": {
+      "label": "On dinh mai doc",
+      "modules": {
+        "slope_stability": {
+          "import": "from slope_stability import analyze_slope, search_critical_surface, SlopeGeometry, SlopeSoilLayer",
+          "reference": "Duncan et al. (2014); Bishop (1955); Spencer (1967)",
+          "methods": ["Fellenius (1927)", "Bishop Simplified (1955)", "Spencer (1967)", "Morgenstern-Price"],
+          "slip_surfaces": ["Circular", "Polyline (non-circular)"],
+          "search": ["Grid-center optimization", "PSO (particle swarm)", "Entry-exit search", "Weak layer biased"],
+          "extras": ["Soil nails (SoilNail)"],
+          "key_functions": ["analyze_slope", "search_critical_surface",
+                            "fellenius_fos", "bishop_fos", "spencer_fos", "morgenstern_price_fos",
+                            "grid_search", "search_pso"],
+          "use_case": "Kiem tra on dinh mai doc ke / de / tai slope"
+        }
+      }
+    },
+    "numerical_methods": {
+      "label": "Phan tich so (FEM/FDM tu viet)",
+      "modules": {
+        "fem2d": {
+          "import": "from fem2d import analyze_gravity, analyze_slope_srm, analyze_excavation, analyze_consolidation",
+          "reference": "Griffiths & Lane (1999); Schanz et al. (1999) Hardening Soil; Biot (1941)",
+          "elements": ["CST (triangle 3-nut)", "Q4 (quad 4-nut)", "Euler-Bernoulli beam"],
+          "materials": ["Linear elastic", "Mohr-Coulomb", "Hardening Soil"],
+          "capabilities": ["Gravity loading", "Surface loads", "SRM slope stability FOS",
+                           "Braced excavation + sheet pile", "Steady-state seepage (Laplace)",
+                           "Coupled Biot consolidation", "Staged construction (multi-phase)"],
+          "high_level_api": ["analyze_gravity", "analyze_foundation", "analyze_slope_srm",
+                             "analyze_excavation", "analyze_seepage", "analyze_consolidation", "analyze_staged"],
+          "vs_plaxis": "Giao duc / kiem chung — khong thay the PLAXIS cho du an thuc te",
+          "use_case": "Hoc FEM, kiem chung ket qua PLAXIS, prototype nhanh"
+        },
+        "fdm2d": {
+          "import": "from fdm2d import analyze_gravity, analyze_foundation, FDMResult",
+          "reference": "Cundall (1976); Marti & Cundall (1982); FLAC 8.1 Theory",
+          "solver": "FLAC-style explicit Lagrangian — khong can ma tran do cung toan cuc",
+          "elements": ["Quad zones + 4 sub-triangles (mixed discretization)"],
+          "materials": ["Linear elastic", "Mohr-Coulomb"],
+          "capabilities": ["Gravity loading", "Surface pressure"],
+          "vs_fem2d": "FDM explicit (nhu FLAC) vs FEM implicit (nhu PLAXIS) — hoc thuat toan",
+          "use_case": "Hieu sau ve FLAC/PLAXIS algorithm, bai tap so sanh"
+        }
+      }
+    },
+    "seismic": {
+      "label": "Dia ky thuat dong dat",
+      "modules": {
+        "seismic_geotech": {
+          "import": "from seismic_geotech import evaluate_liquefaction, seismic_earth_pressure, classify_site",
+          "reference": "AASHTO LRFD §3 §11; FHWA GEC-3; Youd et al. (2001); Boulanger & Idriss (2014)",
+          "capabilities": {
+            "site_class": "AASHTO/NEHRP site classification (Vs30, N-bar, su-bar)",
+            "earth_pressure": "Mononobe-Okabe KAE, KPE — ap luc dat dong dat",
+            "liquefaction": "Simplified triggering (Seed & Idriss / Youd et al.)",
+            "residual_strength": "Post-liquefaction strength"
+          },
+          "use_case": "Vung dong dat, nen cat bao hoa — can khi thiet ke o vung co nguy co dong dat"
+        },
+        "wind_loads": {
+          "import": "from wind_loads import analyze_freestanding_wall_wind, compute_velocity_pressure",
+          "reference": "ASCE 7-22 Chapters 26 and 29",
+          "features": ["Exposure B/C/D", "Topographic factor Kzt", "Net force Cf", "Porosity reduction"],
+          "units": "SI (m, m/s, Pa, kPa, kN)",
+          "use_case": "Tuong chan gio doc lap, hang rao — ke coc SW ngoai troi co the phat sinh tai gio"
+        }
+      }
+    },
+    "ground_improvement": {
+      "label": "Xu ly nen dat",
+      "modules": {
+        "ground_improvement": {
+          "import": "from ground_improvement import analyze_wick_drains, analyze_surcharge_preloading, evaluate_feasibility",
+          "reference": "FHWA NHI-06-019/020; Barron (1948); Hansbo (1981); Barksdale & Bachus (1983)",
+          "methods": ["Aggregate piers / rammed aggregate piers",
+                      "Prefabricated vertical drains (wick drains) — Barron/Hansbo radial consolidation",
+                      "Surcharge preloading (co/khong co drains)",
+                      "Vibro-compaction"],
+          "key_functions": ["analyze_aggregate_piers", "analyze_wick_drains", "design_drain_spacing",
+                            "analyze_surcharge_preloading", "analyze_vibro_compaction", "evaluate_feasibility"],
+          "use_case": "Phuong an thay the coc sau cho nen dat yeu — so sanh kinh te"
+        }
+      }
+    },
+    "data_utilities": {
+      "label": "Du lieu + CAD + Bao cao",
+      "modules": {
+        "subsurface_characterization": {
+          "import": "from subsurface_characterization import SiteModel",
+          "capabilities": ["CSV loader", "DIGGS parser", "Plan view plots", "Profile plots", "Statistics"],
+          "use_case": "Tong hop du lieu khao sat dia chat, ve mat cat, thong ke"
+        },
+        "ags4_agent": {
+          "import": "from ags4_agent import read_ags4, validate_ags4",
+          "format": "AGS4 — dinh dang trao doi du lieu dia ky thuat (chuan Anh)",
+          "use_case": "Doc file dia chat tu phan mem khao sat (GeoSuite, gINT)"
+        },
+        "dxf_import": {
+          "import": "from dxf_import import discover_layers, parse_dxf_geometry, build_slope_geometry",
+          "requires": "ezdxf >= 1.4",
+          "workflow": ["discover_layers() -> lap map layer", "parse_dxf_geometry() -> lay toa do",
+                       "build_slope_geometry() -> SlopeGeometry cho slope_stability / fem2d"],
+          "use_case": "Doc mat cat CAD DXF -> phan tich on dinh mai doc tu dong"
+        },
+        "pdf_import": {
+          "import": "from pdf_import import discover_pdf_content, extract_vector_geometry, extract_geometry_vision",
+          "requires": "PyMuPDF >= 1.23",
+          "methods": ["Vector extraction (PyMuPDF — chinh xac, can role_mapping)",
+                      "Vision extraction (LLM — gan dung, moi loai ban ve)"],
+          "use_case": "Trich xuat hinh hoc tu ban ve PDF -> slope_stability / fem2d"
+        },
+        "calc_package": {
+          "import": "from calc_package import generate_calc_package",
+          "output": ["HTML (Mathcad-style)", "LaTeX/PDF (can pdflatex)"],
+          "use_case": "Xuat bao cao tinh toan chuyen nghiep tu bat ky module nao trong geotech-staff-engineer"
+        },
+        "geotech_common": {
+          "import": "from geotech_common.units import kPa_to_ksf, kNm3_to_pcf",
+          "utilities": ["Unit conversions (SI <-> US)", "SPT correlations (phi, cu, Dr)",
+                        "Ka/Kp/K0 from phi", "SoilProfile builder", "Engineering checks"],
+          "use_case": "Dung chung trong moi module — doi don vi, tra cuu nhanh"
+        }
+      }
+    }
+  },
+  "comparison_with_existing_tools": {
+    "lateral_pile_p_y": {
+      "task": "Coc chiu tai ngang — duong cong p-y",
+      "openpile": "Matlock/API RP 2GEO, FEM Timoshenko, OOP, tich hop san Streamlit app",
+      "lateral_pile_gse": "COM624P (FHWA-SA-91-048), FDM, Jeanjean (2009) soft clay, RC section design",
+      "recommendation": "openpile — da tich hop; dung lateral_pile de doi chieu phuong phap FHWA"
+    },
+    "sheet_pile_design": {
+      "task": "Thiet ke chieu sau ngam coc ban",
+      "earth_pressure_py": "scripts/earth_pressure.py — Ka/Kp Rankine/Coulomb, bieu do ap luc",
+      "sheet_pile_gse": "analyze_cantilever / analyze_anchored — chieu sau ngam + moment + luc neo tu dong",
+      "soe_gse": "Terzaghi-Peck apparent pressure, multi-level strut/anchor, kiem tra basal heave",
+      "recommendation": "Dung sheet_pile hoac soe de tinh nhanh; doi chieu voi tinh tay theo TCVN 11823-3"
+    },
+    "axial_pile_capacity": {
+      "task": "Suc chiu tai doc truc coc",
+      "ke_sw_tcvn": "scripts/ke_sw_TTHC.py — TCVN 11823-10 alpha-method, phi_stat=0.35",
+      "axial_pile_gse": "FHWA GEC-12 — Nordlund/Tomlinson/Beta, don vi US/SI",
+      "recommendation": "TCVN 11823-10 bat buoc cho du an Viet Nam; axial_pile de so sanh FHWA"
+    },
+    "slope_stability": {
+      "task": "On dinh mai doc",
+      "plaxis": "FEM phi/c reduction (SRM) — chinh xac nhat, can license",
+      "slope_stability_gse": "Fellenius/Bishop/Spencer/Morgenstern-Price, circular + polyline, PSO search",
+      "fem2d_gse": "FEM SRM tu viet — giao duc / prototype",
+      "recommendation": "slope_stability_gse du dung cho thiet ke so bo; PLAXIS cho phan tich chinh thuc"
+    },
+    "settlement": {
+      "task": "Do lun nen dat",
+      "plaxis": "FEM Biot consolidation, cap nhat von Mises / Hardening Soil",
+      "settlement_gse": "Cc/Cr consolidation + Schmertmann + Terzaghi time rate — phan tich giai tich",
+      "recommendation": "settlement_gse cho tinh nhanh, so bo; PLAXIS cho phan tich chinh thuc co tai trong phuc tap"
+    }
+  },
+  "api_gotchas": {
+    "note": "Cac diem hay nham khi dung geotech-staff-engineer — da test thuc te 2026-05-16",
+    "axial_pile_soil_type": {
+      "correct": ["cohesionless", "cohesive"],
+      "wrong": ["sand", "clay", "silt"],
+      "reason": "AxialSoilLayer.__post_init__ validate strict"
+    },
+    "settlement_time_factor": {
+      "signature": "time_factor(cv: float, t: float, Hdr: float)",
+      "t_unit": "giay (seconds), KHONG phai nam",
+      "cv_unit": "m2/s — dat set mem dien hinh cv ~ 5e-8 m2/s",
+      "wrong": "time_factor(t_years=1.0, cv=...) — khong co kwarg t_years",
+      "degree_of_consolidation_return": "tra ve % (0-100), KHONG phai 0-1 — dung {U:.1f}% chu khong phai {U:.1%}"
+    },
+    "BearingSoilProfile": {
+      "correct": "BearingSoilProfile(layer1=SoilLayer(...), gwt_depth=3.0)",
+      "wrong": "BearingSoilProfile(layers=[...])"
+    },
+    "BearingGraphResult_wave_equation": {
+      "correct": "bg.R_values (ndarray), bg.blow_counts (ndarray)",
+      "wrong": "bg.points — khong ton tai"
+    },
+    "StabilityCheckResult_soe": {
+      "correct": "heave.FOS, heave.passes, heave.FOS_required",
+      "wrong": "heave.factor_of_safety — khong ton tai"
+    },
+    "SlopeSoilLayer": {
+      "required_params": ["name", "top_elevation", "bottom_elevation", "gamma"],
+      "optional": "phi, c_prime, cu, analysis_mode ('drained'/'undrained')",
+      "wrong": "slope_height, slope_angle — khong ton tai, phai dung surface_points"
+    },
+    "SlopeGeometry_surface_points": {
+      "format": "List[Tuple[float, float]] — list cac diem (x, y) tren mat dat",
+      "example": "[(0,0), (13.86, 8.0), (23.86, 8.0)] — chan, dinh, sau dinh mai",
+      "note": "Mat trot phai cat qua surface_points tai 2 diem — neu khong raise ValueError"
+    },
+    "analyze_braced_excavation": {
+      "correct": "analyze_braced_excavation(geometry=geom)  — geom chua soil_layers va support_levels",
+      "support_levels_param": "SupportLevel(depth=1.0)  — depth tinh tu dinh, khong phai elevation",
+      "support_reactions_type": "List[Dict] — lay gia tri: d.get('reaction_kN_per_m') hoac list(d.values())[0]"
+    },
+    "wave_equation_blow_count": {
+      "note": "Blow count tang rat nhanh khi Rult lon — kiem tra thong so bua va coc truoc khi tin ket qua",
+      "typical_range": "Rult < 500 kN voi Delmag D30-32 tren coc SW-840 ~ 10-50 blows/m"
+    }
+  },
+  "quick_selection_guide": {
+    "suc_chiu_tai_coc_dong_TCVN": "scripts/ke_sw_TTHC.py (TCVN 11823-10) — bat buoc cho du an VN",
+    "suc_chiu_tai_coc_FHWA": "from axial_pile import AxialPileAnalysis",
+    "coc_khoan_nhoi_FHWA": "from drilled_shaft import DrillShaftAnalysis",
+    "coc_tai_ngang_openpile": "openpile — da co Streamlit app http://localhost:8501",
+    "coc_tai_ngang_COM624P": "from lateral_pile import LateralPileAnalysis",
+    "nhom_coc": "from pile_group import analyze_vertical_group_simple",
+    "co_long_am": "from downdrag import DowndragAnalysis",
+    "dong_coc_wave_eq": "from wave_equation import generate_bearing_graph",
+    "mong_nong": "from bearing_capacity import BearingCapacityAnalysis",
+    "do_lun": "from settlement import SettlementAnalysis",
+    "ke_coc_ban_consolle": "from sheet_pile import analyze_cantilever",
+    "ke_coc_ban_neo": "from sheet_pile import analyze_anchored",
+    "ho_dao_co_chong": "from soe import analyze_braced_excavation",
+    "on_dinh_mai_doc": "from slope_stability import analyze_slope, search_critical_surface",
+    "xu_ly_nen_wick_drain": "from ground_improvement import analyze_wick_drains",
+    "phu_tai_dat_Mononobe_Okabe": "from seismic_geotech import seismic_earth_pressure",
+    "bao_cao_tinh_toan": "from calc_package import generate_calc_package",
+    "doc_DXF_ban_ve": "from dxf_import import discover_layers, build_slope_geometry"
+  }
+}

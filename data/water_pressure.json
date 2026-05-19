@@ -1,0 +1,83 @@
+{
+  "_meta": {
+    "source": "TCVN 11823-3:2017 §10.5.1 + Terzaghi seepage approximation for sheet piles",
+    "rule": "All pressures in kN/m2, elevations in m (positive upward), gamma_w = 9.81 kN/m3",
+    "updated": "2026-05-15",
+    "version": "v1"
+  },
+  "constants": {
+    "gamma_w_kNm3": 9.81,
+    "note": "Use 10.0 kN/m3 as conservative approximation when stated in project spec"
+  },
+  "visualization": {
+    "fill_alpha": 0.18,
+    "polyline_lw": 1.5,
+    "arrows": {
+      "type": "quiver horizontal",
+      "spacing_m": 2.0,
+      "from": "x=0 (zero pressure line)",
+      "to": "x = sign * pressure value (data coordinates)",
+      "alpha": 0.60,
+      "note": "scale_units=xy scale=1 angles=xy — same convention as earth_pressure.py"
+    }
+  },
+  "hydrostatic": {
+    "formula": "p_w(elev) = gamma_w * max(0, water_elev - elev)",
+    "unit": "kN/m2",
+    "ref": "TCVN 11823-3:2017 §10.5.1",
+    "condition": "No flow, equal water levels or impermeable base"
+  },
+  "net_water_pressure": {
+    "formula": "delta_p_w = p_back(elev) - p_front(elev)",
+    "sign": "Positive = net pressure toward front (excavation) side = drives pile toward front",
+    "resultant_formula": "U = integral(delta_p_w * dz) along pile length [kN/m]"
+  },
+  "seepage_simplified": {
+    "description": "Terzaghi simplified flow net for sheet pile with unequal water levels",
+    "head_difference": "delta_h = water_elev_back - water_elev_front",
+    "seepage_path_length": "L_seep = 2 * d  (d = embedment below excavation level)",
+    "hydraulic_gradient": "i_avg = delta_h / (2 * d)",
+    "back_side_correction": "p_back(z) = gamma_w * max(0, water_elev_back - elev - delta_h/2 * (z_from_back_wt / d))",
+    "front_side_correction": "p_front(z) = gamma_w * max(0, water_elev_front - elev + delta_h/2 * (z_from_exc / d))",
+    "note": "Only valid below excavation level. Above excavation: hydrostatic applies.",
+    "ref": "Terzaghi (1943) — approximation, not substitute for flow net"
+  },
+  "uplift_pressure": {
+    "description": "Net upward water force on pile cross-section at any elevation",
+    "formula": "F_uplift = p_front - p_back  (positive = upward = reduces pile bearing capacity)",
+    "note": "Relevant for pile bearing; not the same as net lateral water pressure"
+  },
+  "effective_stress_rule": {
+    "above_water_table": "sigma_v_eff = gamma_moist * z",
+    "below_water_table_back": "sigma_v_eff = gamma_moist * z_dry + gamma_sub * z_wet  (downward seepage: +i*gamma_w*z_wet)",
+    "below_water_table_front": "sigma_v_eff = gamma_moist * z_dry + gamma_sub * z_wet  (upward seepage: -i*gamma_w*z_wet)"
+  },
+  "sign_convention": {
+    "elevation": "positive upward, datum = project datum (pile top_elev = +2.7 m)",
+    "depth_z": "positive downward from water table",
+    "pressure": "always non-negative (gauge pressure)",
+    "net_lateral": "positive = from Back toward Front"
+  },
+  "scenarios": [
+    {
+      "id": "hydrostatic_equal",
+      "label": "Hydrostatic — Equal Water Levels",
+      "condition": "water_elev_back == water_elev_front",
+      "net_p": 0.0,
+      "note": "No net lateral water force. Still affects effective stress."
+    },
+    {
+      "id": "hydrostatic_unequal",
+      "label": "Hydrostatic — Unequal Water Levels (conservative)",
+      "condition": "water_elev_back > water_elev_front, no seepage correction",
+      "net_p": "gamma_w * (water_elev_back - water_elev_front) at any elev below both WLs",
+      "note": "Conservative: ignores head dissipation along seepage path"
+    },
+    {
+      "id": "seepage_terzaghi",
+      "label": "Seepage — Terzaghi Simplified",
+      "condition": "water_elev_back > water_elev_front, flow under pile tip",
+      "note": "Reduces net pressure compared to conservative hydrostatic; requires embedment depth d"
+    }
+  ]
+}

@@ -1,0 +1,5085 @@
+{
+  "_meta": {
+    "project": "Trung tâm Hành chính TP.HCM",
+    "zone": "BXN",
+    "source": "BXN-2. TRỤ_BXN-TTHC. Tru DC.pdf",
+    "source_drive_id": "1c_RO3JKtaLKNYE0C_xSTOZ1hMYaifi7L",
+    "updated": "2026-05-18",
+    "boreholes": 17,
+    "notes": "14 HK có KQTN (HK1-8,11,13-17); HK9,HK10,HK12 chỉ có trụ ĐC + SPT. Tọa độ VN2000 đầy đủ cho tất cả 17 HK. HK10 tọa độ X điều chỉnh từ OCR artifact 119163.868 → 1191638.680."
+  },
+  "boreholes": [
+    {
+      "name": "BXN-CV-HK1",
+      "name_raw": "CV-HK1",
+      "elevation_m": 2.899,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191602.053,
+      "y_coord_m": 606114.279,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.7
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.7,
+          "depth_bot_m": 20.3
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 20.3,
+          "depth_bot_m": 25.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 25.0,
+          "depth_bot_m": 39.5
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 39.5,
+          "depth_bot_m": 43.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng, trạng thái nửa cứng",
+          "depth_top_m": 43.0,
+          "depth_bot_m": 51.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng, trạng thái nửa cứng",
+          "depth_top_m": 51.0,
+          "depth_bot_m": 60.3
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 60.3,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N": 4
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N": 4
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 7,
+          "N": 12
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 9,
+          "N": 17
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 10,
+          "N": 18
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 9,
+          "N": 17
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 15,
+          "N": 28
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 14,
+          "N2": 25,
+          "N3": 28,
+          "N": 53
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 12,
+          "N2": 18,
+          "N3": 22,
+          "N": 40
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 14,
+          "N": 26
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 10,
+          "N": 17
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 15,
+          "N": 27
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 16,
+          "N": 29
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 17,
+          "N": 31
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 4,
+          "N2": 7,
+          "N3": 10,
+          "N": 17
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 9,
+          "N2": 13,
+          "N3": 17,
+          "N": 30
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 18,
+          "N": 32
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 17,
+          "N": 31
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 7,
+          "N2": 9,
+          "N3": 13,
+          "N": 22
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 15,
+          "N": 25
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 6,
+          "N2": 9,
+          "N3": 13,
+          "N": 22
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 7,
+          "N2": 11,
+          "N3": 16,
+          "N": 27
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 5,
+          "N2": 8,
+          "N3": 12,
+          "N": 20
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK2",
+      "name_raw": "CV-HK2",
+      "elevation_m": 2.551,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191585.87,
+      "y_coord_m": 606077.724,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.5
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.5,
+          "depth_bot_m": 19.5
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 19.5,
+          "depth_bot_m": 27.5
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 27.5,
+          "depth_bot_m": 35.5
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 35.5,
+          "depth_bot_m": 43.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 43.0,
+          "depth_bot_m": 55.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 55.0,
+          "depth_bot_m": 59.0
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 59.0,
+          "depth_bot_m": 67.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 67.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 2,
+          "N2": 4,
+          "N3": 6,
+          "N": 10
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N": 4
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 8,
+          "N": 13
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 12,
+          "N2": 15,
+          "N3": 19,
+          "N": 34
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 5,
+          "N": 9
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 13,
+          "N2": 18,
+          "N3": 24,
+          "N": 42
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 24,
+          "N2": 30,
+          "N3": 37,
+          "N": 67
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 6,
+          "N2": 15,
+          "N3": 21,
+          "N": 36
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 17,
+          "N2": 24,
+          "N3": 31,
+          "N": 55
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 19,
+          "N": 32
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 21,
+          "N2": 28,
+          "N3": 33,
+          "N": 61
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 10,
+          "N2": 15,
+          "N3": 20,
+          "N": 35
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 11,
+          "N2": 17,
+          "N3": 24,
+          "N": 41
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 11,
+          "N2": 18,
+          "N3": 26,
+          "N": 44
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 8,
+          "N": 13
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 13,
+          "N2": 21,
+          "N3": 30,
+          "N": 51
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 21,
+          "N": 36
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 9,
+          "N2": 18,
+          "N3": 27,
+          "N": 45
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 11,
+          "N2": 16,
+          "N3": 22,
+          "N": 38
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 9,
+          "N2": 15,
+          "N3": 21,
+          "N": 36
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 7,
+          "N2": 11,
+          "N3": 16,
+          "N": 27
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 5,
+          "N2": 8,
+          "N3": 12,
+          "N": 20
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK3",
+      "name_raw": "CV-HK3",
+      "elevation_m": 2.398,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191569.698,
+      "y_coord_m": 606041.174,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.0
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.0,
+          "depth_bot_m": 21.0
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 21.0,
+          "depth_bot_m": 27.2
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 27.2,
+          "depth_bot_m": 31.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 42.5
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 42.5,
+          "depth_bot_m": 47.0
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Cát lẫn bụi, màu xám nâu (thấu kính 6a)",
+          "depth_top_m": 46.5,
+          "depth_bot_m": 48.9
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 48.9,
+          "depth_bot_m": 59.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 59.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 4,
+          "N2": 8,
+          "N3": 12,
+          "N": 20
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 1,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 5,
+          "N": 9
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 9,
+          "N2": 15,
+          "N3": 21,
+          "N": 36
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 10,
+          "N2": 16,
+          "N3": 22,
+          "N": 38
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 19,
+          "N": 33
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 13,
+          "N2": 17,
+          "N3": 22,
+          "N": 39
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 17,
+          "N": 30
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 6,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 19,
+          "N": 31
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 10,
+          "N2": 15,
+          "N3": 18,
+          "N": 33
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 17,
+          "N": 30
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 18,
+          "N": 32
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 8,
+          "N2": 16,
+          "N3": 18,
+          "N": 34
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 9,
+          "N2": 15,
+          "N3": 20,
+          "N": 35
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 11,
+          "N2": 17,
+          "N3": 24,
+          "N": 41
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 6,
+          "N2": 13,
+          "N3": 21,
+          "N": 34
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 6,
+          "N2": 12,
+          "N3": 18,
+          "N": 30
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 11,
+          "N2": 17,
+          "N3": 26,
+          "N": 43
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 7,
+          "N2": 15,
+          "N3": 24,
+          "N": 39
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 8,
+          "N2": 16,
+          "N3": 24,
+          "N": 40
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK4",
+      "name_raw": "CV-HK4",
+      "elevation_m": 2.282,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191553.467,
+      "y_coord_m": 606004.58,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 1.1
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 1.1,
+          "depth_bot_m": 21.0
+        },
+        {
+          "symbol": "3a",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp",
+          "depth_top_m": 21.0,
+          "depth_bot_m": 23.9
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 23.9,
+          "depth_bot_m": 27.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 35.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 43.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 43.0,
+          "depth_bot_m": 47.0
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Cát vừa lẫn bụi, màu xám nâu (thấu kính 6a)",
+          "depth_top_m": 47.22,
+          "depth_bot_m": 51.0
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 51.0,
+          "depth_bot_m": 59.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 59.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 8,
+          "N": 13
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 2,
+          "N2": 6,
+          "N3": 8,
+          "N": 14
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 8,
+          "N": 15
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 15,
+          "N": 28
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 5,
+          "N": 13
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 8,
+          "N2": 10,
+          "N3": 12,
+          "N": 22
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 7,
+          "N2": 16,
+          "N3": 25,
+          "N": 41
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 5,
+          "N2": 12,
+          "N3": 19,
+          "N": 31
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 9,
+          "N2": 15,
+          "N3": 22,
+          "N": 37
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 11,
+          "N": 19
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 9,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 12,
+          "N": 17
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 9,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 6,
+          "N2": 11,
+          "N3": 17,
+          "N": 28
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 5,
+          "N2": 11,
+          "N3": 17,
+          "N": 28
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 19,
+          "N": 32
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 22,
+          "N": 37
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 9,
+          "N2": 15,
+          "N3": 22,
+          "N": 37
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 11,
+          "N2": 17,
+          "N3": 26,
+          "N": 43
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 7,
+          "N2": 15,
+          "N3": 24,
+          "N": 39
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 8,
+          "N2": 16,
+          "N3": 24,
+          "N": 40
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK5",
+      "name_raw": "CV-HK5",
+      "elevation_m": 2.193,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191537.283,
+      "y_coord_m": 605968.022,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 1.1
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 1.1,
+          "depth_bot_m": 20.8
+        },
+        {
+          "symbol": "3a",
+          "description": "Cát lẫn sét, bụi màu xám xanh",
+          "depth_top_m": 20.8,
+          "depth_bot_m": 22.0
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 22.0,
+          "depth_bot_m": 29.0
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 29.0,
+          "depth_bot_m": 37.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 37.0,
+          "depth_bot_m": 42.6
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 42.6,
+          "depth_bot_m": 51.1
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 51.1,
+          "depth_bot_m": 60.9
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 60.9,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 2,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 4,
+          "N2": 8,
+          "N3": 14,
+          "N": 22
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 7,
+          "N2": 8,
+          "N3": 9,
+          "N": 17
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 5,
+          "N": 8
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 9,
+          "N": 16
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 9,
+          "N": 17
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 17,
+          "N": 27
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 11,
+          "N2": 15,
+          "N3": 18,
+          "N": 33
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 12,
+          "N2": 18,
+          "N3": 20,
+          "N": 38
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 14,
+          "N": 26
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 14,
+          "N": 24
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 15,
+          "N": 28
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 19,
+          "N": 36
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 11,
+          "N2": 16,
+          "N3": 21,
+          "N": 37
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 18,
+          "N": 32
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 10,
+          "N2": 30,
+          "N3": 20,
+          "N": 50
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 11,
+          "N2": 19,
+          "N3": 26,
+          "N": 45
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 5,
+          "N2": 14,
+          "N3": 22,
+          "N": 36
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 7,
+          "N2": 16,
+          "N3": 24,
+          "N": 40
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 4,
+          "N2": 6,
+          "N3": 11,
+          "N": 17
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK6",
+      "name_raw": "CV-HK6",
+      "elevation_m": 2.183,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191573.853,
+      "y_coord_m": 605951.807,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.4
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.4,
+          "depth_bot_m": 21.7
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 21.7,
+          "depth_bot_m": 31.0
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 37.2
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 37.2,
+          "depth_bot_m": 43.6
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 43.6,
+          "depth_bot_m": 63.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 63.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 9,
+          "N": 17
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 6,
+          "N2": 7,
+          "N3": 6,
+          "N": 13
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 5,
+          "N": 10
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 2,
+          "N": 5
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 3,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 7,
+          "N2": 15,
+          "N3": 19,
+          "N": 34
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 4,
+          "N2": 8,
+          "N3": 10,
+          "N": 18
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 29,
+          "N2": 33,
+          "N3": 35,
+          "N": 68
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 5,
+          "N2": 9,
+          "N3": 13,
+          "N": 22
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 4,
+          "N2": 10,
+          "N3": 10,
+          "N": 20
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 8,
+          "N2": 11,
+          "N3": 15,
+          "N": 26
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 4,
+          "N2": 7,
+          "N3": 9,
+          "N": 16
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 5,
+          "N2": 9,
+          "N3": 11,
+          "N": 20
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 4,
+          "N2": 10,
+          "N3": 8,
+          "N": 18
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 14,
+          "N": 22
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 12,
+          "N2": 20,
+          "N3": 23,
+          "N": 43
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 11,
+          "N2": 16,
+          "N3": 21,
+          "N": 37
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 12,
+          "N2": 30,
+          "N3": 20,
+          "N": 50
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 12,
+          "N2": 25,
+          "N3": 30,
+          "N": 55
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK7",
+      "name_raw": "CV-HK7",
+      "elevation_m": 2.243,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191590.044,
+      "y_coord_m": 605988.342,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.2
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.2,
+          "depth_bot_m": 22.1
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 22.1,
+          "depth_bot_m": 31.0
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 32.2
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 32.2,
+          "depth_bot_m": 41.3
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 41.3,
+          "depth_bot_m": 51.3
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 51.3,
+          "depth_bot_m": 59.5
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 59.5,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 3,
+          "N": 7
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 3,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 15,
+          "N2": 27,
+          "N3": 20,
+          "N": 47
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 14,
+          "N2": 18,
+          "N3": 20,
+          "N": 38
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 6,
+          "N2": 13,
+          "N3": 15,
+          "N": 28
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 6,
+          "N2": 12,
+          "N3": 15,
+          "N": 27
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 9,
+          "N": 16
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 14,
+          "N": 27
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 5,
+          "N2": 9,
+          "N3": 9,
+          "N": 18
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 10,
+          "N": 18
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 9,
+          "N": 19
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 16,
+          "N": 29
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 8,
+          "N2": 10,
+          "N3": 14,
+          "N": 24
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 6,
+          "N2": 11,
+          "N3": 13,
+          "N": 24
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 14,
+          "N2": 28,
+          "N3": 33,
+          "N": 61
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 16,
+          "N2": 24,
+          "N3": 36,
+          "N": 60
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 17,
+          "N": 32
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 10,
+          "N2": 19,
+          "N3": 14,
+          "N": 33
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 22,
+          "N": 39
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 9,
+          "N2": 16,
+          "N3": 19,
+          "N": 35
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 14,
+          "N2": 26,
+          "N3": 34,
+          "N": 60
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK8",
+      "name_raw": "CV-HK8",
+      "elevation_m": 2.258,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191606.26,
+      "y_coord_m": 606024.982,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 3.0
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 3.0,
+          "depth_bot_m": 22.7
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 22.7,
+          "depth_bot_m": 27.0
+        },
+        {
+          "symbol": "3c",
+          "description": "Cát lẫn sét bụi màu xám xanh (lớp 3c)",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 31.0
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 34.7
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 34.7,
+          "depth_bot_m": 41.7
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 41.7,
+          "depth_bot_m": 46.5
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Sét cứng ít – thấu kính 6a",
+          "depth_top_m": 46.5,
+          "depth_bot_m": 49.0
+        },
+        {
+          "symbol": "TK6b",
+          "description": "Cát lẫn sét, màu nâu vàng – thấu kính 6b",
+          "depth_top_m": 49.0,
+          "depth_bot_m": 51.5
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 51.5,
+          "depth_bot_m": 56.6
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 56.6,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 4,
+          "N2": 7,
+          "N3": 5,
+          "N": 12
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N": 4
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 23,
+          "N": 38
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 4,
+          "N2": 10,
+          "N3": 17,
+          "N": 27
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 14,
+          "N2": 9,
+          "N3": 14,
+          "N": 23
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 10,
+          "N2": 18,
+          "N3": 21,
+          "N": 39
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 22,
+          "N": 39
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 15,
+          "N2": 23,
+          "N3": 20,
+          "N": 43
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 12,
+          "N": 25
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 8,
+          "N2": 11,
+          "N3": 13,
+          "N": 24
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 6,
+          "N2": 11,
+          "N3": 14,
+          "N": 25
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 14,
+          "N": 26
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 7,
+          "N2": 19,
+          "N3": 25,
+          "N": 44
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 7,
+          "N2": 18,
+          "N3": 20,
+          "N": 38
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 6,
+          "N2": 15,
+          "N3": 19,
+          "N": 34
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 11,
+          "N2": 21,
+          "N3": 28,
+          "N": 49
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 7,
+          "N2": 14,
+          "N3": 17,
+          "N": 31
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 11,
+          "N2": 20,
+          "N3": 25,
+          "N": 45
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 26,
+          "N2": 32,
+          "N3": 37,
+          "N": 69
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK9",
+      "name_raw": "CV-HK9",
+      "elevation_m": 3.058,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191622.441,
+      "y_coord_m": 606061.542,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 3.0
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 3.0,
+          "depth_bot_m": 22.6
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 22.6,
+          "depth_bot_m": 29.0
+        },
+        {
+          "symbol": "3c",
+          "description": "Cát lẫn sét bụi màu xám xanh (lớp 3c)",
+          "depth_top_m": 29.0,
+          "depth_bot_m": 31.2
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 31.2,
+          "depth_bot_m": 35.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 38.8
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 38.8,
+          "depth_bot_m": 61.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 61.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 5,
+          "N": 10
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 7,
+          "N2": 7,
+          "N3": 8,
+          "N": 15
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 4,
+          "N2": 4,
+          "N3": 5,
+          "N": 9
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 8,
+          "N2": 9,
+          "N3": 12,
+          "N": 21
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 9,
+          "N2": 10,
+          "N3": 11,
+          "N": 21
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 8,
+          "N2": 11,
+          "N3": 14,
+          "N": 25
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 17,
+          "N": 30
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 22,
+          "N": 36
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 19,
+          "N": 32
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 7,
+          "N2": 9,
+          "N3": 14,
+          "N": 23
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 19,
+          "N": 32
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 6,
+          "N2": 12,
+          "N3": 17,
+          "N": 29
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 10,
+          "N2": 16,
+          "N3": 23,
+          "N": 39
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 10,
+          "N2": 16,
+          "N3": 24,
+          "N": 40
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 7,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 7,
+          "N2": 14,
+          "N3": 17,
+          "N": 31
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 16,
+          "N2": 23,
+          "N3": 20,
+          "N": 43
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 11,
+          "N2": 16,
+          "N3": 18,
+          "N": 34
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK10",
+      "name_raw": "CV-HK10",
+      "elevation_m": 3.07,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191638.68,
+      "y_coord_m": 606098.186,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 3.1
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 3.1,
+          "depth_bot_m": 23.9
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 23.9,
+          "depth_bot_m": 35.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 42.4
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 42.4,
+          "depth_bot_m": 49.5
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Cát lẫn bụi, màu xám nâu (thấu kính 6a)",
+          "depth_top_m": 49.5,
+          "depth_bot_m": 50.8
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 50.8,
+          "depth_bot_m": 56.1
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Cát lẫn bụi, màu xám nâu (thấu kính 6a) – lần 2",
+          "depth_top_m": 53.03,
+          "depth_bot_m": 59.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 59.0,
+          "depth_bot_m": 63.2
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 63.2,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N": 4
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 7,
+          "N": 12
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 3,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 7,
+          "N2": 6,
+          "N3": 5,
+          "N": 11
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 10,
+          "N2": 9,
+          "N3": 11,
+          "N": 20
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 11,
+          "N2": 10,
+          "N3": 11,
+          "N": 21
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 11,
+          "N2": 15,
+          "N3": 12,
+          "N": 27
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 13,
+          "N": 25
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 7,
+          "N2": 11,
+          "N3": 10,
+          "N": 21
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 9,
+          "N2": 9,
+          "N3": 13,
+          "N": 22
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 7,
+          "N2": 15,
+          "N3": 17,
+          "N": 32
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 12,
+          "N": 25
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 8,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 4,
+          "N2": 5,
+          "N3": 7,
+          "N": 12
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 9,
+          "N": 19
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 13,
+          "N": 25
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 10,
+          "N": 18
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 15,
+          "N2": 18,
+          "N3": 22,
+          "N": 40
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 11,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 11,
+          "N2": 16,
+          "N3": 18,
+          "N": 34
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK11",
+      "name_raw": "CV-HK11",
+      "elevation_m": 2.983,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191678.381,
+      "y_coord_m": 606089.422,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 3.3
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 3.3,
+          "depth_bot_m": 20.2
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 20.2,
+          "depth_bot_m": 29.0
+        },
+        {
+          "symbol": "3c",
+          "description": "Cát lẫn sét bụi màu xám xanh (lớp 3c)",
+          "depth_top_m": 29.0,
+          "depth_bot_m": 35.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 37.5
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 37.5,
+          "depth_bot_m": 65.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 65.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 5,
+          "N2": 5,
+          "N3": 4,
+          "N": 9
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 1,
+          "N2": 3,
+          "N3": 5,
+          "N": 8
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 5,
+          "N": 9
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 3,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 5,
+          "N2": 6,
+          "N3": 7,
+          "N": 13
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 6,
+          "N2": 8,
+          "N3": 11,
+          "N": 19
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 5,
+          "N": 9
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N": 4
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 5,
+          "N2": 8,
+          "N3": 12,
+          "N": 20
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 10,
+          "N2": 12,
+          "N3": 14,
+          "N": 26
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 14,
+          "N": 24
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 17,
+          "N": 29
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 17,
+          "N": 30
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 14,
+          "N2": 17,
+          "N3": 22,
+          "N": 39
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 12,
+          "N2": 18,
+          "N3": 25,
+          "N": 43
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 19,
+          "N": 31
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 26,
+          "N": 43
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 7,
+          "N2": 13,
+          "N3": 19,
+          "N": 32
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 18,
+          "N": 30
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 21,
+          "N": 35
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 10,
+          "N": 20
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 14,
+          "N2": 20,
+          "N3": 26,
+          "N": 46
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 8,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK12",
+      "name_raw": "CV-HK12",
+      "elevation_m": 2.708,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191662.015,
+      "y_coord_m": 606052.169,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.3
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.3,
+          "depth_bot_m": 22.0
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 22.0,
+          "depth_bot_m": 32.0
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 32.0,
+          "depth_bot_m": 36.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 36.0,
+          "depth_bot_m": 42.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 42.0,
+          "depth_bot_m": 50.2
+        },
+        {
+          "symbol": "TK6b",
+          "description": "Cát lẫn sét, màu nâu vàng (thấu kính 6b)",
+          "depth_top_m": 50.2,
+          "depth_bot_m": 54.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 54.0,
+          "depth_bot_m": 58.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 58.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 3.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 5.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 7.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 9.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 13.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 15.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 17.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 19.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 21.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 23.0,
+          "N1": 2,
+          "N2": 4,
+          "N3": 5,
+          "N": 9
+        },
+        {
+          "depth_m": 25.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 27.0,
+          "N1": 2,
+          "N2": 4,
+          "N3": 6,
+          "N": 10
+        },
+        {
+          "depth_m": 29.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 5,
+          "N": 8
+        },
+        {
+          "depth_m": 31.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 6,
+          "N": 10
+        },
+        {
+          "depth_m": 33.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 35.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 13,
+          "N": 18
+        },
+        {
+          "depth_m": 37.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 6,
+          "N": 10
+        },
+        {
+          "depth_m": 39.0,
+          "N1": 9,
+          "N2": 10,
+          "N3": 11,
+          "N": 21
+        },
+        {
+          "depth_m": 41.0,
+          "N1": 11,
+          "N2": 19,
+          "N3": 28,
+          "N": 47
+        },
+        {
+          "depth_m": 43.0,
+          "N1": 9,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 45.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 19,
+          "N": 34
+        },
+        {
+          "depth_m": 47.0,
+          "N1": 11,
+          "N2": 19,
+          "N3": 24,
+          "N": 43
+        },
+        {
+          "depth_m": 49.0,
+          "N1": 11,
+          "N2": 17,
+          "N3": 25,
+          "N": 42
+        },
+        {
+          "depth_m": 51.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        },
+        {
+          "depth_m": 53.0,
+          "N1": 10,
+          "N2": 19,
+          "N3": 25,
+          "N": 44
+        },
+        {
+          "depth_m": 55.0,
+          "N1": 5,
+          "N2": 9,
+          "N3": 14,
+          "N": 23
+        },
+        {
+          "depth_m": 57.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 25,
+          "N": 35
+        },
+        {
+          "depth_m": 59.0,
+          "N1": 11,
+          "N2": 19,
+          "N3": 27,
+          "N": 46
+        },
+        {
+          "depth_m": 61.0,
+          "N1": 8,
+          "N2": 16,
+          "N3": 24,
+          "N": 40
+        },
+        {
+          "depth_m": 63.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 15,
+          "N": 25
+        },
+        {
+          "depth_m": 65.0,
+          "N1": 12,
+          "N2": 18,
+          "N3": 21,
+          "N": 39
+        },
+        {
+          "depth_m": 67.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 21,
+          "N": 38
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 11,
+          "N2": 17,
+          "N3": 21,
+          "N": 38
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK13",
+      "name_raw": "CV-HK13",
+      "elevation_m": 2.268,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191645.843,
+      "y_coord_m": 606015.603,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.6
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.6,
+          "depth_bot_m": 21.5
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 21.5,
+          "depth_bot_m": 27.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 40.9
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 40.9,
+          "depth_bot_m": 57.4
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 57.4,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 12,
+          "N": 24
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 2,
+          "N2": 2,
+          "N3": 4,
+          "N": 6
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 5,
+          "N": 10
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 8,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 2,
+          "N2": 4,
+          "N3": 6,
+          "N": 10
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 7,
+          "N2": 8,
+          "N3": 9,
+          "N": 17
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 13,
+          "N2": 23,
+          "N3": 27,
+          "N": 50
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 4,
+          "N2": 8,
+          "N3": 13,
+          "N": 21
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 17,
+          "N": 32
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 11,
+          "N2": 19,
+          "N3": 23,
+          "N": 42
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 10,
+          "N2": 20,
+          "N3": 25,
+          "N": 45
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 8,
+          "N2": 14,
+          "N3": 17,
+          "N": 31
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 11,
+          "N2": 23,
+          "N3": 28,
+          "N": 51
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 16,
+          "N": 26
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 8,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 7,
+          "N2": 13,
+          "N3": 17,
+          "N": 30
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 21,
+          "N": 38
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 20,
+          "N": 32
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 4,
+          "N2": 6,
+          "N3": 12,
+          "N": 18
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 12,
+          "N2": 20,
+          "N3": 30,
+          "N": 50
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 7,
+          "N2": 14,
+          "N3": 23,
+          "N": 37
+        },
+        {
+          "depth_m": 65.0,
+          "N1": 12,
+          "N2": 18,
+          "N3": 21,
+          "N": 39
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 8,
+          "N2": 17,
+          "N3": 26,
+          "N": 43
+        },
+        {
+          "depth_m": 67.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 21,
+          "N": 38
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 11,
+          "N2": 20,
+          "N3": 24,
+          "N": 44
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 11,
+          "N2": 17,
+          "N3": 21,
+          "N": 38
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK14",
+      "name_raw": "CV-HK14",
+      "elevation_m": 2.185,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191629.624,
+      "y_coord_m": 605979.066,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 1.3
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 1.3,
+          "depth_bot_m": 21.4
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 21.4,
+          "depth_bot_m": 30.7
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 30.7,
+          "depth_bot_m": 33.2
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 33.2,
+          "depth_bot_m": 44.9
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 44.9,
+          "depth_bot_m": 59.4
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 59.4,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 1,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 4,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 4,
+          "N": 8
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 4,
+          "N2": 7,
+          "N3": 7,
+          "N": 14
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 8,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 9,
+          "N": 16
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 23,
+          "N": 37
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 9,
+          "N2": 13,
+          "N3": 21,
+          "N": 34
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 16,
+          "N": 29
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 12,
+          "N2": 18,
+          "N3": 24,
+          "N": 42
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 8,
+          "N2": 16,
+          "N3": 23,
+          "N": 39
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 15,
+          "N2": 25,
+          "N3": 25,
+          "N": 50
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 24,
+          "N": 39
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 9,
+          "N2": 19,
+          "N3": 26,
+          "N": 45
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 13,
+          "N2": 24,
+          "N3": 26,
+          "N": 50
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 8,
+          "N2": 18,
+          "N3": 28,
+          "N": 46
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 11,
+          "N2": 23,
+          "N3": 27,
+          "N": 50
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 20,
+          "N2": 28,
+          "N3": 22,
+          "N": 50
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 8,
+          "N2": 17,
+          "N3": 26,
+          "N": 43
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 11,
+          "N2": 20,
+          "N3": 24,
+          "N": 44
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 11,
+          "N2": 23,
+          "N3": 27,
+          "N": 50
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK15",
+      "name_raw": "CV-HK15",
+      "elevation_m": 2.311,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191683.77,
+      "y_coord_m": 606002.554,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 1.0
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 1.0,
+          "depth_bot_m": 21.5
+        },
+        {
+          "symbol": "3a",
+          "description": "Cát lẫn sét, bụi màu xám xanh",
+          "depth_top_m": 21.5,
+          "depth_bot_m": 25.0
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 25.0,
+          "depth_bot_m": 28.6
+        },
+        {
+          "symbol": "4",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "depth_top_m": 28.6,
+          "depth_bot_m": 35.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 42.1
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 42.1,
+          "depth_bot_m": 47.5
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Cát lẫn bụi, màu xám nâu (thấu kính 6a)",
+          "depth_top_m": 45.19,
+          "depth_bot_m": 49.0
+        },
+        {
+          "symbol": "TK6b",
+          "description": "Cát lẫn sét, màu nâu vàng (thấu kính 6b)",
+          "depth_top_m": 46.69,
+          "depth_bot_m": 51.2
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 51.2,
+          "depth_bot_m": 57.5
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 57.5,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 4,
+          "N2": 7,
+          "N3": 14,
+          "N": 21
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 3,
+          "N2": 3,
+          "N3": 3,
+          "N": 6
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 7,
+          "N2": 9,
+          "N3": 12,
+          "N": 21
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 14,
+          "N": 18
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 15,
+          "N2": 24,
+          "N3": 27,
+          "N": 51
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 7,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 7,
+          "N2": 9,
+          "N3": 12,
+          "N": 21
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 6,
+          "N2": 9,
+          "N3": 17,
+          "N": 26
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 8,
+          "N2": 14,
+          "N3": 22,
+          "N": 36
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 8,
+          "N2": 16,
+          "N3": 20,
+          "N": 36
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 9,
+          "N2": 12,
+          "N3": 14,
+          "N": 26
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 7,
+          "N2": 9,
+          "N3": 13,
+          "N": 22
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 6,
+          "N2": 9,
+          "N3": 20,
+          "N": 29
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 11,
+          "N": 18
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 9,
+          "N2": 15,
+          "N3": 21,
+          "N": 36
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 20,
+          "N": 34
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 14,
+          "N2": 22,
+          "N3": 26,
+          "N": 48
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 12,
+          "N2": 18,
+          "N3": 24,
+          "N": 42
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 10,
+          "N2": 18,
+          "N3": 28,
+          "N": 46
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 10,
+          "N2": 20,
+          "N3": 24,
+          "N": 44
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 11,
+          "N2": 23,
+          "N3": 27,
+          "N": 50
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK16",
+      "name_raw": "CV-HK16",
+      "elevation_m": 2.642,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191770.009,
+      "y_coord_m": 606039.124,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.5
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.5,
+          "depth_bot_m": 22.5
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 22.5,
+          "depth_bot_m": 33.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 33.0,
+          "depth_bot_m": 43.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 43.0,
+          "depth_bot_m": 51.0
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Cát lẫn bụi, màu xám nâu (thấu kính 6a)",
+          "depth_top_m": 48.36,
+          "depth_bot_m": 55.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 55.0,
+          "depth_bot_m": 59.0
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 59.0,
+          "depth_bot_m": 63.2
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 63.2,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 1,
+          "N3": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 10.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 2,
+          "N": 3
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 1,
+          "N2": 0,
+          "N3": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N": 2
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N": 4
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 1,
+          "N2": 3,
+          "N3": 4,
+          "N": 7
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 15,
+          "N": 25
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 10,
+          "N2": 17,
+          "N3": 20,
+          "N": 37
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 8,
+          "N2": 15,
+          "N3": 19,
+          "N": 34
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 18,
+          "N2": 24,
+          "N3": 30,
+          "N": 54
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 9,
+          "N2": 12,
+          "N3": 14,
+          "N": 26
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 7,
+          "N2": 10,
+          "N3": 13,
+          "N": 23
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 9,
+          "N2": 13,
+          "N3": 18,
+          "N": 31
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 10,
+          "N2": 15,
+          "N3": 22,
+          "N": 37
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 10,
+          "N2": 13,
+          "N3": 20,
+          "N": 33
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 7,
+          "N2": 11,
+          "N3": 19,
+          "N": 30
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 11,
+          "N2": 18,
+          "N3": 25,
+          "N": 43
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 5,
+          "N2": 8,
+          "N3": 13,
+          "N": 21
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 7,
+          "N2": 13,
+          "N3": 23,
+          "N": 36
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 6,
+          "N2": 11,
+          "N3": 17,
+          "N": 28
+        },
+        {
+          "depth_m": 62.0,
+          "N1": 10,
+          "N2": 15,
+          "N3": 20,
+          "N": 35
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 6,
+          "N2": 10,
+          "N3": 15,
+          "N": 25
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 21,
+          "N": 35
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 9,
+          "N2": 14,
+          "N3": 34,
+          "N": 48
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 10,
+          "N2": 18,
+          "N3": 22,
+          "N": 40
+        }
+      ]
+    },
+    {
+      "name": "BXN-CV-HK17",
+      "name_raw": "CV-HK17",
+      "elevation_m": 2.112,
+      "depth_m": 70.0,
+      "date": null,
+      "x_coord_m": 1191633.615,
+      "y_coord_m": 605966.866,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Đất san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 1.0
+        },
+        {
+          "symbol": "2",
+          "description": "Sét chảy rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 1.0,
+          "depth_bot_m": 19.0
+        },
+        {
+          "symbol": "3b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 19.0,
+          "depth_bot_m": 27.0
+        },
+        {
+          "symbol": "5",
+          "description": "Cát chặt lẫn vừa sét bụi, màu xám xanh",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 38.8
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 38.8,
+          "depth_bot_m": 47.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 47.0,
+          "depth_bot_m": 55.0
+        },
+        {
+          "symbol": "TK6a",
+          "description": "Cát lẫn bụi, màu xám nâu (thấu kính 6a)",
+          "depth_top_m": 54.89,
+          "depth_bot_m": 57.0
+        },
+        {
+          "symbol": "6",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "depth_top_m": 57.0,
+          "depth_bot_m": 63.0
+        },
+        {
+          "symbol": "8",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 63.0,
+          "depth_bot_m": 70.0
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 4.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 6.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 8.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 12.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 14.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 16.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 18.0,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N": 1
+        },
+        {
+          "depth_m": 20.0,
+          "N1": 5,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 22.0,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 24.0,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N": 5
+        },
+        {
+          "depth_m": 26.0,
+          "N1": 3,
+          "N2": 4,
+          "N3": 6,
+          "N": 10
+        },
+        {
+          "depth_m": 28.0,
+          "N1": 3,
+          "N2": 5,
+          "N3": 6,
+          "N": 11
+        },
+        {
+          "depth_m": 30.0,
+          "N1": 6,
+          "N2": 12,
+          "N3": 17,
+          "N": 29
+        },
+        {
+          "depth_m": 32.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 6,
+          "N": 13
+        },
+        {
+          "depth_m": 34.0,
+          "N1": 5,
+          "N2": 8,
+          "N3": 11,
+          "N": 19
+        },
+        {
+          "depth_m": 36.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 9,
+          "N": 16
+        },
+        {
+          "depth_m": 38.0,
+          "N1": 5,
+          "N2": 7,
+          "N3": 10,
+          "N": 17
+        },
+        {
+          "depth_m": 40.0,
+          "N1": 8,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        },
+        {
+          "depth_m": 42.0,
+          "N1": 11,
+          "N2": 18,
+          "N3": 26,
+          "N": 44
+        },
+        {
+          "depth_m": 44.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 16,
+          "N": 28
+        },
+        {
+          "depth_m": 46.0,
+          "N1": 8,
+          "N2": 13,
+          "N3": 17,
+          "N": 30
+        },
+        {
+          "depth_m": 48.0,
+          "N1": 9,
+          "N2": 17,
+          "N3": 24,
+          "N": 41
+        },
+        {
+          "depth_m": 50.0,
+          "N1": 9,
+          "N2": 16,
+          "N3": 24,
+          "N": 40
+        },
+        {
+          "depth_m": 52.0,
+          "N1": 7,
+          "N2": 15,
+          "N3": 26,
+          "N": 41
+        },
+        {
+          "depth_m": 54.0,
+          "N1": 6,
+          "N2": 13,
+          "N3": 19,
+          "N": 32
+        },
+        {
+          "depth_m": 56.0,
+          "N1": 7,
+          "N2": 14,
+          "N3": 24,
+          "N": 38
+        },
+        {
+          "depth_m": 58.0,
+          "N1": 6,
+          "N2": 11,
+          "N3": 18,
+          "N": 29
+        },
+        {
+          "depth_m": 60.0,
+          "N1": 7,
+          "N2": 12,
+          "N3": 19,
+          "N": 31
+        },
+        {
+          "depth_m": 64.0,
+          "N1": 7,
+          "N2": 14,
+          "N3": 23,
+          "N": 37
+        },
+        {
+          "depth_m": 66.0,
+          "N1": 10,
+          "N2": 14,
+          "N3": 21,
+          "N": 35
+        },
+        {
+          "depth_m": 68.0,
+          "N1": 10,
+          "N2": 15,
+          "N3": 20,
+          "N": 35
+        },
+        {
+          "depth_m": 70.0,
+          "N1": 10,
+          "N2": 15,
+          "N3": 21,
+          "N": 36
+        }
+      ]
+    }
+  ]
+}

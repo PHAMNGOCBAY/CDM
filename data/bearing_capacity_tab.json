@@ -1,0 +1,71 @@
+{
+  "_meta": {
+    "source": "geotech-staff-engineer bearing_capacity + FHWA GEC-6 + Meyerhof/Vesic",
+    "updated": "2026-05-16",
+    "version": "v1",
+    "md_file": "29-bearing-capacity-tab.md",
+    "py_file": "scripts/tab_bearing_capacity.py"
+  },
+  "method": {
+    "name": "Meyerhof (1963) / Vesic (1973) — General Bearing Capacity Equation",
+    "formula": "q_ult = c*Nc*sc*dc*ic + q*Nq*sq*dq*iq + 0.5*gamma*B*Ng*sg*dg*ig",
+    "references": [
+      "FHWA GEC-6 (FHWA-IF-02-054), Chapter 6",
+      "FHWA-SA-94-034 (CBEAR User's Guide)",
+      "Meyerhof (1963) — Some recent research on bearing capacity of foundations",
+      "Vesic (1973) — Analysis of ultimate loads of shallow foundations"
+    ]
+  },
+  "bearing_factors": {
+    "Nc": "Nc = (Nq-1)*cot(phi);  phi=0 -> Nc=5.14",
+    "Nq": "Nq = e^(pi*tan(phi)) * tan^2(45 + phi/2)",
+    "Ngamma": "Ng = 2*(Nq+1)*tan(phi)  [Vesic]  or  Ng = (Nq-1)*tan(1.4*phi)  [Meyerhof]"
+  },
+  "shape_factors": {
+    "strip":        {"sc": 1.0, "sq": 1.0, "sg": 1.0, "note": "L/B -> infinity"},
+    "rectangular":  {"sc": "1+B/L*Nq/Nc", "sq": "1+B/L*tan(phi)", "sg": "1-0.4*B/L"},
+    "square":       {"sc": "1+Nq/Nc", "sq": "1+tan(phi)", "sg": 0.6},
+    "circular":     {"sc": "1+Nq/Nc", "sq": "1+tan(phi)", "sg": 0.6}
+  },
+  "depth_factors": {
+    "dc": "1 + 0.4*(D/B)  khi D/B<=1;  1 + 0.4*arctan(D/B) khi D/B>1",
+    "dq": "1 + 2*tan(phi)*(1-sin(phi))^2 * (D/B)  hoac arctan",
+    "dg": 1.0
+  },
+  "inclination_factors": {
+    "ic": "(1 - inc_angle/(90))^2",
+    "iq": "(1 - inc_angle/(phi))^2",
+    "ig": "(1 - inc_angle/(phi))^2"
+  },
+  "defaults": {
+    "B_m": 2.0,
+    "L_m": 2.0,
+    "D_m": 1.5,
+    "phi_deg": 28.0,
+    "cohesion_kPa": 0.0,
+    "gamma_kNm3": 18.0,
+    "gwt_depth_m": null,
+    "fs": 3.0,
+    "load_inclination_deg": 0.0,
+    "shape": "square"
+  },
+  "footing_shapes": ["strip", "square", "rectangular", "circular"],
+  "result_fields": {
+    "q_ultimate": "Suc chiu tai toi han [kPa]",
+    "q_allowable": "Suc chiu tai cho phep = q_ult / FS [kPa]",
+    "q_net": "Net bearing capacity = q_ult - gamma*D [kPa]",
+    "term_cohesion": "Thanh phan luc dinh c*Nc*sc*dc*ic [kPa]",
+    "term_overburden": "Thanh phan tai trong phu q*Nq*sq*dq*iq [kPa]",
+    "term_selfweight": "Thanh phan trong luong dat 0.5*gamma*B*Ng*sg*ig [kPa]"
+  },
+  "gwt_correction": {
+    "rule": "Khi MNN tai day mong: dung gamma_sub = gamma - gamma_w cho thanh phan tu trong luong",
+    "gamma_w": 9.81,
+    "implementation": "BearingSoilProfile(layer1=..., gwt_depth=chieu_sau_MNN)"
+  },
+  "fs_typical": {
+    "permanent_load": 3.0,
+    "temporary_load": 2.0,
+    "earthquake": 1.5
+  }
+}

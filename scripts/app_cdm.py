@@ -4453,7 +4453,7 @@ if _page == "ke_sw":
                 _cur_nt = _con_nt.cursor()
                 _cur_nt.execute(
                     "SELECT bh_name, pile_type, L_design_m, Z_m, Z_source, "
-                    "fill_m, L_soil_m, tip_depth_m, H_layer1_m, H_source, "
+                    "fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source, "
                     "L_req_nt1_m, margin_nt1_m, nt1_result, "
                     "Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN, "
                     "ratio_nt2, nt2_result, su_warnings "
@@ -4470,7 +4470,7 @@ if _page == "ke_sw":
                     for _nt in _nt_rows:
                         (
                             _bh_n, _pile_t, _L_d, _Z_m, _Z_src,
-                            _fill_m, _L_soil, _tip_d, _H1, _H_src,
+                            _fill_m, _L_soil, _tip_d, _D_bot, _D_src,
                             _L_req1, _marg1, _res1,
                             _Rs, _tip_sym, _tip_su, _Rp, _RR, _W,
                             _rat2, _res2, _warns,
@@ -4495,7 +4495,7 @@ if _page == "ke_sw":
                             )
                             st.caption(
                                 f"L thiết kế = **{_L_d:.1f} m** | L yêu cầu = {_L_req1:.1f} m  \n"
-                                f"H lớp mềm = {_H1:.2f} m [{_H_src}]  \n"
+                                f"Đáy lớp mềm = {_D_bot:.2f} m [{_D_src}]  \n"
                                 f"Z mặt đất = {_Z_m:.3f} m [{_Z_src}] | "
                                 f"Đất đắp = {_fill_m:.2f} m | Trong đất = {_L_soil:.2f} m"
                             )

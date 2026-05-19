@@ -1,0 +1,234 @@
+{
+  "_meta": {
+    "type": "driven_pile_capacity",
+    "standard": "TCVN 11823-10:2017",
+    "title": "Thiet ke cau duong bo — Phan 10: Nen mong — Coc dong",
+    "updated": "2026-05-14",
+    "source": "D:/TCVN-sach/TCVN 11823 - 2017_Phan 10_Nenmong.pdf",
+    "scope": "Coc dong chiu nen doc truc — phan tich tinh hoc theo dat nen (Dieu 7.3.8.6)"
+  },
+
+  "resistance_equation": {
+    "ref": "Dieu 7.3.8.6.1, Pt. 58-61",
+    "factored_resistance": "RR = phi_sta * Rn",
+    "nominal_resistance": "Rn = Rp + Rs",
+    "tip_resistance": "Rp = qp * Ap",
+    "skin_resistance": "Rs = qs * As",
+    "units": {
+      "qp": "MPa",
+      "qs": "MPa",
+      "Ap": "mm^2",
+      "As": "mm^2",
+      "Rp": "N",
+      "Rs": "N",
+      "Rn": "N",
+      "RR": "N"
+    }
+  },
+
+  "resistance_factors_bang9": {
+    "ref": "Bang 9, Dieu 5.5.2.3",
+    "static_analysis_phi_stat": {
+      "alpha_method_clay": {
+        "phi": 0.35,
+        "ref": "Tomlinson 1987, Skempton 1951",
+        "applies_to": "set va dat hon hop"
+      },
+      "beta_method": {
+        "phi": 0.25,
+        "ref": "Esrig & Kirby 1979, Skempton 1951",
+        "applies_to": "set va dat hon hop"
+      },
+      "lambda_method": {
+        "phi": 0.40,
+        "ref": "Vijayvergiya & Focht 1972, Skempton 1951",
+        "applies_to": "set va dat hon hop"
+      },
+      "nordlund_thurman_sand": {
+        "phi": 0.45,
+        "ref": "Hannigan 2005",
+        "applies_to": "cat, cat bot khong pha set"
+      },
+      "SPT_meyerhof_sand": {
+        "phi": 0.30,
+        "ref": "Meyerhof",
+        "applies_to": "cat, cat bot khong pha set"
+      },
+      "CPT_schmertmann_sand": {
+        "phi": 0.50,
+        "ref": "Nottingham & Schmertmann 1975",
+        "applies_to": "cat, cat bot khong pha set"
+      },
+      "rock": {
+        "phi": 0.45,
+        "ref": "So tay nen mong Canada 1985",
+        "applies_to": "mui coc tua tren da"
+      }
+    },
+    "block_failure_phi_b1": {
+      "clay": 0.60
+    },
+    "uplift_single_phi_up": {
+      "nordlund": 0.35,
+      "alpha":    0.25,
+      "beta":     0.20,
+      "lambda":   0.30,
+      "SPT":      0.25,
+      "CPT":      0.40,
+      "static_load_test": 0.60,
+      "dynamic_test":     0.50
+    },
+    "uplift_group_phi_ug": {
+      "all_soils": 0.50
+    },
+    "lateral_phi": {
+      "all_soils": 1.0
+    },
+    "dynamic_verification_phi_dyn": {
+      "static_test_plus_dynamic_2pct": {
+        "phi": 0.80,
+        "condition": "Thu tai tinh >= 1 coc + thu dong >= 2 coc (>= 2% tong so coc)"
+      },
+      "static_test_only": {
+        "phi": 0.75,
+        "condition": "Thu tai tinh >= 1 coc, khong thu dong"
+      },
+      "dynamic_100pct": {
+        "phi": 0.75,
+        "condition": "Thu dong 100% so coc"
+      },
+      "dynamic_signal_matching_2pct": {
+        "phi": 0.65,
+        "condition": "Thu dong tuong hop tin hieu >= 2 coc (>= 2%), kiem soat chat luong"
+      },
+      "wave_equation_only": {
+        "phi": 0.50,
+        "condition": "Phuong trinh song, theo doi hieu suat bua tai hien truong"
+      },
+      "FHWA_dynamic_formula": {
+        "phi": 0.40,
+        "condition": "Cong thuc dong Gate hieu chinh boi FHWA (EOD)"
+      },
+      "ENR_formula": {
+        "phi": 0.10,
+        "condition": "Cong thuc ENR moi (New Engineering Record) — EOD"
+      }
+    }
+  },
+
+  "methods": {
+    "alpha_method": {
+      "ref": "Dieu 7.3.8.6.2, Pt. 62",
+      "soil_type": "set bao hoa (undrained)",
+      "formula": {
+        "skin_friction": "qs = alpha * Su",
+        "tip_resistance": "qp = 9 * Su",
+        "note_tip_ref": "Dieu 7.3.8.6.5, Pt. 65"
+      },
+      "parameters": {
+        "Su": "Suc khang cat khong thoat nuoc (MPa)",
+        "alpha": "He so ket dinh — tra theo bieu do Tomlinson (1980), Hinh 18"
+      },
+      "alpha_tomlinson_1980": {
+        "description": "Noi suy tuyen tinh tu bieu do Hinh 18",
+        "Su_MPa":    [0.000, 0.025, 0.050, 0.075, 0.100, 0.150, 0.200],
+        "alpha":     [1.000, 1.000, 0.920, 0.750, 0.600, 0.500, 0.400],
+        "note": "Ap dung cho coc dong vao tang dat set"
+      },
+      "phi_stat": 0.35
+    },
+
+    "beta_method": {
+      "ref": "Dieu 7.3.8.6.3, Pt. 63",
+      "soil_type": "set — ung suat co hieu",
+      "formula": {
+        "skin_friction": "qs = beta * sigma_v_eff"
+      },
+      "parameters": {
+        "sigma_v_eff": "Ung suat co hieu thang dung (MPa)",
+        "beta": "He so — tra theo bieu do Hinh 19 (Esrig & Kirby 1979) theo OCR"
+      },
+      "phi_stat": 0.25
+    },
+
+    "lambda_method": {
+      "ref": "Dieu 7.3.8.6.4, Pt. 64",
+      "soil_type": "set — ong dac dong",
+      "formula": {
+        "skin_friction": "qs = lambda * (sigma_v_eff + 2*Su)"
+      },
+      "parameters": {
+        "sigma_v_eff": "Ung suat co hieu thang dung tai diem giua lop dat (MPa)",
+        "Su": "Suc khang cat khong thoat nuoc (MPa)",
+        "lambda": "He so thuc nghiem — tra theo Hinh 20 (Vijayvergiya & Focht 1972)"
+      },
+      "phi_stat": 0.40
+    },
+
+    "nordlund_thurman_sand": {
+      "ref": "Dieu 7.3.8.6.6, Pt. 66-67",
+      "soil_type": "cat, cat bot khong pha set, soi cuoi",
+      "formula": {
+        "skin_friction": "qs = K_delta * CF * sigma_v_eff * sin(delta + omega) / cos(omega)",
+        "tip_resistance": "qp = alpha_t * N_q_prime * sigma_v_eff   (MPa, <= qL)"
+      },
+      "parameters": {
+        "K_delta": "He so ap luc dat nam ngang — tra Hinh 21-24 theo phi_f",
+        "CF": "He so dieu chinh K_delta khi delta != phi_f — tra Hinh 25",
+        "sigma_v_eff": "Ung suat co hieu tang phu phia tren tai diem giua lop (MPa); <= 0.15 MPa cho mui coc",
+        "delta": "Goc ma sat giua coc va dat — tra Hinh 26 (do)",
+        "omega": "Goc nghieng coc so voi phuong thang dung (do); = 0 cho coc thang dung",
+        "alpha_t": "He so — tra Hinh 27",
+        "N_q_prime": "He so kha nang chiu luc — tra Hinh 28",
+        "qL": "Suc khang don vi chan coc gioi han — tra Hinh 29 (MPa)"
+      },
+      "phi_stat": 0.45
+    },
+
+    "SPT_meyerhof_sand": {
+      "ref": "Dieu 7.3.8.6.7, Pt. 68-70",
+      "soil_type": "cat, cat bot khong pha set",
+      "formula": {
+        "tip_resistance": "qp = 0.038 * N160 * (Db / D)   (MPa, <= lambda_q)",
+        "tip_limit_sand":      "lambda_q = 8 * 0.4 * N160 = 3.2 * N160  (MPa) — cho cat",
+        "tip_limit_silty_sand":"lambda_q = 6 * 0.3 * N160 = 1.8 * N160  (MPa) — cho cat bot",
+        "skin_displacement":   "qs = 0.0019 * N160   (MPa) — coc chiem cho (dac, hop kin)",
+        "skin_nondisplacement":"qs = 0.00096 * N160  (MPa) — coc khong chiem cho (chu H)"
+      },
+      "parameters": {
+        "N160": "So bua SPT hieu chinh theo ap luc tang phu (bua/300mm) — Dieu 4.6.2.4",
+        "D":    "Be rong hoac duong kinh coc (mm)",
+        "Db":   "Chieu dai coc ngam trong tang dat chiu luc (mm)"
+      },
+      "pile_types": {
+        "displacement": "Mat cat dac hoac hop mui coc kin (beton duc san, coc ong bit day)",
+        "non_displacement": "Mat cat thanh mong mui ho, khong tao loi nem dat (coc chu H)"
+      },
+      "phi_stat": 0.30
+    },
+
+    "CPT_nottingham_schmertmann": {
+      "ref": "Dieu 7.3.8.6.7, Pt. 71-72",
+      "soil_type": "cat, cat bot khong pha set",
+      "formula": {
+        "tip_resistance": "qp = (qc1 + qc2) / 2   (MPa)",
+        "qc1": "Trung binh qc trong khoang 0.7D den 4.0D duoi mui coc — dung quy tac duong toi thieu",
+        "qc2": "Trung binh qc trong khoang 8D tren mui coc — dung quy tac duong toi thieu",
+        "skin_friction": "Rs = Ks_c * SUM(fsi * asi * hi) (N)  — Pt. 72",
+        "Ks_c": "He so chinh sua — Kc cho dat set, Ks cho cat — tra Hinh 31"
+      },
+      "phi_stat": 0.50
+    }
+  },
+
+  "design_flow": {
+    "step1": "Xac dinh loai dat theo tuyen coc (set / cat / hon hop)",
+    "step2": "Chon phuong phap phan tich (alpha, beta, lambda, Nordlund, SPT, CPT)",
+    "step3": "Tinh Rs (ma sat thanh ben) theo tung lop dat",
+    "step4": "Tinh Rp (suc khang mui coc)",
+    "step5": "Rn = Rs + Rp",
+    "step6": "Chon phi_stat tu Bang 9 theo phuong phap da dung",
+    "step7": "RR = phi_sta * Rn >= luc tinh toan tac dung len coc (co he so)",
+    "step8": "Kiem tra kha nang dong coc: ung suat dong coc, so bua, he so phi_dyn"
+  }
+}

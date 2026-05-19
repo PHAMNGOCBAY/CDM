@@ -1,0 +1,93 @@
+{
+  "_meta": {
+    "source": "TCVN 11823-3:2017 - Thiet ke cau duong bo - Phan 3: Tuong chan va tuong chuyen tiep",
+    "rule": "All pressures in kN/m2, angles in degrees",
+    "updated": "2026-05-15",
+    "version": "v1"
+  },
+  "at_rest": {
+    "formula": "k0 = 1 - sin(phi')",
+    "note_nc": "NC soil (normally consolidated)",
+    "formula_oc": "k0_oc = k0_nc * sqrt(OCR)",
+    "ref": "Eq.23-24, §10.5.2"
+  },
+  "active_coulomb": {
+    "formula": "ka = sin2(theta+phi) / [Gamma^2 * sin2(theta) * sin(theta-delta)]",
+    "where": {
+      "Gamma": "1 + sqrt( sin(phi+delta)*sin(phi-beta) / [sin(theta-delta)*sin(theta+beta)] )",
+      "theta": "wall inclination from horizontal (90 for vertical wall)",
+      "delta": "interface friction angle between soil and wall",
+      "beta": "backfill slope angle from horizontal",
+      "phi": "internal friction angle of soil"
+    },
+    "ref": "Eq.25-26, §10.5.3"
+  },
+  "active_rankine": {
+    "formula": "ka = tan2(45 - phi/2)",
+    "condition": "vertical wall, horizontal backfill, no friction (delta=0, beta=0, theta=90)",
+    "ref": "§10.5.3 simplified"
+  },
+  "passive_rankine": {
+    "formula": "kp = tan2(45 + phi/2)",
+    "condition": "vertical wall, horizontal fill, no friction"
+  },
+  "passive_cohesive": {
+    "formula": "pp = kp * gamma * z + 2 * c * sqrt(kp)",
+    "ref": "Eq.27, §10.5.4"
+  },
+  "surcharge_uniform": {
+    "formula": "delta_p = ks * qs",
+    "where": {
+      "ks": "ka or k0 depending on wall type",
+      "qs": "uniform surcharge [kN/m2]"
+    },
+    "ref": "Eq.38, §10.6.1"
+  },
+  "surcharge_live_load": {
+    "formula": "delta_p = k * gamma_s * heq",
+    "where": {
+      "k": "ka or k0",
+      "gamma_s": "unit weight of fill [kN/m3]",
+      "heq": "equivalent height of fill for live load [m] — from Bang 22/23"
+    },
+    "ref": "Eq.45, §10.6.4"
+  },
+  "bang20_interface_friction": {
+    "description": "Delta (interface friction angle) between precast concrete pile/wall and soil",
+    "note": "Values in degrees. Use for Coulomb ka calculation.",
+    "rows": [
+      {"soil_type": "Gravel and gravel with sand",       "delta_min": 22, "delta_max": 26},
+      {"soil_type": "Clean sand and silty gravel",       "delta_min": 17, "delta_max": 22},
+      {"soil_type": "Silty sand and silt",               "delta_min": 17, "delta_max": 17},
+      {"soil_type": "Fine to medium sand (clean)",       "delta_min": 17, "delta_max": 22},
+      {"soil_type": "Silt (low plasticity)",             "delta_min": 14, "delta_max": 14}
+    ]
+  },
+  "bang22_heq_abutment": {
+    "description": "Equivalent fill height heq [m] for abutment walls under live load (Bang 22)",
+    "note": "Use interpolation for intermediate pile lengths",
+    "rows": [
+      {"wall_height_m": 0.0,  "heq_m": 1.500},
+      {"wall_height_m": 3.0,  "heq_m": 1.050},
+      {"wall_height_m": 6.0,  "heq_m": 0.600},
+      {"wall_height_m": 9.0,  "heq_m": 0.450}
+    ]
+  },
+  "bang23_heq_retaining": {
+    "description": "Equivalent fill height heq [m] for retaining walls under live load (Bang 23)",
+    "rows": [
+      {"wall_height_m": 0.0,  "heq_m": 1.200},
+      {"wall_height_m": 1.5,  "heq_m": 1.200},
+      {"wall_height_m": 3.0,  "heq_m": 0.900},
+      {"wall_height_m": 6.0,  "heq_m": 0.600},
+      {"wall_height_m": 9.0,  "heq_m": 0.450}
+    ]
+  },
+  "pressure_profile_sign_convention": {
+    "depth_z": "positive downward from pile top",
+    "elevation": "positive upward from datum (pile top = +top_elev)",
+    "active_positive": true,
+    "passive_positive": true,
+    "net_pressure": "passive - active (positive = net toward active side)"
+  }
+}

@@ -1,0 +1,232 @@
+{
+  "_meta": {
+    "type": "python_libs_geotechnical",
+    "updated": "2026-05-14",
+    "source": "THU VIEN PYTHON.docx (Drive ID: 1KqaNuU9zd4HBA5TLDXUiTEOi21JXf6wa)",
+    "python_version": "3.12.10",
+    "project": "AI-SUC TAI COC THEO DAT NEN"
+  },
+  "categories": {
+    "lateral_pile": {
+      "description": "Phân tích cọc chịu tải trọng ngang — phương pháp đường cong p-y",
+      "libraries": [
+        {
+          "name": "openseespy",
+          "pip": "openseespy",
+          "version_installed": "latest",
+          "method": "FEM 3D + BNWF phi tuyến (Beam on Nonlinear Winkler Foundation)",
+          "py_curves": ["PySimple1","TzSimple1","QzSimple1"],
+          "soil_types": ["cát (API 1987)","sét (Matlock 1970)","đá yếu"],
+          "strengths": "Mô hình 3D, hóa lỏng đất, tải động đất, Drucker-Prager",
+          "limitations": "Đường cong học tập dốc, cần kiến thức FEM",
+          "use_case": "Tua bin gió ngoài khơi, công trình cầu lớn, phân tích động"
+        },
+        {
+          "name": "openpile",
+          "pip": "openpile",
+          "version_installed": "1.0.2",
+          "method": "FEM 1D — dầm Euler-Bernoulli VÀ Timoshenko",
+          "py_curves": ["đường cong p-y kinh điển"],
+          "soil_types": ["đa lớp"],
+          "strengths": "OOP rõ ràng, hỗ trợ lò xo quay, dễ lập trình",
+          "limitations": "Phân tích tĩnh 1D, không hỗ trợ động đất",
+          "use_case": "Thiết kế cọc kè, cọc neo, cọc cầu — phân tích tĩnh nhanh",
+          "note": "Timoshenko quan trọng cho cọc đường kính lớn (D > 1m)"
+        },
+        {
+          "name": "PY_Analysis",
+          "pip": null,
+          "source": "GitHub — Asitha Senanayake",
+          "method": "FDM + FEM — tần số tự nhiên (eigenvalue)",
+          "strengths": "Đánh giá mô hình p-y mới, phân tích động lực học monopile",
+          "limitations": "Đang phát triển, chủ yếu học thuật",
+          "use_case": "Nghiên cứu, tua bin gió"
+        },
+        {
+          "name": "PyPile",
+          "pip": null,
+          "type": "standalone_software",
+          "integration": "Gọi PyPile.exe qua Python subprocess + JSON input",
+          "py_curves": ["sét mềm","sét cứng","cát","cát API","đá yếu","c-phi"],
+          "strengths": "P-multiplier (nhóm cọc), EI-multiplier, đường cong tùy biến qua JS",
+          "use_case": "Dự án năng lượng mặt trời, cọc thép đóng hàng loạt"
+        }
+      ]
+    },
+    "subgrade_reaction": {
+      "description": "Tính hệ số phản lực nền Ks — lý thuyết và thực nghiệm",
+      "theories": [
+        {"name": "Biot (1937)",   "formula": "Ks = 0.95*Es / (B*(1-v²)) * (Es*B⁴/(EI))^0.108"},
+        {"name": "Vesic (1961)",  "formula": "Ks = 0.65*Es / (1-v²) * (Es*B⁴/(EI))^(1/12)",  "note": "Tích hợp độ cứng uốn EI"},
+        {"name": "Bowles (1996)", "formula": "Ks = 40*SF*qa  [kN/m³]", "note": "Đơn giản nhất, dùng qa từ thí nghiệm hoặc tính toán"},
+        {"name": "Schmertmann",   "formula": "Ks = Δq/Δs — từ độ lún đàn hồi", "note": "Chính xác nhất, cần Es theo chiều sâu"}
+      ],
+      "libraries": [
+        {
+          "name": "geolysis",
+          "pip": "geolysis",
+          "version_installed": "0.24.1",
+          "purpose": "Tính sức chịu tải qa (UBC/ABC) → suy ra Ks theo Bowles",
+          "key_functions": [
+            "create_abc_4_cohesionless_soils  — đất rời (Bowles, Meyerhof, Terzaghi)",
+            "create_ubc_4_all_soils           — mọi loại đất (Terzaghi, Vesic)"
+          ],
+          "extras": "Excel add-in (GEOLYSIS.ALLOWABLE_BEARING_CAPACITY), PySide6 UI"
+        },
+        {
+          "name": "geofound",
+          "pip": "geofound",
+          "purpose": "Tính sức chịu tải q_lim (Vesic 1975) + độ lún Schmertmann → Ks phân bố",
+          "key_functions": [
+            "capacity_vesic_1975   — sức chịu tải cực hạn",
+            "settlement_schmertmann — độ lún đàn hồi theo Es"
+          ],
+          "dependencies": ["sfsimodels"]
+        }
+      ]
+    },
+    "beam_elastic_foundation": {
+      "description": "Dầm trên nền đàn hồi — từ Winkler đến hai thông số",
+      "models": [
+        {"name": "Winkler (1867)",    "params": 1, "note": "Lò xo độc lập, bỏ qua ứng suất cắt giữa đất"},
+        {"name": "Pasternak",         "params": 2, "note": "Thêm lớp cắt tương đương nối các lò xo"},
+        {"name": "Vlasov",            "params": 2, "note": "Dựa trên năng lượng biến dạng"}
+      ],
+      "libraries": [
+        {
+          "name": "anastruct",
+          "pip": "anastruct",
+          "method": "FEM 2D — khung dầm, lò xo nền Winkler",
+          "strengths": "OOP trực quan, phi tuyến hình học, đồ họa show_structure()/show_displacement()",
+          "key_api": [
+            "SystemElements()             — khởi tạo hệ",
+            "add_element(location, EI)    — thêm thanh",
+            "add_support_spring(node, k)  — lò xo nền Ks",
+            "solve()                      — giải",
+            "show_displacement()          — hiển thị độ võng"
+          ],
+          "use_case": "Móng băng, móng bè, tường chắn — phân tích nhanh trong Python"
+        },
+        {
+          "name": "ebbef2p-python",
+          "pip": null,
+          "source": "GitHub (không có trên PyPI)",
+          "method": "FEM + Phương pháp Thặng dư Galerkin — nền HAI thông số",
+          "element": "Dầm Euler-Bernoulli hai nút, đa thức Hermitian bậc 3",
+          "strengths": "Ks biến thiên dọc chiều dài, chuyển vị cưỡng bức, đất không đồng nhất",
+          "use_case": "Đập, móng băng trên đất dốc, tường chắn dài"
+        }
+      ]
+    },
+    "geotechnical_data": {
+      "description": "Xử lý dữ liệu khảo sát địa chất — chuẩn hóa và tự động hóa",
+      "libraries": [
+        {
+          "name": "bedrock-ge",
+          "pip": "bedrock-ge",
+          "version_installed": "0.3.3",
+          "formats": ["AGS3","AGS4 (Anh)","GEF (Hà Lan)","BRO/XML"],
+          "purpose": "Parse chuỗi lỗ khoan, CPT → GeoPandas pipeline",
+          "dependencies": ["geopandas","shapely","pandas","pandera"]
+        },
+        {
+          "name": "geopandas",
+          "pip": "geopandas",
+          "version_installed": "1.1.3",
+          "purpose": "Dữ liệu không gian địa chất (GIS)"
+        },
+        {
+          "name": "pandera",
+          "pip": "pandera",
+          "version_installed": "0.31.1",
+          "purpose": "Validate logic chuỗi dữ liệu địa tầng (quan hệ chiều sâu, tọa độ)"
+        }
+      ]
+    }
+  },
+  "openpile_api_gotchas": {
+    "version": "1.0.2",
+    "note": "Các điểm hay nhầm khi dùng openpile 1.0.x — đã debug 2026-05-14",
+    "Pile.create_tubular": {
+      "correct": "wt=0.016",
+      "wrong":   "wall_thickness=0.016"
+    },
+    "Layer": {
+      "weight_required": "weight=18.0  [kN/m³, bắt buộc, phải > 10]",
+      "lateral_model":   "lateral_model=API_sand(phi=30, kind='static')",
+      "wrong":           "soil_model=...  (không tồn tại)"
+    },
+    "BoundaryFixation": {
+      "required": "BắtBuộc tại mũi cọc để hội tụ",
+      "example":  "BoundaryFixation(elevation=-L_m, x=True, y=True, z=True)"
+    },
+    "set_pointload": {
+      "lateral":  "Py=H_kN   (không phải Hx)",
+      "moment":   "Mx=M_kNm"
+    },
+    "result_attributes": {
+      "deflection": "result.deflection['Deflection [m]']  — chuyển vị (m)",
+      "forces":     "result.forces['V [kN]'], result.forces['M [kNm]']",
+      "wrong":      "result.global_disp  (không tồn tại trong WinklerResult)"
+    },
+    "soil_profile_must_cover_pile": "Địa tầng phải phủ hết chiều dài cọc — clip lớp cuối đến -L_m trước khi đưa vào Model",
+    "convergence": "Nếu 'Cannot converge': giảm tải, tăng phi, hoặc kiểm tra BoundaryFixation"
+  },
+  "tools": {
+    "streamlit_app": {
+      "file": "scripts/app_coc_tai_ngang.py",
+      "run":  "python -m streamlit run scripts/app_coc_tai_ngang.py",
+      "url":  "http://localhost:8501",
+      "features": [
+        "Nhập số liệu sidebar: D, t, L, H, M, MNN, địa tầng đa lớp",
+        "Cho phép lớp đất sâu hơn chiều dài cọc — tự clip",
+        "KPI cards: y_head, y_max, M_max, V_max",
+        "Biểu đồ 3 panel: chuyển vị / lực cắt / mô men (âm xuống, dương lên)",
+        "Panel mặt cắt địa tầng + cọc",
+        "Bảng kết quả theo chiều sâu + tải CSV"
+      ]
+    },
+    "jupyter_notebook": {
+      "file":   "notebooks/coc_tai_ngang_openpile.ipynb",
+      "kernel": "Python 3.12 (địa kỹ thuật)",
+      "features": [
+        "Cell thông số đầu vào riêng biệt",
+        "Biểu đồ inline 3 panel + p-y mobilization",
+        "Bảng kết quả DataFrame"
+      ]
+    },
+    "demo_script": {
+      "file": "scripts/lateral_pile_demo.py",
+      "run":  "python scripts/lateral_pile_demo.py",
+      "features": ["Ks Bowles + Vesic", "openpile p-y FEM", "anastruct Winkler"]
+    }
+  },
+  "install_commands": {
+    "all_pip": "python -m pip install openseespy openpile anastruct geolysis geofound bedrock-ge pandera geopandas shapely numpy scipy matplotlib pandas streamlit ipykernel",
+    "geotech_staff_engineer": "python -m pip install geotech-staff-engineer  # sau do giu numpy<2.0 cho openpile",
+    "numpy_pin": "python -m pip install \"numpy<2.0\"  # bat buoc sau khi cai geotech-staff-engineer",
+    "ebbef2p_github": "pip install git+https://github.com/<author>/ebbef2p-python.git  # cần tìm đúng repo",
+    "jupyter_kernel": "python -m ipykernel install --user --name python312 --display-name \"Python 3.12 (địa kỹ thuật)\""
+  },
+  "geotech_staff_engineer": {
+    "version": "4.6.0",
+    "installed": "2026-05-16",
+    "numpy_conflict": "Yeu cau numpy>=2.0 nhung chay duoc voi 1.26.4 — giu numpy<2.0 cho openpile",
+    "md_file": "28-geotech-staff-engineer.md",
+    "json_file": "data/geotech_staff_engineer.json",
+    "demo": "scripts/geotech_staff_engineer_demo.py",
+    "module_count": 38,
+    "note": "Module import truc tiep theo ten (import lateral_pile), khong phai import geotech_staff_engineer.lateral_pile"
+  },
+  "quick_selection_guide": {
+    "giao_dien_tinh_toan": "streamlit run scripts/app_coc_tai_ngang.py → http://localhost:8501",
+    "bieu_do_inline_vscode": "notebooks/coc_tai_ngang_openpile.ipynb — kernel Python 3.12",
+    "coc_tai_ngang_don_gian": "openpile — OOP, tĩnh, đa lớp, p-y API",
+    "coc_tai_ngang_dong": "openseespy — FEM 3D, PySimple1/TzSimple1",
+    "he_so_nen_bowles": "geolysis → Ks = 40·SF·qa",
+    "he_so_nen_schmertmann": "geofound — settlement_schmertmann → Ks = Δq/Δs",
+    "dam_winkler_nhanh": "anastruct — add_support_spring(node, Ks)",
+    "dam_hai_tham_so": "ebbef2p-python — cài từ GitHub"
+  },
+  "vscode_note": "Lỗi 'Cannot find module' trong IDE = false positive — VSCode dùng Python 3.13 (Windows Store). Chạy bằng 'python' (3.12) là đúng."
+}

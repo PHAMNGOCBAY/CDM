@@ -1,0 +1,115 @@
+{
+  "_meta": {
+    "project": "260512 CVTT-TTHC — Trung tâm Hành chính TP.HCM",
+    "zone": "BXN — Bãi Đỗ Xe Ngầm",
+    "source": "BXN-5. CẮT CÁNH_7.5.26-BXN. TTHCHCM. KQCC.pdf",
+    "standard": "22 TCN 355-06",
+    "equipment": "Tonichi",
+    "rate_deg_per_s": 0.1,
+    "updated": "2026-05-18",
+    "n_locations": 5
+  },
+  "locations": [
+    {
+      "name": "BXN-CV-VST1",
+      "date": "2026-04-18",
+      "Z_ground_m": 2.297,
+      "vane_D_cm": 6.50, "vane_H_cm": 13.00, "K_m3": 1.006e-3,
+      "x_coord_m": 1191539.371, "y_coord_m": 605948.524,
+      "n_tests": 10,
+      "tests": [
+        {"depth_m": 4.0,  "elev_m": -1.70, "Su_kPa": 11.9, "Sp_kPa": 5.5,  "St": 2.2},
+        {"depth_m": 6.0,  "elev_m": -3.70, "Su_kPa": 7.9,  "Sp_kPa": 3.0,  "St": 2.7},
+        {"depth_m": 8.0,  "elev_m": -5.70, "Su_kPa": 9.9,  "Sp_kPa": 3.5,  "St": 2.9},
+        {"depth_m": 10.0, "elev_m": -7.70, "Su_kPa": 17.9, "Sp_kPa": 6.0,  "St": 3.0},
+        {"depth_m": 12.0, "elev_m": -9.70, "Su_kPa": 20.9, "Sp_kPa": 7.0,  "St": 3.0},
+        {"depth_m": 14.0, "elev_m": -11.70,"Su_kPa": 22.9, "Sp_kPa": 7.9,  "St": 2.9},
+        {"depth_m": 16.0, "elev_m": -13.70,"Su_kPa": 23.3, "Sp_kPa": 8.4,  "St": 2.8},
+        {"depth_m": 18.0, "elev_m": -15.70,"Su_kPa": 19.9, "Sp_kPa": 7.0,  "St": 2.9},
+        {"depth_m": 20.0, "elev_m": -17.70,"Su_kPa": 19.9, "Sp_kPa": 7.9,  "St": 2.5},
+        {"depth_m": 22.0, "elev_m": -19.70,"Su_kPa": 48.7, "Sp_kPa": 23.8, "St": 2.0, "note": "Ranh L2/L3"}
+      ]
+    },
+    {
+      "name": "BXN-CV-VST2",
+      "date": "2026-04-17",
+      "Z_ground_m": 2.112,
+      "vane_D_cm": 6.50, "vane_H_cm": 13.00, "K_m3": 1.006e-3,
+      "x_coord_m": 1191633.615, "y_coord_m": 605966.866,
+      "n_tests": 10,
+      "tests": [
+        {"depth_m": 4.0,  "elev_m": -1.89, "Su_kPa": 13.9, "Sp_kPa": 2.5,  "St": 5.6},
+        {"depth_m": 6.0,  "elev_m": -3.89, "Su_kPa": 17.9, "Sp_kPa": 4.0,  "St": 4.5},
+        {"depth_m": 8.0,  "elev_m": -5.89, "Su_kPa": 18.9, "Sp_kPa": 7.9,  "St": 2.4},
+        {"depth_m": 10.0, "elev_m": -7.89, "Su_kPa": 17.9, "Sp_kPa": 4.5,  "St": 4.0},
+        {"depth_m": 12.0, "elev_m": -9.89, "Su_kPa": 14.9, "Sp_kPa": 4.5,  "St": 3.3},
+        {"depth_m": 14.0, "elev_m": -11.89,"Su_kPa": 19.9, "Sp_kPa": 6.5,  "St": 3.1},
+        {"depth_m": 16.0, "elev_m": -13.89,"Su_kPa": 22.9, "Sp_kPa": 10.9, "St": 2.1},
+        {"depth_m": 18.0, "elev_m": -15.89,"Su_kPa": 25.8, "Sp_kPa": 11.9, "St": 2.2},
+        {"depth_m": 20.0, "elev_m": -17.89,"Su_kPa": 19.9, "Sp_kPa": 7.9,  "St": 2.5},
+        {"depth_m": 22.0, "elev_m": -19.89,"Su_kPa": 29.8, "Sp_kPa": 15.9, "St": 1.9}
+      ]
+    },
+    {
+      "name": "BXN-CV-VST3",
+      "date": "2026-04-20",
+      "Z_ground_m": 2.596,
+      "vane_D_cm": 6.50, "vane_H_cm": 13.00, "K_m3": 1.006e-3,
+      "x_coord_m": 1191715.256, "y_coord_m": 606039.128,
+      "n_tests": 10,
+      "tests": [
+        {"depth_m": 4.5,  "elev_m": -1.90, "Su_kPa": 18.9, "Sp_kPa": 5.0,  "St": 3.8},
+        {"depth_m": 6.0,  "elev_m": -3.40, "Su_kPa": 20.9, "Sp_kPa": 7.0,  "St": 3.0},
+        {"depth_m": 8.0,  "elev_m": -5.40, "Su_kPa": 9.9,  "Sp_kPa": 3.5,  "St": 2.9},
+        {"depth_m": 10.0, "elev_m": -7.40, "Su_kPa": 20.9, "Sp_kPa": 6.0,  "St": 3.5},
+        {"depth_m": 12.0, "elev_m": -9.40, "Su_kPa": 19.9, "Sp_kPa": 7.5,  "St": 2.7},
+        {"depth_m": 14.0, "elev_m": -11.40,"Su_kPa": 22.9, "Sp_kPa": 4.5,  "St": 5.1},
+        {"depth_m": 16.0, "elev_m": -13.40,"Su_kPa": 19.9, "Sp_kPa": 7.0,  "St": 2.9},
+        {"depth_m": 18.0, "elev_m": -15.40,"Su_kPa": 27.8, "Sp_kPa": 9.9,  "St": 2.8},
+        {"depth_m": 20.0, "elev_m": -17.40,"Su_kPa": 14.9, "Sp_kPa": 5.5,  "St": 2.7},
+        {"depth_m": 22.0, "elev_m": -19.40,"Su_kPa": 32.8, "Sp_kPa": 17.9, "St": 1.8}
+      ]
+    },
+    {
+      "name": "BXN-CV-VST4",
+      "date": "2026-04-10",
+      "Z_ground_m": 3.198,
+      "vane_D_cm": 7.58, "vane_H_cm": 7.58, "K_m3": 1.685e-3,
+      "x_coord_m": 1191661.632, "y_coord_m": 606108.802,
+      "n_tests": 10,
+      "notes": "Dùng cánh nhỏ D=H=7.58cm, K=1.685E-03",
+      "tests": [
+        {"depth_m": 3.0,  "elev_m": 0.20,  "Su_kPa": 10.7, "Sp_kPa": 2.1,  "St": 5.1},
+        {"depth_m": 5.0,  "elev_m": -1.80, "Su_kPa": 17.8, "Sp_kPa": 5.9,  "St": 3.0},
+        {"depth_m": 7.0,  "elev_m": -3.80, "Su_kPa": 5.9,  "Sp_kPa": 1.2,  "St": 5.0},
+        {"depth_m": 9.0,  "elev_m": -5.80, "Su_kPa": 11.3, "Sp_kPa": 1.8,  "St": 6.3},
+        {"depth_m": 11.0, "elev_m": -7.80, "Su_kPa": 16.6, "Sp_kPa": 2.1,  "St": 8.0},
+        {"depth_m": 13.0, "elev_m": -9.80, "Su_kPa": 19.0, "Sp_kPa": 2.7,  "St": 7.1},
+        {"depth_m": 15.0, "elev_m": -11.80,"Su_kPa": 22.5, "Sp_kPa": 7.7,  "St": 2.9},
+        {"depth_m": 17.0, "elev_m": -13.80,"Su_kPa": 22.0, "Sp_kPa": 6.2,  "St": 3.5},
+        {"depth_m": 19.0, "elev_m": -15.80,"Su_kPa": 22.5, "Sp_kPa": 7.4,  "St": 3.0},
+        {"depth_m": 21.0, "elev_m": -17.80,"Su_kPa": 19.0, "Sp_kPa": 1.8,  "St": 10.7}
+      ]
+    },
+    {
+      "name": "BXN-CV-VST5",
+      "date": "2026-04-16",
+      "Z_ground_m": 2.139,
+      "vane_D_cm": 6.50, "vane_H_cm": 13.00, "K_m3": 1.006e-3,
+      "x_coord_m": 1191552.378, "y_coord_m": 606052.127,
+      "n_tests": 10,
+      "tests": [
+        {"depth_m": 2.5,  "elev_m": -0.36, "Su_kPa": 6.0,  "Sp_kPa": 2.0,  "St": 3.0},
+        {"depth_m": 4.0,  "elev_m": -1.86, "Su_kPa": 7.9,  "Sp_kPa": 3.0,  "St": 2.7},
+        {"depth_m": 6.0,  "elev_m": -3.86, "Su_kPa": 9.9,  "Sp_kPa": 3.5,  "St": 2.9},
+        {"depth_m": 8.0,  "elev_m": -5.86, "Su_kPa": 10.9, "Sp_kPa": 5.5,  "St": 2.0},
+        {"depth_m": 10.0, "elev_m": -7.86, "Su_kPa": 13.9, "Sp_kPa": 6.0,  "St": 2.3},
+        {"depth_m": 12.0, "elev_m": -9.86, "Su_kPa": 13.9, "Sp_kPa": 6.5,  "St": 2.2},
+        {"depth_m": 14.0, "elev_m": -11.86,"Su_kPa": 19.9, "Sp_kPa": 7.5,  "St": 2.7},
+        {"depth_m": 16.0, "elev_m": -13.86,"Su_kPa": 17.9, "Sp_kPa": 7.5,  "St": 2.4},
+        {"depth_m": 18.0, "elev_m": -15.86,"Su_kPa": 17.9, "Sp_kPa": 8.4,  "St": 2.1},
+        {"depth_m": 20.0, "elev_m": -17.86,"Su_kPa": 28.8, "Sp_kPa": 12.9, "St": 2.2}
+      ]
+    }
+  ]
+}

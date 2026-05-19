@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "title": "Sức chịu tải cọc đóng — FHWA GEC-12",
+    "library": "axial_pile (geotech-staff-engineer 4.6.0)",
+    "reference": "FHWA-NHI-16-009 GEC-12, Chapters 7-8",
+    "md_file": "29-bearing-capacity-axial-pile.md",
+    "py_module": "scripts/bearing_capacity_tab.py",
+    "updated": "2026-05-16"
+  },
+  "api_signatures": {
+    "AxialSoilLayer": "AxialSoilLayer(thickness, soil_type='cohesionless'|'cohesive', unit_weight, friction_angle=0, cohesion=0, description='')",
+    "AxialSoilProfile": "AxialSoilProfile(layers: list, gwt_depth: float = None)",
+    "make_concrete_pile": "make_concrete_pile(width, shape='square'|'circular', E=25000000.0)",
+    "AxialPileAnalysis": "AxialPileAnalysis(pile, soil, pile_length, method='auto'|'nordlund'|'tomlinson'|'beta', factor_of_safety=2.5)",
+    "compute": "ana.compute() → AxialPileResult",
+    "capacity_vs_depth": "ana.capacity_vs_depth(depths=[...]) → DataFrame"
+  },
+  "result_attributes": {
+    "Q_ultimate": "kN — sức chịu tải giới hạn",
+    "Q_skin": "kN — ma sát bên",
+    "Q_tip": "kN — sức kháng mũi",
+    "Q_allowable": "kN — sức chịu tải cho phép (= Q_ultimate / Fs)",
+    "factor_of_safety": "Fs nhập vào",
+    "layer_breakdown": "list[dict] — breakdown từng lớp: depth_top_m, depth_bottom_m, soil_type, method, skin_friction_kN",
+    "summary()": "str — tóm tắt kết quả dạng bảng text",
+    "plot_load_transfer()": "Figure matplotlib"
+  },
+  "methods": {
+    "auto": "Nordlund cho cohesionless, Tomlinson cho cohesive",
+    "nordlund": "Phương pháp Nordlund — chỉ dùng cho cát",
+    "tomlinson": "Phương pháp Tomlinson alpha — chỉ dùng cho sét",
+    "beta": "Beta (effective stress) — mọi loại đất"
+  },
+  "soil_types": {
+    "cohesionless": "Cát, bụi cát, sỏi (friction_angle > 0, cohesion = 0)",
+    "cohesive": "Sét, bùn (cohesion = Su > 0, friction_angle = 0)"
+  },
+  "default_layers": [
+    {"thickness": 5.0, "soil_type": "cohesionless", "unit_weight": 19.0, "friction_angle": 30.0, "cohesion": 0.0, "description": "Sand medium dense"},
+    {"thickness": 10.0, "soil_type": "cohesive", "unit_weight": 17.5, "friction_angle": 0.0, "cohesion": 45.0, "description": "Soft clay"},
+    {"thickness": 5.0, "soil_type": "cohesionless", "unit_weight": 19.5, "friction_angle": 32.0, "cohesion": 0.0, "description": "Dense sand"}
+  ],
+  "design_example": {
+    "pile": "BTCT 350mm × 350mm (square), L=15m",
+    "gwt_depth_m": 2.0,
+    "method": "auto",
+    "Fs": 2.5,
+    "Q_ultimate_kN": 672.6,
+    "Q_skin_kN": 617.4,
+    "Q_tip_kN": 55.1,
+    "Q_allowable_kN": 269.0
+  },
+  "session_state_keys": {
+    "bc_soil_df": "DataFrame lớp đất",
+    "bc_result": "AxialPileResult object",
+    "bc_cvd": "DataFrame capacity vs depth",
+    "bc_pile_name": "str tên cọc"
+  }
+}

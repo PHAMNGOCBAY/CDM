@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "source": "giao dien/01-05-UI-*.png  +  11-sw-pile-database.md",
+    "rule": "All UI labels in English, following GEO5 naming convention",
+    "updated": "2026-05-15",
+    "version": "v4"
+  },
+  "app_title": "Lateral Pile Analysis — SW Prestressed Concrete (BETON 6)",
+  "tabs": [
+    "Geo Data",
+    "Soil Layers",
+    "Concentrated Forces",
+    "Boussinesq",
+    "Sheet Pile Section",
+    "Results"
+  ],
+  "geo_data": {
+    "reference_image": "giao dien/01-UI-GEODAT.png",
+    "fields": [
+      {"label": "Pile Top Level [m]",      "key": "top_elev",         "default": 0.0,  "step": 0.5, "geo5_equiv": "Sheet Pile Top Level [m]"},
+      {"label": "Soil Level in Front [m]", "key": "soil_level_front", "default": 0.0,  "step": 0.5, "geo5_equiv": "Soil Level in Front [m]"},
+      {"label": "Soil Level behind [m]",   "key": "soil_level_back",  "default": 0.0,  "step": 0.5, "geo5_equiv": "— (new, back side natural ground)"},
+      {"label": "Water Level [m]",         "key": "water_level",      "default": -1.0, "step": 0.5, "geo5_equiv": "Water Level in Front [m]"},
+      {"label": "Pile Length [m]",         "key": "L_m",              "default": 20.0, "step": 0.5, "geo5_equiv": "derived from top - tip"},
+      {"label": "Earth Support",           "key": "bc_type",          "options": ["Fixed","Free","Cantilever"], "geo5_equiv": "Earth Support dropdown"}
+    ],
+    "diagram_labels": {
+      "top_marker": "SP Top",
+      "water_marker": "Water",
+      "front_label": "Front",
+      "back_label": "Back",
+      "ground_front": "Ground F",
+      "ground_back": "Ground B",
+      "fill_label": "Fill"
+    },
+    "fill_zone_rule": "If soil_level_back > top_elev: tan hatch fill on Back side from top_elev to soil_level_back. Same for Front.",
+    "natural_ground_rule": "Golden-brown horizontal line at soil_level_front (left of pile) and soil_level_back (right of pile)."
+  },
+  "soil_layers": {
+    "reference_image": "giao dien/02-UI-Soil Layers.png",
+    "note": "Two independent tables: Layers in Front and Layers behind. Layer top derived automatically from previous layer tip.",
+    "front_layers": {
+      "session_key": "front_layers_df",
+      "layer1_top_source": "top_elev (Pile Top Level)",
+      "used_in": "openpile p-y calculation"
+    },
+    "back_layers": {
+      "session_key": "back_layers_df",
+      "layer1_top_source": "soil_level_back (natural ground behind)",
+      "used_in": "diagram display only — future integration"
+    },
+    "columns": [
+      {"col": "Layer Tip [m]",            "type": "number", "format": "%.3f", "step": 0.5,  "geo5_equiv": "Layer Tip [m]"},
+      {"col": "Density Moist [kN/m3]",    "type": "number", "format": "%.3f", "step": 0.1,  "min": 10.0, "max": 25.0, "geo5_equiv": "Density Moist [kN/m3]"},
+      {"col": "Density Sub [kN/m3]",      "type": "number", "format": "%.3f", "step": 0.1,  "auto": "Density Moist - 10.0", "geo5_equiv": "Density Submerged [kN/m3]"},
+      {"col": "Phi [Deg]",                "type": "number", "format": "%.3f", "step": 1.0,  "min": 0.0, "max": 45.0, "geo5_equiv": "Phi [Deg]"},
+      {"col": "Delta [Deg]",              "type": "number", "format": "%.3f", "step": 1.0,  "default": 0.0, "note": "interface friction — future use", "geo5_equiv": "Delta [Deg]"},
+      {"col": "Cohesion [kN/m2]",         "type": "number", "format": "%.3f", "step": 1.0,  "default": 0.0, "geo5_equiv": "Cohesion [kN/m2]"}
+    ],
+    "checkboxes": [
+      {"label": "Automatic Density Submerged = Density Moist - 10.0", "key": "auto_sub", "geo5_equiv": "Automatic Kph Values checkbox"}
+    ]
+  },
+  "concentrated_forces": {
+    "reference_image": "giao dien/03-UI-Concentrated Forces.png",
+    "columns": [
+      {"col": "Horiz. Component [kN/m]", "type": "number", "format": "%.3f", "step": 1.0,  "geo5_equiv": "Horiz. Component [kN/m]"},
+      {"col": "Vert. Component [kN/m]",  "type": "number", "format": "%.3f", "step": 1.0,  "geo5_equiv": "Vert. Component [kN/m]"},
+      {"col": "Depth [m]",              "type": "number", "format": "%.3f", "step": 0.5,  "help": "Depth below Pile Top Level (positive downward)", "geo5_equiv": "Depth Horiz. Comp. [m]"}
+    ],
+    "note": "Depth=0 applies load at pile head. openpile supports head loads only in current version."
+  },
+  "boussinesq": {
+    "reference_image": "giao dien/04-UI-Bossinesp.png",
+    "columns": [
+      {"col": "Distance Wall [m]",   "type": "number", "format": "%.3f", "step": 0.5, "geo5_equiv": "Distance Wall [m]"},
+      {"col": "Width Surcharge [m]", "type": "number", "format": "%.3f", "step": 0.5, "geo5_equiv": "Width Surcharge [m]"},
+      {"col": "Depth Surcharge [m]", "type": "number", "format": "%.3f", "step": 0.5, "geo5_equiv": "Depth Surcharge [m]"},
+      {"col": "Surcharge [kN/m2]",   "type": "number", "format": "%.3f", "step": 1.0, "geo5_equiv": "Surcharge [kN/m2]"}
+    ],
+    "note": "Not yet integrated into openpile p-y calculation. Diagram preview only."
+  },
+  "sheet_pile_section": {
+    "reference_image": "giao dien/05-UI-Sheet Pile Section.png",
+    "catalog_source": "scripts/sw_pile_database.py — BETON 6 Ver.2015",
+    "catalog_columns": [
+      "Name", "H [mm]", "t [mm]", "n strands", "phi [mm]",
+      "Atd [cm2]", "Itd [cm4]", "Mcr [T.m]", "Weight [T]",
+      "L min [m]", "L max [m]", "Width [mm]"
+    ],
+    "concrete_grades": [
+      {"label": "f'c = 30 MPa", "fc": 30,  "Ec_MPa": 26561,  "Ec_kNm2": 26561000},
+      {"label": "f'c = 40 MPa", "fc": 40,  "Ec_MPa": 31623,  "Ec_kNm2": 31623000},
+      {"label": "f'c = 60 MPa", "fc": 60,  "Ec_MPa": 38730,  "Ec_kNm2": 38730000},
+      {"label": "f'c = 70 MPa", "fc": 70,  "Ec_MPa": 43628,  "Ec_kNm2": 43628130}
+    ],
+    "plaxis_outputs": ["EA1 [kN/m]", "EI [kN.m2/m]", "d_eq [m]", "w [kN/m/m]", "Mcr [kN.m]"],
+    "pile_length_rule": "Constrained to [L_min, L_max] of selected pile. Syncs to Geo Data Pile Length.",
+    "geo5_equiv": {
+      "SW catalog list": "Sheet Pile list (AU 16, AU 17 ... AU 26)",
+      "Concrete Grade": "Steel Grades (S240GP, S270GP ...)",
+      "Requested Safety": "Requested Safety"
+    }
+  },
+  "sw_catalog": [
+    {"name":"SW-120",  "H_mm":120,  "t_mm":60,  "n_strands":8,  "phi_strand_mm":9.53,  "Atd_cm2":548.0,  "Itd_cm4":6514,     "Mcr_Tm":1.53,  "weight_T":0.83,  "L_min_m":3,  "L_max_m":7,  "width_mm":996},
+    {"name":"SW-160",  "H_mm":160,  "t_mm":80,  "n_strands":8,  "phi_strand_mm":9.53,  "Atd_cm2":723.0,  "Itd_cm4":15336,    "Mcr_Tm":2.04,  "weight_T":1.30,  "L_min_m":4,  "L_max_m":8,  "width_mm":996},
+    {"name":"SW-225",  "H_mm":225,  "t_mm":100, "n_strands":8,  "phi_strand_mm":11.10, "Atd_cm2":954.0,  "Itd_cm4":42780,    "Mcr_Tm":4.28,  "weight_T":2.38,  "L_min_m":5,  "L_max_m":9,  "width_mm":996},
+    {"name":"SW-300",  "H_mm":300,  "t_mm":110, "n_strands":10, "phi_strand_mm":12.70, "Atd_cm2":1168.0, "Itd_cm4":101168,   "Mcr_Tm":9.58,  "weight_T":3.38,  "L_min_m":7,  "L_max_m":12, "width_mm":996},
+    {"name":"SW-350A", "H_mm":350,  "t_mm":120, "n_strands":14, "phi_strand_mm":12.70, "Atd_cm2":1376.0, "Itd_cm4":162003,   "Mcr_Tm":16.31, "weight_T":5.00,  "L_min_m":9,  "L_max_m":15, "width_mm":996},
+    {"name":"SW-350B", "H_mm":350,  "t_mm":120, "n_strands":16, "phi_strand_mm":12.70, "Atd_cm2":1385.0, "Itd_cm4":162756,   "Mcr_Tm":17.33, "weight_T":5.38,  "L_min_m":10, "L_max_m":15, "width_mm":996},
+    {"name":"SW-400A", "H_mm":400,  "t_mm":120, "n_strands":16, "phi_strand_mm":12.70, "Atd_cm2":1543.0, "Itd_cm4":240449,   "Mcr_Tm":20.39, "weight_T":6.28,  "L_min_m":10, "L_max_m":16, "width_mm":996},
+    {"name":"SW-400B", "H_mm":400,  "t_mm":120, "n_strands":18, "phi_strand_mm":12.70, "Atd_cm2":1552.0, "Itd_cm4":240449,   "Mcr_Tm":23.45, "weight_T":6.68,  "L_min_m":11, "L_max_m":16, "width_mm":996},
+    {"name":"SW-450A", "H_mm":450,  "t_mm":120, "n_strands":18, "phi_strand_mm":12.70, "Atd_cm2":1787.0, "Itd_cm4":341010,   "Mcr_Tm":27.52, "weight_T":7.65,  "L_min_m":11, "L_max_m":17, "width_mm":996},
+    {"name":"SW-450B", "H_mm":450,  "t_mm":120, "n_strands":16, "phi_strand_mm":15.24, "Atd_cm2":1808.0, "Itd_cm4":348089,   "Mcr_Tm":31.60, "weight_T":8.13,  "L_min_m":12, "L_max_m":17, "width_mm":996},
+    {"name":"SW-500A", "H_mm":500,  "t_mm":120, "n_strands":16, "phi_strand_mm":15.24, "Atd_cm2":1885.0, "Itd_cm4":467240,   "Mcr_Tm":35.68, "weight_T":8.13,  "L_min_m":12, "L_max_m":19, "width_mm":996},
+    {"name":"SW-500B", "H_mm":500,  "t_mm":120, "n_strands":20, "phi_strand_mm":15.24, "Atd_cm2":1910.0, "Itd_cm4":469288,   "Mcr_Tm":40.77, "weight_T":8.58,  "L_min_m":13, "L_max_m":20, "width_mm":996},
+    {"name":"SW-600A", "H_mm":600,  "t_mm":120, "n_strands":20, "phi_strand_mm":15.24, "Atd_cm2":2262.0, "Itd_cm4":795348,   "Mcr_Tm":50.97, "weight_T":10.38, "L_min_m":14, "L_max_m":22, "width_mm":996},
+    {"name":"SW-600B", "H_mm":600,  "t_mm":120, "n_strands":24, "phi_strand_mm":15.24, "Atd_cm2":2288.0, "Itd_cm4":797396,   "Mcr_Tm":60.14, "weight_T":10.88, "L_min_m":15, "L_max_m":24, "width_mm":996},
+    {"name":"SW-740",  "H_mm":740,  "t_mm":160, "n_strands":20, "phi_strand_mm":15.24, "Atd_cm2":2794.0, "Itd_cm4":1480428,  "Mcr_Tm":60.40, "weight_T":14.55, "L_min_m":16, "L_max_m":28, "width_mm":996},
+    {"name":"SW-840",  "H_mm":840,  "t_mm":160, "n_strands":22, "phi_strand_mm":15.24, "Atd_cm2":3107.0, "Itd_cm4":2125017,  "Mcr_Tm":77.10, "weight_T":16.35, "L_min_m":17, "L_max_m":29, "width_mm":996},
+    {"name":"SW-940",  "H_mm":940,  "t_mm":160, "n_strands":24, "phi_strand_mm":15.24, "Atd_cm2":3544.0, "Itd_cm4":2983488,  "Mcr_Tm":93.30, "weight_T":18.31, "L_min_m":17, "L_max_m":30, "width_mm":996},
+    {"name":"SW-1100", "H_mm":1100, "t_mm":200, "n_strands":28, "phi_strand_mm":15.24, "Atd_cm2":5327.0, "Itd_cm4":5663367,  "Mcr_Tm":136.0, "weight_T":25.80, "L_min_m":17, "L_max_m":32, "width_mm":1246},
+    {"name":"SW-1200", "H_mm":1200, "t_mm":200, "n_strands":30, "phi_strand_mm":15.24, "Atd_cm2":5789.7, "Itd_cm4":7318551,  "Mcr_Tm":158.0, "weight_T":28.75, "L_min_m":17, "L_max_m":34, "width_mm":1246}
+  ]
+}

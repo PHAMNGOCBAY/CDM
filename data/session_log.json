@@ -1,0 +1,333 @@
+{
+  "_meta": {
+    "type": "session_log",
+    "updated": "2026-05-15",
+    "project": "AI-SUC TAI COC THEO DAT NEN"
+  },
+  "sessions": [
+    {
+      "date": "2026-05-13",
+      "title": "Doc dia chat TTHC + Thiet ke ke SW so bo",
+      "source_pdf": "G:\\My Drive\\202605-TRUNG TAM HCM\\DIA CHAT\\260512 CVTT-TTHC. Tru DC.pdf",
+      "drive_id": "1bDQuwmRGkcExnLeLoeSLSuU9riNTdNe_",
+      "tasks": [
+        {"id": 1, "task": "Doc tat ca *.md, *.json, *.py trong project", "status": "DONE"},
+        {"id": 2, "task": "Doc PDF hinh tru ho khoan 260512 CVTT-TTHC qua Google Drive MCP", "status": "DONE",
+          "issues": ["pdftoppm not found — dung MCP read_file_content", "UTF-8 encoding fix"]},
+        {"id": 3, "task": "Thong ke dia tang 12 ho khoan HK1-HK12", "status": "DONE"},
+        {"id": 4, "task": "Luu 3 file: soil_profile JSON + MD + PY", "status": "DONE",
+          "files": ["data/soil_profile_202605_TTHC.json", "15-soil-profile-202605-TTHC.md", "scripts/soil_profile_TTHC.py"]},
+        {"id": 5, "task": "Thiet ke ke SW: 2 nguyen tac, chon loai coc theo 12 HK", "status": "DONE"},
+        {"id": 6, "task": "Luu 3 file: ke_sw JSON + MD + PY", "status": "DONE",
+          "files": ["data/ke_sw_202605_TTHC.json", "16-ke-sw-202605-TTHC.md", "scripts/ke_sw_TTHC.py"]},
+        {"id": 7, "task": "Lam ro don vi TL(T) -> kN: w_per_pile != w_plaxis", "status": "DONE",
+          "key_insight": "7.29 kN/m/coc (NT2) vs 7.32 kN/m/m (PLAXIS Plate = ÷ spacing 0.996)"},
+        {"id": 8, "task": "Luu memory + skill /borehole-from-pdf", "status": "DONE",
+          "files": [".claude/commands/borehole-from-pdf.md","memory/project_TTHC.md",
+                    "memory/feedback_borehole_workflow.md","memory/feedback_pile_weight_units.md"]},
+        {"id": 9, "task": "Lam ro don vi w_per_pile vs w_plaxis — cap nhat JSON + script", "status": "DONE",
+          "key_insight": "w_per_pile=7.29 kN/m/coc (NT2); w_plaxis=7.29/0.996=7.32 kN/m/m (PLAXIS Plate)"},
+        {"id": 10, "task": "Sinh bao cao Word lua chon coc SW", "status": "DONE",
+          "output": "G:\\My Drive\\202605-TRUNG TAM HCM\\KET CAU KE\\260513 BAO CAO LUA CHON COC SW-TTHC-HCM.docx",
+          "generator": "scripts/_gen_report_ke_sw_TTHC.py", "sections": 8, "lib": "python-docx 1.2.0"},
+        {"id": 11, "task": "Cap nhat 3 file nhat ky + memory ket thuc phien", "status": "DONE"}
+      ],
+      "key_results": {
+        "boreholes": 12,
+        "soft_clay_range_m": "19.5-25.0",
+        "L_req_range_m": "23.2-28.7",
+        "recommended_pile_main": "SW-840, L=29m (HK1-HK9, HK11)",
+        "recommended_pile_HK10": "SW-940, L=29m (bien NT1 chi 0.3m voi SW-840)",
+        "HK12_status": "SPECIAL — XMD hien huu, can thiet ke rieng",
+        "NT2_SW840_W_kN": 211.5,
+        "NT2_SW840_RR_kN": 419.9,
+        "NT2_SW840_phi_stat": 0.35,
+        "NT2_standard": "TCVN 11823-10:2017, Dieu 7.3.8.6.2 — alpha-method, bo qua dat dap, gom Rp",
+        "NT2_result": "PASS",
+        "word_report": "G:\\My Drive\\202605-TRUNG TAM HCM\\KET CAU KE\\260513 BAO CAO LUA CHON COC SW-TTHC-HCM.docx"
+      }
+    },
+    {
+      "date": "2026-05-14",
+      "title": "NT2 coc dong TCVN 11823-10 + bo 3 file suc chiu tai coc dong",
+      "tasks": [
+        {"id": 1, "task": "Xoa emoji trong ke_sw_TTHC.py, 16-ke-sw-TTHC.md, 15-soil-profile-TTHC.md — them §Giai thich Ky hieu", "status": "DONE"},
+        {"id": 2, "task": "Nghien cuu GeoMCP (arXiv:2603.01022, SINTEF) — repo chua public", "status": "DONE",
+          "result": "Luu vao pending tasks"},
+        {"id": 3, "task": "Doc TCVN 11823-10:2017 (PDF 141 trang) — Dieu 7.3.8.6, Bang 9", "status": "DONE",
+          "method": "PyPDF2 (pdftoppm khong co)"},
+        {"id": 4, "task": "Tao bo 3 file coc dong TCVN: JSON + MD + PY", "status": "DONE",
+          "files": ["data/driven_pile_TCVN11823.json", "18-driven-pile-TCVN11823.md", "scripts/driven_pile_TCVN11823.py"]},
+        {"id": 5, "task": "Cap nhat NT2 theo TCVN 11823-10:2017 (alpha-method, coc dong)", "status": "DONE",
+          "rules": ["Bo qua dat dap khi tinh Rs","Gom Rp = 9*su*Ap","phi_stat=0.35 (Bang 9)","Khong nhan FS len W_coc"],
+          "files": ["scripts/ke_sw_TTHC.py","data/ke_sw_202605_TTHC.json","16-ke-sw-202605-TTHC.md",
+                    "scripts/_gen_report_ke_sw_TTHC.py","data/session_log.json","17-session-log.md"]},
+        {"id": 6, "task": "Kiem tra toan bo file lien quan — xac nhan sach cong thuc cu", "status": "DONE"},
+        {"id": 7, "task": "Xac nhan: coc SW thi cong phuong phap dong -> TCVN 11823-10 ap dung", "status": "DONE"},
+        {"id": 8, "task": "Luu memory + nhat ky ket thuc phien", "status": "DONE"}
+      ],
+      "key_results": {
+        "NT2_formula": "RR = phi_stat*(Rs+Rp) >= W_coc  |  phi_stat=0.35, alpha-method, co dong",
+        "NT2_SW840_HK1": {"fill_m": 3.5, "L_tn_m": 25.5, "Rs_kN": 1172, "Rp_kN": 28, "RR_kN": 420, "W_kN": 211.5, "ratio": 1.99, "result": "PASS"},
+        "NT2_SW840_HK9_worst": {"RR_kN": 397, "W_kN": 211.5, "ratio": 1.87, "result": "PASS"},
+        "NT2_SW940_HK10": {"fill_m": 3.08, "L_tn_m": 25.92, "Rs_kN": 1292, "Rp_kN": 31.9, "RR_kN": 463, "W_kN": 226.5, "ratio": 2.05, "result": "PASS"},
+        "Ap_mm2": {"SW840": 310700, "SW940": 354400, "note": "Atd_cm2 * 100, tu catalog"},
+        "SW940_perimeter_mm": {"value": 4984, "note": "noi suy — can xac nhan catalog"},
+        "new_3file_triplet": "driven_pile_TCVN11823 — them vao project_check.py"
+      }
+    },
+    {
+      "date": "2026-05-14",
+      "title": "NT2 da lop + thiet ke lai chieu dai coc SW theo TCVN 11823-10",
+      "tasks": [
+        {"id": 1, "task": "Them ham check_NT2_multilayer() vao ke_sw_TTHC.py", "status": "DONE",
+          "detail": "Rs tinh tung lop (SU_PER_LAYER), alpha Tomlinson 1980, SAND_LAYERS qs=0"},
+        {"id": 2, "task": "Them ham run_all_NT2_multilayer() + print_NT2_multilayer_table()", "status": "DONE",
+          "files": ["scripts/ke_sw_TTHC.py"]},
+        {"id": 3, "task": "Cap nhat JSON ke_sw — sua tip_layer sai, them NT2_multilayer moi HK, NT2_multilayer_summary", "status": "DONE",
+          "files": ["data/ke_sw_202605_TTHC.json"]},
+        {"id": 4, "task": "Cap nhat 16-ke-sw-TTHC.md §16.5 va §16.6 — thay cong thuc cu bang da lop", "status": "DONE",
+          "files": ["16-ke-sw-202605-TTHC.md"]},
+        {"id": 5, "task": "Luu nhat ky phien", "status": "DONE",
+          "files": ["data/session_log.json","17-session-log.md"]}
+      ],
+      "key_results": {
+        "method": "Alpha-method da lop — su theo tung lop, alpha Tomlinson 1980, phi=0.35",
+        "su_per_layer": {"1": 10, "1b": 20, "3": 35, "5": 75, "5b": 100},
+        "sand_layers_qs0": ["F","2a","2b","2c","4","5a","6","7","XMD"],
+        "NT2_multilayer_results": [
+          {"name":"HK1",  "tip":"1b","Rs":1241,"Rp":56, "RR":454,"W":211.4,"ratio":2.15},
+          {"name":"HK2",  "tip":"1b","Rs":1202,"Rp":56, "RR":440,"W":211.4,"ratio":2.08},
+          {"name":"HK3",  "tip":"2b","Rs":1218,"Rp":0,  "RR":426,"W":211.4,"ratio":2.02},
+          {"name":"HK4",  "tip":"2b","Rs":1195,"Rp":0,  "RR":418,"W":211.4,"ratio":1.98},
+          {"name":"HK5",  "tip":"2b","Rs":1218,"Rp":0,  "RR":426,"W":211.4,"ratio":2.02},
+          {"name":"HK6",  "tip":"2b","Rs":1195,"Rp":0,  "RR":418,"W":211.4,"ratio":1.98},
+          {"name":"HK7",  "tip":"2b","Rs":1241,"Rp":0,  "RR":434,"W":211.4,"ratio":2.05},
+          {"name":"HK8",  "tip":"2b","Rs":1126,"Rp":0,  "RR":394,"W":211.4,"ratio":1.86,"worst_NT2":true},
+          {"name":"HK9",  "tip":"2b","Rs":1195,"Rp":0,  "RR":418,"W":211.4,"ratio":1.98},
+          {"name":"HK10", "tip":"1b","Rs":1338,"Rp":64, "RR":490,"W":226.5,"ratio":2.17},
+          {"name":"HK11", "tip":"2b","Rs":1204,"Rp":0,  "RR":421,"W":211.4,"ratio":1.99}
+        ],
+        "worst_NT2": "HK8 — ti so 1.86 (Lop 1 chi 19.5m, mui vao cat 2b Rp=0)",
+        "design_confirmed": "SW-840 L=29m cho HK1-HK9,HK11 | SW-940 L=29m cho HK10 — tat ca Dat"
+      }
+    },
+    {
+      "date": "2026-05-14",
+      "title": "Cai thu vien Python phan tich coc tai ngang + he so nen + dam dan hoi",
+      "tasks": [
+        {"id": 1, "task": "Doc THU VIEN PYTHON.docx tu Google Drive", "status": "DONE",
+          "drive_id": "1KqaNuU9zd4HBA5TLDXUiTEOi21JXf6wa"},
+        {"id": 2, "task": "Cai tat ca thu vien bang python -m pip", "status": "DONE",
+          "libs": ["openseespy","openpile 1.0.2","anastruct","geolysis 0.24.1","geofound",
+                   "bedrock-ge 0.3.3","pandera 0.31.1","geopandas 1.1.3","shapely 2.1.2",
+                   "numpy 1.26.4","scipy 1.17.1","matplotlib 3.10.9","pandas 2.3.3"],
+          "not_on_pypi": "ebbef2p-python (can tu GitHub source)"},
+        {"id": 3, "task": "Tao 3 file: JSON + MD + PY", "status": "DONE",
+          "files": ["data/python_libs_geotechnical.json","19-thu-vien-python.md","scripts/lateral_pile_demo.py"]},
+        {"id": 4, "task": "Debug openpile API 1.0.x: wt, weight, BoundaryFixation, Py, deflection/forces", "status": "DONE",
+          "key_fixes": ["wall_thickness->wt","Layer.weight bat buoc","BoundaryFixation tai mui coc","Hx->Py","global_disp->deflection"]},
+        {"id": 5, "task": "Kiem tra demo: 4 bai toan chay dung", "status": "DONE",
+          "results": {"Ks_Bowles_kNm3": 18000, "Ks_Vesic_kNm3": 15151,
+                      "openpile_y_head_mm": 5.01, "openpile_M_max_kNm": 188.2, "anastruct_y_max_mm": 2.57}}
+      ],
+      "key_results": {
+        "python_version": "3.12.10",
+        "vscode_ide_note": "Loi IDE la false positive — VSCode dung Python 3.13 (Windows Store), thu vien cai vao Python 3.12",
+        "openpile_key_gotcha": "BoundaryFixation tai mui coc bat buoc de hoi tu; Py=luc ngang; deflection+forces thay vi global_disp"
+      }
+    },
+    {
+      "date": "2026-05-14",
+      "title": "Giao dien Streamlit + Notebook phan tich coc tai ngang",
+      "tasks": [
+        {"id": 1, "task": "Tao notebook Jupyter: notebooks/coc_tai_ngang_openpile.ipynb", "status": "DONE",
+          "kernel": "Python 3.12 (dia ky thuat)",
+          "cells": ["thong so dau vao","xay mo hinh + giai","bieu do 3 panel","p-y mobilization","bang ket qua"]},
+        {"id": 2, "task": "Cai Jupyter kernel Python 3.12 cho VSCode", "status": "DONE",
+          "command": "python -m ipykernel install --user --name python312"},
+        {"id": 3, "task": "Tao Streamlit app: scripts/app_coc_tai_ngang.py", "status": "DONE",
+          "url": "http://localhost:8501",
+          "features": ["sidebar nhap so lieu","4 KPI cards","bieu do 3 panel","mat cat dia tang","bang + CSV"]},
+        {"id": 4, "task": "Sua loi: dia tang can phu het chieu dai coc (clip layer cuoi)", "status": "DONE"},
+        {"id": 5, "task": "Sua bieu do: bo invert_yaxis — am xuong duoi, duong len tren", "status": "DONE"},
+        {"id": 6, "task": "Cho phep nhap lop dat sau hon chieu dai coc — bo validation, tu clip", "status": "DONE"},
+        {"id": 7, "task": "Cap nhat 3 file: JSON + MD + session log + memory", "status": "DONE",
+          "files": ["data/python_libs_geotechnical.json","19-thu-vien-python.md","data/session_log.json","17-session-log.md"]}
+      ],
+      "key_results": {
+        "streamlit_run": "python -m streamlit run scripts/app_coc_tai_ngang.py",
+        "notebook": "notebooks/coc_tai_ngang_openpile.ipynb",
+        "bieu_do_chuan": "khong dung invert_yaxis — matplotlib mac dinh: am xuong duoi, duong len tren",
+        "dia_tang_clip": "layers_clipped cho openpile model; layers_input cho hien thi — cho phep sau hon coc"
+      }
+    },
+    {
+      "date": "2026-05-15",
+      "title": "Ap luc nuoc + Ap luc dat ngang + Streamlit v4 (bien do ket qua)",
+      "tasks": [
+        {"id": 1, "task": "Tao bo 3 file TCVN 11823-3 ap luc dat ngang: JSON + MD + PY", "status": "DONE",
+          "files": ["data/lateral_earth_pressure.json","21-lateral-earth-pressure-TCVN11823.md","scripts/lateral_earth_pressure.py"],
+          "functions": ["ka_rankine","ka_coulomb","k0_nc","k0_oc","kp_rankine","compute_active_profile","compute_passive_profile","plot_pressure_diagram"]},
+        {"id": 2, "task": "Doi mac dinh top_elev = 2.7m trong Streamlit app", "status": "DONE",
+          "file": "scripts/app_coc_tai_ngang.py", "change": "value=0.0 -> value=2.7"},
+        {"id": 3, "task": "Tao bo 3 file ap luc nuoc: JSON + MD + PY", "status": "DONE",
+          "files": ["data/water_pressure.json","22-water-pressure.md","scripts/water_pressure.py"],
+          "model": "Hydrostatic + Terzaghi seepage don gian (path = 2d)",
+          "functions": ["WaterGeometry","hydrostatic_back","hydrostatic_front","seepage_back","seepage_front","net_water_pressure","resultant","compute_all","plot_water_diagram"]},
+        {"id": 4, "task": "Them bien do ap luc nuoc vao tab Results", "status": "DONE",
+          "file": "scripts/app_coc_tai_ngang.py",
+          "panels": "Front(TRAI/#1a8cff) | Back(PHAI/steelblue) | Net"},
+        {"id": 5, "task": "Sua Front/Back convention: Front=TRAI=Active, Back=PHAI=Passive", "status": "DONE",
+          "luu_memory": "memory/feedback_front_back_convention.md"},
+        {"id": 6, "task": "Tao bo 3 file bien do ap luc dat (Active/Passive): JSON + MD + PY", "status": "DONE",
+          "files": ["data/earth_pressure.json","23-earth-pressure-diagram.md","scripts/earth_pressure.py"],
+          "convention": "Front=Active(Ka)+fill(dat dap), Back=Passive(Kp)",
+          "functions": ["EpGeometry","compute_active_front","compute_passive_back","resultant","plot_earth_pressure_diagram","compute_all"]},
+        {"id": 7, "task": "Them bien do ap luc dat vao tab Results", "status": "DONE",
+          "file": "scripts/app_coc_tai_ngang.py",
+          "panels": "Active/Front(TRAI/tomato) | Net | Passive/Back(PHAI/green)"},
+        {"id": 8, "task": "Sua loi JSON session_log.json (sessions array bi dong sai)", "status": "DONE",
+          "root_cause": "Session 2 duoc append sau khi sessions array da dong, gay invalid JSON"},
+        {"id": 9, "task": "Cap nhat memory + nhat ky ket thuc phien", "status": "DONE",
+          "memory_files": ["project_lateral_pile_tools.md","feedback_front_back_convention.md","MEMORY.md"]}
+      ],
+      "key_results": {
+        "streamlit_version": "v4",
+        "top_elev_default_m": 2.7,
+        "convention_unified": "Front=TRAI=Active(Ka)+fill, Back=PHAI=Passive(Kp) — ap dung nhat quan ca 3 bieu do",
+        "water_pressure_models": ["hydrostatic","terzaghi_seepage"],
+        "earth_pressure_ka_methods": ["rankine","coulomb"],
+        "new_scripts": ["scripts/lateral_earth_pressure.py","scripts/water_pressure.py","scripts/earth_pressure.py"],
+        "new_data": ["data/lateral_earth_pressure.json","data/water_pressure.json","data/earth_pressure.json"],
+      "new_docs\": [\"21-lateral-earth-pressure-TCVN11823.md\",\"22-water-pressure.md\",\"23-earth-pressure-diagram.md\"]
+      }
+    },
+    {
+      "date": "2026-05-16",
+      "title": "Tich hop mo hinh dat set API Clay (Matlock 1970) vao Streamlit App",
+      "tasks": [
+        {
+          "id": 1,
+          "task": "Them cot Soil Type / Su / eps50 vao bang layers (front + back)",
+          "status": "DONE",
+          "detail": "SelectboxColumn (Sand/Clay) + NumberColumn Su va eps50 vao _layer_col_cfg()"
+        },
+        {
+          "id": 2,
+          "task": "Cap nhat engine tinh toan: chon API_sand hoac API_clay theo Soil Type moi hang",
+          "status": "DONE",
+          "detail": "_lateral_model(stype,ph,su_v,e50): clay->API_clay(Su,eps50,J=0.5), sand->API_sand(phi)"
+        },
+        {
+          "id": 3,
+          "task": "Khoa o khong phu hop model: Su/eps50 xam cho Sand, Phi xam cho Clay",
+          "status": "DONE",
+          "detail": "Tach 2 bang rieng: front_sand_df (disabled=[Su,eps50]) + front_clay_df (disabled=[Phi])"
+        },
+        {
+          "id": 4,
+          "task": "Merge 2 bang theo Layer Tip de tinh toan va bieu do",
+          "status": "DONE",
+          "detail": "_merge_front_layers_df(): concat+sort by Layer Tip desc; cap nhat front_layers_df"
+        },
+        {
+          "id": 5,
+          "task": "Test ket qua: profile Sand-Clay-Sand, SW-840, H=100kN",
+          "status": "DONE",
+          "detail": "y_head=6.991mm, M_max=198.7kNm, V_max=98.8kN, M/Mcr=0.26 OK, hoi tu 4 iterations"
+        },
+        {
+          "id": 6,
+          "task": "Luu 3 file: MD + JSON + PY",
+          "status": "DONE",
+          "files": [
+            "26-api-clay-matlock.md",
+            "data/api_clay_matlock.json",
+            "scripts/api_clay_matlock.py"
+          ]
+        }
+      ],
+      "key_results": {
+        "streamlit_version": "v5",
+        "session_state_new_keys": ["front_sand_df", "front_clay_df"],
+        "session_state_merged": "front_layers_df = _merge_front_layers_df()",
+        "cell_locking": "st.data_editor disabled=['Su [kN/m2]','eps50'] for Sand | disabled=['Phi [Deg]'] for Clay",
+        "openpile_clay_params": "API_clay(Su, eps50, kind='static', J=0.5)",
+        "eps50_defaults": {"soft": 0.02, "medium": 0.01, "stiff": 0.005},
+        "new_scripts": ["scripts/api_clay_matlock.py"],
+        "new_data": ["data/api_clay_matlock.json"],
+        "new_docs": ["26-api-clay-matlock.md"],
+        "migration": "_migrate_to_split(combined_df) tach Soil Type==Sand va Clay tu session cu"
+      }
+    },
+    {
+      "date": "2026-05-16",
+      "title": "Debug checkbox + phan tich tung thanh phan tai trong (component analysis)",
+      "tasks": [
+        {"id": 1, "task": "Debug tai trong phan bo khong anh huong ket qua khi bat checkbox", "status": "DONE",
+         "root_cause": "_ep/_wp/_boussi_res chi gan trong if block; try/except nuot NameError; _dist_loads luon rong"},
+        {"id": 2, "task": "Sua loi dau hieu: water sign -1 -> +1, Boussinesq sign +1 -> -1", "status": "DONE",
+         "detail": "Water p_net=p_back-p_front > 0 day ve Front -> sign=+1; Boussinesq front_p-back_p > 0 day ve Back -> sign=-1"},
+        {"id": 3, "task": "Them bieu do phan tich tung thanh phan tai trong", "status": "DONE",
+         "components": ["H+M tap trung", "Ap luc dat phan bo", "Ap luc nuoc phan bo", "Boussinesq phan bo", "Tong hop"],
+         "files": ["scripts/app_coc_tai_ngang.py", "27-py-component-analysis.md"]},
+        {"id": 4, "task": "Sua loi All-NaN trong _plot3: guard has_finite() + where(isfinite,0)", "status": "DONE"},
+        {"id": 5, "task": "Sua loi component bieu do dat/nuoc/Boussinesq = 0 (x2mesh requirement)", "status": "DONE",
+         "root_cause": "openpile set_pointload tai elevation trung gian bi bo qua neu khong la mesh node",
+         "fix": "Pass x2mesh=[midpoints] vao Model() truoc khi goi set_pointload",
+         "verified": "2026-05-16 — without x2mesh: loads dropped, results=0. With x2mesh: loads applied, converged."},
+        {"id": 6, "task": "Luu tat ca file ket thuc phien", "status": "DONE",
+         "files": ["data/earth_pressure.json (v2)", "data/api_clay_matlock.json (v2)",
+                   "27-py-component-analysis.md (NEW)", "26-api-clay-matlock.md (x2mesh section)",
+                   "data/session_log.json", "memory files"]}
+      ],
+      "key_results": {
+        "streamlit_version": "v6",
+        "x2mesh_discovery": "set_pointload tai elevation trung gian SILENTLY IGNORED neu khong trong x2mesh",
+        "x2mesh_fix": "Tinh midpoints truoc, pass x2mesh=mids vao Model() — ap dung ca main model va component analysis",
+        "sign_convention_Py": {"earth_net_h": "+1", "water_p_net": "+1", "boussinesq_front_minus_back": "-1"},
+        "new_docs": ["27-py-component-analysis.md"],
+        "json_updated": [
+          "data/earth_pressure.json (v2 + py_model_sign_convention)",
+          "data/api_clay_matlock.json (v2 + x2mesh_requirement + component_analysis)"
+        ]
+      }
+    },
+    {
+      "date": "2026-05-16",
+      "title": "Them 3 tab moi: Bearing Cap / Sheet Pile / Slope Stab + doi ten tab Results=P-y",
+      "tasks": [
+        {"id": 1, "task": "Doi ten tab Results -> P-y trong app", "status": "DONE",
+         "file": "scripts/app_coc_tai_ngang.py"},
+        {"id": 2, "task": "Tao bearing_capacity_tab.py - suc chiu tai coc dong FHWA GEC-12", "status": "DONE",
+         "method": "Nordlund (cat), Tomlinson alpha (set), Beta",
+         "files": ["scripts/bearing_capacity_tab.py", "29-bearing-capacity-axial-pile.md", "data/bearing_capacity_axial_pile.json"]},
+        {"id": 3, "task": "Tao sheet_pile_tab.py - ke coc ban console/neo USACE EM 1110-2-2504", "status": "DONE",
+         "files": ["scripts/sheet_pile_tab.py", "30-sheet-pile-cantilever.md", "data/sheet_pile_cantilever.json"]},
+        {"id": 4, "task": "Tao slope_stability_tab.py - on dinh mai doc Bishop/Fellenius/Spencer", "status": "DONE",
+         "files": ["scripts/slope_stability_tab.py", "31-slope-stability.md", "data/slope_stability.json"]},
+        {"id": 5, "task": "Tich hop 3 tab moi vao app (tab_bearing, tab_sheetpile, tab_slope)", "status": "DONE",
+         "file": "scripts/app_coc_tai_ngang.py", "total_tabs": 9},
+        {"id": 6, "task": "Fix bug capacity_vs_depth() - sai ten argument 'depths' -> 'depth_min/max/n_points'", "status": "DONE"},
+        {"id": 7, "task": "Verify: Sheet Pile tab chay dung - embed=14.4m, Mmax=922.5 kNm/m", "status": "DONE"},
+        {"id": 8, "task": "Giai thich nguyen nhan bieu do p-y vs Sheet pile khac nhau + Nang cap bieu do Sheet pile the hien chinh xac buoc nhay ap luc qua tung dia tang", "status": "DONE"}
+      ],
+      "key_results": {
+        "streamlit_version": "v8",
+        "total_tabs": 9,
+        "tab_names": ["Geo Data","Soil Layers","Concentrated Forces","Boussinesq","Sheet Pile Section","P-y","Bearing Cap.","Sheet Pile","Slope Stab."],
+        "renamed": "Results -> P-y",
+        "multi_layer_sp_diagram": "Hien thi chinh xac buoc nhay Ka, Kp qua tung lop dat trong tab Sheet Pile, kem nhan dia tang va to mau rieng",
+        "new_tabs": {
+          "Bearing Cap.": {"module": "axial_pile (geotech-staff-engineer 4.6.0)", "methods": ["nordlund","tomlinson","beta"]},
+          "Sheet Pile": {"module": "sheet_pile (geotech-staff-engineer 4.6.0)", "types": ["cantilever","anchored"]},
+          "Slope Stab.": {"module": "slope_stability (geotech-staff-engineer 4.6.0)", "methods": ["bishop","fellenius","spencer","morgenstern_price"]}
+        },
+        "new_scripts": ["scripts/bearing_capacity_tab.py","scripts/sheet_pile_tab.py","scripts/slope_stability_tab.py"],
+        "new_data": ["data/bearing_capacity_axial_pile.json","data/sheet_pile_cantilever.json","data/slope_stability.json"],
+        "new_docs": ["29-bearing-capacity-axial-pile.md","30-sheet-pile-cantilever.md","31-slope-stability.md"]
+      }
+    }
+  ]
+}

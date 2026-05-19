@@ -1,0 +1,105 @@
+{
+  "_meta": {
+    "source": "TCVN 11823-3:2017 §10.5 + app convention",
+    "rule": "All pressures in kN/m2, angles in degrees, elevations in m (positive upward)",
+    "updated": "2026-05-15",
+    "version": "v1"
+  },
+  "convention": {
+    "Front": "LEFT side — Active earth pressure (Ka), includes fill (dat dap)",
+    "Back":  "RIGHT side — Passive earth pressure (Kp), no fill",
+    "fill_side": "Front only",
+    "net_pressure": "Net = Active(Front) - Passive(Back); positive = active dominates (danger zone)",
+    "bar_direction": {
+      "Front_active": "bars go LEFT (same as GeoData Front side)",
+      "Back_passive":  "bars go RIGHT (same as GeoData Back side)",
+      "Net_positive":  "bars go RIGHT (net loading pushes pile toward Back)",
+      "Net_negative":  "bars go LEFT (passive dominates, pile stable)"
+    }
+  },
+  "visualization": {
+    "fill_alpha": 0.18,
+    "polyline_lw": 1.5,
+    "arrows": {
+      "type": "quiver horizontal",
+      "spacing_m": 2.0,
+      "from": "x=0 (zero pressure line)",
+      "to": "x = sign * pressure value (data coordinates)",
+      "alpha": 0.60,
+      "note": "scale_units=xy scale=1 angles=xy — arrow length equals pressure in data units"
+    }
+  },
+  "active_pressure": {
+    "formula_general": "sigma_h = Ka * sigma_v - 2*c*sqrt(Ka)  (>= 0, tension cutoff)",
+    "sigma_v": "accumulated vertical effective stress from top_elev downward",
+    "fill_contribution": "fill layer (soil_level_front to top_elev) counted in sigma_v with gamma_fill",
+    "ka_rankine": "Ka = tan2(45 - phi/2)  — vertical wall, delta=0, beta=0",
+    "ka_coulomb": "Ka from Eq.25 TCVN 11823-3 — includes wall friction delta and slope beta",
+    "surcharge": "delta_sigma_h = Ka * qs (uniform surcharge at pile top)"
+  },
+  "passive_pressure": {
+    "formula_general": "sigma_h = Kp * sigma_v + 2*c*sqrt(Kp)",
+    "sigma_v": "accumulated vertical effective stress from soil_level_back downward",
+    "above_soil_level_back": "no passive pressure (open / water side)",
+    "kp_rankine": "Kp = tan2(45 + phi/2)",
+    "note": "Kp Coulomb underestimates for high phi — use Rankine as default"
+  },
+  "net_pressure": {
+    "formula": "Net = Active(Front) - Passive(Back)  [kN/m2]",
+    "positive": "Active > Passive — dangerous zone, pile may fail toward Back",
+    "negative": "Passive > Active — stable embedded zone",
+    "resultant_Net": "F_net = integral(Net * dz) [kN/m]; positive = net active load on pile"
+  },
+  "effective_stress_rule": {
+    "above_water_table": "sigma_v += gamma_moist * dz",
+    "below_water_table": "sigma_v += gamma_sub * dz  (gamma_sub = gamma_moist - gamma_w)"
+  },
+  "fill_layer": {
+    "location": "Front side only, from soil_level_front to top_elev",
+    "session_keys": {
+      "gamma": "gamma_fill",
+      "phi":   "phi_fill",
+      "c":     "c_fill"
+    },
+    "gamma_sub_auto": "gamma_fill - 10.0  (when fill is below water table)"
+  },
+  "py_model_sign_convention": {
+    "note": "Sign convention for set_pointload(Py=F) in openpile p-y model",
+    "Py_positive": "Force toward Front (excavation) = active earth direction",
+    "sources": {
+      "earth_net_h": {
+        "formula": "net_h = active_h - passive_h",
+        "sign": "+1",
+        "reason": "net_h > 0 means active dominates → pushes pile toward Front → Py positive"
+      },
+      "water_p_net": {
+        "formula": "p_net = p_back - p_front",
+        "sign": "+1",
+        "reason": "p_net > 0 means Back > Front → pushes pile toward Front → same as active → Py positive"
+      },
+      "boussinesq_net": {
+        "formula": "bq_net = front_p - back_p",
+        "sign": "-1",
+        "reason": "bq_net > 0 means Front strip dominates → pushes pile toward Back → opposite of active → Py negative"
+      }
+    }
+  },
+  "visualization_arrows": {
+    "direction": "FROM soil boundary TOWARD wall face (x=0)",
+    "quiver_params": {
+      "x_start": "-sign * pressure  (at fill boundary)",
+      "dx": "sign * pressure  (toward zero = wall)",
+      "scale_units": "xy",
+      "scale": 1.0,
+      "angles": "xy",
+      "alpha": 0.60,
+      "min_pressure_kNm2": 0.5
+    }
+  },
+  "_meta": {
+    "source": "TCVN 11823-3:2017 §10.5 + app convention",
+    "rule": "All pressures in kN/m2, angles in degrees, elevations in m (positive upward)",
+    "updated": "2026-05-16",
+    "version": "v2"
+  }
+}

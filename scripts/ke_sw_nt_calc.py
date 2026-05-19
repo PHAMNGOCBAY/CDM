@@ -40,14 +40,32 @@ SAND_SYMBOLS = frozenset({"F", "2a", "2b", "2c", "4", "5a", "6", "7"})
 SOFT_SYMBOLS = frozenset({"1", "XMD"})
 
 
-# ── Alpha Tomlinson (1980) ────────────────────────────────────────────────────
+# ── Alpha Tomlinson (1980) — bảng Hình 18, TCVN 11823-10:2017 Điều 7.3.8.6.2 ─
+# Nội suy tuyến tính theo 6 điểm trong Bảng tra (Mục 18.2, 18-driven-pile-TCVN11823.md)
+_TOMLINSON_PTS: list[tuple[float, float]] = [
+    (0.0,   1.00),
+    (25.0,  1.00),
+    (50.0,  0.92),
+    (75.0,  0.75),
+    (100.0, 0.60),
+    (150.0, 0.50),
+    (200.0, 0.40),
+]
+
 def _alpha_tomlinson(su: float) -> float:
-    """Hệ số dính α — TCVN 11823-10, phương pháp alpha."""
-    if su <= 25.0:
-        return 1.0
-    if su >= 70.0:
-        return 0.5
-    return 1.0 - (su - 25.0) / (70.0 - 25.0) * 0.5
+    """Hệ số dính α — Tomlinson (1980), Hình 18, TCVN 11823-10:2017 Điều 7.3.8.6.2.
+    Nội suy tuyến tính từ bảng 6 điểm.  α(su=0–25)=1.00, α(su≥200)=0.40.
+    """
+    if su <= 0.0:
+        return 0.0
+    if su >= _TOMLINSON_PTS[-1][0]:
+        return _TOMLINSON_PTS[-1][1]
+    for i in range(len(_TOMLINSON_PTS) - 1):
+        s0, a0 = _TOMLINSON_PTS[i]
+        s1, a1 = _TOMLINSON_PTS[i + 1]
+        if s0 <= su <= s1:
+            return round(a0 + (su - s0) / (s1 - s0) * (a1 - a0), 4)
+    return 1.0
 
 
 # ── Đọc catalog cọc ──────────────────────────────────────────────────────────
@@ -107,20 +125,21 @@ def _get_bh_Z_m(bh_name: str, db_path: Path = DB_PATH) -> float | None:
     return row[0] if row else None
 
 
-def _get_H_layer1(bh_name: str, db_path: Path = DB_PATH) -> tuple[float, str]:
+def _get_D_bottom_soft(bh_name: str, db_path: Path = DB_PATH) -> tuple[float, str]:
     """
-    Chiều dày vùng mềm (lớp '1' + 'XMD') tính từ miệng hố khoan.
-    Trả về (H_m, source) — source='SQLite' hoặc 'missing'.
-    Lớp XMD được tính vào vùng mềm vì chưa đủ cứng để làm điểm tựa.
+    Chiều sâu từ cổ hố khoan đến ĐÁY lớp mềm cuối cùng ('1' hoặc 'XMD').
+    Đây là D_bottom_soft dùng trong công thức NT1:
+        L_req = fill_m + D_bottom_soft + min_pen
+
+    KHÔNG phải tổng chiều dày — phải là depth đến đáy lớp mềm (bao gồm cả
+    lớp F fill nằm phía trên lớp '1' trong hồ sơ địa chất).
+
+    Trả về (D_m, source): source='SQLite' hoặc 'missing'.
     """
     layers = _load_layers(bh_name, db_path)
-    total = sum(
-        (bot - top)
-        for top, bot, sym in layers
-        if sym in SOFT_SYMBOLS
-    )
-    if total > 0:
-        return round(total, 3), "SQLite"
+    soft_bottoms = [bot for _, bot, sym in layers if sym in SOFT_SYMBOLS]
+    if soft_bottoms:
+        return round(max(soft_bottoms), 3), "SQLite"
     return 0.0, "missing"
 
 
@@ -189,30 +208,36 @@ def _get_su_for_layer(
 # ── NT1: Kiểm tra chiều dài xuyên qua vùng mềm ──────────────────────────────
 def calc_nt1(
     bh_name: str,
-    H_layer1_m: float,
+    Z_m: float,
+    D_bottom_soft_m: float,
     pile_name: str,
     L_design_m: float,
     top_ke: float = TOP_KE_M,
     min_pen: float = MIN_PEN_M,
-    H_source: str = "SQLite",
+    D_source: str = "SQLite",
 ) -> dict:
     """
-    NT1: L_req = top_ke + H_layer1 + min_pen
+    NT1: L_req = fill_m + D_bottom_soft_m + min_pen
+         fill_m = max(0, top_ke − Z_m)  (phần cọc trong đất đắp trên cổ HK)
+         D_bottom_soft_m = chiều sâu từ cổ HK đến ĐÁY lớp mềm cuối cùng
          Cọc đạt khi L_design ≥ L_req.
     """
-    L_req  = top_ke + H_layer1_m + min_pen
+    fill_m = max(0.0, top_ke - Z_m)
+    L_req  = fill_m + D_bottom_soft_m + min_pen
     margin = L_design_m - L_req
     return {
-        "bh_name":    bh_name,
-        "pile_name":  pile_name,
-        "L_design_m": L_design_m,
-        "top_ke_m":   top_ke,
-        "H_layer1_m": H_layer1_m,
-        "H_source":   H_source,
-        "min_pen_m":  min_pen,
-        "L_req_m":    round(L_req, 2),
-        "margin_m":   round(margin, 2),
-        "result":     "Đạt" if margin >= 0 else "Không đạt",
+        "bh_name":          bh_name,
+        "pile_name":        pile_name,
+        "L_design_m":       L_design_m,
+        "top_ke_m":         top_ke,
+        "Z_m":              Z_m,
+        "fill_m":           round(fill_m, 3),
+        "D_bottom_soft_m":  D_bottom_soft_m,
+        "D_source":         D_source,
+        "min_pen_m":        min_pen,
+        "L_req_m":          round(L_req, 2),
+        "margin_m":         round(margin, 2),
+        "result":           "Đạt" if margin >= 0 else "Không đạt",
     }
 
 
@@ -347,12 +372,12 @@ def calc_all_alignment_hks(
             Z_source = "JSON (cảnh báo: thiếu trong SQLite)"
             print(f"  [CẢNH BÁO] {db_name}: Z_m lấy từ JSON, không có trong SQLite.boreholes")
 
-        # ── H_layer1: ưu tiên SQLite, fallback JSON ──────────────────────────
-        H_layer1, H_source = _get_H_layer1(db_name, db_path)
-        if H_source == "missing":
-            H_layer1 = bh["H_layer1_m"]
-            H_source = "JSON (cảnh báo: lớp '1'/'XMD' không có trong SQLite.layers)"
-            print(f"  [CẢNH BÁO] {db_name}: H_layer1 lấy từ JSON, không có layers trong SQLite")
+        # ── D_bottom_soft: ưu tiên SQLite, fallback JSON ─────────────────────
+        D_bot, D_source = _get_D_bottom_soft(db_name, db_path)
+        if D_source == "missing":
+            D_bot = float(bh.get("H_layer1_m", 0.0))
+            D_source = "JSON (cảnh báo: lớp '1'/'XMD' không có trong SQLite.layers)"
+            print(f"  [CẢNH BÁO] {db_name}: D_bottom_soft lấy từ JSON, không có layers trong SQLite")
 
         rec_pile = bh.get("recommended_pile", "SW-840")
         if rec_pile not in catalog:
@@ -360,7 +385,7 @@ def calc_all_alignment_hks(
         pile     = catalog[rec_pile]
         L_design = float(bh.get("recommended_L_m") or 29.0)
 
-        nt1 = calc_nt1(db_name, H_layer1, rec_pile, L_design, H_source=H_source)
+        nt1 = calc_nt1(db_name, Z_m, D_bot, rec_pile, L_design, D_source=D_source)
         nt2 = calc_nt2_layers(db_name, Z_m, rec_pile, pile, L_design, db_path=db_path)
 
         # In cảnh báo su mặc định
@@ -369,13 +394,13 @@ def calc_all_alignment_hks(
                 print(f"  [CẢNH BÁO su] {db_name}: {w}")
 
         results.append({
-            "bh_name":   db_name,
-            "Z_m":       Z_m,
-            "Z_source":  Z_source,
-            "H_layer1_m": H_layer1,
-            "H_source":  H_source,
-            "nt1":       nt1,
-            "nt2":       nt2,
+            "bh_name":          db_name,
+            "Z_m":              Z_m,
+            "Z_source":         Z_source,
+            "D_bottom_soft_m":  D_bot,
+            "D_source":         D_source,
+            "nt1":              nt1,
+            "nt2":              nt2,
         })
 
     return results
@@ -390,20 +415,20 @@ def create_nt_tables(db_path: Path = DB_PATH) -> None:
         DROP TABLE IF EXISTS ke_sw_nt2_layers;
 
         CREATE TABLE ke_sw_nt_detail (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            project      TEXT NOT NULL DEFAULT '202605-TTHC',
-            zone         TEXT NOT NULL DEFAULT 'KE',
-            bh_name      TEXT NOT NULL,
-            pile_type    TEXT NOT NULL,
-            L_design_m   REAL NOT NULL,
-            Z_m          REAL,
-            Z_source     TEXT,
-            fill_m       REAL,
-            L_soil_m     REAL,
-            tip_depth_m  REAL,
-            H_layer1_m   REAL,
-            H_source     TEXT,
-            L_req_nt1_m  REAL,
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            project           TEXT NOT NULL DEFAULT '202605-TTHC',
+            zone              TEXT NOT NULL DEFAULT 'KE',
+            bh_name           TEXT NOT NULL,
+            pile_type         TEXT NOT NULL,
+            L_design_m        REAL NOT NULL,
+            Z_m               REAL,
+            Z_source          TEXT,
+            fill_m            REAL,
+            L_soil_m          REAL,
+            tip_depth_m       REAL,
+            D_bottom_soft_m   REAL,
+            D_source          TEXT,
+            L_req_nt1_m       REAL,
             margin_nt1_m REAL,
             nt1_result   TEXT,
             Rs_kN        REAL,
@@ -452,7 +477,7 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
         cur.execute("""
             INSERT INTO ke_sw_nt_detail
             (project, zone, bh_name, pile_type, L_design_m, Z_m, Z_source,
-             fill_m, L_soil_m, tip_depth_m, H_layer1_m, H_source,
+             fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source,
              L_req_nt1_m, margin_nt1_m, nt1_result,
              Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN,
              ratio_nt2, nt2_result, su_warnings, created_at)
@@ -462,7 +487,7 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
             n1["bh_name"], n1["pile_name"], n1["L_design_m"],
             r["Z_m"], r["Z_source"],
             n2["fill_m"], n2["L_soil_m"], n2["tip_depth_m"],
-            n1["H_layer1_m"], r["H_source"],
+            n1["D_bottom_soft_m"], r["D_source"],
             n1["L_req_m"], n1["margin_m"], n1["result"],
             n2["Rs_kN"], n2["tip_symbol"], n2["tip_su_kNm2"],
             n2["Rp_kN"], n2["RR_kN"], n2["W_kN"],
@@ -508,7 +533,7 @@ def save_nt_json(results: list[dict], out_path: Path) -> None:
 def calc_nt_for_bh(
     bh_name: str,
     Z_m: float,
-    H_layer1_m: float,
+    D_bottom_soft_m: float,
     pile_name: str,
     L_design_m: float,
     db_path: Path = DB_PATH,
@@ -516,7 +541,7 @@ def calc_nt_for_bh(
 ) -> tuple[dict, dict]:
     """
     Tính NT1 + NT2 cho một HK với pile/L_design tùy chọn (dùng trong app).
-    Z_m và H_layer1_m được ghi đè nếu có trong SQLite.
+    Z_m và D_bottom_soft_m được ghi đè nếu có trong SQLite.
     """
     catalog = _load_catalog(sw_json_path)
     if pile_name not in catalog:
@@ -527,11 +552,11 @@ def calc_nt_for_bh(
     if Z_db is not None:
         Z_m = Z_db
 
-    H_db, _ = _get_H_layer1(bh_name, db_path)
-    if H_db > 0:
-        H_layer1_m = H_db
+    D_db, _ = _get_D_bottom_soft(bh_name, db_path)
+    if D_db > 0:
+        D_bottom_soft_m = D_db
 
-    nt1 = calc_nt1(bh_name, H_layer1_m, pile_name, L_design_m)
+    nt1 = calc_nt1(bh_name, Z_m, D_bottom_soft_m, pile_name, L_design_m)
     nt2 = calc_nt2_layers(bh_name, Z_m, pile_name, pile, L_design_m, db_path=db_path)
     return nt1, nt2
 
@@ -547,7 +572,7 @@ if __name__ == "__main__":
         print(
             f"  {r['bh_name']:12s}  "
             f"Z={r['Z_m']:+.3f}m[{r['Z_source'][:3]}]  "
-            f"H1={n1['H_layer1_m']:.1f}m[{r['H_source'][:3]}]  "
+            f"D_bot={n1['D_bottom_soft_m']:.1f}m[{r['D_source'][:3]}]  "
             f"NT1:{n1['L_req_m']:.1f}m margin={n1['margin_m']:+.1f}m [{n1['result']}]  "
             f"NT2: Rs={n2['Rs_kN']:.0f} Rp={n2['Rp_kN']:.0f} "
             f"RR={n2['RR_kN']:.0f} W={n2['W_kN']:.0f} ratio={n2['ratio']:.2f} [{n2['result']}]"

@@ -1,0 +1,70 @@
+{
+  "_meta": {
+    "source": "geotech-staff-engineer sheet_pile + soe + USACE EM 1110-2-2504",
+    "updated": "2026-05-16",
+    "version": "v1",
+    "md_file": "30-sheet-pile-tab.md",
+    "py_file": "scripts/tab_sheet_pile.py"
+  },
+  "wall_types": {
+    "cantilever": {
+      "description": "Tuong consolle — ngan bang luc bi dong khong co cau kien do",
+      "suitable_depth": "H_dao <= 3-4 m (dat thuong), <= 5 m (da)",
+      "key_output": ["embedment_depth", "total_wall_length", "max_moment"]
+    },
+    "anchored": {
+      "description": "Tuong co neo (1 tang neo) — them luc neo tang kha nang chiu tai",
+      "suitable_depth": "H_dao 3-8 m (thuong gap nhat)",
+      "key_output": ["embedment_depth", "total_wall_length", "max_moment", "anchor_force"]
+    }
+  },
+  "earth_pressure_method": {
+    "rankine": {
+      "Ka": "Ka = tan^2(45 - phi/2)",
+      "Kp": "Kp = tan^2(45 + phi/2)",
+      "condition": "Tuong phuong dung, no wall friction, horizontal backfill",
+      "note": "Bao luu — dung Rankine lam mac dinh theo USACE EM 1110-2-2504"
+    }
+  },
+  "cantilever_method": {
+    "description": "Phuong phap net pressure / gross pressure — tinh chieu sau ngam tong quat",
+    "fos_passive": "He so an toan cho ap luc bi dong: 1.5 (thong thuong), 2.0 (quan trong)",
+    "embedment_rule": "Chieu sau ngam = chieu sau can thiet x FOS_passive"
+  },
+  "anchored_method": {
+    "description": "Free Earth Support method — mat truot tu do tai mui coc",
+    "anchor_force": "Luc neo = Luc chu dong - Luc bi dong phan trong khu vuc be",
+    "anchor_depth": "Neo phai dat sau qua mat truot Rankine (> 0.5H theo thu nghiem)"
+  },
+  "basal_heave_check": {
+    "terzaghi_1943": {
+      "formula": "Fs = (5.14 * cu) / (gamma * H + q)",
+      "condition": "Ho dao khong co day cung, dat set mem-cung",
+      "fs_required": 1.5,
+      "improvement": "Tang cu, giam H, them cang/neo, jet grouting"
+    },
+    "bjerrum_eide_1956": {
+      "formula": "Fs = Nc * cu / (gamma * H + q)",
+      "Nc": "Nc = f(H/B) — phu thuoc ti le chieu sau / chieu rong ho dao",
+      "fs_required": 1.5
+    }
+  },
+  "defaults": {
+    "excavation_depth_m": 3.0,
+    "anchor_depth_m": 1.0,
+    "surcharge_kPa": 10.0,
+    "fos_passive": 1.5,
+    "gwt_active_m": null,
+    "gwt_passive_m": null
+  },
+  "result_interpretation": {
+    "embedment_depth": "Chieu sau ngam can thiet [m] — tinh tu day ho dao",
+    "total_wall_length": "Chieu dai tong coc ban [m] = H_dao + embedment",
+    "max_moment": "Moment uon lon nhat [kN.m/m] — dung de chon tiet dien coc",
+    "anchor_force": "Luc neo [kN/m] — dung de thiet ke neo va tuong doi trong"
+  },
+  "section_selection_guide": {
+    "note": "Chon tiet dien coc ban sao cho Mcr >= max_moment",
+    "sw_piles": "Xem data/sw_pile_catalog.json — Mcr [T.m] x 9.81 = Mcr [kN.m]"
+  }
+}

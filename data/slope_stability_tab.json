@@ -1,0 +1,71 @@
+{
+  "_meta": {
+    "source": "geotech-staff-engineer slope_stability + Duncan et al. (2014)",
+    "updated": "2026-05-16",
+    "version": "v1",
+    "md_file": "31-slope-stability-tab.md",
+    "py_file": "scripts/tab_slope_stability.py"
+  },
+  "methods": {
+    "fellenius": {
+      "name": "Ordinary Method of Slices (Fellenius 1927)",
+      "forces_considered": "Chi phan phap tuyen — bo qua luc lien phien",
+      "accuracy": "Thap (5-20% thieu so), dung de so sanh nhanh",
+      "suitable": "Kiem tra so bo, mat truot vong tron"
+    },
+    "bishop": {
+      "name": "Bishop Simplified (1955)",
+      "forces_considered": "Phan phap tuyen + luc ngang giua phien (goc nghieng = 0)",
+      "accuracy": "Cao (~5% so voi chinh xac), pho bien nhat thuc te",
+      "suitable": "Mat truot vong tron, dat dong nhat"
+    },
+    "spencer": {
+      "name": "Spencer (1967)",
+      "forces_considered": "Luc giua phien co goc nghieng hang, thoa man ca 2 dieu kien can bang",
+      "accuracy": "Cao hon Bishop, tiep can ket qua PLAXIS phi/c reduction",
+      "suitable": "Mat truot vong tron va khong vong tron"
+    },
+    "morgenstern_price": {
+      "name": "Morgenstern-Price",
+      "forces_considered": "Tuong tu Spencer nhung ham luc tuy bien",
+      "accuracy": "Cao nhat trong cac phuong phap giai tich",
+      "suitable": "Mai doc phuc tap, lop dat yeu nam ngang"
+    }
+  },
+  "slip_surface_search": {
+    "grid_search": "Quet tam vong tron tren luoi — nhanh, to quat",
+    "pso": "Particle Swarm Optimization — chinh xac hon, cham hon",
+    "manual": "Nguoi dung cung cap xc, yc, R — dung khi biet mat truot kha nang"
+  },
+  "fos_requirements": {
+    "permanent_slope": {"FoS_min": 1.5, "standard": "TCVN 9385:2012, EC7"},
+    "temporary_excavation": {"FoS_min": 1.3, "note": "Thoi han thi cong ngan"},
+    "earthquake": {"FoS_min": 1.1, "note": "Ket hop voi tai dong dat"},
+    "reinforced": {"FoS_min": 1.5, "note": "Nhu mai doc thuong — giu khong doi"}
+  },
+  "defaults": {
+    "slope_height_m": 5.0,
+    "slope_angle_deg": 30.0,
+    "crest_width_m": 10.0,
+    "toe_offset_m": 5.0,
+    "method": "bishop",
+    "search": true,
+    "n_circles": 50
+  },
+  "geometry_note": {
+    "surface_points": "List cac diem (x, y) tren mat dat — xay dung tu slope_height + slope_angle",
+    "coordinate_system": "x tang ve phai, y tang len tren",
+    "example": "H=5m, alpha=30 deg: pts=[(0,0),(5,0),(13.66,5),(23.66,5)]"
+  },
+  "soil_analysis_modes": {
+    "drained": "analysis_mode='drained' — dung phi va c_prime",
+    "undrained": "analysis_mode='undrained' — dung cu (undrained shear strength)"
+  },
+  "improvement_options": [
+    "Giam goc mai (flatten slope) — hieu qua nhat",
+    "Them berme (step) — giam ung suat tai day mai",
+    "Neo dat (soil nails) — tang luc khang cat",
+    "Thoat nuoc (drainage) — giam ap luc nuoc lo rong",
+    "Gia tai dau mai (counterweight) — tang moment khang"
+  ]
+}

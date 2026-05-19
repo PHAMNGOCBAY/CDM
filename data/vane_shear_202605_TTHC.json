@@ -1,0 +1,275 @@
+{
+  "_meta": {
+    "project": "260512 CVTT-TTHC — Trung tâm Hành chính TP.HCM",
+    "source": "BOKE-004. CẮT CÁNH_7.5.26-CV. TTHCHCM. KQCC.pdf",
+    "standard": "22 TCN 355-06",
+    "equipment": "Geonor",
+    "rate_deg_per_s": 0.1,
+    "updated": "2026-05-18",
+    "boreholes_count": 12,
+    "notes": "Z_ground từ header PDF (cao độ đặt máy). Dùng depth_m (chiều sâu từ mặt đất) làm tham chiếu chính vì Z_ground PDF có thể khác JSON do cao độ sàn đặt máy."
+  },
+  "boreholes": [
+    {
+      "borehole": "3BOKECONGVIEN-HK1",
+      "date": "2026-04-15",
+      "Z_ground_vane_m": 1.830,
+      "Z_ground_json_m": 1.830,
+      "vane_D_cm": 6.50,
+      "vane_H_cm": 13.00,
+      "K_m3": 1.006e-3,
+      "n_tests": 9,
+      "tests": [
+        {"depth_m": 2.2, "elev_m": -0.37, "Su_kPa": 7.9, "Sp_kPa": 4.0, "St": 2.0},
+        {"depth_m": 4.2, "elev_m": -2.37, "Su_kPa": 9.9, "Sp_kPa": 4.9, "St": 2.0},
+        {"depth_m": 6.2, "elev_m": -4.37, "Su_kPa": 10.9, "Sp_kPa": 6.0, "St": 1.8},
+        {"depth_m": 8.2, "elev_m": -6.37, "Su_kPa": 14.9, "Sp_kPa": 5.0, "St": 3.0},
+        {"depth_m": 10.2, "elev_m": -8.37, "Su_kPa": 17.9, "Sp_kPa": 7.0, "St": 2.6},
+        {"depth_m": 12.2, "elev_m": -10.37, "Su_kPa": 18.9, "Sp_kPa": 7.0, "St": 2.7},
+        {"depth_m": 14.2, "elev_m": -12.37, "Su_kPa": 21.9, "Sp_kPa": 9.9, "St": 2.2},
+        {"depth_m": 16.2, "elev_m": -14.37, "Su_kPa": 20.9, "Sp_kPa": 11.9, "St": 1.8},
+        {"depth_m": 18.2, "elev_m": -16.37, "Su_kPa": 25.8, "Sp_kPa": 14.9, "St": 1.7}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK2",
+      "date": "2026-04-13",
+      "Z_ground_vane_m": 2.034,
+      "Z_ground_json_m": 2.034,
+      "vane_D_cm": 7.58,
+      "vane_H_cm": 7.58,
+      "K_m3": 1.685e-3,
+      "n_tests": 9,
+      "tests": [
+        {"depth_m": 5.0, "elev_m": -2.97, "Su_kPa": 6.5, "Sp_kPa": 2.4, "St": 2.8},
+        {"depth_m": 7.0, "elev_m": -4.97, "Su_kPa": 10.7, "Sp_kPa": 3.6, "St": 3.0},
+        {"depth_m": 9.0, "elev_m": -6.97, "Su_kPa": 11.3, "Sp_kPa": 3.0, "St": 3.8},
+        {"depth_m": 11.0, "elev_m": -8.97, "Su_kPa": 8.9, "Sp_kPa": 2.1, "St": 4.3},
+        {"depth_m": 13.0, "elev_m": -10.97, "Su_kPa": 12.5, "Sp_kPa": 4.7, "St": 2.6},
+        {"depth_m": 15.0, "elev_m": -12.97, "Su_kPa": 13.6, "Sp_kPa": 4.4, "St": 3.1},
+        {"depth_m": 17.0, "elev_m": -14.97, "Su_kPa": 16.0, "Sp_kPa": 5.6, "St": 2.8},
+        {"depth_m": 19.0, "elev_m": -16.97, "Su_kPa": 18.4, "Sp_kPa": 5.0, "St": 3.6},
+        {"depth_m": 21.0, "elev_m": -18.97, "Su_kPa": 18.4, "Sp_kPa": 4.2, "St": 4.4}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK3",
+      "date": "2026-04-14",
+      "Z_ground_vane_m": 1.256,
+      "Z_ground_json_m": 1.260,
+      "vane_D_cm": 6.50,
+      "vane_H_cm": 13.00,
+      "K_m3": 1.006e-3,
+      "n_tests": 9,
+      "tests": [
+        {"depth_m": 2.7, "elev_m": -1.44, "Su_kPa": 7.9, "Sp_kPa": 2.5, "St": 3.2},
+        {"depth_m": 4.7, "elev_m": -3.44, "Su_kPa": 7.0, "Sp_kPa": 2.0, "St": 3.5},
+        {"depth_m": 6.7, "elev_m": -5.44, "Su_kPa": 10.9, "Sp_kPa": 3.0, "St": 3.7},
+        {"depth_m": 8.7, "elev_m": -7.44, "Su_kPa": 17.9, "Sp_kPa": 3.5, "St": 5.1},
+        {"depth_m": 10.7, "elev_m": -9.44, "Su_kPa": 20.9, "Sp_kPa": 4.0, "St": 5.3},
+        {"depth_m": 12.7, "elev_m": -11.44, "Su_kPa": 18.9, "Sp_kPa": 4.0, "St": 4.8},
+        {"depth_m": 14.7, "elev_m": -13.44, "Su_kPa": 21.9, "Sp_kPa": 4.5, "St": 4.9},
+        {"depth_m": 16.7, "elev_m": -15.44, "Su_kPa": 20.9, "Sp_kPa": 4.5, "St": 4.7},
+        {"depth_m": 18.7, "elev_m": -17.44, "Su_kPa": 23.8, "Sp_kPa": 5.5, "St": 4.4}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK4",
+      "date": "2026-04-15",
+      "Z_ground_vane_m": 1.824,
+      "Z_ground_json_m": null,
+      "vane_D_cm": 6.50,
+      "vane_H_cm": 13.00,
+      "K_m3": 1.685e-3,
+      "n_tests": 10,
+      "tests": [
+        {"depth_m": 3.0, "elev_m": -1.18, "Su_kPa": 4.7, "Sp_kPa": 1.8, "St": 2.7},
+        {"depth_m": 5.0, "elev_m": -3.18, "Su_kPa": 5.3, "Sp_kPa": 2.1, "St": 2.6},
+        {"depth_m": 7.0, "elev_m": -5.18, "Su_kPa": 6.2, "Sp_kPa": 2.4, "St": 2.6},
+        {"depth_m": 9.0, "elev_m": -7.18, "Su_kPa": 6.5, "Sp_kPa": 3.0, "St": 2.2},
+        {"depth_m": 11.0, "elev_m": -9.18, "Su_kPa": 7.7, "Sp_kPa": 2.7, "St": 2.9},
+        {"depth_m": 13.0, "elev_m": -11.18, "Su_kPa": 10.1, "Sp_kPa": 4.2, "St": 2.4},
+        {"depth_m": 15.0, "elev_m": -13.18, "Su_kPa": 8.9, "Sp_kPa": 3.9, "St": 2.3},
+        {"depth_m": 17.0, "elev_m": -15.18, "Su_kPa": 13.6, "Sp_kPa": 4.7, "St": 2.9},
+        {"depth_m": 19.0, "elev_m": -17.18, "Su_kPa": 16.0, "Sp_kPa": 6.8, "St": 2.3},
+        {"depth_m": 21.0, "elev_m": -19.18, "Su_kPa": 17.8, "Sp_kPa": 7.7, "St": 2.3}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK5",
+      "date": "2026-04-18",
+      "Z_ground_vane_m": 0.883,
+      "Z_ground_json_m": null,
+      "vane_D_cm": 6.50,
+      "vane_H_cm": 13.00,
+      "K_m3": 1.006e-3,
+      "n_tests": 13,
+      "tests": [
+        {"depth_m": 2.7, "elev_m": -1.82, "Su_kPa": 9.4, "Sp_kPa": 4.0, "St": 2.4},
+        {"depth_m": 4.7, "elev_m": -3.82, "Su_kPa": 9.9, "Sp_kPa": 5.0, "St": 2.0},
+        {"depth_m": 6.7, "elev_m": -5.82, "Su_kPa": 10.9, "Sp_kPa": 5.5, "St": 2.0},
+        {"depth_m": 8.7, "elev_m": -7.82, "Su_kPa": 11.9, "Sp_kPa": 6.0, "St": 2.0},
+        {"depth_m": 10.7, "elev_m": -9.82, "Su_kPa": 12.4, "Sp_kPa": 6.5, "St": 1.9},
+        {"depth_m": 12.7, "elev_m": -11.82, "Su_kPa": 12.9, "Sp_kPa": 7.5, "St": 1.7},
+        {"depth_m": 14.7, "elev_m": -13.82, "Su_kPa": 14.4, "Sp_kPa": 7.5, "St": 1.9},
+        {"depth_m": 16.7, "elev_m": -15.82, "Su_kPa": 13.9, "Sp_kPa": 7.0, "St": 2.0},
+        {"depth_m": 18.7, "elev_m": -17.82, "Su_kPa": 15.9, "Sp_kPa": 7.9, "St": 2.0},
+        {"depth_m": 20.7, "elev_m": -19.82, "Su_kPa": 17.9, "Sp_kPa": 9.4, "St": 1.9},
+        {"depth_m": 24.7, "elev_m": -23.82, "Su_kPa": 25.8, "Sp_kPa": 12.9, "St": 2.0},
+        {"depth_m": 26.7, "elev_m": -25.82, "Su_kPa": 26.3, "Sp_kPa": 12.4, "St": 2.1},
+        {"depth_m": 28.7, "elev_m": -27.82, "Su_kPa": 27.8, "Sp_kPa": 13.9, "St": 2.0}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK6",
+      "date": "2026-04-14",
+      "Z_ground_vane_m": 0.762,
+      "Z_ground_json_m": null,
+      "vane_D_cm": 7.58,
+      "vane_H_cm": 7.58,
+      "K_m3": 1.685e-3,
+      "n_tests": 8,
+      "notes": "Row 9-10 trống trong PDF",
+      "tests": [
+        {"depth_m": 2.2, "elev_m": -1.44, "Su_kPa": 4.2, "Sp_kPa": 0.9, "St": 4.7},
+        {"depth_m": 4.2, "elev_m": -3.44, "Su_kPa": 4.7, "Sp_kPa": 1.2, "St": 4.0},
+        {"depth_m": 6.2, "elev_m": -5.44, "Su_kPa": 12.5, "Sp_kPa": 1.8, "St": 7.0},
+        {"depth_m": 8.2, "elev_m": -7.44, "Su_kPa": 4.7, "Sp_kPa": 1.2, "St": 4.0},
+        {"depth_m": 10.2, "elev_m": -9.44, "Su_kPa": 10.1, "Sp_kPa": 2.4, "St": 4.3},
+        {"depth_m": 12.2, "elev_m": -11.44, "Su_kPa": 13.1, "Sp_kPa": 4.2, "St": 3.1},
+        {"depth_m": 14.2, "elev_m": -13.44, "Su_kPa": 14.6, "Sp_kPa": 4.7, "St": 3.1},
+        {"depth_m": 16.2, "elev_m": -15.44, "Su_kPa": 21.4, "Sp_kPa": 7.1, "St": 3.0}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK7",
+      "date": "2026-04-16",
+      "Z_ground_vane_m": 1.439,
+      "Z_ground_json_m": -0.560,
+      "vane_D_cm": 7.58,
+      "vane_H_cm": 7.58,
+      "K_m3": 1.685e-3,
+      "n_tests": 10,
+      "notes": "Z_ground PDF=+1.439m ≠ JSON −0.56m. Chênh 2.0m — dùng depth_m từ mặt đất là tham chiếu đúng.",
+      "tests": [
+        {"depth_m": 2.2, "elev_m": -0.76, "Su_kPa": 3.0, "Sp_kPa": 0.3, "St": 10.0},
+        {"depth_m": 4.2, "elev_m": -2.76, "Su_kPa": 10.7, "Sp_kPa": 4.2, "St": 2.6},
+        {"depth_m": 6.2, "elev_m": -4.76, "Su_kPa": 4.7, "Sp_kPa": 1.2, "St": 4.0},
+        {"depth_m": 8.2, "elev_m": -6.76, "Su_kPa": 14.2, "Sp_kPa": 5.9, "St": 2.4},
+        {"depth_m": 10.2, "elev_m": -8.76, "Su_kPa": 14.2, "Sp_kPa": 4.7, "St": 3.0},
+        {"depth_m": 12.2, "elev_m": -10.76, "Su_kPa": 14.8, "Sp_kPa": 5.9, "St": 2.5},
+        {"depth_m": 14.2, "elev_m": -12.76, "Su_kPa": 11.9, "Sp_kPa": 3.6, "St": 3.3},
+        {"depth_m": 16.2, "elev_m": -14.76, "Su_kPa": 14.8, "Sp_kPa": 5.9, "St": 2.5},
+        {"depth_m": 18.2, "elev_m": -16.76, "Su_kPa": 17.8, "Sp_kPa": 9.5, "St": 1.9},
+        {"depth_m": 20.2, "elev_m": -18.76, "Su_kPa": 16.6, "Sp_kPa": 7.1, "St": 2.3}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK8",
+      "date": "2026-04-18",
+      "Z_ground_vane_m": 2.579,
+      "Z_ground_json_m": 2.580,
+      "vane_D_cm": 6.50,
+      "vane_H_cm": 13.00,
+      "K_m3": 1.006e-3,
+      "n_tests": 4,
+      "notes": "Chỉ 4 điểm: 2 điểm trong L1 (nông), 2 điểm dưới XMD. Vùng XMD (6.70-22.40m) bỏ qua vì cọc đã gia cố.",
+      "tests": [
+        {"depth_m": 4.2, "elev_m": -1.62, "Su_kPa": 7.0, "Sp_kPa": 4.0, "St": 1.8, "note": "L1 (trên XMD)"},
+        {"depth_m": 6.2, "elev_m": -3.62, "Su_kPa": 8.4, "Sp_kPa": 4.0, "St": 2.1, "note": "L1 (trên XMD)"},
+        {"depth_m": 24.2, "elev_m": -21.62, "Su_kPa": 34.8, "Sp_kPa": 9.9, "St": 3.5, "note": "Dưới XMD"},
+        {"depth_m": 26.2, "elev_m": -23.62, "Su_kPa": 37.8, "Sp_kPa": 12.9, "St": 2.9, "note": "Dưới XMD"}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK9",
+      "date": "2026-04-18",
+      "Z_ground_vane_m": 1.551,
+      "Z_ground_json_m": -2.250,
+      "vane_D_cm": 7.58,
+      "vane_H_cm": 7.58,
+      "K_m3": 1.685e-3,
+      "n_tests": 10,
+      "notes": "Z_ground PDF=+1.551m ≠ JSON −2.25m. Chênh 3.8m — dùng depth_m từ mặt đất. STT trùng trong PDF là lỗi đánh số.",
+      "tests": [
+        {"depth_m": 2.2, "elev_m": -0.70, "Su_kPa": 2.4, "Sp_kPa": 0.3, "St": 8.0},
+        {"depth_m": 4.2, "elev_m": -2.70, "Su_kPa": 10.1, "Sp_kPa": 3.0, "St": 3.4},
+        {"depth_m": 6.2, "elev_m": -4.70, "Su_kPa": 16.0, "Sp_kPa": 7.1, "St": 2.3},
+        {"depth_m": 8.2, "elev_m": -6.70, "Su_kPa": 10.7, "Sp_kPa": 5.9, "St": 1.8},
+        {"depth_m": 10.2, "elev_m": -8.70, "Su_kPa": 19.0, "Sp_kPa": 4.7, "St": 4.0},
+        {"depth_m": 12.2, "elev_m": -10.70, "Su_kPa": 13.1, "Sp_kPa": 4.2, "St": 3.1},
+        {"depth_m": 14.2, "elev_m": -12.70, "Su_kPa": 4.7, "Sp_kPa": 1.2, "St": 4.0},
+        {"depth_m": 16.2, "elev_m": -14.70, "Su_kPa": 19.6, "Sp_kPa": 8.3, "St": 2.4},
+        {"depth_m": 18.2, "elev_m": -16.70, "Su_kPa": 19.0, "Sp_kPa": 7.1, "St": 2.7},
+        {"depth_m": 20.2, "elev_m": -18.70, "Su_kPa": 20.2, "Sp_kPa": 8.3, "St": 2.4}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK10",
+      "date": "2026-04-27",
+      "Z_ground_vane_m": -0.781,
+      "Z_ground_json_m": -0.381,
+      "vane_D_cm": 7.58,
+      "vane_H_cm": 7.58,
+      "K_m3": 1.685e-3,
+      "n_tests": 12,
+      "notes": "Z_ground PDF=−0.781m vs JSON −0.381m. Chênh 0.4m. STT trùng trong PDF là lỗi đánh số.",
+      "tests": [
+        {"depth_m": 2.2, "elev_m": -2.58, "Su_kPa": 3.0, "Sp_kPa": 0.3, "St": 10.0},
+        {"depth_m": 4.2, "elev_m": -4.58, "Su_kPa": 4.2, "Sp_kPa": 1.2, "St": 3.5},
+        {"depth_m": 6.2, "elev_m": -6.58, "Su_kPa": 9.5, "Sp_kPa": 2.7, "St": 3.6},
+        {"depth_m": 8.2, "elev_m": -8.58, "Su_kPa": 14.8, "Sp_kPa": 4.2, "St": 3.6},
+        {"depth_m": 10.2, "elev_m": -10.58, "Su_kPa": 15.4, "Sp_kPa": 4.7, "St": 3.3},
+        {"depth_m": 12.2, "elev_m": -12.58, "Su_kPa": 16.6, "Sp_kPa": 5.3, "St": 3.1},
+        {"depth_m": 14.2, "elev_m": -14.58, "Su_kPa": 10.1, "Sp_kPa": 3.6, "St": 2.8},
+        {"depth_m": 16.2, "elev_m": -16.58, "Su_kPa": 8.9, "Sp_kPa": 1.8, "St": 5.0},
+        {"depth_m": 18.2, "elev_m": -18.58, "Su_kPa": 16.6, "Sp_kPa": 4.7, "St": 3.5},
+        {"depth_m": 20.2, "elev_m": -20.58, "Su_kPa": 17.8, "Sp_kPa": 5.6, "St": 3.2},
+        {"depth_m": 22.2, "elev_m": -22.58, "Su_kPa": 19.0, "Sp_kPa": 5.9, "St": 3.2},
+        {"depth_m": 24.2, "elev_m": -24.58, "Su_kPa": 21.4, "Sp_kPa": 7.1, "St": 3.0}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK11",
+      "date": "2026-05-03",
+      "Z_ground_vane_m": 0.000,
+      "Z_ground_json_m": null,
+      "vane_D_cm": 7.58,
+      "vane_H_cm": 7.58,
+      "K_m3": 1.685e-3,
+      "n_tests": 11,
+      "notes": "PDF ghi 'Thiếu cao độ 0.000' — cao độ mặt đất chưa có, dùng 0.000m tạm thời. STT trùng trong PDF là lỗi đánh số.",
+      "tests": [
+        {"depth_m": 2.2, "elev_m": -2.20, "Su_kPa": 3.6, "Sp_kPa": 1.2, "St": 3.0},
+        {"depth_m": 4.2, "elev_m": -4.20, "Su_kPa": 5.9, "Sp_kPa": 1.8, "St": 3.3},
+        {"depth_m": 6.2, "elev_m": -6.20, "Su_kPa": 10.7, "Sp_kPa": 3.0, "St": 3.6},
+        {"depth_m": 8.2, "elev_m": -8.20, "Su_kPa": 14.2, "Sp_kPa": 3.6, "St": 4.0},
+        {"depth_m": 10.2, "elev_m": -10.20, "Su_kPa": 17.8, "Sp_kPa": 5.2, "St": 3.4},
+        {"depth_m": 12.2, "elev_m": -12.20, "Su_kPa": 14.2, "Sp_kPa": 4.4, "St": 3.2},
+        {"depth_m": 14.2, "elev_m": -14.20, "Su_kPa": 15.4, "Sp_kPa": 5.9, "St": 2.6},
+        {"depth_m": 16.2, "elev_m": -16.20, "Su_kPa": 16.6, "Sp_kPa": 9.5, "St": 1.8},
+        {"depth_m": 18.2, "elev_m": -18.20, "Su_kPa": 19.0, "Sp_kPa": 7.1, "St": 2.7},
+        {"depth_m": 20.2, "elev_m": -20.20, "Su_kPa": 16.0, "Sp_kPa": 6.2, "St": 2.6},
+        {"depth_m": 22.2, "elev_m": -22.20, "Su_kPa": 20.2, "Sp_kPa": 7.7, "St": 2.6}
+      ]
+    },
+    {
+      "borehole": "3BOKECONGVIEN-HK12",
+      "date": "2026-04-25",
+      "Z_ground_vane_m": 0.421,
+      "Z_ground_json_m": null,
+      "vane_D_cm": 7.58,
+      "vane_H_cm": 7.58,
+      "K_m3": 1.006e-3,
+      "n_tests": 5,
+      "notes": "Chỉ 5 điểm nông (2.2-10.2m). XMD bắt đầu 11.0m nên không cắt cánh sâu hơn. Điểm 10.2m có Su=26.8 kPa cao bất thường — gần ranh XMD.",
+      "tests": [
+        {"depth_m": 2.2, "elev_m": -1.78, "Su_kPa": 7.0, "Sp_kPa": 2.0, "St": 3.5},
+        {"depth_m": 4.2, "elev_m": -3.78, "Su_kPa": 7.9, "Sp_kPa": 2.5, "St": 3.2},
+        {"depth_m": 6.2, "elev_m": -5.78, "Su_kPa": 7.0, "Sp_kPa": 2.0, "St": 3.5},
+        {"depth_m": 8.2, "elev_m": -7.78, "Su_kPa": 7.5, "Sp_kPa": 2.0, "St": 3.8},
+        {"depth_m": 10.2, "elev_m": -9.78, "Su_kPa": 26.8, "Sp_kPa": 7.5, "St": 3.6, "note": "Sát ranh XMD (XMD từ 11.0m)"}
+      ]
+    }
+  ]
+}

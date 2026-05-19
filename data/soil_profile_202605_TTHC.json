@@ -1,0 +1,635 @@
+{
+  "_meta": {
+    "project": "Trung tâm Hành chính TP.HCM",
+    "source": "260512 CVTT-TTHC. Tru DC.pdf",
+    "source_drive_id": "1bDQuwmRGkcExnLeLoeSLSuU9riNTdNe_",
+    "updated": "2026-05-18",
+    "boreholes": 12,
+    "layer_symbols": [
+      "F",
+      "1",
+      "1b",
+      "2a",
+      "2b",
+      "2c",
+      "3",
+      "4",
+      "5",
+      "5a",
+      "5b",
+      "6",
+      "7",
+      "XMD"
+    ],
+    "notes": "Cao độ Z và địa tầng HK2/HK3/HK7/HK8 cập nhật từ 002.TRỤ_260512 CVTT-TTHC.Tru DC.pdf (2026-05-18). bottom_elev_m = cao độ đáy lớp (xác minh từ cặp elev-depth trên trụ ĐC). XMD xuất hiện tại HK8 (6.70–22.40 m) và HK12 (11.00–23.90 m). Tọa độ X/Y (VN2000) có từ PDF cho 7 HK tuyến kè. Ten ho khoan da them tien to '3BOKECONGVIEN-' (2026-05-18)."
+  },
+  "boreholes": [
+    {
+      "name": "3BOKECONGVIEN-HK1",
+      "elevation_m": -0.8,
+      "depth_m": 85,
+      "date": "07-10/04/2026",
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "San lấp",
+          "thickness_m": 1.0
+        },
+        {
+          "symbol": "1",
+          "description": "Sét chảy rất dẻo màu xám xanh",
+          "thickness_m": 22.0
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét xám ít xanh xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 2.5
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét bụi màu xám xanh, kết cấu xốp",
+          "thickness_m": 5.0
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, dẻo mềm – dẻo cứng",
+          "thickness_m": 4.5
+        },
+        {
+          "symbol": "4",
+          "description": "Cát chặt lẫn vừa sét bụi màu xám xanh",
+          "thickness_m": 5.0
+        },
+        {
+          "symbol": "5",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "thickness_m": 12.5
+        },
+        {
+          "symbol": "5a",
+          "description": "Cát mịn lẫn bụi sét màu nâu vàng, kết cấu chặt vừa – chặt",
+          "thickness_m": 3.5
+        },
+        {
+          "symbol": "5b",
+          "description": "Sét cứng ít – nửa cứng màu nâu vàng xen xám trắng",
+          "thickness_m": 3.5
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét/bụi màu nâu vàng + xám nâu, kết cấu chặt",
+          "thickness_m": 16.5
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "thickness_m": 9.0
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK2",
+      "elevation_m": 2.03,
+      "depth_m": 46,
+      "date": "13-14/04/2026",
+      "x_coord_m": 1191606.808,
+      "y_coord_m": 605941.494,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "San lấp",
+          "thickness_m": 2.1,
+          "bottom_elev_m": -0.07
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "thickness_m": 20.0,
+          "bottom_elev_m": -20.07
+        },
+        {
+          "symbol": "2a",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 5.6,
+          "bottom_elev_m": -25.67
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "thickness_m": 5.9,
+          "bottom_elev_m": -31.57
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 9.0,
+          "bottom_elev_m": -40.57
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng – cứng",
+          "thickness_m": 3.4,
+          "bottom_elev_m": -43.97
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK3",
+      "elevation_m": 1.256,
+      "depth_m": 46,
+      "date": "14-15/04/2026",
+      "x_coord_m": 1191735.67,
+      "y_coord_m": 606027.68,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "San lấp",
+          "thickness_m": 1.0,
+          "bottom_elev_m": 0.26
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "thickness_m": 19.2,
+          "bottom_elev_m": -18.94
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "thickness_m": 8.8,
+          "bottom_elev_m": -27.74
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "thickness_m": 6.0,
+          "bottom_elev_m": -33.74
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 5.3,
+          "bottom_elev_m": -39.04
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng – cứng",
+          "thickness_m": 5.7,
+          "bottom_elev_m": -44.74
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK4",
+      "elevation_m": -1.4,
+      "depth_m": 85,
+      "date": "18-22/04/2026",
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét chảy rất dẻo màu xám xanh",
+          "thickness_m": 20.0
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét xám ít xanh xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 3.0
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét bụi màu xám xanh, kết cấu xốp",
+          "thickness_m": 4.5
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, dẻo mềm – dẻo cứng",
+          "thickness_m": 6.0
+        },
+        {
+          "symbol": "4",
+          "description": "Cát chặt lẫn vừa sét bụi màu xám xanh",
+          "thickness_m": 6.5
+        },
+        {
+          "symbol": "5",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "thickness_m": 10.5
+        },
+        {
+          "symbol": "5a",
+          "description": "Cát mịn lẫn bụi sét màu nâu vàng, kết cấu chặt vừa – chặt",
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "5b",
+          "description": "Sét cứng ít – nửa cứng màu nâu vàng xen xám trắng",
+          "thickness_m": 3.5
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét/bụi màu nâu vàng + xám nâu, kết cấu chặt",
+          "thickness_m": 18.0
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "thickness_m": 9.0
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK5",
+      "elevation_m": -0.68,
+      "depth_m": 75,
+      "date": "22-26/04/2026",
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét chảy rất dẻo màu xám xanh",
+          "thickness_m": 21.5
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét xám ít xanh xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 2.5
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét bụi màu xám xanh, kết cấu xốp",
+          "thickness_m": 4.5
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, dẻo mềm – dẻo cứng",
+          "thickness_m": 5.5
+        },
+        {
+          "symbol": "4",
+          "description": "Cát chặt lẫn vừa sét bụi màu xám xanh",
+          "thickness_m": 5.0
+        },
+        {
+          "symbol": "5",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "thickness_m": 11.0
+        },
+        {
+          "symbol": "5a",
+          "description": "Cát mịn lẫn bụi sét màu nâu vàng, kết cấu chặt vừa – chặt",
+          "thickness_m": 3.5
+        },
+        {
+          "symbol": "5b",
+          "description": "Sét cứng ít – nửa cứng màu nâu vàng xen xám trắng",
+          "thickness_m": 3.5
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét/bụi màu nâu vàng + xám nâu, kết cấu chặt",
+          "thickness_m": 14.0
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "thickness_m": 4.0
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK6",
+      "elevation_m": -1.15,
+      "depth_m": 75,
+      "date": "26-30/04/2026",
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét chảy rất dẻo màu xám xanh",
+          "thickness_m": 22.0
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét xám ít xanh xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 2.0
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét bụi màu xám xanh, kết cấu xốp",
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, dẻo mềm – dẻo cứng",
+          "thickness_m": 5.0
+        },
+        {
+          "symbol": "4",
+          "description": "Cát chặt lẫn vừa sét bụi màu xám xanh",
+          "thickness_m": 5.5
+        },
+        {
+          "symbol": "5",
+          "description": "Sét cứng ít – dẻo cứng màu nâu vàng",
+          "thickness_m": 11.5
+        },
+        {
+          "symbol": "5a",
+          "description": "Cát mịn lẫn bụi sét màu nâu vàng, kết cấu chặt vừa – chặt",
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "5b",
+          "description": "Sét cứng ít – nửa cứng màu nâu vàng xen xám trắng",
+          "thickness_m": 3.0
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét/bụi màu nâu vàng + xám nâu, kết cấu chặt",
+          "thickness_m": 14.0
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "thickness_m": 4.0
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK7",
+      "elevation_m": -0.561,
+      "depth_m": 40,
+      "date": "16-17/04/2026",
+      "x_coord_m": 1191886.862,
+      "y_coord_m": 605868.54,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "thickness_m": 21.0,
+          "bottom_elev_m": -21.56
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "thickness_m": 9.8,
+          "bottom_elev_m": -31.36
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "thickness_m": 2.2,
+          "bottom_elev_m": -33.56
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 2.0,
+          "bottom_elev_m": -35.56
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng – cứng",
+          "thickness_m": 5.0,
+          "bottom_elev_m": -40.56
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK8",
+      "elevation_m": 2.579,
+      "depth_m": 40,
+      "date": "18-19/04/2026",
+      "x_coord_m": 1191979.459,
+      "y_coord_m": 605751.412,
+      "note": "XMD là lớp L1 gốc đã gia cố CDM. Vùng L1 hiệu dụng = 3.80+15.70+4.60 = 24.10 m (đáy = -24.42 m). Không trừ XMD khi tính chiều sâu cọc.",
+      "l1_effective_thickness_m": 24.1,
+      "l1_effective_bottom_m": -24.42,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "San lấp",
+          "thickness_m": 2.9,
+          "bottom_elev_m": -0.32
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "thickness_m": 3.8,
+          "bottom_elev_m": -4.12
+        },
+        {
+          "symbol": "XMD",
+          "description": "Xi măng đất (Cement Deep Mixing)",
+          "thickness_m": 15.7,
+          "bottom_elev_m": -19.82
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy (bên dưới XMD)",
+          "thickness_m": 4.6,
+          "bottom_elev_m": -24.42
+        },
+        {
+          "symbol": "1b",
+          "description": "Cát lẫn sét, bụi xốp xen kẹp chặt vừa",
+          "thickness_m": 1.8,
+          "bottom_elev_m": -26.22
+        },
+        {
+          "symbol": "2c",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 3.2,
+          "bottom_elev_m": -29.42
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 8.0,
+          "bottom_elev_m": -37.42
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK9",
+      "elevation_m": -2.25,
+      "depth_m": 70,
+      "date": "18-20/04/2026",
+      "x_coord_m": 1191863.956,
+      "y_coord_m": 605805.575,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "thickness_m": 21.0,
+          "bottom_elev_m": -23.25
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 2.5,
+          "bottom_elev_m": -25.75
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "thickness_m": 3.5,
+          "bottom_elev_m": -29.25
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, dẻo mềm – dẻo cứng (xen kẹp mỏng cát lẫn sét bụi)",
+          "thickness_m": 6.5,
+          "bottom_elev_m": -35.75
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 3.1,
+          "bottom_elev_m": -38.85
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng – cứng",
+          "thickness_m": 10.4,
+          "bottom_elev_m": -49.25
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "thickness_m": 15.1,
+          "bottom_elev_m": -64.35
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "thickness_m": 7.9,
+          "bottom_elev_m": -72.25
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK10",
+      "elevation_m": -0.381,
+      "depth_m": 46,
+      "date": "27-29/04/2026",
+      "x_coord_m": 1191728.126,
+      "y_coord_m": 605742.279,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "thickness_m": 25.0,
+          "bottom_elev_m": -25.38
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 2.0,
+          "bottom_elev_m": -27.38
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "thickness_m": 1.8,
+          "bottom_elev_m": -29.18
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "thickness_m": 5.3,
+          "bottom_elev_m": -34.48
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 6.9,
+          "bottom_elev_m": -41.38
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng – cứng",
+          "thickness_m": 5.0,
+          "bottom_elev_m": -46.38
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK11",
+      "elevation_m": -0.22,
+      "depth_m": 46,
+      "date": "03-04/05/2026",
+      "x_coord_m": 1191580.576,
+      "y_coord_m": 605751.153,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "thickness_m": 24.2,
+          "bottom_elev_m": -24.42
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 1.0,
+          "bottom_elev_m": -25.42
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "thickness_m": 3.8,
+          "bottom_elev_m": -29.22
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "thickness_m": 1.1,
+          "bottom_elev_m": -30.32
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "thickness_m": 11.1,
+          "bottom_elev_m": -41.42
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng – cứng",
+          "thickness_m": 4.8,
+          "bottom_elev_m": -46.22
+        }
+      ]
+    },
+    {
+      "name": "3BOKECONGVIEN-HK12",
+      "elevation_m": -1.058,
+      "depth_m": 36,
+      "date": "25-26/04/2026",
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",
+          "thickness_m": 11.0
+        },
+        {
+          "symbol": "XMD",
+          "description": "Xi măng đất (Cement Deep Mixing)",
+          "thickness_m": 12.9
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét xám ít xanh xen kẹp cát lẫn sét bụi, dẻo chảy – dẻo mềm",
+          "thickness_m": 3.1
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, dẻo mềm – dẻo cứng",
+          "thickness_m": 8.0
+        },
+        {
+          "symbol": "4",
+          "description": "Cát chặt lẫn vừa sét bụi màu xám xanh",
+          "thickness_m": 1.0
+        }
+      ]
+    }
+  ]
+}

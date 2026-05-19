@@ -1,0 +1,99 @@
+{
+  "_meta": {
+    "source": "TCVN 9403:2012 — Gia cố đất nền yếu PP trụ đất xi măng",
+    "updated": "2026-05-19",
+    "project": "202605-TTHC"
+  },
+
+  "design_params": {
+    "area_ratio_range": [0.15, 0.35],
+    "area_ratio_default": 0.25,
+    "Ec_factor_range": [50, 100],
+    "Ec_factor_default": 75,
+    "_Ec_note": "Ec = Ec_factor × Cc_col (kPa); Cc_col = qu_design/2",
+    "Es_factor": 250,
+    "_Es_note": "Es = 250 × Cu (kPa); Cu = undrained shear strength of soft soil",
+    "settlement_reduction_typical": [0.15, 0.30],
+    "_reduction_note": "S_cdm / S_no_treat — thông thường giảm 70-85%"
+  },
+
+  "strength_ratios": {
+    "qu_field_vs_lab_range": [0.2, 0.5],
+    "qu_field_vs_lab_design": 0.33,
+    "_note": "qu_field ≈ (0.2–0.5)×qu_lab; dùng 0.33 thiên về an toàn (hệ số 3)"
+  },
+
+  "stability_Fs_min": {
+    "construction": 1.10,
+    "general_road": 1.20,
+    "highway_cat1": 1.40
+  },
+
+  "qc_sample_requirements": {
+    "_source": "Bảng B.1 TCVN 9403:2012",
+    "_note": "Số mẫu thí nghiệm tối thiểu theo quy mô dự án",
+    "thresholds": [
+      {"max_columns": 100,  "lab_samples_per_layer": 2,  "field_tests": 5},
+      {"max_columns": 500,  "lab_samples_per_layer": 5,  "field_tests": 10},
+      {"max_columns": 1000, "lab_samples_per_layer": 10, "field_tests": 30},
+      {"max_columns": 2000, "lab_samples_per_layer": 15, "field_tests": 50},
+      {"max_columns": null, "lab_samples_per_layer": 20, "field_tests": 100}
+    ]
+  },
+
+  "lab_test_procedure": {
+    "dry_mixing": {
+      "mold_diameter_mm": 50,
+      "mold_height_mm": 100,
+      "test_ages_days": [3, 7, 14, 28, 90],
+      "test_type": "unconfined_compression",
+      "curing": "room_temperature_wrapped"
+    },
+    "wet_mixing": {
+      "mold_options": ["cube_70.7mm", "cylinder_D50_H100mm"],
+      "W_C_ratio_range": [0.6, 1.0],
+      "W_C_ratio_default": 0.8,
+      "test_ages_days": [7, 14, 28, 91],
+      "curing": "submerged_20C"
+    },
+    "cement_content_pct_range": [7, 15],
+    "cement_content_pct_typical": [7, 12]
+  },
+
+  "reference_strength_kgcm2": {
+    "_source": "Bảng G.1 TCVN 9403:2012",
+    "_unit": "kG/cm² → ×98.07 = kPa",
+    "data": [
+      {"soil_type": "Sét pha",          "location": "Hà Nội",    "w_pct": 45, "Cu_kgcm2": 0.16, "qu_7XM_28d": 3.26, "qu_7XM_90d": 3.97, "qu_12XM_28d": 4.43, "qu_12XM_90d": 4.48},
+      {"soil_type": "Cát pha",          "location": "Nam Hà",    "w_pct": 41, "Cu_kgcm2": null, "qu_7XM_28d": 2.24, "qu_7XM_90d": null, "qu_12XM_28d": 3.21, "qu_12XM_90d": null},
+      {"soil_type": "Sét pha hữu cơ",  "location": "Hà Nội",    "w_pct": 62, "Cu_kgcm2": 0.23, "qu_7XM_28d": null, "qu_7XM_90d": null, "qu_12XM_28d": 3.29, "qu_12XM_90d": 3.42},
+      {"soil_type": "Sét xám xanh hữu cơ", "location": null,    "w_pct": 35, "Cu_kgcm2": 0.23, "qu_7XM_28d": 3.00, "qu_7XM_90d": 4.28, "qu_12XM_28d": null, "qu_12XM_90d": null},
+      {"soil_type": "Sét pha",          "location": null,        "w_pct": 52, "Cu_kgcm2": 0.10, "qu_7XM_28d": 0.61, "qu_7XM_90d": 0.66, "qu_12XM_28d": 2.13, "qu_12XM_90d": 2.50},
+      {"soil_type": "Sét xám xanh",    "location": "Hà Nội",    "w_pct": 51, "Cu_kgcm2": 0.10, "qu_7XM_28d": null, "qu_7XM_90d": null, "qu_12XM_28d": 2.39, "qu_12XM_90d": 2.55},
+      {"soil_type": "Sét pha đất",      "location": "Hà Nội",   "w_pct": 95, "Cu_kgcm2": 0.21, "qu_7XM_28d": null, "qu_7XM_90d": null, "qu_12XM_28d": 0.51, "qu_12XM_90d": 0.82},
+      {"soil_type": "Sét pha hữu cơ",  "location": null,        "w_pct": 30, "Cu_kgcm2": 0.32, "qu_7XM_28d": 11.0, "qu_7XM_90d": 19.0, "qu_12XM_28d": null, "qu_12XM_90d": null},
+      {"soil_type": "Bùn sét hữu cơ",  "location": null,        "w_pct": 74, "Cu_kgcm2": 0.39, "qu_7XM_28d": null, "qu_7XM_90d": null, "qu_12XM_28d": 1.22, "qu_12XM_90d": null},
+      {"soil_type": "Bùn sét hữu cơ",  "location": "Hải Dương", "w_pct": 36, "Cu_kgcm2": null, "qu_7XM_28d": 6.18, "qu_7XM_90d": 6.50, "qu_12XM_28d": 9.13, "qu_12XM_90d": 9.53},
+      {"soil_type": "Cát pha",          "location": "Hà Nội",    "w_pct": 26, "Cu_kgcm2": null, "qu_7XM_28d": 7.45, "qu_7XM_90d": 7.85, "qu_12XM_28d": null, "qu_12XM_90d": 7.92},
+      {"soil_type": "Sét",              "location": "Hải Dương", "w_pct": 50, "Cu_kgcm2": 0.28, "qu_7XM_28d": 1.63, "qu_7XM_90d": 1.85, "qu_12XM_28d": 3.01, "qu_12XM_90d": 3.95}
+    ]
+  },
+
+  "project_cdm_defaults": {
+    "_note": "Giá trị mặc định cho dự án TTHC — cột CDM D=600mm, s=1.5m (tam giác)",
+    "column_diameter_mm": 600,
+    "column_spacing_m": 1.5,
+    "column_pattern": "triangular",
+    "area_ratio": 0.1453,
+    "_area_ratio_note": "a = (π×0.6²/4)/(√3/2×1.5²) = 0.2827/1.948 ≈ 0.1453 for D=0.6m, s=1.5m triangular",
+    "cement_content_pct": 12,
+    "qu_lab_design_kPa": 400,
+    "qu_field_design_kPa": 133,
+    "_qu_field_note": "qu_field = 0.33 × qu_lab = 0.33 × 400 = 133 kPa",
+    "Cc_col_kPa": 66.5,
+    "_Cc_col_note": "Cc_col = qu_field/2 = 66.5 kPa",
+    "Ec_factor": 75,
+    "Ec_kPa": 4988,
+    "_Ec_note": "Ec = 75 × 66.5 = 4988 kPa"
+  }
+}

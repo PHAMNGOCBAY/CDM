@@ -1,0 +1,65 @@
+{
+  "_meta": {
+    "source": "TCVN 11823-3:2017 §10.5 + earth_pressure.py convention",
+    "rule": "Pressures kN/m², angles deg, elevations m (positive upward)",
+    "updated": "2026-05-16",
+    "version": "v1"
+  },
+  "convention": {
+    "fill_side": "Front (TRÁI) only — soil_level_front to top_elev",
+    "F_fill_zone": "Resultant of active pressure within fill zone [kN/m] — labeled F1",
+    "F_surcharge": "Resultant of Ka×q_fill on natural layers below soil_level_front [kN/m] — labeled F2",
+    "z_fill_zone": "Elevation of F1 application [m] — above soil_level_front",
+    "z_surcharge": "Elevation of F2 application [m] — below soil_level_front, centroid of Ka×q_fill profile",
+    "q_fill": "Surcharge from fill = γ_fill × H_fill [kN/m²]",
+    "positive_direction": "Force pushes pile toward Back (PHẢI) — same as Active earth pressure"
+  },
+  "fill_zone_pressure": {
+    "formula": "σ_h = Ka × σ_v_fill − 2·c_fill·√Ka  (tension cutoff ≥ 0)",
+    "sigma_v_fill_above_wl": "σ_v += γ_fill × dz",
+    "sigma_v_fill_below_wl": "σ_v += (γ_fill − γ_w) × dz  [γ_w = 9.81 kN/m³]",
+    "pressure_top": "σ_h(top_elev) = max(0, −2·c_fill·√Ka)  — usually 0 for c_fill=0",
+    "pressure_bot": "σ_h(soil_level_front) = Ka·γ_fill·H_fill − 2·c_fill·√Ka"
+  },
+  "resultant_F1": {
+    "c_zero_triangular": {
+      "F1": "F1 = 0.5 × Ka × γ_fill × H_fill²  [kN/m]",
+      "z1": "z1 = soil_level_front + H_fill/3  (từ đáy fill lên 1/3 chiều cao)"
+    },
+    "general_trapezoidal": {
+      "F1": "F1 = ∫ σ_h dz  (trapz số, từ top_elev xuống soil_level_front)",
+      "z1": "z1 = top_elev − M1/F1  với M1 = ∫ σ_h·(top_elev−z) dz"
+    }
+  },
+  "surcharge_effect_F2": {
+    "concept": "Đất đắp tạo thêm q_fill = γ_fill·H_fill lên các lớp đất tự nhiên",
+    "pressure_per_layer": "Δσ_h_i = Ka_i × q_fill  [kN/m²]  — phân bố đều trong mỗi lớp",
+    "F2": "F2 = Σ Ka_i × q_fill × Δz_i  (tổng qua các lớp tự nhiên) [kN/m]",
+    "z2": "z2 = top_elev − M2/F2  với M2 = Σ Ka_i·q_fill·(top_elev−z_mid_i)·Δz_i"
+  },
+  "structural_output": {
+    "concentrated_load_single": "Dùng F_total_fill tại z_total_fill — mô hình đơn giản",
+    "concentrated_load_two": "Dùng F1 tại z1 + F2 tại z2 — chính xác hơn",
+    "anastruct_input": "F1 dưới dạng nodal load tại z1; F2 dưới dạng distributed load Ka×q_fill/m trên phần pile dưới soil_level_front",
+    "plaxis_input": "Concentrated load F_total_fill [kN/m] tại z_total_fill, hoặc tách F1/F2",
+    "moment_check": {
+      "about_soil_level": "M = F1×(z1−soil_level_front) + F2×(z2−soil_level_front)  [kN·m/m]",
+      "about_pile_tip":   "M = F1×(z1−pile_tip) + F2×(z2−pile_tip)  [kN·m/m]",
+      "note": "z1 > soil_level_front, z2 < soil_level_front → cả hai đều gây moment lật về phía Back"
+    }
+  },
+  "ka_methods": {
+    "rankine": "Ka = tan²(45°−φ/2)  — tường thẳng đứng, δ=0",
+    "coulomb": "Ka từ TCVN 11823-3 Eq.25 — có ma sát tường δ và hệ số dốc taluy"
+  },
+  "session_keys_streamlit": {
+    "top_elev": "st.session_state.top_elev",
+    "soil_level_front": "st.session_state.soil_level_front",
+    "pile_length": "st.session_state.pile_length",
+    "water_elev_front": "st.session_state.water_elev_front",
+    "gamma_fill": "st.session_state.gamma_fill",
+    "phi_fill": "st.session_state.phi_fill",
+    "c_fill": "st.session_state.c_fill",
+    "front_layers_df": "st.session_state.front_layers_df  (cột: Layer Tip [m], Density Moist, Phi, Cohesion)"
+  }
+}

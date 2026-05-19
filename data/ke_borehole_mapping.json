@@ -1,0 +1,142 @@
+{
+  "_meta": {
+    "purpose": "Mapping ten HK giua cac nguon du lieu du an 202605-TTHC khu KE",
+    "updated": "2026-05-19",
+    "rule": "Dung db_name (KE-HKx) trong MOI nguon: SQLite, JSON, Python, bao cao, bang bieu. KHONG dung short_name (HKx) — du an co nhieu khu vuc KE/BXN/NHC, HKx gay nham lan. Chi dung pdf_name khi tra cuu bao cao dia chat PDF goc.",
+    "on_sw_alignment_note": "Theo binh do khao sat: ke dung SW di qua KE-HK2, KE-HK3, KE-HK7, KE-HK8, KE-HK9, KE-HK10, KE-HK11 (7/12 HK). HK1/HK4/HK5/HK6/HK12 nam ngoai tuyen ke."
+  },
+  "ke_boreholes": [
+    {
+      "db_name": "KE-HK1",
+      "short_name": "HK1",
+      "pdf_name": "3BOKECONGVIEN-HK1",
+      "Z_m": -0.8,
+      "x_coord_m": null,
+      "y_coord_m": null,
+      "has_coords": false,
+      "on_sw_alignment": false,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK2",
+      "short_name": "HK2",
+      "pdf_name": "3BOKECONGVIEN-HK2",
+      "Z_m": 2.03,
+      "x_coord_m": 1191606.808,
+      "y_coord_m": 605941.494,
+      "has_coords": true,
+      "on_sw_alignment": true,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK3",
+      "short_name": "HK3",
+      "pdf_name": "3BOKECONGVIEN-HK3",
+      "Z_m": 1.256,
+      "x_coord_m": 1191735.67,
+      "y_coord_m": 606027.68,
+      "has_coords": true,
+      "on_sw_alignment": true,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK4",
+      "short_name": "HK4",
+      "pdf_name": "3BOKECONGVIEN-HK4",
+      "Z_m": -1.4,
+      "x_coord_m": null,
+      "y_coord_m": null,
+      "has_coords": false,
+      "on_sw_alignment": false,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK5",
+      "short_name": "HK5",
+      "pdf_name": "3BOKECONGVIEN-HK5",
+      "Z_m": -0.68,
+      "x_coord_m": null,
+      "y_coord_m": null,
+      "has_coords": false,
+      "on_sw_alignment": false,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK6",
+      "short_name": "HK6",
+      "pdf_name": "3BOKECONGVIEN-HK6",
+      "Z_m": -1.15,
+      "x_coord_m": null,
+      "y_coord_m": null,
+      "has_coords": false,
+      "on_sw_alignment": false,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK7",
+      "short_name": "HK7",
+      "pdf_name": "3BOKECONGVIEN-HK7",
+      "Z_m": -0.561,
+      "x_coord_m": 1191886.862,
+      "y_coord_m": 605868.54,
+      "has_coords": true,
+      "on_sw_alignment": true,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK8",
+      "short_name": "HK8",
+      "pdf_name": "3BOKECONGVIEN-HK8",
+      "Z_m": 2.579,
+      "x_coord_m": 1191979.459,
+      "y_coord_m": 605751.412,
+      "has_coords": true,
+      "on_sw_alignment": true,
+      "note": "Co lop XMD (CDM gia co Lop 1). su_XMD=10 kPa (su goc)"
+    },
+    {
+      "db_name": "KE-HK9",
+      "short_name": "HK9",
+      "pdf_name": "3BOKECONGVIEN-HK9",
+      "Z_m": -2.25,
+      "x_coord_m": 1191863.956,
+      "y_coord_m": 605805.575,
+      "has_coords": true,
+      "on_sw_alignment": true,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK10",
+      "short_name": "HK10",
+      "pdf_name": "3BOKECONGVIEN-HK10",
+      "Z_m": -0.381,
+      "x_coord_m": 1191728.126,
+      "y_coord_m": 605742.279,
+      "has_coords": true,
+      "on_sw_alignment": true,
+      "note": "Kiem soat NT1 (bien 0.3m) -> SW-940"
+    },
+    {
+      "db_name": "KE-HK11",
+      "short_name": "HK11",
+      "pdf_name": "3BOKECONGVIEN-HK11",
+      "Z_m": -0.22,
+      "x_coord_m": 1191580.576,
+      "y_coord_m": 605751.153,
+      "has_coords": true,
+      "on_sw_alignment": true,
+      "note": ""
+    },
+    {
+      "db_name": "KE-HK12",
+      "short_name": "HK12",
+      "pdf_name": "3BOKECONGVIEN-HK12",
+      "Z_m": -1.058,
+      "x_coord_m": null,
+      "y_coord_m": null,
+      "has_coords": false,
+      "on_sw_alignment": false,
+      "note": "Co lop XMD tu do sau 11m. Coc van SPECIAL — thiet ke rieng"
+    }
+  ]
+}

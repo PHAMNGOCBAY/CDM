@@ -1,0 +1,140 @@
+{
+  "_meta": {
+    "source": "NHC-1. TRU_TTHC_Tru hien truong.dxf",
+    "updated": "2026-05-19"
+  },
+  "total_layers": 144,
+  "total_spt": 722,
+  "boreholes": {
+    "NHC-BH-03": {
+      "n_layers": 8,
+      "n_spt": 40
+    },
+    "NHC-BH-05": {
+      "n_layers": 8,
+      "n_spt": 44
+    },
+    "NHC-BH-20": {
+      "n_layers": 6,
+      "n_spt": 44
+    },
+    "NHC-BH-25": {
+      "n_layers": 8,
+      "n_spt": 44
+    },
+    "NHC-BH-26": {
+      "n_layers": 12,
+      "n_spt": 48
+    },
+    "NHC-BH-27": {
+      "n_layers": 13,
+      "n_spt": 48
+    },
+    "NHC-BH-28": {
+      "n_layers": 13,
+      "n_spt": 48
+    },
+    "NHC-BH-29": {
+      "n_layers": 9,
+      "n_spt": 48
+    },
+    "NHC-BH-30": {
+      "n_layers": 5,
+      "n_spt": 48
+    },
+    "NHC-BH-32": {
+      "n_layers": 11,
+      "n_spt": 42
+    },
+    "NHC-BH-33": {
+      "n_layers": 10,
+      "n_spt": 42
+    },
+    "NHC-BH-34": {
+      "n_layers": 6,
+      "n_spt": 44
+    },
+    "NHC-BH-35": {
+      "n_layers": 9,
+      "n_spt": 44
+    },
+    "NHC-BH-36": {
+      "n_layers": 7,
+      "n_spt": 47
+    },
+    "NHC-BH-37": {
+      "n_layers": 12,
+      "n_spt": 44
+    },
+    "NHC-BH-38": {
+      "n_layers": 7,
+      "n_spt": 47
+    }
+  },
+  "KE": {
+    "boreholes": {
+      "KE-HK1": {
+        "n_layers": 7,
+        "n_spt": 22,
+        "elevation_m": null
+      },
+      "KE-HK2": {
+        "n_layers": 10,
+        "n_spt": 12,
+        "elevation_m": 2.1
+      },
+      "KE-HK3": {
+        "n_layers": 12,
+        "n_spt": 20,
+        "elevation_m": 1.0
+      },
+      "KE-HK4": {
+        "n_layers": 7,
+        "n_spt": 10,
+        "elevation_m": null
+      },
+      "KE-HK5": {
+        "n_layers": 24,
+        "n_spt": 38,
+        "elevation_m": 1.1
+      },
+      "KE-HK6": {
+        "n_layers": 11,
+        "n_spt": 9,
+        "elevation_m": null
+      },
+      "KE-HK7": {
+        "n_layers": 9,
+        "n_spt": 16,
+        "elevation_m": null
+      },
+      "KE-HK8": {
+        "n_layers": 13,
+        "n_spt": 11,
+        "elevation_m": 2.9
+      },
+      "KE-HK9": {
+        "n_layers": 24,
+        "n_spt": 25,
+        "elevation_m": null
+      },
+      "KE-HK10": {
+        "n_layers": 13,
+        "n_spt": 10,
+        "elevation_m": null
+      },
+      "KE-HK11": {
+        "n_layers": 11,
+        "n_spt": 11,
+        "elevation_m": null
+      },
+      "KE-HK12": {
+        "n_layers": 10,
+        "n_spt": 9,
+        "elevation_m": null
+      }
+    },
+    "total_layers": 151,
+    "total_spt": 193
+  }
+}

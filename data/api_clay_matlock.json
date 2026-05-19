@@ -1,0 +1,86 @@
+{
+  "_meta": {
+    "source": "Matlock (1970) OTC-1204 + API RP 2GEO (1974/2014) + openpile 1.0.2",
+    "rule": "Su kN/m², eps50 [-], elevations m positive upward",
+    "updated": "2026-05-16",
+    "version": "v2",
+    "md_file": "26-api-clay-matlock.md",
+    "py_file": "scripts/api_clay_matlock.py"
+  },
+  "model": {
+    "name": "API Clay (Matlock 1970)",
+    "openpile_class": "openpile.soilmodels.API_clay",
+    "reference": "Matlock (1970) OTC-1204 | API RP 2GEO §6.8.3",
+    "p_y_formula": "p = 0.5 * pu * (y/y50)^(1/3)  for y <= 8*y50; p = pu for y > 8*y50",
+    "y50_formula": "y50 = 2.5 * eps50 * D"
+  },
+  "pu_formula": {
+    "formula": "pu = min(3 + gamma_sub/Su*z + J/D*z, 9) * Su * D",
+    "J_soft": 0.5,
+    "J_stiff": 0.25,
+    "J_default": 0.5,
+    "cap": 9.0
+  },
+  "openpile_params": {
+    "Su":    {"unit": "kN/m²", "required": true,  "note": "float or [top,bot] linear"},
+    "eps50": {"unit": "-",     "required": true,  "range": [0.001, 0.10]},
+    "J":     {"unit": "-",     "required": false, "default": 0.5, "range": [0.25, 0.50]},
+    "kind":  {"options": ["static","cyclic"], "default": "static"},
+    "G0":    {"unit": "kN/m²", "required": false, "default": null}
+  },
+  "eps50_typical": [
+    {"type": "Very soft",  "Su_kPa": "<12",     "eps50": 0.020},
+    {"type": "Soft",       "Su_kPa": "12-25",   "eps50": 0.020},
+    {"type": "Medium",     "Su_kPa": "25-50",   "eps50": 0.010},
+    {"type": "Stiff",      "Su_kPa": "50-100",  "eps50": 0.007},
+    {"type": "Very stiff", "Su_kPa": "100-200", "eps50": 0.005},
+    {"type": "Hard",       "Su_kPa": ">200",    "eps50": 0.004}
+  ],
+  "ui_conventions": {
+    "sand_table_key":  "front_sand_df",
+    "clay_table_key":  "front_clay_df",
+    "merged_key":      "front_layers_df",
+    "sand_locked_cols": ["Su [kN/m2]", "eps50"],
+    "clay_locked_cols": ["Phi [Deg]"],
+    "sort_column":     "Layer Tip [m]",
+    "sort_ascending":  false
+  },
+  "engine_logic": {
+    "function":    "_lateral_model(stype, ph, su_v, e50)",
+    "clay_branch": "API_clay(Su=max(su_v,0.1), eps50=max(e50,0.001), kind='static', J=0.5)",
+    "sand_branch": "API_sand(phi=max(ph,1.0), kind='static')",
+    "guard_note":  "max(su_v,0.1) prevents API_clay(Su=0) ValidationError"
+  },
+  "x2mesh_requirement": {
+    "issue": "set_pointload at intermediate elevation silently ignored if elevation not a mesh node",
+    "error_message": "Load not applied! The chosen elevation is not meshed as a node. Please include elevation in x2mesh variable when creating the Model.",
+    "fix": "Pass x2mesh=[list_of_midpoint_elevations] to Model() constructor before calling set_pointload",
+    "example": "mids = [(pts[k]+pts[k+1])/2 for k in range(len(pts)-1)]\nmodel = Model(..., x2mesh=mids)",
+    "scope": "Applies to ALL intermediate distributed loads (earth, water, Boussinesq). Head loads at top_elevation are always on a node.",
+    "verified": "2026-05-16 — without x2mesh: loads dropped, results = 0. With x2mesh: loads applied, converged."
+  },
+  "component_analysis": {
+    "description": "Run winkler separately for each load component to compare contributions",
+    "components": ["H+M head only", "Earth distributed", "Water distributed", "Boussinesq distributed", "Total combined"],
+    "implementation": "scripts/app_coc_tai_ngang.py — Results tab — Phan tich tung thanh phan tai trong",
+    "md_reference": "27-py-component-analysis.md"
+  },
+  "test_20260516": {
+    "profile":     "Sand phi28 (0→-5m) | Clay Su10 eps50=0.02 (-5→-10m) | Sand phi32 (-10→-20m)",
+    "pile":        "SW-840, L=20m, H=100kN",
+    "y_head_mm":   6.991,
+    "M_max_kNm":   198.7,
+    "V_max_kN":    98.8,
+    "Mcr_kNm":     762.2,
+    "M_Mcr_ratio": 0.26,
+    "status":      "OK"
+  },
+  "_meta": {
+    "source": "Matlock (1970) OTC-1204 + API RP 2GEO (1974/2014) + openpile 1.0.2",
+    "rule": "Su kN/m², eps50 [-], elevations m positive upward",
+    "updated": "2026-05-16",
+    "version": "v2",
+    "md_file": "26-api-clay-matlock.md",
+    "py_file": "scripts/api_clay_matlock.py"
+  }
+}

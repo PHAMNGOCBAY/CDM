@@ -1,0 +1,8 @@
+# Yêu cầu: Python 3.10 – 3.12
+# Cài: pip install -r requirements.txt
+
+openpile==1.0.2
+streamlit
+numpy
+pandas
+matplotlib

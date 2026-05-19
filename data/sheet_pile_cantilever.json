@@ -1,0 +1,44 @@
+{
+  "_meta": {
+    "title": "Kè cọc bản consolle / có neo — USACE EM 1110-2-2504",
+    "library": "sheet_pile (geotech-staff-engineer 4.6.0)",
+    "reference": "USACE EM 1110-2-2504; CWALSHT",
+    "md_file": "30-sheet-pile-cantilever.md",
+    "py_module": "scripts/sheet_pile_tab.py",
+    "updated": "2026-05-16"
+  },
+  "api_signatures": {
+    "WallSoilLayer": "WallSoilLayer(thickness, unit_weight, friction_angle=30, cohesion=0, description='')",
+    "analyze_cantilever": "analyze_cantilever(excavation_depth, soil_layers, gwt_depth_active=None, gwt_depth_passive=None, surcharge=0, FOS_passive=1.5, pressure_method='rankine') → CantileverWallResult",
+    "analyze_anchored": "analyze_anchored(excavation_depth, anchor_depth, soil_layers, gwt_depth_active=None, gwt_depth_passive=None, surcharge=0, FOS_passive=1.5, pressure_method='rankine') → AnchoredWallResult"
+  },
+  "result_attributes": {
+    "embedment_depth": "m — chiều sâu ngàm phía dưới đáy đào",
+    "total_wall_length": "m — tổng chiều dài tường = exc_depth + embedment",
+    "max_moment": "kNm/m — moment max trong tường",
+    "max_moment_depth": "m — vị trí moment max từ đỉnh tường",
+    "FOS_passive": "Hệ số an toàn bị động áp dụng",
+    "plot_wall_diagram()": "Figure matplotlib — sơ đồ tường + nội lực",
+    "anchor_force": "(anchored only) kN/m — lực neo"
+  },
+  "defaults": {
+    "excavation_depth_m": 3.0,
+    "surcharge_kPa": 10.0,
+    "gwt_active_m": 1.0,
+    "gwt_passive_m": 0.0,
+    "FOS_passive": 1.5,
+    "pressure_method": "rankine"
+  },
+  "default_layers": [
+    {"thickness": 6.0, "unit_weight": 18.0, "friction_angle": 30.0, "cohesion": 0.0, "description": "Sand"},
+    {"thickness": 10.0, "unit_weight": 17.5, "friction_angle": 5.0, "cohesion": 20.0, "description": "Soft clay"}
+  ],
+  "session_state_keys": {
+    "sp_soil_df": "DataFrame lớp đất",
+    "sp_result": "CantileverWallResult | AnchoredWallResult",
+    "sp_params": "dict hình học"
+  },
+  "known_warnings": {
+    "convergence": "Nếu thiếu đất passive, hiển thị UserWarning 'Embedment depth did not converge' — kiểm tra FOS_passive và phi lớp đất."
+  }
+}

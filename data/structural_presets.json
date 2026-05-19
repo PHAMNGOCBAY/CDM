@@ -1,0 +1,126 @@
+{
+  "_meta": {
+    "source": "scripts/linear_elastic_material.py + scripts/plate_properties.py + data/sw_pile_catalog.json",
+    "reference": "Material Models Manual PLAXIS 2D 2024.2 §2.3 — Linear Elastic; ACI 318 Ec formula",
+    "updated": "2026-05-13",
+    "units": {
+      "E_kNm2": "kN/m²  (= MPa × 1000)",
+      "gamma": "kN/m³",
+      "nu": "dimensionless"
+    },
+    "Ec_formula": "Ec [MPa] = 4700 × sqrt(f'c [MPa])  — ACI 318",
+    "Ec_table": {
+      "fc30_MPa":  { "Ec_MPa": 26561,  "Ec_kNm2": 26561000,  "note": "TCVN / BETON6 catalog" },
+      "fc40_MPa":  { "Ec_MPa": 31623,  "Ec_kNm2": 31623000  },
+      "fc60_MPa":  { "Ec_MPa": 38730,  "Ec_kNm2": 38730000  },
+      "fc70_MPa":  { "Ec_MPa": 43628,  "Ec_kNm2": 43628130,  "note": "Dùng cho cọc SW BETON 6" }
+    }
+  },
+
+  "concrete_wall": {
+    "_notes": "Tường bê tông / lõi cứng — mô hình LE Non-porous. Nhập vào PLAXIS dưới dạng Soil cluster hoặc Volume element.",
+    "presets": [
+      {
+        "id": "btct_fc30",
+        "label": "Tường BTCT f'c=30 MPa",
+        "drainage": "Non-porous",
+        "E_kNm2": 26561000, "nu": 0.20,
+        "gamma_unsat": 24.0, "gamma_sat": 24.0
+      },
+      {
+        "id": "btct_fc40",
+        "label": "Tường BTCT f'c=40 MPa",
+        "drainage": "Non-porous",
+        "E_kNm2": 31623000, "nu": 0.20,
+        "gamma_unsat": 24.0, "gamma_sat": 24.0
+      },
+      {
+        "id": "btct_fc60",
+        "label": "Tường BTCT f'c=60 MPa",
+        "drainage": "Non-porous",
+        "E_kNm2": 38730000, "nu": 0.20,
+        "gamma_unsat": 25.0, "gamma_sat": 25.0
+      }
+    ]
+  },
+
+  "cdm": {
+    "_notes": "Cement Deep Mixing — xử lý nền đất yếu. E phụ thuộc tỷ lệ xi măng và loại đất.",
+    "presets": [
+      {
+        "id": "cdm_typical",
+        "label": "CDM điển hình (dự án L=25M-HKT8-SW840)",
+        "drainage": "Drained",
+        "E_kNm2": 104240, "nu": 0.30,
+        "gamma_unsat": 17.0, "gamma_sat": 17.0
+      },
+      {
+        "id": "cdm_soft_soil",
+        "label": "CDM trong sét bùn yếu (E thấp)",
+        "drainage": "Drained",
+        "E_kNm2": 50000, "nu": 0.30,
+        "gamma_unsat": 16.0, "gamma_sat": 16.0
+      },
+      {
+        "id": "cdm_stiff",
+        "label": "CDM trong cát (E cao)",
+        "drainage": "Drained",
+        "E_kNm2": 200000, "nu": 0.28,
+        "gamma_unsat": 18.0, "gamma_sat": 18.0
+      }
+    ]
+  },
+
+  "rock": {
+    "_notes": "Đá gốc và nền đá — mô hình LE Drained. E rất biến đổi theo cấp độ phong hóa.",
+    "presets": [
+      {
+        "id": "rock_weathered",
+        "label": "Đá phong hóa hoàn toàn (Grade V–VI)",
+        "drainage": "Drained",
+        "E_kNm2": 100000, "nu": 0.30,
+        "gamma_unsat": 20.0, "gamma_sat": 21.0
+      },
+      {
+        "id": "rock_moderately_weathered",
+        "label": "Đá phong hóa vừa (Grade III–IV)",
+        "drainage": "Drained",
+        "E_kNm2": 500000, "nu": 0.27,
+        "gamma_unsat": 23.0, "gamma_sat": 24.0
+      },
+      {
+        "id": "rock_fresh",
+        "label": "Đá tươi ít nứt nẻ (Grade I–II)",
+        "drainage": "Drained",
+        "E_kNm2": 5000000, "nu": 0.22,
+        "gamma_unsat": 26.0, "gamma_sat": 26.0
+      }
+    ]
+  },
+
+  "plate_elements": {
+    "_notes": "Plate elements trong PLAXIS 2D — EA1 và EI tính theo spacing. Xem scripts/plate_properties.py.",
+    "steel_sheet_pile": [
+      {
+        "id": "sheet_pile_larssen_603",
+        "label": "Cừ thép Larssen 603",
+        "EA1_kNm": 3920000,
+        "EI_kNm2m": 98400,
+        "w_kNmm": 1.26,
+        "nu": 0.30,
+        "_note": "Giá trị ví dụ — tra bảng catalog thực tế"
+      }
+    ],
+    "sw_concrete_pile": {
+      "_ref": "data/sw_pile_catalog.json",
+      "_note": "Tra cứu EA1/EI từ sw_pile_catalog.json — dùng skill /load-catalog",
+      "example_sw840_fc70": {
+        "label": "SW-840, f'c=70MPa, spacing=0.996m",
+        "EA1_kNm": 13609696,
+        "EI_kNm2m": 930822,
+        "w_kNmm": 7.32,
+        "nu": 0.15
+      }
+    }
+  }
+}

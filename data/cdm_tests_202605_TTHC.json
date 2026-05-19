@@ -1,0 +1,63 @@
+{
+  "_meta": {
+    "project": "260512 CVTT-TTHC — Trung tâm Hành chính TP.HCM",
+    "source": "BOKE-005. CDM HK12_Qu. E50-Công viên hồ Trung Tâm 05.2026 (mail).pdf",
+    "standard": "ASTM D2166-06 (nén một trục không hạn chế)",
+    "updated": "2026-05-18",
+    "notes": "CDM (Cement Deep Mixing) tại HK12. Mẫu đúc tại công trường ngày 05/05/2026, thử nghiệm R7 (7 ngày tuổi). Đây là mẫu thiết kế — cường độ thực tế thi công phụ thuộc kiểm soát tỷ lệ N/X và hàm lượng xi măng."
+  },
+  "borehole": "3BOKECONGVIEN-HK12",
+  "depth_range": "2.80–9.40 m",
+  "cast_date": "2026-05-05",
+  "cure_days_R7": 7,
+  "test_groups": [
+    {
+      "group_id": "14",
+      "cement_type": "Xỉ Tam Điệp",
+      "WC_ratio": 0.8,
+      "tests": [
+        {"test_id": "14-1", "dosage_kgm3": 220, "qu_R7_kPa": 350.8, "E50_R7_MPa": 32.4},
+        {"test_id": "14-2", "dosage_kgm3": 240, "qu_R7_kPa": 367.8, "E50_R7_MPa": 33.8},
+        {"test_id": "14-3", "dosage_kgm3": 260, "qu_R7_kPa": 440.7, "E50_R7_MPa": 35.2}
+      ]
+    },
+    {
+      "group_id": "15",
+      "cement_type": "Xỉ Tam Điệp",
+      "WC_ratio": 1.0,
+      "tests": [
+        {"test_id": "15-1", "dosage_kgm3": 220, "qu_R7_kPa": 341.9, "E50_R7_MPa": 24.3},
+        {"test_id": "15-2", "dosage_kgm3": 240, "qu_R7_kPa": 376.1, "E50_R7_MPa": 26.6},
+        {"test_id": "15-3", "dosage_kgm3": 260, "qu_R7_kPa": 388.2, "E50_R7_MPa": 30.9}
+      ]
+    },
+    {
+      "group_id": "16",
+      "cement_type": "Hoàng Thạch PCB40",
+      "WC_ratio": 0.8,
+      "tests": [
+        {"test_id": "16-1", "dosage_kgm3": 220, "qu_R7_kPa": 546.6, "E50_R7_MPa": 40.8},
+        {"test_id": "16-2", "dosage_kgm3": 240, "qu_R7_kPa": 571.9, "E50_R7_MPa": 43.7},
+        {"test_id": "16-3", "dosage_kgm3": 260, "qu_R7_kPa": 582.0, "E50_R7_MPa": 46.8}
+      ]
+    },
+    {
+      "group_id": "17",
+      "cement_type": "Hoàng Thạch PCB40",
+      "WC_ratio": 1.0,
+      "tests": [
+        {"test_id": "17-1", "dosage_kgm3": 220, "qu_R7_kPa": 596.3, "E50_R7_MPa": 43.4},
+        {"test_id": "17-2", "dosage_kgm3": 240, "qu_R7_kPa": 614.2, "E50_R7_MPa": 49.2},
+        {"test_id": "17-3", "dosage_kgm3": 260, "qu_R7_kPa": 737.6, "E50_R7_MPa": 53.4}
+      ]
+    }
+  ],
+  "summary": {
+    "qu_R7_min_kPa": 341.9,
+    "qu_R7_max_kPa": 737.6,
+    "E50_R7_min_MPa": 24.3,
+    "E50_R7_max_MPa": 53.4,
+    "best_option": "17-3 (Hoàng Thạch PCB40, 260 kg/m³, N/X=1.0): qu=737.6 kPa, E50=53.4 MPa",
+    "note_design": "XMD tại HK12 (11.0-23.9m) là vùng xi măng đất nền cũ cản trở đóng cọc SW — cần giải pháp riêng."
+  }
+}

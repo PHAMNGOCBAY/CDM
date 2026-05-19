@@ -1,0 +1,87 @@
+{
+  "_meta": {
+    "source": "TCVN 11823-3:2017 §10.6.2, Công thức (39)",
+    "title": "Tải trọng tập trung, tuyến, dài (ES) — Tường bị kim chế dịch chuyển",
+    "rule": "Áp lực kN/m², góc rad, chiều sâu và khoảng cách m",
+    "updated": "2026-05-16",
+    "version": "v1"
+  },
+  "formula": {
+    "eq39": "Δph = (2p/π) × [δ − sinδ·cos(δ + 2α)]",
+    "equivalent_form": "Δph = (2p/π) × [(β₂−β₁) − sinβ₂·cosβ₂ + sinβ₁·cosβ₁]",
+    "unit_Dph": "kN/m² (TCVN gốc dùng MPa — nhân 1000 để đổi sang kN/m²)",
+    "unit_p": "kN/m² (cường độ tải trọng phân bố dải)",
+    "angles": {
+      "alpha": "α = arctan(a/z) [rad] — góc từ phương đứng đến mép GẦN của dải tải",
+      "delta": "δ = arctan((a+w)/z) − arctan(a/z) [rad] — góc tổng tương ứng dải tải",
+      "beta1": "β₁ = α = arctan(a/z) [rad]",
+      "beta2": "β₂ = α + δ = arctan((a+w)/z) [rad]"
+    },
+    "z": "chiều sâu từ mặt đất đặt tải (z = ref_surface − elev, z > 0)"
+  },
+  "geometry_parameters": {
+    "a": "khoảng cách từ mặt tường đến mép GẦN của dải tải [m] (a=0: tải đặt sát tường)",
+    "w": "chiều rộng dải tải [m] (w≥100m ≈ tải phân bố vô hạn)",
+    "p": "cường độ tải trọng phân bố [kN/m²]",
+    "ref_surface": "cao độ mặt đất đặt tải [m] (thường = soil_level_front)"
+  },
+  "special_cases": {
+    "semi_infinite_at_wall": {
+      "condition": "a=0, w→∞",
+      "result": "α=0, δ→π/2 → Δph = p (áp lực bằng đúng cường độ tải)",
+      "note": "Tải vô hạn đặt sát tường = uniform surcharge → σh = p"
+    },
+    "finite_strip_at_wall": {
+      "condition": "a=0, w finite",
+      "result": "α=0, δ=arctan(w/z) → Δph = (2p/π)[δ − sinδ·cosδ]",
+      "simplification": "= (2p/π)[δ − ½sin(2δ)]"
+    },
+    "strip_at_distance": {
+      "condition": "a > 0, w finite",
+      "note": "Tải cách tường khoảng a — áp lực nhỏ hơn so với a=0"
+    },
+    "point_above_pile": {
+      "condition": "z ≤ 0 (cao độ trên mặt đặt tải)",
+      "result": "Δph = 0"
+    }
+  },
+  "fill_surcharge_application": {
+    "concept": "Đất đắp (fill) trên nền tự nhiên = strip surcharge tác dụng từ mặt tường ra ngoài",
+    "q": "γ_fill × H_fill [kN/m²]",
+    "a": "0 (fill bắt đầu tại mặt tường/cừ)",
+    "w": "chiều rộng vùng đắp [m]; nếu đắp lan rộng dùng w = 50–100 m",
+    "ref_surface": "soil_level_front — mặt đất tự nhiên phía Front",
+    "note": "Áp lực Boussinesq > Ka×q_fill vì tường bị kim chế dịch chuyển (k_s = k_0)"
+  },
+  "vs_ka_method": {
+    "ka_method": "Δσh = Ka × q_fill — dùng khi tường tự do dịch chuyển (active condition)",
+    "boussinesq": "Δph từ Eq.39 — dùng khi tường bị kim chế dịch chuyển (restrained wall)",
+    "tcvn_guidance": "§10.5.4: áp lực đất chủ động dùng k_s=k_a; áp lực đất tĩnh dùng k_s=k_0"
+  },
+  "resultant": {
+    "F": "F = ∫ Δph dz  [kN/m] — tích phân từ ref_surface đến mũi cọc",
+    "z_app": "z_app = ref_surface − M/F  với M = ∫ Δph × z dz  (moment về mặt đất)",
+    "moment_check": "M_top = F × (z_app − top_elev)  [kN·m/m]"
+  },
+  "discretization": {
+    "default_spacing": "1.0 m — 1 điểm tính trên mỗi mét chiều dài cọc",
+    "n_pts": "max(3, round(pile_length / spacing) + 1)",
+    "note": "Spacing 1m đủ chính xác cho Boussinesq; tăng độ mịn nếu cần bằng spacing=0.5"
+  },
+  "front_back_convention": {
+    "Front": "Mặt TRÁI tường — áp lực đẩy tường sang phải (cùng chiều Active)",
+    "Back":  "Mặt PHẢI tường — áp lực đẩy tường sang trái (ngược chiều Active)",
+    "F_net": "F_front − F_back [kN/m] — lực ngang tổng hợp lên tường",
+    "diagram": "3 panel: [Front Dph polyline | Wall+arrows | Back Dph polyline]",
+    "arrows": "quiver 1 mũi tên/1m, polyline nối đuôi mũi tên = bao áp lực"
+  },
+  "session_keys_streamlit": {
+    "Side": "Front hoặc Back — mặt tường chịu tải",
+    "Distance Wall [m]": "a — khoảng cách từ tường đến mép gần dải tải",
+    "Width Surcharge [m]": "w — chiều rộng dải tải",
+    "Depth Surcharge [m]": "dep — độ sâu mặt đặt tải so với soil_level tương ứng (dương = sâu hơn); ref_surface = soil_level - dep",
+    "Surcharge [kN/m2]": "q — cường độ tải [kN/m²]",
+    "ref_surface_front": "soil_level_front khi Side=Front, Depth=0",
+    "ref_surface_back":  "soil_level_back  khi Side=Back,  Depth=0"
+  }
+}
