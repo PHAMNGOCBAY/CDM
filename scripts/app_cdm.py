@@ -1496,6 +1496,37 @@ def _draw_cdm_section(
                 bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#6D4C41",
                           alpha=0.9, lw=0.6))
 
+    # Đáy lớp bùn (nét gạch nâu nhạt)
+    _clay_top_a = top_clay if top_clay is not None else CDTK
+    _clay_bot_a = _clay_top_a - h_clay
+    ax.axhline(_clay_bot_a, color="#6D4C41", lw=1.0, ls="-.", zorder=4, alpha=0.7)
+    ax.text(W * 0.02, _clay_bot_a - 0.08,
+            f"Đáy lớp bùn = {_clay_bot_a:+.2f} m",
+            ha="left", va="top", fontsize=7.5, color="#6D4C41", zorder=5,
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#6D4C41",
+                      alpha=0.9, lw=0.6))
+
+    # Đáy cọc CDM (nét chấm xanh lá)
+    ax.axhline(z_pile_bot, color="#2E7D32", lw=0.9, ls=":", zorder=4, alpha=0.8)
+    ax.text(W * 0.98, z_pile_bot - 0.08,
+            f"Đáy cọc = {z_pile_bot:+.2f} m",
+            ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5,
+            bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
+
+    # Kích thước phần cọc ngàm vào đất tốt (bên trái cọc)
+    _emb = _clay_bot_a - z_pile_bot
+    if _emb > 0.05:
+        dim_x_l = cx - r - W * 0.07
+        ax.annotate("", xy=(dim_x_l, z_pile_bot), xytext=(dim_x_l, _clay_bot_a),
+                    arrowprops=dict(arrowstyle="<->", color="#D84315", lw=1.4),
+                    zorder=5)
+        ax.text(dim_x_l - W * 0.015, (z_pile_bot + _clay_bot_a) / 2,
+                f"Ngàm\n={_emb:.2f}m",
+                ha="right", va="center", fontsize=7.5, color="#D84315",
+                fontweight="bold", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#D84315",
+                          alpha=0.9, lw=0.6))
+
     def layer_text(y0, y1, txt, color):
         if (y1 - y0) > 0.4:
             ax.text(W * 0.03, (y0 + y1) / 2, txt,
