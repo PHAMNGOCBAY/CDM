@@ -4439,6 +4439,101 @@ if _page == "ke_sw":
             "Nguồn: ke_sw_202605_TTHC.json (on_sw_alignment=True)."
         )
 
+        # ── Chi tiết NT1/NT2 từng hố khoan (SQLite) ─────────────────────────────
+        with st.expander("Chi tiết tính toán NT1/NT2 từng hố khoan"):
+            try:
+                _con_nt = sqlite3.connect(str(_DB))
+                _cur_nt = _con_nt.cursor()
+                _cur_nt.execute(
+                    "SELECT bh_name, pile_type, L_design_m, Z_m, fill_m, L_soil_m, "
+                    "tip_depth_m, L_req_nt1_m, margin_nt1_m, nt1_result, "
+                    "Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN, ratio_nt2, nt2_result "
+                    "FROM ke_sw_nt_detail ORDER BY bh_name"
+                )
+                _nt_rows = _cur_nt.fetchall()
+                _con_nt.close()
+                if not _nt_rows:
+                    st.info(
+                        "Chưa có dữ liệu NT1/NT2 trong SQLite. "
+                        "Chạy `scripts/ke_sw_nt_calc.py` để tạo dữ liệu."
+                    )
+                else:
+                    for _nt in _nt_rows:
+                        (
+                            _bh_n, _pile_t, _L_d, _Z_m, _fill_m, _L_soil, _tip_d,
+                            _L_req1, _marg1, _res1,
+                            _Rs, _tip_sym, _tip_su, _Rp, _RR, _W, _rat2, _res2,
+                        ) = _nt
+                        st.markdown(f"#### {_bh_n}")
+                        _cn1, _cn2 = st.columns(2)
+                        with _cn1:
+                            st.markdown("**NT1 — Chiều dài xuyên qua lớp yếu**")
+                            st.metric(
+                                "Kết quả NT1", _res1,
+                                delta=f"Biên an toàn = {_marg1:+.2f} m",
+                                delta_color="normal" if _marg1 >= 0 else "inverse",
+                            )
+                            st.caption(
+                                f"L thiết kế = **{_L_d:.1f} m** | L yêu cầu = {_L_req1:.1f} m  \n"
+                                f"Z mặt đất tự nhiên = {_Z_m:.3f} m | "
+                                f"Đất đắp = {_fill_m:.2f} m | Trong đất = {_L_soil:.2f} m"
+                            )
+                        with _cn2:
+                            st.markdown("**NT2 — Sức kháng nhổ (TCVN 11823-10:2017, α-method)**")
+                            st.metric(
+                                "Kết quả NT2", _res2,
+                                delta=f"RR/W = {_rat2:.2f}",
+                                delta_color="normal" if _rat2 >= 1 else "inverse",
+                            )
+                            st.caption(
+                                f"Rs = {_Rs:.0f} kN | Rp = {_Rp:.0f} kN  \n"
+                                f"RR = φ × (Rs + Rp) = {_RR:.0f} kN | W = {_W:.0f} kN  \n"
+                                f"Lớp mũi cọc: **{_tip_sym}** (su = {_tip_su:.0f} kPa)"
+                            )
+                        # Bảng lớp đất NT2
+                        _con2 = sqlite3.connect(str(_DB))
+                        _cur2 = _con2.cursor()
+                        _cur2.execute(
+                            "SELECT l.symbol, l.L_m, l.su_kPa, l.Rs_kN, l.note "
+                            "FROM ke_sw_nt2_layers l "
+                            "JOIN ke_sw_design d ON l.sw_design_id = d.id "
+                            "WHERE d.bh_name=? ORDER BY l.layer_order",
+                            (_bh_n,),
+                        )
+                        _lyrs = _cur2.fetchall()
+                        _con2.close()
+                        if _lyrs:
+                            _ldf = []
+                            for _sym, _Llyr, _su, _Rs_lyr, _note in _lyrs:
+                                if _su <= 0:
+                                    _alp = "—"
+                                elif _su <= 25:
+                                    _alp = "1,000"
+                                elif _su >= 70:
+                                    _alp = "0,500"
+                                else:
+                                    _alp = f"{1.0 - (_su - 25) / 90:.3f}".replace(".", ",")
+                                _ldf.append({
+                                    "Lớp đất": _sym,
+                                    "L (m)": round(_Llyr, 2),
+                                    "su (kPa)": round(_su, 0),
+                                    "α (Tomlinson)": _alp,
+                                    "Rs lớp (kN)": round(_Rs_lyr, 1),
+                                    "Phạm vi chiều sâu": _note,
+                                })
+                            st.dataframe(
+                                pd.DataFrame(_ldf),
+                                hide_index=True,
+                                use_container_width=True,
+                            )
+                        st.caption(
+                            f"Cọc: {_pile_t} | L thiết kế = {_L_d:.1f} m | "
+                            f"Tổng chiều sâu đầu mũi = {_tip_d:.2f} m"
+                        )
+                        st.divider()
+            except Exception as _exc_nt:
+                st.error(f"Lỗi khi đọc dữ liệu NT: {_exc_nt}")
+
     # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
     st.divider()
     st.markdown("### C. Kiểm tra NT1 / NT2 — nhập thông số tùy chỉnh")
