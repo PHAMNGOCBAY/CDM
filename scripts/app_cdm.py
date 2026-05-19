@@ -3467,78 +3467,121 @@ TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
 (duong cap 1 doan thong thuong) sau khi lam xong mat duong.
 """)
 
-        # ── PHẦN 2: Kiểm tra mẫu vs TCCS41 ──────────────────────────────────
+        # ── PHẦN 2: Kiểm tra mẫu vs TCCS41 Điều 5.3.7 ──────────────────────
         st.divider()
-        st.markdown("**Kiem tra so luong mau nen co ket hien co vs TCCS 41:2022 (Dieu 5.3.7)**")
-        st.caption("Yeu cau: >=1 mau/lop hoac >=1 mau/3m voi lop day; "
-                   "chieu sau dat yeu ~ chieu sau ho khoan (toi da 35m).")
+        st.markdown("### Kiem tra so luong mau vs TCCS 41:2022 — Dieu 5.3.7")
+        st.caption(
+            "Dieu 5.3.7: Moi lop dat yeu, moi chi tieu dua vao tinh toan can co **>= 6 so lieu thi nghiem**. "
+            "Tri so tinh toan: Delta_t = Delta_tb +/- delta  "
+            "(delta = do lech chuan mau). "
+            "Ap dung cho Cc, Cs, Cv, PC cua cac lop dat yeu (CH/CL/MH/ML va bien the)."
+        )
 
-        _chk_cols = st.columns(3)
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
-            with _chk_cols[_ci]:
-                try:
-                    _chk = _sc_check(_zc)
-                    _s   = _chk["zone_summary"]
-                    st.metric(
-                        f"Zone {_zc}",
-                        f"{_s['n_pass']}/{_s['n_boreholes']} HK dat",
-                        f"Thieu {_s['total_Cc_gap']} mau Cc",
-                        delta_color="normal" if _s["pass_rate_pct"] >= 80 else "inverse",
-                    )
-                    st.caption(
-                        f"Cc hien co: **{_s['n_Cc_actual']}**  \n"
-                        f"Cc can co:  **{_s['n_Cc_required']}**  \n"
-                        f"VST zone: **{_s['n_VST_zone']}** diem"
-                    )
-                    _df_chk = pd.DataFrame(_chk["boreholes"])[[
-                        "name", "depth_m", "soft_h_m",
-                        "n_Cc_actual", "n_Cc_required", "n_Cc_gap",
-                        "n_SPT_actual", "status"
-                    ]].rename(columns={
-                        "name":          "Ho khoan",
-                        "depth_m":       "Sau (m)",
-                        "soft_h_m":      "H dat yeu (m)",
-                        "n_Cc_actual":   "Cc co",
-                        "n_Cc_required": "Cc can",
-                        "n_Cc_gap":      "Thieu",
-                        "n_SPT_actual":  "SPT co",
-                        "status":        "Ket qua",
-                    })
-                    st.dataframe(
-                        _df_chk.style.apply(
-                            lambda col: ["color:green" if v == "Dat"
-                                         else "color:red" if v == "Khong dat"
-                                         else "" for v in col],
-                            subset=["Ket qua"]
-                        ),
-                        use_container_width=True, hide_index=True,
-                    )
-                except Exception as _ex:
-                    st.error(f"Zone {_zc}: {_ex}")
-
-        st.divider()
-        st.markdown("**Tom tat yeu cau bo sung thi nghiem**")
-        _sum_rows = []
+        # Tải dữ liệu 3 zone
+        _chk_all = {}
         for _zc in ["NHC", "BXN", "KE"]:
             try:
-                _chk = _sc_check(_zc)
-                _s   = _chk["zone_summary"]
-                _sum_rows.append({
-                    "Zone":          _zc,
-                    "So HK":         _s["n_boreholes"],
-                    "HK dat Cc":     _s["n_pass"],
-                    "HK chua dat":   _s["n_fail"],
-                    "Cc hien co":    _s["n_Cc_actual"],
-                    "Cc can them":   _s["total_Cc_gap"],
-                    "VST zone":      _s["n_VST_zone"],
-                    "Ty le dat (%)": _s["pass_rate_pct"],
-                })
-            except Exception:
-                pass
+                _chk_all[_zc] = _sc_check(_zc)
+            except Exception as _ex:
+                st.error(f"Zone {_zc}: {_ex}")
+
+        # Metric cards — tóm tắt per zone
+        _lun_params = ["Cc", "Cs", "Cv", "PC"]
+        _met_cols = st.columns(3)
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+            if _zc not in _chk_all:
+                continue
+            _s = _chk_all[_zc]["zone_summary"]
+            _n_soft = _s["n_layers_soft"]
+            _ok_cc  = _s["params_ok"].get("Cc", 0)
+            _fail_cc = _s["params_fail"].get("Cc", 0)
+            with _met_cols[_ci]:
+                st.metric(
+                    f"Zone {_zc}",
+                    f"{_ok_cc}/{_n_soft} lop dat du Cc",
+                    f"{_fail_cc} lop thieu mau (n<6)",
+                    delta_color="normal" if _fail_cc == 0 else "inverse",
+                )
+                st.caption(
+                    f"Tong lop dat: {_s['n_layers_total']} | Lop yeu: {_n_soft}  \n"
+                    + "  ".join(
+                        f"{p}: {_s['params_ok'].get(p,0)}Dat/{_s['params_fail'].get(p,0)}Thieu"
+                        for p in _lun_params
+                    )
+                )
+
+        # Bảng chi tiết per zone — per layer
+        for _zc in ["NHC", "BXN", "KE"]:
+            if _zc not in _chk_all:
+                continue
+            st.markdown(f"**Zone {_zc} — Chi tiet theo lop dat**")
+            _layers = _chk_all[_zc]["layers"]
+
+            def _fmt_param(info, highlight_req=True):
+                """n(Dat/Thieu/-) cho cell."""
+                if not info or info.get("n", 0) == 0:
+                    return "-"
+                n   = info["n"]
+                ok  = info.get("ok")  # True/False/None
+                if ok is True:
+                    return f"{n} (Dat)"
+                elif ok is False:
+                    return f"{n} (Thieu)"
+                return str(n)  # khong ap dung yeu cau n>=6
+
+            _rows_ly = []
+            for _ly in _layers:
+                _p = _ly["params"]
+                row = {
+                    "Lop (USCS)":  _ly["symbol"],
+                    "Dat yeu":     "Co" if _ly["is_soft"] else "-",
+                    "n mau":       _ly["n_total"],
+                    "Cc (n)":      _fmt_param(_p.get("Cc")),
+                    "Cc mean":     round(_p["Cc"]["mean"], 3) if _p.get("Cc", {}).get("n", 0) > 0 else "-",
+                    "Cc std":      round(_p["Cc"]["std"], 3)  if _p.get("Cc", {}).get("n", 0) > 1 else "-",
+                    "Cs (n)":      _fmt_param(_p.get("Cs")),
+                    "Cv (n)":      _fmt_param(_p.get("Cv")),
+                    "PC (n)":      _fmt_param(_p.get("PC")),
+                    "phi (n)":     _fmt_param(_p.get("phi")),
+                    "c (n)":       _fmt_param(_p.get("c")),
+                }
+                _rows_ly.append(row)
+
+            _df_ly = pd.DataFrame(_rows_ly)
+
+            def _color_cell(val):
+                if "(Dat)" in str(val):
+                    return "background-color:#d4edda; color:#155724"
+                elif "(Thieu)" in str(val):
+                    return "background-color:#f8d7da; color:#721c24"
+                return ""
+
+            _styled = _df_ly.style.applymap(
+                _color_cell,
+                subset=["Cc (n)", "Cs (n)", "Cv (n)", "PC (n)"]
+            )
+            st.dataframe(_styled, use_container_width=True, hide_index=True)
+
+        # Bảng tổng hợp 3 zone
+        st.divider()
+        st.markdown("**Tom tat 3 zone — Thong so lun chinh (Cc/Cs/Cv/PC)**")
+        _sum_rows = []
+        for _zc in ["NHC", "BXN", "KE"]:
+            if _zc not in _chk_all:
+                continue
+            _s = _chk_all[_zc]["zone_summary"]
+            _sum_rows.append({
+                "Zone":            _zc,
+                "Lop yeu":         _s["n_layers_soft"],
+                "Cc Dat/Thieu":    f"{_s['params_ok'].get('Cc',0)}/{_s['params_fail'].get('Cc',0)}",
+                "Cs Dat/Thieu":    f"{_s['params_ok'].get('Cs',0)}/{_s['params_fail'].get('Cs',0)}",
+                "Cv Dat/Thieu":    f"{_s['params_ok'].get('Cv',0)}/{_s['params_fail'].get('Cv',0)}",
+                "PC Dat/Thieu":    f"{_s['params_ok'].get('PC',0)}/{_s['params_fail'].get('PC',0)}",
+                "VST":             _chk_all[_zc]["n_vst_zone"],
+            })
         if _sum_rows:
             st.dataframe(pd.DataFrame(_sum_rows), use_container_width=True, hide_index=True)
-
         st.info(
-            "**Uu tien bo sung mau Cc:** Zone KE chua co mau nen co ket nao (0 mau). "
-            "NHC va BXN can bo sung them mau tai cac ho khoan chua du so luong theo TCCS41."
+            "Xanh = lop dat du n>=6 mau | Do = thieu mau (<6) | '-' = khong co mau hoac khong ap dung. "
+            "Zone KE chua co mau Cc nao — can uu tien bo sung truoc."
         )

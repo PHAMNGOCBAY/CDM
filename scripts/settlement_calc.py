@@ -15,7 +15,6 @@ from __future__ import annotations
 import math
 import sqlite3
 import json
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -307,8 +306,6 @@ def _calc_settlement_zone_avg(zone_params: dict, H_fill_m: float,
     e0  = zone_params.get("e0_avg", 1.50)
     PC  = zone_params.get("PC_avg_kPa", 80.0)
     d_range = zone_params.get("soft_clay_depth_m", [0, 30])
-    Hdr = zone_params.get("Hdr_m", 15.0)
-
     # Chia lớp 2m
     layer_step = 2.0
     z = max(d_range[0], layer_step / 2)
@@ -459,14 +456,22 @@ def compare_methods(bh_name: str,
     scenarios_out = []
     time_series_out = {}
 
-    # CDM stress-sharing beta (tính trước, dùng cho tất cả scenario CDM)
-    cdm_beta = calc_cdm_stress_beta(zone_params)
+    # CDM: TCVN 9403 Phụ lục C — S1 đàn hồi khối gia cố + S2 bên dưới (=0 nếu CDM đến lớp cứng)
     cdm_area_ratio = zone_params.get("cdm_area_ratio", 0.25)
-    # S dưới tải CDM: tái tính Cc với Delta_sigma × beta (cột chịu bớt tải)
-    cdm_detail = calc_settlement_from_db(bh_name, H_fill_m, gamma_fill,
-                                          fallback_zone_params=zone_params,
-                                          stress_scale=cdm_beta)
-    S_cdm = cdm_detail["S_total_cm"] or S_total * (1.0 - cdm_area_ratio * 0.85)
+    cdm_beta       = calc_cdm_stress_beta(zone_params, cdm_area_ratio)
+    _Cu_cdm   = zone_params.get("Cu_avg_kPa", 15.0)
+    _qu_lab   = zone_params.get("cdm_qu_lab_kPa", 1000.0)
+    _f_lab    = zone_params.get("cdm_field_lab_ratio", 0.33)
+    _Ef       = zone_params.get("cdm_Ec_factor", 75.0)
+    Es_cdm    = 250.0 * _Cu_cdm
+    Ec_cdm    = _Ef * (_f_lab * _qu_lab / 2.0)
+    _d_range  = zone_params.get("soft_clay_depth_m", [0, 30])
+    H_soft_cdm = float(_d_range[1] - _d_range[0])
+    _q_fill    = H_fill_m * gamma_fill
+    _composite = cdm_area_ratio * Ec_cdm + (1.0 - cdm_area_ratio) * Es_cdm
+    S_cdm_S1   = (_q_fill * H_soft_cdm / _composite) * 100.0 if _composite > 0 else S_total * 0.3
+    S_cdm_S2   = 0.0  # CDM cắm đến lớp cứng — không có lún bên dưới cột
+    S_cdm      = S_cdm_S1 + S_cdm_S2
 
     for sc in scenarios_cfg:
         method = sc["id"]
@@ -479,27 +484,32 @@ def compare_methods(bh_name: str,
 
         method_type = sc.get("method", "no_treat")
 
-        # CDM dùng S đã giảm theo stress-sharing; các phương án khác dùng S_total
-        S_input = S_cdm if method_type == "cdm" else S_total
+        if method_type == "cdm":
+            # Lún CDM = S1 đàn hồi — xảy ra ngay lập tức (không phụ thuộc thời gian cố kết)
+            ts = [{"t_months": t, "t_years": round(t / 12.0, 2),
+                   "U_pct": 100.0, "S_cm": round(S_cdm, 1)}
+                  for t in t_list]
+            time_series_out[method] = ts
+            U_constr = 100.0
+            S_constr = round(S_cdm, 1)
+            S_final  = round(S_cdm, 1)
+            residual = 0.0
+            t_90     = t_list[0]   # ngay tại điểm đầu tiên
+        else:
+            ts = calc_time_series(
+                S_total, method_type, zone_params, t_list,
+                pvd_spacing_m=pvd_s, pvd_pattern=pvd_pat,
+                sd_diameter_mm=sd_d, sd_spacing_m=sd_s,
+            )
+            time_series_out[method] = ts
 
-        ts = calc_time_series(
-            S_input, method_type, zone_params, t_list,
-            pvd_spacing_m=pvd_s, pvd_pattern=pvd_pat,
-            sd_diameter_mm=sd_d, sd_spacing_m=sd_s,
-        )
-        time_series_out[method] = ts
-
-        # U và S tại thời điểm kết thúc thi công
-        t_idx = min(range(len(t_list)),
-                    key=lambda i: abs(t_list[i] - t_construction_months))
-        U_constr = ts[t_idx]["U_pct"]
-        S_constr = ts[t_idx]["S_cm"]
-
-        # Lún còn lại sau thi công = S_effective_final − S_at_construction
-        S_final  = ts[-1]["S_cm"]   # ~100% U (20 năm)
-        residual = max(S_final - S_constr, 0.0)
-
-        t_90 = next((pt["t_months"] for pt in ts if pt["U_pct"] >= 90.0), None)
+            t_idx = min(range(len(t_list)),
+                        key=lambda i: abs(t_list[i] - t_construction_months))
+            U_constr = ts[t_idx]["U_pct"]
+            S_constr = ts[t_idx]["S_cm"]
+            S_final  = ts[-1]["S_cm"]
+            residual = max(S_final - S_constr, 0.0)
+            t_90 = next((pt["t_months"] for pt in ts if pt["U_pct"] >= 90.0), None)
 
         scenarios_out.append({
             "method":            method,
@@ -522,6 +532,11 @@ def compare_methods(bh_name: str,
         "S_detail":           result,
         "cdm_beta":           round(cdm_beta, 3),
         "cdm_area_ratio":     cdm_area_ratio,
+        "cdm_S1_cm":          round(S_cdm_S1, 1),
+        "cdm_S2_cm":          round(S_cdm_S2, 1),
+        "cdm_Ec_kPa":         round(Ec_cdm, 0),
+        "cdm_Es_kPa":         round(Es_cdm, 0),
+        "cdm_composite_kPa":  round(_composite, 0),
         "residual_limit_cm":  residual_limit_cm,
         "t_construction_months": t_construction_months,
         "scenarios":          scenarios_out,
@@ -530,69 +545,63 @@ def compare_methods(bh_name: str,
 
 
 # ──────────────────────────────────────────────────────────────────
-# 6. KIỂM TRA SỐ LƯỢNG MẪU vs TCCS41
+# 6. KIỂM TRA SỐ LƯỢNG MẪU vs TCCS41 Điều 5.3.7
 # ──────────────────────────────────────────────────────────────────
 
-def _required_consol_samples(soft_layer_thickness_m: float) -> int:
-    """Số mẫu nén cố kết tối thiểu theo TCCS41 Điều 5.3.3 + Bảng 7.4.2."""
-    h = soft_layer_thickness_m
-    if h < 3:
-        return 1
-    elif h < 6:
-        return 2
-    elif h < 15:
-        return max(3, math.ceil(h / 3))
-    else:
-        return math.ceil(h / 3)
+# Thông số cần kiểm tra: (cột DB, nhãn ngắn, mô tả, chỉ dùng cho lớp yếu?)
+_PARAMS_537 = [
+    ("Cc",        "Cc",    "He so nen",           True),
+    ("Cs",        "Cs",    "He so no",             True),
+    ("Cv_cm2s",   "Cv",    "He so co ket",         True),
+    ("PC_kPa",    "PC",    "Ap luc tien co ket",   True),
+    ("e0",        "e0",    "He so rong",            False),
+    ("phi_deg",   "phi",   "Goc ma sat",            False),
+    ("c_kPa",     "c",     "Luc dinh",              False),
+    ("Cu_UU_kPa", "Cu",    "Suc cat UU",            False),
+]
+
+# Ký hiệu lớp đất yếu (USCS) — áp dụng yêu cầu n≥6 cho Cc/Cs/Cv/PC
+_SOFT_SYMBOLS = {"CH", "CL", "MH", "ML", "CL-ML", "ML-CL",
+                 "MH-OH", "CH-OH", "ML-OL"}
+
+_MIN_SAMPLES_537 = 6  # Điều 5.3.7 TCCS 41:2022
+
+
+def _std_dev(vals: list) -> float:
+    """Độ lệch chuẩn mẫu δ = sqrt(Σ(Ai-Atb)²/(n-1))."""
+    n = len(vals)
+    if n < 2:
+        return 0.0
+    mean = sum(vals) / n
+    return math.sqrt(sum((v - mean) ** 2 for v in vals) / (n - 1))
 
 
 def check_samples_vs_tccs41(zone_code: str) -> dict:
     """
-    Kiểm tra số lượng mẫu nén cố kết hiện có vs TCCS41 cho từng hố khoan.
+    Điều 5.3.7 TCCS 41:2022 — Mỗi lớp đất yếu, mỗi chỉ tiêu cần >= 6 mẫu.
+    Trị số tính toán: Delta_t = Delta_tb +/- delta
+      Delta_tb = trung binh so hoc
+      delta    = do lech chuan mau: sqrt(sum(Ai-Atb)^2 / (n-1))
 
-    Trả về:
-      {
-        'zone': str,
-        'boreholes': [{
-          'name', 'depth_m',
-          'n_Cc_actual', 'n_Cc_required', 'n_Cc_gap',
-          'n_SPT_actual', 'n_VST_actual',
-          'status': 'Dat'|'Khong dat'
-        }],
-        'zone_summary': {...}
-      }
+    Ket qua per layer (symbol_tcvn):
+      'layers': [{
+        'symbol', 'is_soft', 'n_total',
+        'params': {label: {'n','mean','std','cv_pct','ok','design_min','design_max'}}
+      }]
+      'zone_summary': {tong hop dat/chua dat per tham so chinh}
     """
     with _db() as con:
-        con.row_factory = sqlite3.Row
-
-        # Danh sách hố khoan trong zone
-        bhs = con.execute("""
-            SELECT b.id, b.name, b.depth_m
-            FROM boreholes b JOIN zones z ON b.zone_id=z.id
+        # Lay tat ca gia tri per mau
+        rows = con.execute("""
+            SELECT lt.symbol_tcvn, lt.Cc, lt.Cs, lt.Cv_cm2s, lt.PC_kPa,
+                   lt.e0, lt.phi_deg, lt.c_kPa, lt.Cu_UU_kPa, lt.depth_from_m
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id=b.id
+            JOIN zones z ON b.zone_id=z.id
             WHERE z.code=?
-            ORDER BY b.name
+            ORDER BY lt.symbol_tcvn, lt.depth_from_m
         """, (zone_code,)).fetchall()
 
-        # Tổng số mẫu Cc per borehole
-        cc_counts = {r["name"]: r["n_Cc"] for r in con.execute("""
-            SELECT b.name,
-                   SUM(CASE WHEN lt.Cc IS NOT NULL THEN 1 ELSE 0 END) AS n_Cc
-            FROM boreholes b JOIN zones z ON b.zone_id=z.id
-            LEFT JOIN lab_tests lt ON lt.borehole_id=b.id
-            WHERE z.code=?
-            GROUP BY b.name
-        """, (zone_code,)).fetchall()}
-
-        # SPT per borehole
-        spt_counts = {r["name"]: r["n_spt"] for r in con.execute("""
-            SELECT b.name, COUNT(st.id) AS n_spt
-            FROM boreholes b JOIN zones z ON b.zone_id=z.id
-            LEFT JOIN spt_tests st ON st.borehole_id=b.id
-            WHERE z.code=?
-            GROUP BY b.name
-        """, (zone_code,)).fetchall()}
-
-        # VST per zone (vst_locations không có borehole_id — lưu zone total)
         n_vst_zone = (con.execute("""
             SELECT COUNT(v.id) FROM vane_shear_tests v
             JOIN vst_locations vl ON v.vst_loc_id=vl.id
@@ -600,50 +609,76 @@ def check_samples_vs_tccs41(zone_code: str) -> dict:
             WHERE z.code=?
         """, (zone_code,)).fetchone() or [0])[0]
 
-    cfg = _load_cfg()
-    bh_list = []
-    n_pass = 0
+    # Group values by symbol
+    col_names = ["symbol_tcvn", "Cc", "Cs", "Cv_cm2s", "PC_kPa",
+                 "e0", "phi_deg", "c_kPa", "Cu_UU_kPa", "depth_from_m"]
+    by_sym: dict = {}
+    for r in rows:
+        row = dict(zip(col_names, r))
+        sym = row["symbol_tcvn"] or "(khong xac dinh)"
+        by_sym.setdefault(sym, []).append(row)
 
-    for bh in bhs:
-        bh_name  = bh["name"]
-        depth_m  = bh["depth_m"] or 30.0
-        # Giả thiết chiều dày lớp đất yếu ≈ depth_m (hố khoan TTHC toàn đất yếu)
-        soft_h   = min(depth_m, 35.0)
+    layers_out = []
+    for sym, sample_list in sorted(by_sym.items()):
+        is_soft = sym in _SOFT_SYMBOLS
+        n_total = len(sample_list)
+        params_out = {}
 
-        n_Cc_act = cc_counts.get(bh_name, 0) or 0
-        n_Cc_req = _required_consol_samples(soft_h)
-        n_gap    = max(n_Cc_req - n_Cc_act, 0)
-        status   = "Dat" if n_Cc_act >= n_Cc_req else "Khong dat"
-        if status == "Dat":
-            n_pass += 1
+        for db_col, label, _desc, soft_only in _PARAMS_537:
+            vals = [r[db_col] for r in sample_list if r[db_col] is not None]
+            n = len(vals)
+            if n == 0:
+                params_out[label] = {"n": 0, "ok": None}
+                continue
+            mean = sum(vals) / n
+            std  = _std_dev(vals)
+            cv_pct = round(100 * std / mean, 1) if mean != 0 else 0.0
+            # Chỉ áp yêu cầu n>=6 cho lớp đất yếu với thông số lún (soft_only)
+            required = soft_only and is_soft
+            ok = (n >= _MIN_SAMPLES_537) if required else None  # None = khong ap dung
+            params_out[label] = {
+                "n":           n,
+                "mean":        round(mean, 4),
+                "std":         round(std, 4),
+                "cv_pct":      cv_pct,
+                "ok":          ok,  # True/False/None
+                "design_min":  round(mean - std, 4),
+                "design_max":  round(mean + std, 4),
+            }
 
-        bh_list.append({
-            "name":          bh_name,
-            "depth_m":       depth_m,
-            "soft_h_m":      round(soft_h, 1),
-            "n_Cc_actual":   n_Cc_act,
-            "n_Cc_required": n_Cc_req,
-            "n_Cc_gap":      n_gap,
-            "n_SPT_actual":  spt_counts.get(bh_name, 0) or 0,
-            "status":        status,
+        layers_out.append({
+            "symbol":  sym,
+            "is_soft": is_soft,
+            "n_total": n_total,
+            "params":  params_out,
         })
 
-    n_total  = len(bh_list)
-    n_fail   = n_total - n_pass
-    total_gap = sum(b["n_Cc_gap"] for b in bh_list)
+    # Tóm tắt zone: đếm lớp đất yếu đạt/chưa đạt n>=6 cho từng thông số lún chính
+    lun_params = ["Cc", "Cs", "Cv", "PC"]
+    zone_ok = {p: 0 for p in lun_params}
+    zone_fail = {p: 0 for p in lun_params}
+    for ly in layers_out:
+        if not ly["is_soft"]:
+            continue
+        for p in lun_params:
+            info = ly["params"].get(p, {})
+            if info.get("ok") is True:
+                zone_ok[p] += 1
+            elif info.get("ok") is False:
+                zone_fail[p] += 1
+
+    n_soft = sum(1 for ly in layers_out if ly["is_soft"])
 
     return {
-        "zone":      zone_code,
-        "boreholes": bh_list,
+        "zone":        zone_code,
+        "layers":      layers_out,
+        "n_vst_zone":  n_vst_zone,
         "zone_summary": {
-            "n_boreholes":     n_total,
-            "n_pass":          n_pass,
-            "n_fail":          n_fail,
-            "pass_rate_pct":   round(100 * n_pass / n_total, 1) if n_total else 0,
-            "total_Cc_gap":    total_gap,
-            "n_Cc_actual":     sum(b["n_Cc_actual"] for b in bh_list),
-            "n_Cc_required":   sum(b["n_Cc_required"] for b in bh_list),
-            "n_VST_zone":      n_vst_zone,
+            "n_layers_total":  len(layers_out),
+            "n_layers_soft":   n_soft,
+            "min_samples_req": _MIN_SAMPLES_537,
+            "params_ok":       zone_ok,
+            "params_fail":     zone_fail,
         },
     }
 
