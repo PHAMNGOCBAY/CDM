@@ -1,0 +1,124 @@
+{
+  "_meta": {
+    "source": "NHC-1. TRỤ_TTHC_Tru hien truong.dxf",
+    "updated": "2026-05-19",
+    "project": "202605-TTHC",
+    "coord_system": "VN-2000 TP.HCM (CM=105°45', FE=500000)",
+    "db_convention": "x_coord_m=Northing, y_coord_m=Easting (giống BXN/KE)",
+    "n_boreholes": 16
+  },
+  "boreholes": [
+    {
+      "bh_name_raw": "BH-03",
+      "bh_name_db": "NHC-BH-03",
+      "northing_m": 1191418.751,
+      "easting_m": 605614.653,
+      "elevation_m": 1.07
+    },
+    {
+      "bh_name_raw": "BH-05",
+      "bh_name_db": "NHC-BH-05",
+      "northing_m": 1191433.134,
+      "easting_m": 605547.095,
+      "elevation_m": 1.39
+    },
+    {
+      "bh_name_raw": "BH-20",
+      "bh_name_db": "NHC-BH-20",
+      "northing_m": 1191607.482,
+      "easting_m": 605547.002,
+      "elevation_m": 1.8
+    },
+    {
+      "bh_name_raw": "BH-25",
+      "bh_name_db": "NHC-BH-25",
+      "northing_m": 1191720.772,
+      "easting_m": 605564.919,
+      "elevation_m": 1.55
+    },
+    {
+      "bh_name_raw": "BH-26",
+      "bh_name_db": "NHC-BH-26",
+      "northing_m": 1191711.284,
+      "easting_m": 605593.388,
+      "elevation_m": 2.45
+    },
+    {
+      "bh_name_raw": "BH-28",
+      "bh_name_db": "NHC-BH-28",
+      "northing_m": 1191692.427,
+      "easting_m": 605650.328,
+      "elevation_m": 2.52
+    },
+    {
+      "bh_name_raw": "BH-27",
+      "bh_name_db": "NHC-BH-27",
+      "northing_m": 1191701.826,
+      "easting_m": 605621.838,
+      "elevation_m": 2.15
+    },
+    {
+      "bh_name_raw": "BH-29",
+      "bh_name_db": "NHC-BH-29",
+      "northing_m": 1191743.609,
+      "easting_m": 605605.376,
+      "elevation_m": 1.87
+    },
+    {
+      "bh_name_raw": "BH-30",
+      "bh_name_db": "NHC-BH-30",
+      "northing_m": 1191731.987,
+      "easting_m": 605633.15,
+      "elevation_m": 2.12
+    },
+    {
+      "bh_name_raw": "BH-32",
+      "bh_name_db": "NHC-BH-32",
+      "northing_m": 1191774.814,
+      "easting_m": 605619.784,
+      "elevation_m": 2.07
+    },
+    {
+      "bh_name_raw": "BH-33",
+      "bh_name_db": "NHC-BH-33",
+      "northing_m": 1191761.315,
+      "easting_m": 605646.602,
+      "elevation_m": 2.08
+    },
+    {
+      "bh_name_raw": "BH-34",
+      "bh_name_db": "NHC-BH-34",
+      "northing_m": 1191747.761,
+      "easting_m": 605673.231,
+      "elevation_m": 2.1
+    },
+    {
+      "bh_name_raw": "BH-35",
+      "bh_name_db": "NHC-BH-35",
+      "northing_m": 1191804.992,
+      "easting_m": 605636.461,
+      "elevation_m": 2.97
+    },
+    {
+      "bh_name_raw": "BH-36",
+      "bh_name_db": "NHC-BH-36",
+      "northing_m": 1191789.373,
+      "easting_m": 605662.216,
+      "elevation_m": 1.78
+    },
+    {
+      "bh_name_raw": "BH-37",
+      "bh_name_db": "NHC-BH-37",
+      "northing_m": 1191851.161,
+      "easting_m": 605630.856,
+      "elevation_m": 1.34
+    },
+    {
+      "bh_name_raw": "BH-38",
+      "bh_name_db": "NHC-BH-38",
+      "northing_m": 1191833.798,
+      "easting_m": 605655.33,
+      "elevation_m": 1.57
+    }
+  ]
+}
