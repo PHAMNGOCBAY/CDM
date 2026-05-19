@@ -4158,16 +4158,37 @@ if _page == "ke_sw":
         _d2.metric("Lớp bùn sét yếu", _dc.get("soft_clay_layer_symbol", "–"))
         _d3.metric("Xuyên qua lớp yếu (m)", _dc.get("min_penetration_below_soft_clay_m", "–"))
 
+        # Catalog duy nhất, sort theo H_mm tăng dần → dùng để chọn cọc tối ưu
+        _seen_names: set = set()
+        _catalog_sorted: list = []
+        for _p in sorted(_sw_piles, key=lambda x: x.get("H_mm", 0)):
+            if _p["name"] not in _seen_names:
+                _seen_names.add(_p["name"])
+                _catalog_sorted.append(_p)
+
+        def _optimal_pile(L_req: float) -> tuple[str, float]:
+            """Cọc nhỏ nhất có L_max ≥ L_req. Trả (name, L_max)."""
+            for _p in _catalog_sorted:
+                if (_p.get("L_max_m") or 0) >= L_req:
+                    return _p["name"], _p.get("L_max_m", 0)
+            last = _catalog_sorted[-1] if _catalog_sorted else {}
+            return "Vượt catalog", last.get("L_max_m", 0)
+
         # Bảng tổng hợp — chỉ các HK trên tuyến kè SW (on_sw_alignment=True)
         _bhs_on_alignment = [b for b in _bhs_ke if b.get("on_sw_alignment")]
         _ke_rows = []
         for _bh in _bhs_on_alignment:
-            _nt2 = _bh.get("NT2_multilayer") or {}
+            _nt2    = _bh.get("NT2_multilayer") or {}
+            _L_req  = _bh.get("L_req_m") or 0
+            _opt_name, _opt_Lmax = _optimal_pile(_L_req)
             _ke_rows.append({
                 "Hố khoan":          _bh["name"],
                 "Z (m)":             _bh.get("Z_m"),
                 "H lớp 1 (m)":       _bh.get("H_layer1_m"),
-                "L yêu cầu (m)":     _bh.get("L_req_m"),
+                "L yêu cầu (m)":     _L_req,
+                "Cọc tối ưu":        _opt_name,
+                "L_max cọc (m)":     _opt_Lmax,
+                "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
                 "Cọc kiến nghị":     _bh.get("recommended_pile"),
                 "L thiết kế (m)":    _bh.get("recommended_L_m"),
                 "NT1":               _bh.get("NT1"),
@@ -4181,17 +4202,21 @@ if _page == "ke_sw":
             })
 
         def _color_nt(val):
-            if val in ("PASS", True):   return "background-color:#d4edda; color:#155724"
-            if val == "PASS_CRITICAL":  return "background-color:#fff3cd; color:#856404"
-            if val in ("FAIL", False):  return "background-color:#f8d7da; color:#721c24"
-            if val == "SPECIAL":        return "background-color:#e2e3e5; color:#383d41"
+            if val in ("PASS", True, "Đạt"):   return "background-color:#d4edda; color:#155724"
+            if val == "PASS_CRITICAL":          return "background-color:#fff3cd; color:#856404"
+            if val in ("FAIL", False, "Không đạt", "Vượt catalog"):
+                return "background-color:#f8d7da; color:#721c24"
+            if val == "SPECIAL":               return "background-color:#e2e3e5; color:#383d41"
             return ""
 
         if not _ke_rows:
             st.warning("Không có hố khoan nào có on_sw_alignment=True trong dữ liệu.")
         else:
             st.dataframe(
-                pd.DataFrame(_ke_rows).style.map(_color_nt, subset=["NT1", "NT2"]),
+                pd.DataFrame(_ke_rows).style.map(
+                    _color_nt,
+                    subset=["NT1", "NT2", "Đủ chiều dài"],
+                ),
                 use_container_width=True, hide_index=True,
             )
 
