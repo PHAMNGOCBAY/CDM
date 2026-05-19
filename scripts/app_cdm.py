@@ -4021,13 +4021,13 @@ if _page == "ke_sw":
         _d2.metric("Lớp bùn sét yếu", _dc.get("soft_clay_layer_symbol", "–"))
         _d3.metric("Xuyên qua lớp yếu (m)", _dc.get("min_penetration_below_soft_clay_m", "–"))
 
-        # Bảng tổng hợp 12 hố khoan — trải phẳng NT2
+        # Bảng tổng hợp — chỉ các HK trên tuyến kè SW (on_sw_alignment=True)
+        _bhs_on_alignment = [b for b in _bhs_ke if b.get("on_sw_alignment")]
         _ke_rows = []
-        for _bh in _bhs_ke:
+        for _bh in _bhs_on_alignment:
             _nt2 = _bh.get("NT2_multilayer") or {}
             _ke_rows.append({
                 "Hố khoan":          _bh["name"],
-                "Tuyến kè":          "Có" if _bh.get("on_sw_alignment") else "–",
                 "Z (m)":             _bh.get("Z_m"),
                 "H lớp 1 (m)":       _bh.get("H_layer1_m"),
                 "L yêu cầu (m)":     _bh.get("L_req_m"),
@@ -4077,11 +4077,10 @@ if _page == "ke_sw":
         if _HAS_PLOTLY and _ke_rows:
             _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
             _ratios_plot = [float(r["RR/W"]) for r in _ke_rows if r["RR/W"] != "–"]
-            _on_align    = [r["Tuyến kè"] == "Có" for r in _ke_rows if r["RR/W"] != "–"]
+            _min_ratio   = min(_ratios_plot) if _ratios_plot else 0
             _colors_plot = [
-                "#FF6B35" if v == min(_ratios_plot)
-                else "#2E7D32" if on else "#4A90D9"
-                for v, on in zip(_ratios_plot, _on_align)
+                "#FF6B35" if v == _min_ratio else "#2E7D32"
+                for v in _ratios_plot
             ]
             _fig_nt2 = go.Figure()
             _fig_nt2.add_trace(go.Bar(
@@ -4094,16 +4093,16 @@ if _page == "ke_sw":
             _fig_nt2.add_hline(y=1.0, line_dash="dash", line_color="red",
                                annotation_text="Giới hạn NT2 (RR ≥ W)")
             _fig_nt2.update_layout(
-                title="Tỷ số NT2: RR/W theo hố khoan  (xanh lá = trên tuyến kè | xanh dương = ngoài tuyến | cam = kiểm soát)",
+                title="Tỷ số NT2: RR/W theo hố khoan trên tuyến kè SW  (cam = HK kiểm soát)",
                 yaxis_title="RR / W", xaxis_title="Hố khoan",
                 height=350, margin=dict(t=50, b=40),
                 yaxis=dict(range=[0, max(_ratios_plot) * 1.2 if _ratios_plot else 3]),
             )
             st.plotly_chart(_fig_nt2, use_container_width=True)
         st.caption(
-            "Xanh lá = hố khoan trên tuyến kè SW (7 HK). "
-            "Cam = HK kiểm soát (tỷ số nhỏ nhất). "
-            "Nguồn: ke_sw_202605_TTHC.json + borehole_name_mapping (on_sw_alignment)."
+            "Hiển thị 7 hố khoan trên tuyến kè SW: KE-HK2, HK3, HK7, HK8, HK9, HK10, HK11. "
+            "Cam = HK kiểm soát (tỷ số RR/W nhỏ nhất). "
+            "Nguồn: ke_sw_202605_TTHC.json (on_sw_alignment=True)."
         )
 
     # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
