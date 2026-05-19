@@ -3487,10 +3487,10 @@ if _page == "settlement":
         _HAS_SC = True
     except Exception as _exc:
         _HAS_SC = False
-        st.error(f"Khong tai duoc settlement_calc: {_exc}")
+        st.error(f"Không tải được settlement_calc: {_exc}")
 
     if _HAS_SC:
-        st.subheader("Lun nen – So sanh phuong an xu ly (TCCS 41:2022)")
+        st.subheader("Lún nền – So sánh phương án xử lý (TCCS 41:2022)")
 
         # ── PHẦN 1: So sánh phương án ────────────────────────────────────────
         if True:
@@ -3500,17 +3500,17 @@ if _page == "settlement":
                                     format_func=lambda z: _ZONE_NAMES[z],
                                     key="sl_zone")
                 _sl_bhs = [b["name"] for b in _load_boreholes_by_zone(_sl_zone)]
-                _sl_bh  = st.selectbox("Ho khoan tinh lun", _sl_bhs, key="sl_bh")
+                _sl_bh  = st.selectbox("Hố khoan tính lún", _sl_bhs, key="sl_bh")
             with _sc2:
-                _sl_H   = st.number_input("Chieu cao dap H (m)", 1.0, 10.0, 3.0, 0.5, key="sl_H")
-                _sl_lim = st.number_input("Gioi han lun con lai (cm)", 10, 50, 30, 5, key="sl_lim")
-                _sl_tc  = st.number_input("Thoi gian thi cong (thang)", 3, 36, 6, 1, key="sl_tc")
+                _sl_H   = st.number_input("Chiều cao đắp H (m)", 1.0, 10.0, 3.0, 0.5, key="sl_H")
+                _sl_lim = st.number_input("Giới hạn lún còn lại (cm)", 10, 50, 30, 5, key="sl_lim")
+                _sl_tc  = st.number_input("Thời gian thi công (tháng)", 3, 36, 6, 1, key="sl_tc")
             with _sc3:
-                st.caption("**Phuong phap tinh:** TCCS 41:2022 — Phu luc A (lun so cap), Dieu 9.3-9.4 (do co ket)")
-                st.caption("**Lun con lai DS** = lun tong − lun tai thoi diem ket thuc thi cong")
+                st.caption("**Phương pháp tính:** TCCS 41:2022 — Phụ lục A (lún sơ cấp), Điều 9.3-9.4 (độ cố kết)")
+                st.caption("**Lún còn lại ΔS** = lún tổng − lún tại thời điểm kết thúc thi công")
 
-            if st.button("Tinh toan lun", type="primary", key="sl_calc"):
-                with st.spinner("Dang tinh..."):
+            if st.button("Tính toán lún", type="primary", key="sl_calc"):
+                with st.spinner("Đang tính..."):
                     try:
                         _cmp = _sc_compare(
                             _sl_bh, _sl_zone,
@@ -3520,7 +3520,7 @@ if _page == "settlement":
                         )
                         st.session_state["sl_result"] = _cmp
                     except Exception as _e:
-                        st.error(f"Loi tinh toan: {_e}")
+                        st.error(f"Lỗi tính toán: {_e}")
 
             _cmp = st.session_state.get("sl_result")
 
@@ -3529,41 +3529,41 @@ if _page == "settlement":
                 _cdm_a    = _cmp.get("cdm_area_ratio", 0.25)
                 _col_info1, _col_info2, _col_info3 = st.columns(3)
                 with _col_info1:
-                    st.metric("Lun tu nhien (Cc)", f"{_cmp['S_total_cm']:.0f} cm",
-                              help="Tong lun co ket so cap tinh tu mau thi nghiem theo TCCS41 Phu luc A")
+                    st.metric("Lún tự nhiên (Cc)", f"{_cmp['S_total_cm']:.0f} cm",
+                              help="Tổng lún cố kết sơ cấp tính từ mẫu thí nghiệm theo TCCS41 Phụ lục A")
                 with _col_info2:
                     st.metric("CDM beta (TCVN 9403)", f"{_cdm_beta:.3f}",
-                              f"Ung suat vao dat = {_cdm_beta*100:.0f}% tai trong",
+                              f"Ứng suất vào đất = {_cdm_beta*100:.0f}% tải trọng",
                               help="beta = Es/(a*Ec+(1-a)*Es); Ec=75*Cc_col; Es=250*Cu")
                 with _col_info3:
                     _cdm_sc = next((s for s in _cmp["scenarios"] if s["method"] == "cdm"), None)
                     if _cdm_sc:
                         _cdm_red = (1 - _cdm_sc["S_total_cm"] / _cmp["S_total_cm"]) * 100
-                        st.metric("CDM lun dan hoi (S1)", f"{_cdm_sc['S_total_cm']:.0f} cm",
-                                  f"-{_cdm_red:.0f}% so voi khong xu ly | S2=0",
-                                  help="S1 = q×H/(a×Ec+(1-a)×Es) — dan hoi tuc thoi; S2=0 (CDM den lop cung). TCVN 9403:2012 Phu luc C")
+                        st.metric("CDM lún đàn hồi (S1)", f"{_cdm_sc['S_total_cm']:.0f} cm",
+                                  f"-{_cdm_red:.0f}% so với không xử lý | S2=0",
+                                  help="S1 = q×H/(a×Ec+(1-a)×Es) — đàn hồi tức thời; S2=0 (CDM đến lớp cứng). TCVN 9403:2012 Phụ lục C")
 
                 # Bảng so sánh phương án
                 _sc_rows = []
                 for _sc_item in _cmp["scenarios"]:
                     _t90_str = f"{_sc_item['t_90_months']:.0f}" if _sc_item["t_90_months"] else ">240"
                     _sc_rows.append({
-                        "Phuong an":       _sc_item["label"],
-                        "Lun tong (cm)":   _sc_item["S_total_cm"],
-                        "Lun tai TC (cm)": _sc_item["S_at_constr_cm"],
-                        "U tai TC (%)":    _sc_item["U_at_constr_pct"],
-                        "Lun con lai (cm)":_sc_item["residual_cm"],
-                        "t90% (thang)":    _t90_str,
-                        "Surcharge (m)":   _sc_item["H_surcharge_m"],
-                        "Danh gia":        "Dat" if _sc_item["feasible"] else "Khong dat",
+                        "Phương án":        _sc_item["label"],
+                        "Lún tổng (cm)":    _sc_item["S_total_cm"],
+                        "Lún tại TC (cm)":  _sc_item["S_at_constr_cm"],
+                        "U tại TC (%)":     _sc_item["U_at_constr_pct"],
+                        "Lún còn lại (cm)": _sc_item["residual_cm"],
+                        "t90% (tháng)":     _t90_str,
+                        "Surcharge (m)":    _sc_item["H_surcharge_m"],
+                        "Đánh giá":         "Đạt" if _sc_item["feasible"] else "Không đạt",
                     })
                 _df_sc = pd.DataFrame(_sc_rows)
                 st.dataframe(
                     _df_sc.style.apply(
-                        lambda col: ["background-color:#d4edda" if v == "Dat"
-                                     else "background-color:#f8d7da" if v == "Khong dat"
+                        lambda col: ["background-color:#d4edda" if v == "Đạt"
+                                     else "background-color:#f8d7da" if v == "Không đạt"
                                      else "" for v in col],
-                        subset=["Danh gia"]
+                        subset=["Đánh giá"]
                     ),
                     use_container_width=True, hide_index=True
                 )
@@ -3572,10 +3572,10 @@ if _page == "settlement":
                 _cdm_Es = _cmp.get("cdm_Es_kPa", 0)
                 _cdm_Etb = _cmp.get("cdm_composite_kPa", 0)
                 st.caption(
-                    f"CDM (TCVN 9403 Phu luc C): S1={_cdm_S1:.0f} cm (dan hoi), S2=0 cm. "
+                    f"CDM (TCVN 9403 Phụ lục C): S1={_cdm_S1:.0f} cm (đàn hồi), S2=0 cm. "
                     f"Ec={_cdm_Ec:.0f} kPa | Es={_cdm_Es:.0f} kPa | Etb={_cdm_Etb:.0f} kPa (a={_cdm_a:.2f}). "
-                    "Khong xu ly/Bac tham/Gieng cat: Cc co ket (Terzaghi+Barron). "
-                    "Giai thich: xem 'Ly thuyet tinh lun' cuoi trang."
+                    "Không xử lý/Bấc thấm/Giếng cát: Cc cố kết (Terzaghi+Barron). "
+                    "Giải thích: xem 'Lý thuyết tính lún' cuối trang."
                 )
 
                 # Biểu đồ S(t)
@@ -3605,18 +3605,18 @@ if _page == "settlement":
                     _fig_sl.add_hline(
                         y=max(_S_ref, 0),
                         line_dash="dash", line_color="red",
-                        annotation_text=f"S min de dat DS<={_sl_lim}cm",
+                        annotation_text=f"S min để đạt ΔS≤{_sl_lim}cm",
                         annotation_position="bottom right",
                     )
                     _fig_sl.add_vline(
                         x=float(_sl_tc),
                         line_dash="dot", line_color="gray",
-                        annotation_text=f"Ket thuc TC ({_sl_tc}th)",
+                        annotation_text=f"Kết thúc TC ({_sl_tc}th)",
                     )
                     _fig_sl.update_layout(
-                        title="Quan he S-t theo phuong an xu ly nen",
-                        xaxis_title="Thoi gian (thang)",
-                        yaxis_title="Do lun S (cm)",
+                        title="Quan hệ S-t theo phương án xử lý nền",
+                        xaxis_title="Thời gian (tháng)",
+                        yaxis_title="Độ lún S (cm)",
                         height=420,
                         legend=dict(orientation="h", yanchor="bottom", y=1.02),
                         margin=dict(t=60),
@@ -3624,23 +3624,23 @@ if _page == "settlement":
                     st.plotly_chart(_fig_sl, use_container_width=True)
 
                 # Chi tiết lún từng lớp
-                with st.expander("Chi tiet lun tung lop"):
+                with st.expander("Chi tiết lún từng lớp"):
                     _detail = _cmp["S_detail"]
                     if _detail.get("warning"):
                         st.warning(_detail["warning"])
                     if _detail.get("layers"):
                         _df_lay = pd.DataFrame(_detail["layers"])
                         _df_lay.columns = [
-                            "Do sau (m)", "H lop (m)",
-                            "sv0 (kPa)", "svf (kPa)", "PC (kPa)",
-                            "Cc", "Cs", "e0", "Si (cm)", "Trang thai OC"
+                            "Độ sâu (m)", "H lớp (m)",
+                            "σv0 (kPa)", "σvf (kPa)", "PC (kPa)",
+                            "Cc", "Cs", "e0", "Si (cm)", "Trạng thái OC"
                         ]
                         st.dataframe(_df_lay, use_container_width=True, hide_index=True)
 
                 # ── Biểu đồ ứng suất theo chiều sâu ──────────────────────────
                 _layers = _cmp["S_detail"].get("layers", [])
                 if _layers and _HAS_PLOTLY:
-                    st.markdown("##### Bieu do ung suat theo chieu sau (pham vi anh huong)")
+                    st.markdown("##### Biểu đồ ứng suất theo chiều sâu (phạm vi ảnh hưởng)")
                     _beta_plot = _cmp.get("cdm_beta", 1.0)
                     _dsig = _layers[0]["sigma_vf_kPa"] - _layers[0]["sigma_v0_kPa"]  # Delta_sigma
 
@@ -3648,7 +3648,7 @@ if _page == "settlement":
                     _sv0_arr = [ly["sigma_v0_kPa"]  for ly in _layers]
                     _svf_arr = [ly["sigma_vf_kPa"]  for ly in _layers]
                     _pc_arr  = [ly["PC_kPa"]         for ly in _layers]
-                    # CDM: stress giam theo beta
+                    # CDM: stress giảm theo beta
                     _svf_cdm = [ly["sigma_v0_kPa"] + _beta_plot * (ly["sigma_vf_kPa"] - ly["sigma_v0_kPa"])
                                 for ly in _layers]
                     # OC status color mapping
@@ -3658,34 +3658,29 @@ if _page == "settlement":
                     _oc_vals = [ly["OC_status"] for ly in _layers]
 
                     _fig_str = go.Figure()
-                    # Fill OC zone (sigma_v0 to sigma_vf, blue)
-                    # Plot sigma_v0
                     _fig_str.add_trace(go.Scatter(
                         x=_sv0_arr, y=_depths, mode="lines+markers",
-                        name="sv0 (ung suat ban dau)",
+                        name="σv0 (ứng suất ban đầu)",
                         line=dict(color="#1565C0", width=2),
                         marker=dict(size=5, symbol="circle"),
                     ))
-                    # Plot sigma_vf (no treat)
                     _fig_str.add_trace(go.Scatter(
                         x=_svf_arr, y=_depths, mode="lines+markers",
-                        name="svf (sau dap, khong xu ly)",
+                        name="σvf (sau đắp, không xử lý)",
                         line=dict(color="#C62828", width=2, dash="dot"),
                         marker=dict(size=5, symbol="square"),
                     ))
-                    # Plot sigma_vf_cdm
                     _fig_str.add_trace(go.Scatter(
                         x=_svf_cdm, y=_depths, mode="lines+markers",
-                        name=f"svf CDM (beta={_beta_plot:.3f})",
+                        name=f"σvf CDM (beta={_beta_plot:.3f})",
                         line=dict(color="#E65100", width=2, dash="dash"),
                         marker=dict(size=5, symbol="diamond"),
                     ))
-                    # Plot PC
                     _fig_str.add_trace(go.Scatter(
                         x=[p for p in _pc_arr if p is not None],
                         y=[_depths[i] for i, p in enumerate(_pc_arr) if p is not None],
                         mode="lines+markers",
-                        name="PC (ap luc tien co ket)",
+                        name="PC (áp lực tiền cố kết)",
                         line=dict(color="#2E7D32", width=2, dash="longdash"),
                         marker=dict(size=7, symbol="triangle-up"),
                     ))
@@ -3706,29 +3701,29 @@ if _page == "settlement":
                         )
 
                     _fig_str.update_layout(
-                        xaxis_title="Ung suat huu hieu (kPa)",
-                        yaxis_title="Do sau (m)",
+                        xaxis_title="Ứng suất hữu hiệu (kPa)",
+                        yaxis_title="Độ sâu (m)",
                         yaxis=dict(autorange="reversed", ticksuffix=" m"),
                         height=480,
                         legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
                         margin=dict(t=80, l=70),
                         annotations=[dict(
                             x=0.02, y=0.02, xref="paper", yref="paper",
-                            text="<b>Mau vung:</b> Xanh=OC | Cam=cat qua PC | Do=NC",
+                            text="<b>Màu vùng:</b> Xanh=OC | Cam=cắt qua PC | Đỏ=NC",
                             showarrow=False, font=dict(size=10),
                             bgcolor="rgba(255,255,255,0.7)", bordercolor="gray",
                         )],
                     )
                     st.plotly_chart(_fig_str, use_container_width=True)
                     st.caption(
-                        f"Delta_sigma = {_dsig:.0f} kPa (dap H={_cmp['H_fill_m']}m, gamma=20 kN/m3). "
-                        f"Duong 'svf CDM (beta={_beta_plot:.3f})' minh hoa ung suat vao dat giua cot — "
-                        "CDM tinh lun theo S1 dan hoi (TCVN 9403 Phu luc C), khong phai Cc co ket. "
-                        "Vung NC/cat qua PC la vung co lun Cc lon nhat neu khong xu ly."
+                        f"Δσ = {_dsig:.0f} kPa (đắp H={_cmp['H_fill_m']}m, γ=20 kN/m³). "
+                        f"Đường 'σvf CDM (beta={_beta_plot:.3f})' minh hoạ ứng suất vào đất giữa cột — "
+                        "CDM tính lún theo S1 đàn hồi (TCVN 9403 Phụ lục C), không phải Cc cố kết. "
+                        "Vùng NC/cắt qua PC là vùng có lún Cc lớn nhất nếu không xử lý."
                     )
 
                 # ── Lý thuyết tính lún ────────────────────────────────────────
-                with st.expander("Ly thuyet tinh lun va giai thich ket qua CDM"):
+                with st.expander("Lý thuyết tính lún và giải thích kết quả CDM"):
                     _beta_txt = _cmp.get("cdm_beta", 1.0)
                     _a_txt    = _cmp.get("cdm_area_ratio", 0.25)
                     _S1_txt   = _cmp.get("cdm_S1_cm", 0)
@@ -3736,88 +3731,88 @@ if _page == "settlement":
                     _Es_txt   = _cmp.get("cdm_Es_kPa", 0)
                     _Etb_txt  = _cmp.get("cdm_composite_kPa", 0)
                     st.markdown(f"""
-**1. Lun co ket so cap (khong xu ly / bac tham / gieng cat) — Phu luc A TCCS 41:2022**
+**1. Lún cố kết sơ cấp (không xử lý / bấc thấm / giếng cát) — Phụ lục A TCCS 41:2022**
 
-Moi lop i duoc tinh theo trang thai co ket:
+Mỗi lớp i được tính theo trạng thái cố kết:
 
-| Trang thai | Dieu kien | Cong thuc |
+| Trạng thái | Điều kiện | Công thức |
 |---|---|---|
-| Qua co ket (OC) | svf <= PC | Si = Hi × Cs/(1+e0) × log(svf/sv0) |
-| Cat qua PC | sv0 < PC < svf | Si = Hi × [Cs/(1+e0)×log(PC/sv0) + Cc/(1+e0)×log(svf/PC)] |
-| Binh thuong co ket (NC) | sv0 >= PC | Si = Hi × Cc/(1+e0) × log(svf/sv0) |
+| Quá cố kết (OC) | σvf ≤ PC | Si = Hi × Cs/(1+e0) × log(σvf/σv0) |
+| Cắt qua PC | σv0 < PC < σvf | Si = Hi × [Cs/(1+e0)×log(PC/σv0) + Cc/(1+e0)×log(σvf/PC)] |
+| Bình thường cố kết (NC) | σv0 ≥ PC | Si = Hi × Cc/(1+e0) × log(σvf/σv0) |
 
-Trong do: sv0 = ung suat huu hieu ban dau; svf = sv0 + Delta_sigma; PC = ap luc tien co ket.
+Trong đó: σv0 = ứng suất hữu hiệu ban đầu; σvf = σv0 + Δσ; PC = áp lực tiền cố kết.
 
-Pham vi tinh: tat ca lop dat yeu (mau nen co ket co Cc). Chieu day dai dien H_i dung
-boundary trung diem giua cac mau lien ke (khong phai chieu day mau 0.6m).
+Phạm vi tính: tất cả lớp đất yếu (mẫu nén cố kết có Cc). Chiều dày đại diện H_i dùng
+boundary trung điểm giữa các mẫu liền kề (không phải chiều dày mẫu 0.6m).
 
 ---
 
-**2. Lun CDM — TCVN 9403:2012 Phu luc C (lun dan hoi khoi gia co)**
+**2. Lún CDM — TCVN 9403:2012 Phụ lục C (lún đàn hồi khối gia cố)**
 
-CDM thay the dat yeu bang nen hop dong (composite ground). Lun tinh theo:
+CDM thay thế đất yếu bằng nền hỗn hợp (composite ground). Lún tính theo:
 
 ```
 S = S1 + S2
-S1 = q x H_soft / (a*Ec + (1-a)*Es)   [dan hoi tuc thoi trong khoi gia co]
-S2 = lun co ket ben duoi cot            [= 0 neu CDM cam den lop cung]
+S1 = q × H_soft / (a×Ec + (1-a)×Es)   [đàn hồi tức thời trong khối gia cố]
+S2 = lún cố kết bên dưới cột            [= 0 nếu CDM cắm đến lớp cứng]
 ```
 
-Trong do:
+Trong đó:
 ```
-Ec = 75 x Cc_col = 75 x (field_lab_ratio x qu_lab / 2)   [TCVN 9403 B.5.1]
-Es = 250 x Cu                                              [tuong quan Mesri]
+Ec = 75 × Cc_col = 75 × (field_lab_ratio × qu_lab / 2)   [TCVN 9403 B.5.1]
+Es = 250 × Cu                                              [tương quan Mesri]
 ```
 
-**Ket qua cho zone nay (a = {_a_txt:.2f}):**
-- Ec = {_Ec_txt:.0f} kPa | Es = {_Es_txt:.0f} kPa | E_tong_hop = {_Etb_txt:.0f} kPa
-- **S1 = {_S1_txt:.1f} cm** (dan hoi, xay ra tuc thoi trong qua trinh thi cong)
-- **S2 = 0 cm** (gia thiet CDM cam den lop cung)
+**Kết quả cho zone này (a = {_a_txt:.2f}):**
+- Ec = {_Ec_txt:.0f} kPa | Es = {_Es_txt:.0f} kPa | E_tổng hợp = {_Etb_txt:.0f} kPa
+- **S1 = {_S1_txt:.1f} cm** (đàn hồi, xảy ra tức thời trong quá trình thi công)
+- **S2 = 0 cm** (giả thiết CDM cắm đến lớp cứng)
 
-*He so beta = {_beta_txt:.3f}* (ty le ung suat vao dat giua cot — chi de tham khao bien do ung suat).
+*Hệ số beta = {_beta_txt:.3f}* (tỷ lệ ứng suất vào đất giữa cột — chỉ để tham khảo biên độ ứng suất).
 
 ---
 
-**3. Tai sao lun CDM thap hon rat nhieu so voi khong xu ly?**
+**3. Tại sao lún CDM thấp hơn rất nhiều so với không xử lý?**
 
-| Phuong phap | Co so vat ly | Bien do |
+| Phương pháp | Cơ sở vật lý | Biên độ |
 |---|---|---|
-| Khong xu ly | Cc co ket (log) | {_cmp['S_total_cm']:.0f} cm (lun dai han) |
-| CDM | S1 dan hoi (tuyen tinh) | {_S1_txt:.0f} cm (tuc thoi) |
+| Không xử lý | Cc cố kết (log) | {_cmp['S_total_cm']:.0f} cm (lún dài hạn) |
+| CDM | S1 đàn hồi (tuyến tính) | {_S1_txt:.0f} cm (tức thời) |
 
-Lun Cc phu thuoc log(svf/sv0) — tang manh khi dat NC va H_soft lon.
-Lun dan hoi CDM phu thuoc E_tong_hop — cang cao (cot cung hon, mat do lon hon) thi lun cang nho.
+Lún Cc phụ thuộc log(σvf/σv0) — tăng mạnh khi đất NC và H_soft lớn.
+Lún đàn hồi CDM phụ thuộc E_tổng hợp — càng cao (cột cứng hơn, mật độ lớn hơn) thì lún càng nhỏ.
 
-**De giam S1 them:** Tang dien tich thay the a (cat chat hon), hoac tang qu_lab (> 1 MPa).
+**Để giảm S1 thêm:** Tăng diện tích thay thế a (cắt chặt hơn), hoặc tăng qu_lab (> 1 MPa).
 
 ---
 
-**4. Lun con lai sau thi cong (Delta_S)**
+**4. Lún còn lại sau thi công (ΔS)**
 
-CDM: S1 la lun dan hoi — xay ra NGAY trong qua trinh dap. Delta_S ~ 0 (khong co lun con lai).
+CDM: S1 là lún đàn hồi — xảy ra NGAY trong quá trình đắp. ΔS ≈ 0 (không có lún còn lại).
 
-Cac phuong an khac:
+Các phương án khác:
 ```
-Delta_S = S_total x (1 - U(t_tc))
+ΔS = S_total × (1 - U(t_tc))
 ```
-U(t) phu thuoc vao phuong phap xu ly:
-- Khong xu ly: chi Uv (Terzaghi, Cv, Hdr)
-- Bac tham / Gieng cat: U = 1-(1-Uv)(1-Uh) (co ket ket hop)
+U(t) phụ thuộc vào phương pháp xử lý:
+- Không xử lý: chỉ Uv (Terzaghi, Cv, Hdr)
+- Bấc thấm / Giếng cát: U = 1-(1-Uv)(1-Uh) (cố kết kết hợp)
 
-**Surcharge**: tang ung suat → tang toc do co ket trong thoi gian gia tai,
-nhung khong thay doi S_total duoi tai thiet ke.
+**Surcharge**: tăng ứng suất → tăng tốc độ cố kết trong thời gian gia tải,
+nhưng không thay đổi S_total dưới tải thiết kế.
 
-TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
-(duong cap 1 doan thong thuong) sau khi lam xong mat duong.
+TCCS 41:2022 yêu cầu ΔS ≤ {_cmp['residual_limit_cm']:.0f} cm
+(đường cấp 1 đoạn thông thường) sau khi làm xong mặt đường.
 """)
 
         # ── PHẦN 1b: Lún sơ bộ TKCS — Điều 9.2.3 TCCS 41:2022 ──────────────
         st.divider()
-        st.markdown("### Tinh lun so bo TKCS — Dieu 9.2.3 TCCS 41:2022 (vong lap)")
+        st.markdown("### Tính lún sơ bộ TKCS — Điều 9.2.3 TCCS 41:2022 (vòng lặp)")
         st.caption(
-            "H'_tk = H_fill + S_gt — chieu cao dap hieu dung bao gom phan dap lun vao dat yeu. "
-            "Lap lai den khi |S_calc - S_gt| < tolerance. "
-            "Ket qua lon hon tinh toan mot lan (khong lap) do trong luong dap phan lun."
+            "H'_tk = H_fill + S_gt — chiều cao đắp hiệu dụng bao gồm phần đắp lún vào đất yếu. "
+            "Lặp lại đến khi |S_calc - S_gt| < tolerance. "
+            "Kết quả lớn hơn tính toán một lần (không lặp) do trọng lượng đắp phần lún."
         )
         _it1, _it2, _it3 = st.columns([1, 1, 2])
         with _it1:
@@ -3825,22 +3820,22 @@ TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
                                 format_func=lambda z: _ZONE_NAMES[z],
                                 key="it_zone")
             _it_bhs = [b["name"] for b in _load_boreholes_by_zone(_it_zone)]
-            _it_bh  = st.selectbox("Ho khoan", _it_bhs, key="it_bh")
+            _it_bh  = st.selectbox("Hố khoan", _it_bhs, key="it_bh")
         with _it2:
             _it_H    = st.number_input("H_fill (m)", 1.0, 10.0, 3.0, 0.5, key="it_H")
-            _it_pct  = st.number_input("S_gt ban dau (% H_soft)", 1.0, 30.0, 7.5, 0.5,
+            _it_pct  = st.number_input("S_gt ban đầu (% H_soft)", 1.0, 30.0, 7.5, 0.5,
                                         key="it_pct",
-                                        help="Dat thuong: 5-10%; Than bun: 20-30% (Dieu 9.2.3)")
+                                        help="Đất thường: 5-10%; Than bùn: 20-30% (Điều 9.2.3)")
             _it_tol  = st.number_input("Tolerance (cm)", 0.1, 5.0, 1.0, 0.1, key="it_tol")
         with _it3:
             st.caption(
-                "**Cong thuc:** H'_tk = H_fill + S_gt  →  Delta_sigma = H'_tk × gamma_fill  →  "
-                "S_c = Sum Cc-formula  →  kiem tra |S_c - S_gt| < tol"
+                "**Công thức:** H'_tk = H_fill + S_gt  →  Δσ = H'_tk × γ_fill  →  "
+                "S_c = Σ công thức Cc  →  kiểm tra |S_c - S_gt| < tol"
             )
-            st.caption("**Khi nao dung:** TKCS khi chua co mau Cc chi tiet — dung thong so trung binh zone.")
+            st.caption("**Khi nào dùng:** TKCS khi chưa có mẫu Cc chi tiết — dùng thông số trung bình zone.")
 
-        if st.button("Tinh lun so bo 9.2.3", type="secondary", key="it_calc"):
-            with st.spinner("Dang lap..."):
+        if st.button("Tính lún sơ bộ 9.2.3", type="secondary", key="it_calc"):
+            with st.spinner("Đang lặp..."):
                 try:
                     _iter_res = _sc_iter923(
                         _it_bh, _it_zone,
@@ -3850,52 +3845,52 @@ TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
                     )
                     st.session_state["it_result"] = _iter_res
                 except Exception as _e:
-                    st.error(f"Loi tinh toan 9.2.3: {_e}")
+                    st.error(f"Lỗi tính toán 9.2.3: {_e}")
 
         _iter_res = st.session_state.get("it_result")
         if _iter_res:
             _im1, _im2, _im3 = st.columns(3)
             with _im1:
-                st.metric("Lun khong lap (tham chieu)",
+                st.metric("Lún không lặp (tham chiếu)",
                           f"{_iter_res['S_ref_cm']:.0f} cm",
-                          help="Delta_sigma = H_fill × gamma (khong tinh phan dap lun vao)")
+                          help="Δσ = H_fill × γ (không tính phần đắp lún vào)")
             with _im2:
-                st.metric("Lun so bo TKCS (Dieu 9.2.3)",
+                st.metric("Lún sơ bộ TKCS (Điều 9.2.3)",
                           f"{_iter_res['S_final_cm']:.0f} cm",
-                          f"+{_iter_res['S_increase_pct']:.0f}% so voi khong lap",
+                          f"+{_iter_res['S_increase_pct']:.0f}% so với không lặp",
                           delta_color="inverse",
-                          help="Delta_sigma = H'_tk × gamma; H'_tk = H_fill + S_hoi_tu")
+                          help="Δσ = H'_tk × γ; H'_tk = H_fill + S_hội tụ")
             with _im3:
-                _cv_str = "Hoi tu" if _iter_res["converged"] else "Chua hoi tu"
-                st.metric(f"Vong lap ({_cv_str})",
-                          f"{_iter_res['n_iterations']} vong",
+                _cv_str = "Hội tụ" if _iter_res["converged"] else "Chưa hội tụ"
+                st.metric(f"Vòng lặp ({_cv_str})",
+                          f"{_iter_res['n_iterations']} vòng",
                           f"tol={_iter_res['tolerance_cm']} cm | S_gt_init={_iter_res['S_gt_init_cm']:.0f} cm")
 
-            st.markdown(f"**Chi tiet vong lap** — Zone {_iter_res['zone_code']}, "
+            st.markdown(f"**Chi tiết vòng lặp** — Zone {_iter_res['zone_code']}, "
                         f"HK {_iter_res['bh_name']}, H_fill={_iter_res['H_fill_m']}m, "
                         f"H_soft={_iter_res['H_soft_m']}m")
             _df_iter = pd.DataFrame(_iter_res["iterations"]).rename(columns={
-                "iter":       "Vong",
+                "iter":       "Vòng",
                 "S_gt_cm":    "S_gt (cm)",
                 "H_eff_m":    "H'_tk (m)",
-                "Dsigma_kPa": "Delta_sigma (kPa)",
+                "Dsigma_kPa": "Δσ (kPa)",
                 "S_calc_cm":  "S_calc (cm)",
                 "delta_cm":   "Delta (cm)",
-                "converged":  "Hoi tu",
+                "converged":  "Hội tụ",
             })
             st.dataframe(
                 _df_iter.style.apply(
                     lambda col: ["background-color:#d4edda" if v is True
                                  else "background-color:#fff3cd" if v is False
                                  else "" for v in col],
-                    subset=["Hoi tu"]
+                    subset=["Hội tụ"]
                 ),
                 use_container_width=True, hide_index=True,
             )
             st.caption(
-                f"Lun so bo TKCS = {_iter_res['S_final_cm']:.0f} cm "
-                f"(lon hon {_iter_res['S_increase_pct']:.0f}% so voi tinh mot lan). "
-                "Nguyen nhan: dat yeu bi nao xuong, can them dap bu → tang tai trong → tang lun them."
+                f"Lún sơ bộ TKCS = {_iter_res['S_final_cm']:.0f} cm "
+                f"(lớn hơn {_iter_res['S_increase_pct']:.0f}% so với tính một lần). "
+                "Nguyên nhân: đất yếu bị nào xuống, cần thêm đắp bù → tăng tải trọng → tăng lún thêm."
             )
 
 
