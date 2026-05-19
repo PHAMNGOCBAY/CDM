@@ -1,4 +1,5 @@
 # Lý Thuyết Tính Toán Cọc Đất Xi Măng (CDM)
+
 ## Căn cứ: TCVN 9403:2012 – Gia cố nền đất yếu – Phương pháp trụ đất xi măng
 
 ---
@@ -9,65 +10,49 @@
 
 Cường độ nén nở hông của trụ CDM tại hiện trường lấy bằng:
 
-```
-qu,tk = qu,TN / FS
-```
+$$q_{u,tk} = \frac{q_{u,TN}}{FS}$$
 
 Trong đó:
-- `qu,TN` : cường độ nén nở hông xác định từ thí nghiệm phòng (kPa)
-- `FS`    : hệ số quy đổi phòng → hiện trường (thường FS = 2,0)
-- `qu,tk` : cường độ nén nở hông thiết kế tại hiện trường (kPa)
+- $q_{u,TN}$: cường độ nén nở hông xác định từ thí nghiệm phòng (kPa)
+- $FS$: hệ số quy đổi phòng → hiện trường (thường $FS = 2{,}0$)
+- $q_{u,tk}$: cường độ nén nở hông thiết kế tại hiện trường (kPa)
 
 Cường độ kháng cắt thiết kế:
 
-```
-Cc = qu,tk / 2    (kN/m²)
-```
+$$C_c = \frac{q_{u,tk}}{2} \quad (\text{kN/m}^2)$$
 
 ### 1.2 Mô đun đàn hồi trụ CDM
 
 Theo TCVN 9403:2012 (Mục 3.3 và Phụ lục C):
 
-```
-Ec = 100 × Cc    (kN/m²)
-```
+$$E_c = 100 \times C_c \quad (\text{kN/m}^2)$$
 
 ### 1.3 Mô đun biến dạng đất nền
 
 Mô đun biến dạng đất nền yếu tính theo sức kháng cắt không thoát nước:
 
-```
-Es = 250 × Cu    (kN/m²)
-```
+$$E_s = 250 \times C_u \quad (\text{kN/m}^2)$$
 
-Trong đó `Cu` (hoặc `Su`) là sức kháng cắt không thoát nước trung bình của lớp đất yếu, xác định từ thí nghiệm cắt cánh hiện trường (VST) hoặc thí nghiệm UU trong phòng (kN/m²).
+Trong đó $C_u$ (hoặc $S_u$) là sức kháng cắt không thoát nước trung bình của lớp đất yếu, xác định từ thí nghiệm cắt cánh hiện trường (VST) hoặc thí nghiệm UU trong phòng (kN/m²).
 
 ---
 
 ## 2. Tỷ Lệ Diện Tích Thay Thế
 
-Tỷ lệ diện tích thay thế `a` là tỷ số diện tích mặt cắt ngang trụ CDM trên diện tích ô lưới bố trí.
+Tỷ lệ diện tích thay thế $a$ là tỷ số diện tích mặt cắt ngang trụ CDM trên diện tích ô lưới bố trí.
 
 ### 2.1 Bố trí lưới tam giác (khuyến dùng)
 
-```
-         π × D²
-a = ─────────────────
-      2√3 × e²
-```
+$$a = \frac{\pi D^2}{2\sqrt{3}\, e^2}$$
 
 ### 2.2 Bố trí lưới vuông
 
-```
-       π × D²
-a = ───────────
-      4 × e²
-```
+$$a = \frac{\pi D^2}{4\, e^2}$$
 
 Trong đó:
-- `D` : đường kính trụ CDM (m)
-- `e` : khoảng cách tâm-tâm giữa các trụ (m)
-- `a` : tỷ lệ thay thế (không thứ nguyên; thường 0,15 ÷ 0,35)
+- $D$: đường kính trụ CDM (m)
+- $e$: khoảng cách tâm – tâm giữa các trụ (m)
+- $a$: tỷ lệ thay thế (không thứ nguyên; thường $0{,}15 \div 0{,}35$)
 
 ---
 
@@ -75,11 +60,9 @@ Trong đó:
 
 Mô đun tương đương của khối nền được gia cố CDM (Phụ lục C – TCVN 9403:2012):
 
-```
-Etb = a × Ec + (1 − a) × Es    (kN/m²)
-```
+$$E_{tb} = a \cdot E_c + (1 - a) \cdot E_s \quad (\text{kN/m}^2)$$
 
-`Etb` phụ thuộc đồng thời vào chất lượng xi măng đất (Ec) và tính chất đất nền (Es). Khoảng cách trụ nhỏ hơn → `a` lớn hơn → `Etb` lớn hơn → độ lún nhỏ hơn.
+$E_{tb}$ phụ thuộc đồng thời vào chất lượng xi măng đất ($E_c$) và tính chất đất nền ($E_s$). Khoảng cách trụ nhỏ hơn → $a$ lớn hơn → $E_{tb}$ lớn hơn → độ lún nhỏ hơn.
 
 ---
 
@@ -87,40 +70,30 @@ Etb = a × Ec + (1 − a) × Es    (kN/m²)
 
 ### 4.1 Tổng độ lún nền gia cố
 
-```
-S = S₁ + S₂    (C.1)
-```
+$$S = S_1 + S_2 \qquad \text{(C.1)}$$
 
-### 4.2 Độ lún bản thân khối CDM (S₁)
+### 4.2 Độ lún bản thân khối CDM ($S_1$)
 
-```
-S₁ = q × H / Etb × 100    (cm)    (C.2)
-```
+$$S_1 = \frac{q \times H}{E_{tb}} \times 100 \quad (\text{cm}) \qquad \text{(C.2)}$$
 
 Trong đó:
-- `q`  : tổng tải trọng tác dụng lên mặt nền (kN/m²)
-- `H`  = `Lc` : chiều dài (chiều sâu) trụ CDM (m)
-- `Etb`: mô đun tương đương (kN/m²)
+- $q$: tổng tải trọng tác dụng lên mặt nền (kN/m²)
+- $H = L_c$: chiều dài (chiều sâu) trụ CDM (m)
+- $E_{tb}$: mô đun tương đương (kN/m²)
 
-### 4.3 Độ lún dưới mũi trụ (S₂)
+### 4.3 Độ lún dưới mũi trụ ($S_2$)
 
-`S₂` là độ lún của lớp đất bên dưới mũi trụ CDM.
+Khi trụ CDM xuyên qua toàn bộ lớp đất yếu và cắm vào lớp đất tốt hơn, $S_2$ lấy bằng 0:
 
-Khi trụ CDM xuyên qua toàn bộ lớp đất yếu và cắm vào lớp đất tốt hơn, `S₂` có thể lấy bằng 0. Trong trường hợp này:
-
-```
-S = S₁    (cm)
-```
+$$S = S_1 \quad (\text{cm})$$
 
 ### 4.4 Tải trọng thiết kế
 
 Tổng tải trọng gây lún bao gồm:
 
-```
-q = q_giao_thông + h_mặt_đường × γ_mặt_đường
-                 + h_đắp × γ_đắp
-                 + h_đệm × γ_đệm    (kN/m²)
-```
+$$q = q_{gt} + h_{md} \cdot \gamma_{md} + h_{đắp} \cdot \gamma_{đắp} + h_{đệm} \cdot \gamma_{đệm} \quad (\text{kN/m}^2)$$
+
+Trong đó $q_{gt}$ là hoạt tải giao thông, $h$ là chiều dày từng lớp, $\gamma$ là dung trọng tương ứng.
 
 ---
 
@@ -130,117 +103,77 @@ q = q_giao_thông + h_mặt_đường × γ_mặt_đường
 
 Sức chịu tải giới hạn của một trụ CDM:
 
-```
-Qult = Qmũi + Qthân    (kN)
-```
+$$Q_{ult} = Q_{mũi} + Q_{thân} \quad (\text{kN})$$
 
 **Sức chịu tải mũi trụ:**
 
-```
-Qmũi = 9 × Cc × Ac    (kN)
-```
+$$Q_{mũi} = 9 \times C_c \times A_c \quad (\text{kN})$$
 
 **Sức chịu tải do ma sát thân trụ:**
 
-```
-Qthân = π × D × Lc × Cu    (kN)
-```
+$$Q_{thân} = \pi \times D \times L_c \times C_u \quad (\text{kN})$$
 
-Trong đó:
-- `Ac = π × D² / 4` : diện tích mặt cắt ngang trụ (m²)
-- `9`  : hệ số sức chịu tải tại mũi (đất sét, điều kiện không thoát nước)
-- `Cu` : sức kháng cắt không thoát nước trung bình dọc thân trụ (kN/m²)
+Trong đó $A_c = \dfrac{\pi D^2}{4}$ là diện tích mặt cắt ngang trụ (m²); hệ số 9 áp dụng cho đất sét điều kiện không thoát nước.
 
-**Sức chịu tải cho phép (FS = 2):**
+**Sức chịu tải cho phép ($FS = 2$):**
 
-```
-Qa = Qult / FS    (kN)
-```
+$$Q_a = \frac{Q_{ult}}{FS} \quad (\text{kN})$$
 
 ### 5.2 Ứng suất tập trung lên đầu trụ
 
-Khi nền hỗn hợp (trụ CDM + đất) chịu tải trọng phân bố đều `q`, ứng suất phân bổ lên đầu trụ CDM:
+Khi nền hỗn hợp (trụ CDM + đất) chịu tải trọng phân bố đều $q$, ứng suất phân bổ lên đầu trụ CDM:
 
-```
-σ_col = (Ec / Etb) × q    (kN/m²)
-```
+$$\sigma_{col} = \frac{E_c}{E_{tb}} \times q \quad (\text{kN/m}^2)$$
 
 **Lực nén lên một trụ CDM:**
 
-```
-Pcol = σ_col × Ac    (kN)
-```
+$$P_{col} = \sigma_{col} \times A_c \quad (\text{kN})$$
 
 **Điều kiện đạt sức chịu tải:**
 
-```
-Pcol < Qa    →  Đạt
-```
+$$P_{col} < Q_a \quad \Rightarrow \quad \text{Đạt}$$
 
 ---
 
 ## 6. Kiểm Tra Chọc Thủng Lớp Đệm Xi Măng
 
-> Căn cứ: Technical Manual of ALiCC Method for Soft Soil Improvement – Public Works Research Institute (Japan)
+> Căn cứ: Technical Manual of ALiCC Method for Soft Soil Improvement – PWRI Japan
 
-### 6.1 Thông số lớp đệm xi măng
+### 6.1 Ứng suất cắt cho phép
 
-| Ký hiệu | Mô tả | Giá trị điển hình |
-|---------|-------|-----------------|
-| `Hse` | Bề dày lớp đệm xi măng | 0,40 m |
-| `He` | Chiều cao cát đắp trên đệm (= h_fill) | m |
-| `quckse` | Cường độ kháng nén đệm xi măng | 600 kPa |
-| `Fs` | Hệ số an toàn ứng suất cắt | 3 |
-| `θ` | Góc đàn hồi dẻo – Plastic arch angle | 80° |
-| `qa` | SCT đất nền vùng không gia cố | 0 kPa |
+$$\tau_{ase} = \frac{q_{uckse}}{2 \cdot F_s} \quad (\text{kPa})$$
 
-### 6.2 Ứng suất cắt cho phép
+### 6.2 Chiều cao vùng vòm đất
 
-```
-τase = quckse / (2 × Fs)    (kPa)
-```
+$$H_o = (e - D) \cdot \tan\!\left(\frac{\theta}{2}\right) \quad (\text{m})$$
 
-### 6.3 Chiều cao vùng vòm đất – kiểm tra điều kiện
+**Trường hợp CT(1) — $H_o \leq H_e$:**
 
-```
-Ho = (e − D) × tan(θ/2)    (m)
-```
+$$V_{soil} = \left[\frac{(e-D) \cdot e^2}{2} - \frac{\pi(e^3-D^3)}{24} + \frac{(4-\pi)(\sqrt{2}-1)\,e^3}{24}\right] \cdot \tan\theta \quad (\text{m}^3)$$
 
-**Nếu Ho ≤ He → dùng Công thức (1):**
+**Trường hợp CT(2) — $H_o > H_e$:**
 
-```
-Vsoil = [(e−D)·e²/2 − π(e³−D³)/24 + (4−π)(√2−1)e³/24] × tan(θ)    (m³)
-```
+$$V_{soil} = H_e \cdot e^2 - \frac{1}{3}\left[\pi r_0^2\!\left(H_e + \frac{D}{2}\tan\theta\right) - \pi\frac{D}{2}\tan\theta\right] \quad (\text{m}^3)$$
 
-**Nếu Ho > He → dùng Công thức (2):**
+với $r_0 = \dfrac{H_e}{\tan\theta} + \dfrac{D}{2}$.
 
-```
-Vsoil = He·e² − (1/3)·[π·(He/tan θ + D/2)²·(He + D/2·tan θ) − π·D/2·tan θ]    (m³)
-```
+### 6.3 Thể tích đệm xi măng tác dụng
 
-### 6.4 Thể tích đệm xi măng tác dụng lên vùng không gia cố
+$$V_{CGCXM} = H_{se} \cdot e^2 - \frac{1}{3}\left[\pi r_{mat}^2\!\left(H_{se} + \frac{D}{2}\tan\theta\right) - \pi\frac{D}{2}\tan\theta\right] \quad (\text{m}^3)$$
 
-```
-VCGCXM = Hse·e² − (1/3)·[π·(Hse/tan θ + D/2)²·(Hse + D/2·tan θ) − π·D/2·tan θ]    (m³)
-```
+với $r_{mat} = \dfrac{H_{se}}{\tan\theta} + \dfrac{D}{2}$.
 
-### 6.5 Áp lực thẳng đứng lên phần không gia cố
+### 6.4 Áp lực và ứng suất cắt thực tế
 
-```
-PSoil = [(Vsoil − VCGCXM)·γ_đắp + VCGCXM·γ_đệm] / (e² − π·D²/4)    (kPa)
-```
+$$A_{unit} = e^2 - \frac{\pi D^2}{4}$$
 
-### 6.6 Ứng suất cắt thực tế và điều kiện chọc thủng
+$$P_{Soil} = \frac{(V_{soil} - V_{CGCXM}) \cdot \gamma_{fill} + V_{CGCXM} \cdot \gamma_{mat}}{A_{unit}} \quad (\text{kPa})$$
 
-```
-τse = (PSoil − qa) × (e² − π·D²/4) / (π × D × Hse)    (kPa)
-```
+$$\tau_{se} = \frac{(P_{Soil} - q_a) \cdot A_{unit}}{\pi \cdot D \cdot H_{se}} \quad (\text{kPa})$$
 
 **Điều kiện đạt:**
 
-```
-τse ≤ τase    →  Đạt (không xảy ra chọc thủng)
-```
+$$\tau_{se} \leq \tau_{ase} \quad \Rightarrow \quad \text{Đạt (không xảy ra chọc thủng)}$$
 
 ---
 
@@ -250,39 +183,39 @@ PSoil = [(Vsoil − VCGCXM)·γ_đắp + VCGCXM·γ_đệm] / (e² − π·D²/4
 
 | Ký hiệu | Đơn vị | Mô tả |
 |---------|--------|-------|
-| D | m | Đường kính trụ CDM |
-| e | m | Khoảng cách tâm-tâm |
-| Lc | m | Chiều dài trụ CDM |
-| qu,tk | kPa | Cường độ nén nở hông thiết kế hiện trường |
-| Cc = qu,tk/2 | kN/m² | Cường độ kháng cắt thiết kế trụ CDM |
-| Ec = 100·Cc | kN/m² | Mô đun đàn hồi trụ CDM |
-| Cu (Su) | kN/m² | Sức kháng cắt không thoát nước đất nền |
-| Es = 250·Cu | kN/m² | Mô đun biến dạng đất nền yếu |
-| a | – | Tỷ lệ diện tích thay thế |
-| Etb = a·Ec+(1-a)·Es | kN/m² | Mô đun tương đương nền gia cố |
-| q | kN/m² | Tổng tải trọng tác dụng |
-| S₁ = q·Lc/Etb | cm | Độ lún bản thân khối CDM |
-| S₂ | cm | Độ lún dưới mũi trụ (= 0 khi trụ xuyên lớp bùn) |
-| Qult | kN | Sức chịu tải giới hạn một trụ CDM |
-| Qa = Qult/2 | kN | Sức chịu tải cho phép (FS = 2) |
-| Pcol = σ_col·Ac | kN | Lực nén tác dụng lên một trụ CDM |
+| $D$ | m | Đường kính trụ CDM |
+| $e$ | m | Khoảng cách tâm – tâm |
+| $L_c$ | m | Chiều dài trụ CDM |
+| $q_{u,tk}$ | kPa | Cường độ nén nở hông thiết kế hiện trường |
+| $C_c = q_{u,tk}/2$ | kN/m² | Cường độ kháng cắt thiết kế trụ CDM |
+| $E_c = 100 C_c$ | kN/m² | Mô đun đàn hồi trụ CDM |
+| $C_u \ (S_u)$ | kN/m² | Sức kháng cắt không thoát nước đất nền |
+| $E_s = 250 C_u$ | kN/m² | Mô đun biến dạng đất nền yếu |
+| $a$ | – | Tỷ lệ diện tích thay thế |
+| $E_{tb} = aE_c+(1{-}a)E_s$ | kN/m² | Mô đun tương đương nền gia cố |
+| $q$ | kN/m² | Tổng tải trọng tác dụng |
+| $S_1 = qL_c/E_{tb} \times 100$ | cm | Độ lún bản thân khối CDM |
+| $S_2$ | cm | Độ lún dưới mũi trụ ($= 0$ khi trụ xuyên lớp bùn) |
+| $Q_{ult}$ | kN | Sức chịu tải giới hạn một trụ CDM |
+| $Q_a = Q_{ult}/2$ | kN | Sức chịu tải cho phép ($FS = 2$) |
+| $P_{col} = \sigma_{col} \cdot A_c$ | kN | Lực nén tác dụng lên một trụ CDM |
 
 ### 7.2 Ký hiệu kiểm tra chọc thủng (ALiCC – PWRI Japan)
 
 | Ký hiệu | Đơn vị | Mô tả |
-| ------- | ------ | ----- |
-| Hse | m | Bề dày lớp đệm xi măng |
-| He | m | Chiều cao lớp đắp phía trên đệm (= h_fill) |
-| quckse | kPa | Cường độ kháng nén nở hông của đệm xi măng |
-| Fs | – | Hệ số an toàn ứng suất cắt (thường = 3) |
-| θ | ° | Góc vòm đất – Plastic arch angle (thường = 80°) |
-| qa | kPa | Sức chịu tải đất nền vùng không gia cố (thường = 0) |
-| τase = quckse/(2·Fs) | kPa | Ứng suất cắt cho phép của đệm xi măng |
-| Ho = (e−D)·tan(θ/2) | m | Chiều cao vùng vòm đất |
-| Vsoil | m³ | Thể tích đất đắp tác dụng lên ô lưới (CT1 hoặc CT2) |
-| VCGCXM | m³ | Thể tích đệm xi măng phân bổ vào vùng không gia cố |
-| PSoil | kPa | Áp lực thẳng đứng lên phần không gia cố |
-| τse | kPa | Ứng suất cắt thực tế tại mặt tiếp xúc đệm – trụ |
+|---------|--------|-------|
+| $H_{se}$ | m | Bề dày lớp đệm xi măng |
+| $H_e$ | m | Chiều cao lớp đắp phía trên đệm |
+| $q_{uckse}$ | kPa | Cường độ kháng nén nở hông đệm xi măng |
+| $F_s$ | – | Hệ số an toàn ứng suất cắt (thường $= 3$) |
+| $\theta$ | ° | Góc vòm đất – Plastic arch angle (thường $= 80°$) |
+| $q_a$ | kPa | Sức chịu tải đất nền vùng không gia cố |
+| $\tau_{ase}$ | kPa | Ứng suất cắt cho phép của đệm xi măng |
+| $H_o$ | m | Chiều cao vùng vòm đất |
+| $V_{soil}$ | m³ | Thể tích đất đắp tác dụng lên ô lưới |
+| $V_{CGCXM}$ | m³ | Thể tích đệm xi măng phân bổ vào vùng không gia cố |
+| $P_{Soil}$ | kPa | Áp lực thẳng đứng lên phần không gia cố |
+| $\tau_{se}$ | kPa | Ứng suất cắt thực tế tại mặt tiếp xúc đệm – trụ |
 
 ---
 
@@ -291,6 +224,6 @@ PSoil = [(Vsoil − VCGCXM)·γ_đắp + VCGCXM·γ_đệm] / (e² − π·D²/4
 1. **TCVN 9403:2012** – Gia cố nền đất yếu – Phương pháp trụ đất xi măng. Bộ Xây dựng, 2012.
 2. **TCVN 4200:2012** – Đất xây dựng – Phương pháp xác định tính nén lún trong phòng thí nghiệm.
 3. **TCVN 8868:2011** – Thí nghiệm xác định sức kháng cắt không cố kết – không thoát nước của đất dính.
-4. **Asian Institute of Technology (AIT)** – Design and Construction of Ground Improvement Works, 2002. (Cơ sở phương pháp tính sức chịu tải Phụ lục B – TCVN 9403:2012.)
+4. **Asian Institute of Technology (AIT)** – Design and Construction of Ground Improvement Works, 2002.
 5. **Terashi, M.** – The state of practice in deep mixing methods. Proc. 3rd Int. Conf. Grouting & Ground Treatment, 2003.
-6. **Public Works Research Institute (PWRI), Japan** – Technical Manual of ALiCC Method for Soft Soil Improvement. (Cơ sở kiểm tra chọc thủng lớp đệm xi măng – Mục 6.)
+6. **Public Works Research Institute (PWRI), Japan** – Technical Manual of ALiCC Method for Soft Soil Improvement.

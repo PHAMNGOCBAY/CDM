@@ -170,7 +170,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── CSS nhỏ để khớp style app hiện tại ───────────────────────────────────────
+# ── CSS app + print PDF ───────────────────────────────────────────────────────
 st.markdown("""
 <style>
 [data-testid="stSidebar"] { min-width: 220px; max-width: 280px; }
@@ -179,6 +179,53 @@ div[data-testid="stMetricValue"] { font-size: 1.1rem; }
 [data-testid="stToolbar"] { display: none; }
 [data-testid="stDecoration"] { display: none; }
 footer { visibility: hidden; }
+
+/* ── Nội dung lý thuyết trong expander: font rõ hơn trên màn hình ── */
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] li,
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] td,
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] th {
+    font-size: 15px;
+    line-height: 1.75;
+}
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] h2 { font-size: 18px; margin-top: 1.2em; }
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] h3 { font-size: 16px; margin-top: 1em; }
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] h4 { font-size: 15px; }
+
+/* ── Print / PDF ── */
+@media print {
+    /* Ẩn sidebar và toolbar khi in */
+    [data-testid="stSidebar"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"],
+    footer { display: none !important; }
+
+    /* Mở rộng vùng nội dung ra full trang */
+    [data-testid="stAppViewContainer"] > section { padding: 0 !important; }
+    .block-container { max-width: 100% !important; padding: 0 1cm !important; }
+
+    /* Font báo cáo kỹ thuật */
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    [data-testid="stMarkdownContainer"] td,
+    [data-testid="stMarkdownContainer"] th {
+        font-family: "Times New Roman", Times, serif !important;
+        font-size: 12pt !important;
+        line-height: 1.6 !important;
+        color: #000 !important;
+    }
+    [data-testid="stMarkdownContainer"] h1 { font-size: 16pt !important; font-weight: bold !important; page-break-after: avoid; }
+    [data-testid="stMarkdownContainer"] h2 { font-size: 14pt !important; font-weight: bold !important; page-break-after: avoid; }
+    [data-testid="stMarkdownContainer"] h3 { font-size: 13pt !important; font-weight: bold !important; page-break-after: avoid; }
+    [data-testid="stMarkdownContainer"] h4 { font-size: 12pt !important; font-weight: bold !important; page-break-after: avoid; }
+
+    /* Không ngắt trang giữa bảng */
+    [data-testid="stMarkdownContainer"] table { page-break-inside: avoid; }
+
+    /* Mở expander khi in */
+    details { display: block !important; }
+    summary { display: none !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
