@@ -3148,10 +3148,8 @@ if _page == "settlement":
     if _HAS_SC:
         st.subheader("Lun nen – So sanh phuong an xu ly (TCCS 41:2022)")
 
-        _stab1, _stab2 = st.tabs(["So sanh phuong an", "Kiem tra mau vs TCCS41"])
-
-        # ── TAB 1: So sánh phương án ─────────────────────────────────────────
-        with _stab1:
+        # ── PHẦN 1: So sánh phương án ────────────────────────────────────────
+        if True:
             _sc1, _sc2, _sc3 = st.columns([1, 1, 2])
             with _sc1:
                 _sl_zone = st.radio("Zone", list(_ZONE_NAMES.keys()),
@@ -3469,78 +3467,78 @@ TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
 (duong cap 1 doan thong thuong) sau khi lam xong mat duong.
 """)
 
-        # ── TAB 2: Kiểm tra mẫu vs TCCS41 ───────────────────────────────────
-        with _stab2:
-            st.markdown("**Kiem tra so luong mau nen co ket hien co vs TCCS 41:2022 (Dieu 5.3.3)**")
-            st.caption("Yeu cau: >=1 mau/lop hoac >=1 mau/3m voi lop day; "
-                       "chieu sau dat yeu ~ chieu sau ho khoan (toi da 35m).")
+        # ── PHẦN 2: Kiểm tra mẫu vs TCCS41 ──────────────────────────────────
+        st.divider()
+        st.markdown("**Kiem tra so luong mau nen co ket hien co vs TCCS 41:2022 (Dieu 5.3.7)**")
+        st.caption("Yeu cau: >=1 mau/lop hoac >=1 mau/3m voi lop day; "
+                   "chieu sau dat yeu ~ chieu sau ho khoan (toi da 35m).")
 
-            _chk_cols = st.columns(3)
-            for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
-                with _chk_cols[_ci]:
-                    try:
-                        _chk = _sc_check(_zc)
-                        _s   = _chk["zone_summary"]
-                        st.metric(
-                            f"Zone {_zc}",
-                            f"{_s['n_pass']}/{_s['n_boreholes']} HK dat",
-                            f"Thieu {_s['total_Cc_gap']} mau Cc",
-                            delta_color="normal" if _s["pass_rate_pct"] >= 80 else "inverse",
-                        )
-                        st.caption(
-                            f"Cc hien co: **{_s['n_Cc_actual']}**  \n"
-                            f"Cc can co:  **{_s['n_Cc_required']}**  \n"
-                            f"VST zone: **{_s['n_VST_zone']}** diem"
-                        )
-                        _df_chk = pd.DataFrame(_chk["boreholes"])[[
-                            "name", "depth_m", "soft_h_m",
-                            "n_Cc_actual", "n_Cc_required", "n_Cc_gap",
-                            "n_SPT_actual", "status"
-                        ]].rename(columns={
-                            "name":          "Ho khoan",
-                            "depth_m":       "Sau (m)",
-                            "soft_h_m":      "H dat yeu (m)",
-                            "n_Cc_actual":   "Cc co",
-                            "n_Cc_required": "Cc can",
-                            "n_Cc_gap":      "Thieu",
-                            "n_SPT_actual":  "SPT co",
-                            "status":        "Ket qua",
-                        })
-                        st.dataframe(
-                            _df_chk.style.apply(
-                                lambda col: ["color:green" if v == "Dat"
-                                             else "color:red" if v == "Khong dat"
-                                             else "" for v in col],
-                                subset=["Ket qua"]
-                            ),
-                            use_container_width=True, hide_index=True,
-                        )
-                    except Exception as _ex:
-                        st.error(f"Zone {_zc}: {_ex}")
-
-            st.divider()
-            st.markdown("**Tom tat yeu cau bo sung thi nghiem**")
-            _sum_rows = []
-            for _zc in ["NHC", "BXN", "KE"]:
+        _chk_cols = st.columns(3)
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+            with _chk_cols[_ci]:
                 try:
                     _chk = _sc_check(_zc)
                     _s   = _chk["zone_summary"]
-                    _sum_rows.append({
-                        "Zone":          _zc,
-                        "So HK":         _s["n_boreholes"],
-                        "HK dat Cc":     _s["n_pass"],
-                        "HK chua dat":   _s["n_fail"],
-                        "Cc hien co":    _s["n_Cc_actual"],
-                        "Cc can them":   _s["total_Cc_gap"],
-                        "VST zone":      _s["n_VST_zone"],
-                        "Ty le dat (%)": _s["pass_rate_pct"],
+                    st.metric(
+                        f"Zone {_zc}",
+                        f"{_s['n_pass']}/{_s['n_boreholes']} HK dat",
+                        f"Thieu {_s['total_Cc_gap']} mau Cc",
+                        delta_color="normal" if _s["pass_rate_pct"] >= 80 else "inverse",
+                    )
+                    st.caption(
+                        f"Cc hien co: **{_s['n_Cc_actual']}**  \n"
+                        f"Cc can co:  **{_s['n_Cc_required']}**  \n"
+                        f"VST zone: **{_s['n_VST_zone']}** diem"
+                    )
+                    _df_chk = pd.DataFrame(_chk["boreholes"])[[
+                        "name", "depth_m", "soft_h_m",
+                        "n_Cc_actual", "n_Cc_required", "n_Cc_gap",
+                        "n_SPT_actual", "status"
+                    ]].rename(columns={
+                        "name":          "Ho khoan",
+                        "depth_m":       "Sau (m)",
+                        "soft_h_m":      "H dat yeu (m)",
+                        "n_Cc_actual":   "Cc co",
+                        "n_Cc_required": "Cc can",
+                        "n_Cc_gap":      "Thieu",
+                        "n_SPT_actual":  "SPT co",
+                        "status":        "Ket qua",
                     })
-                except Exception:
-                    pass
-            if _sum_rows:
-                st.dataframe(pd.DataFrame(_sum_rows), use_container_width=True, hide_index=True)
+                    st.dataframe(
+                        _df_chk.style.apply(
+                            lambda col: ["color:green" if v == "Dat"
+                                         else "color:red" if v == "Khong dat"
+                                         else "" for v in col],
+                            subset=["Ket qua"]
+                        ),
+                        use_container_width=True, hide_index=True,
+                    )
+                except Exception as _ex:
+                    st.error(f"Zone {_zc}: {_ex}")
 
-            st.info(
-                "**Uu tien bo sung mau Cc:** Zone KE chua co mau nen co ket nao (0 mau). "
-                "NHC va BXN can bo sung them mau tai cac ho khoan chua du so luong theo TCCS41."
-            )
+        st.divider()
+        st.markdown("**Tom tat yeu cau bo sung thi nghiem**")
+        _sum_rows = []
+        for _zc in ["NHC", "BXN", "KE"]:
+            try:
+                _chk = _sc_check(_zc)
+                _s   = _chk["zone_summary"]
+                _sum_rows.append({
+                    "Zone":          _zc,
+                    "So HK":         _s["n_boreholes"],
+                    "HK dat Cc":     _s["n_pass"],
+                    "HK chua dat":   _s["n_fail"],
+                    "Cc hien co":    _s["n_Cc_actual"],
+                    "Cc can them":   _s["total_Cc_gap"],
+                    "VST zone":      _s["n_VST_zone"],
+                    "Ty le dat (%)": _s["pass_rate_pct"],
+                })
+            except Exception:
+                pass
+        if _sum_rows:
+            st.dataframe(pd.DataFrame(_sum_rows), use_container_width=True, hide_index=True)
+
+        st.info(
+            "**Uu tien bo sung mau Cc:** Zone KE chua co mau nen co ket nao (0 mau). "
+            "NHC va BXN can bo sung them mau tai cac ho khoan chua du so luong theo TCCS41."
+        )
