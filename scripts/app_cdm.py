@@ -108,7 +108,7 @@ _LAYER_COLORS: dict[str, str] = {
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
 _ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
 
-_PAGE_IDS = ["geology", "params", "compare", "result", "export", "settlement"]
+_PAGE_IDS = ["geology", "sample_check", "params", "compare", "result", "export", "settlement"]
 
 # ─── Bảng dịch VN / EN ────────────────────────────────────────────────────────
 _L: dict[str, tuple[str, str]] = {
@@ -125,6 +125,7 @@ _L: dict[str, tuple[str, str]] = {
     "p_compare":    ("So sánh PA",                  "Comparison"),
     "p_result":     ("Kết quả",                     "Results"),
     "p_export":     ("Xuất",                        "Export"),
+    "p_sample_check":("Kiem tra mau TN",              "Sample Check"),
     "p_settlement": ("Lún nền",                     "Settlement"),
     # Page 1 – Geology
     "p1_sub":       ("Địa chất – Chọn hố khoan",    "Geology – Borehole Selection"),
@@ -1995,7 +1996,7 @@ with st.sidebar.expander(_t("save_load"), expanded=False):
 st.sidebar.divider()
 
 _page_labels = [
-    _t("p_geology"), _t("p_params"), _t("p_compare"),
+    _t("p_geology"), _t("p_sample_check"), _t("p_params"), _t("p_compare"),
     _t("p_result"),  _t("p_export"), _t("p_settlement"),
 ]
 _page = st.sidebar.radio(
@@ -2400,6 +2401,193 @@ if _page == "geology":
                 else:
                     st.warning(_t("no_coords"))
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE – KIỂM TRA MẪU THÍ NGHIỆM
+# ═══════════════════════════════════════════════════════════════════════════════
+elif _page == "sample_check":
+    import sys as _sys2
+    _sys2.path.insert(0, str(_ROOT / "scripts"))
+    try:
+        from settlement_calc import check_samples_vs_tccs41 as _chk537
+        from cdm_column_calc import check_qc_adequacy as _chk9403
+        _HAS_CHK = True
+    except Exception as _exc_chk:
+        _HAS_CHK = False
+        st.error(f"Khong tai duoc module kiem tra mau: {_exc_chk}")
+
+    if _HAS_CHK:
+        st.subheader("Kiem tra mau thi nghiem — TCCS 41:2022 & TCVN 9403:2012")
+
+        # ── A. TCCS 41:2022 Điều 5.3.7 ──────────────────────────────────────
+        st.markdown("## A. Mau nen co ket — TCCS 41:2022 Dieu 5.3.7")
+        st.caption(
+            "Dieu 5.3.7: Moi lop dat yeu, moi chi tieu dua vao tinh toan can co **>= 6 so lieu thi nghiem**. "
+            "Tri so tinh toan: Delta_t = Delta_tb +/- delta  (delta = do lech chuan mau). "
+            "Ap dung cho Cc, Cs, Cv, PC cua cac lop dat yeu (CH/CL/MH/ML va bien the)."
+        )
+
+        # Tải dữ liệu 3 zone
+        _chk_all = {}
+        for _zc in ["NHC", "BXN", "KE"]:
+            try:
+                _chk_all[_zc] = _chk537(_zc)
+            except Exception as _ex:
+                st.error(f"Zone {_zc}: {_ex}")
+
+        # Metric cards
+        _lun_params = ["Cc", "Cs", "Cv", "PC"]
+        _met_cols = st.columns(3)
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+            if _zc not in _chk_all:
+                continue
+            _s = _chk_all[_zc]["zone_summary"]
+            _n_soft  = _s["n_layers_soft"]
+            _ok_cc   = _s["params_ok"].get("Cc", 0)
+            _fail_cc = _s["params_fail"].get("Cc", 0)
+            with _met_cols[_ci]:
+                st.metric(
+                    f"Zone {_zc}",
+                    f"{_ok_cc}/{_n_soft} lop du Cc",
+                    f"{_fail_cc} lop thieu mau (n<6)",
+                    delta_color="normal" if _fail_cc == 0 else "inverse",
+                )
+                st.caption(
+                    f"Tong lop: {_s['n_layers_total']} | Lop yeu: {_n_soft}  \n"
+                    + "  ".join(
+                        f"{p}: {_s['params_ok'].get(p,0)}D/{_s['params_fail'].get(p,0)}T"
+                        for p in _lun_params
+                    )
+                )
+
+        def _fmt_p(info):
+            if not info or info.get("n", 0) == 0:
+                return "-"
+            n  = info["n"]
+            ok = info.get("ok")
+            if ok is True:   return f"{n} (Dat)"
+            if ok is False:  return f"{n} (Thieu)"
+            return str(n)
+
+        def _cell_color(val):
+            if "(Dat)"   in str(val): return "background-color:#d4edda; color:#155724"
+            if "(Thieu)" in str(val): return "background-color:#f8d7da; color:#721c24"
+            return ""
+
+        # Bảng per zone
+        for _zc in ["NHC", "BXN", "KE"]:
+            if _zc not in _chk_all:
+                continue
+            st.markdown(f"**Zone {_zc} — Chi tiet theo lop dat**")
+            _rows_ly = []
+            for _ly in _chk_all[_zc]["layers"]:
+                _p = _ly["params"]
+                _rows_ly.append({
+                    "Lop (USCS)": _ly["symbol"],
+                    "Dat yeu":    "Co" if _ly["is_soft"] else "-",
+                    "n mau":      _ly["n_total"],
+                    "Cc (n)":     _fmt_p(_p.get("Cc")),
+                    "Cc mean":    round(_p["Cc"]["mean"], 3) if _p.get("Cc", {}).get("n", 0) > 0 else "-",
+                    "Cc std":     round(_p["Cc"]["std"], 3)  if _p.get("Cc", {}).get("n", 0) > 1 else "-",
+                    "Cs (n)":     _fmt_p(_p.get("Cs")),
+                    "Cv (n)":     _fmt_p(_p.get("Cv")),
+                    "PC (n)":     _fmt_p(_p.get("PC")),
+                    "phi (n)":    _fmt_p(_p.get("phi")),
+                    "c (n)":      _fmt_p(_p.get("c")),
+                })
+            _df_ly = pd.DataFrame(_rows_ly)
+            st.dataframe(
+                _df_ly.style.applymap(_cell_color,
+                    subset=["Cc (n)", "Cs (n)", "Cv (n)", "PC (n)"]),
+                use_container_width=True, hide_index=True,
+            )
+
+        # Tóm tắt 3 zone
+        st.divider()
+        st.markdown("**Tom tat 3 zone — Thong so lun chinh (Cc/Cs/Cv/PC)**")
+        _sum_rows = []
+        for _zc in ["NHC", "BXN", "KE"]:
+            if _zc not in _chk_all:
+                continue
+            _s = _chk_all[_zc]["zone_summary"]
+            _sum_rows.append({
+                "Zone":         _zc,
+                "Lop yeu":      _s["n_layers_soft"],
+                "Cc Dat/Thieu": f"{_s['params_ok'].get('Cc',0)}/{_s['params_fail'].get('Cc',0)}",
+                "Cs Dat/Thieu": f"{_s['params_ok'].get('Cs',0)}/{_s['params_fail'].get('Cs',0)}",
+                "Cv Dat/Thieu": f"{_s['params_ok'].get('Cv',0)}/{_s['params_fail'].get('Cv',0)}",
+                "PC Dat/Thieu": f"{_s['params_ok'].get('PC',0)}/{_s['params_fail'].get('PC',0)}",
+                "VST":          _chk_all[_zc]["n_vst_zone"],
+            })
+        if _sum_rows:
+            st.dataframe(pd.DataFrame(_sum_rows), use_container_width=True, hide_index=True)
+        st.info(
+            "Xanh = du n>=6 | Do = thieu mau (<6) | '-' = khong co mau hoac khong ap dung. "
+            "Zone KE chua co mau Cc nao — uu tien bo sung."
+        )
+
+        # ── B. TCVN 9403:2012 Bảng B.1 — QC mẫu CDM ────────────────────────
+        st.divider()
+        st.markdown("## B. Mau kiem tra chat luong CDM — TCVN 9403:2012 Bang B.1")
+        st.caption(
+            "Bang B.1: So mau thi nghiem nen mau (phong) va so mau kiem tra hien truong "
+            "toi thieu theo so luong cot CDM thi cong. Nhap so lieu de kiem tra."
+        )
+
+        # Bảng yêu cầu Bảng B.1
+        _b1_rows = [
+            {"So cot CDM": "≤ 100",        "Mau phong (min/lop)": 2,  "KT hien truong (min)": 5},
+            {"So cot CDM": "101 – 500",     "Mau phong (min/lop)": 5,  "KT hien truong (min)": 10},
+            {"So cot CDM": "501 – 1000",    "Mau phong (min/lop)": 10, "KT hien truong (min)": 30},
+            {"So cot CDM": "1001 – 2000",   "Mau phong (min/lop)": 15, "KT hien truong (min)": 50},
+            {"So cot CDM": "> 2000",        "Mau phong (min/lop)": 20, "KT hien truong (min)": 100},
+        ]
+        st.dataframe(pd.DataFrame(_b1_rows), use_container_width=True, hide_index=True)
+
+        st.markdown("**Nhap so lieu kiem tra thuc te:**")
+        _qc_cols = st.columns(3)
+        _qc_zone_inputs = {}
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+            with _qc_cols[_ci]:
+                st.markdown(f"**Zone {_zc}**")
+                _n_col = st.number_input(f"So cot CDM ({_zc})", 0, 10000, 0, 50,
+                                         key=f"qc_ncol_{_zc}")
+                _n_lab = st.number_input(f"Mau phong hien co ({_zc})", 0, 500, 0, 1,
+                                         key=f"qc_nlab_{_zc}")
+                _n_fld = st.number_input(f"KT hien truong hien co ({_zc})", 0, 500, 0, 1,
+                                         key=f"qc_nfld_{_zc}")
+                _qc_zone_inputs[_zc] = (_n_col, _n_lab, _n_fld)
+
+        _qc_result_rows = []
+        for _zc, (_nc, _nl, _nf) in _qc_zone_inputs.items():
+            if _nc == 0:
+                continue
+            _res9403 = _chk9403(_nc, _nl, _nf)
+            _qc_result_rows.append({
+                "Zone":           _zc,
+                "So cot":         _nc,
+                "Mau phong can":  _res9403["required_lab"],
+                "Mau phong co":   _nl,
+                "MP Thieu":       _res9403["lab_gap"],
+                "MP Dat":         "Dat" if _res9403["lab_ok"] else "Khong dat",
+                "KT ht can":      _res9403["required_field"],
+                "KT ht co":       _nf,
+                "KT Thieu":       _res9403["field_gap"],
+                "KT Dat":         "Dat" if _res9403["field_ok"] else "Khong dat",
+            })
+        if _qc_result_rows:
+            _df_qc = pd.DataFrame(_qc_result_rows)
+            st.dataframe(
+                _df_qc.style.apply(
+                    lambda col: ["background-color:#d4edda" if v == "Dat"
+                                 else "background-color:#f8d7da" if v == "Khong dat"
+                                 else "" for v in col],
+                    subset=["MP Dat", "KT Dat"]
+                ),
+                use_container_width=True, hide_index=True,
+            )
+        else:
+            st.info("Nhap so cot CDM > 0 de kiem tra yeu cau mau theo Bang B.1.")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 2 – THÔNG SỐ
@@ -3138,7 +3326,6 @@ if _page == "settlement":
     try:
         from settlement_calc import (
             compare_methods as _sc_compare,
-            check_samples_vs_tccs41 as _sc_check,
             calc_settlement_iterative_9_2_3 as _sc_iter923,
         )
         _HAS_SC = True
@@ -3555,121 +3742,3 @@ TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
                 "Nguyen nhan: dat yeu bi nao xuong, can them dap bu → tang tai trong → tang lun them."
             )
 
-        # ── PHẦN 2: Kiểm tra mẫu vs TCCS41 Điều 5.3.7 ──────────────────────
-        st.divider()
-        st.markdown("### Kiem tra so luong mau vs TCCS 41:2022 — Dieu 5.3.7")
-        st.caption(
-            "Dieu 5.3.7: Moi lop dat yeu, moi chi tieu dua vao tinh toan can co **>= 6 so lieu thi nghiem**. "
-            "Tri so tinh toan: Delta_t = Delta_tb +/- delta  "
-            "(delta = do lech chuan mau). "
-            "Ap dung cho Cc, Cs, Cv, PC cua cac lop dat yeu (CH/CL/MH/ML va bien the)."
-        )
-
-        # Tải dữ liệu 3 zone
-        _chk_all = {}
-        for _zc in ["NHC", "BXN", "KE"]:
-            try:
-                _chk_all[_zc] = _sc_check(_zc)
-            except Exception as _ex:
-                st.error(f"Zone {_zc}: {_ex}")
-
-        # Metric cards — tóm tắt per zone
-        _lun_params = ["Cc", "Cs", "Cv", "PC"]
-        _met_cols = st.columns(3)
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
-            if _zc not in _chk_all:
-                continue
-            _s = _chk_all[_zc]["zone_summary"]
-            _n_soft = _s["n_layers_soft"]
-            _ok_cc  = _s["params_ok"].get("Cc", 0)
-            _fail_cc = _s["params_fail"].get("Cc", 0)
-            with _met_cols[_ci]:
-                st.metric(
-                    f"Zone {_zc}",
-                    f"{_ok_cc}/{_n_soft} lop dat du Cc",
-                    f"{_fail_cc} lop thieu mau (n<6)",
-                    delta_color="normal" if _fail_cc == 0 else "inverse",
-                )
-                st.caption(
-                    f"Tong lop dat: {_s['n_layers_total']} | Lop yeu: {_n_soft}  \n"
-                    + "  ".join(
-                        f"{p}: {_s['params_ok'].get(p,0)}Dat/{_s['params_fail'].get(p,0)}Thieu"
-                        for p in _lun_params
-                    )
-                )
-
-        # Bảng chi tiết per zone — per layer
-        for _zc in ["NHC", "BXN", "KE"]:
-            if _zc not in _chk_all:
-                continue
-            st.markdown(f"**Zone {_zc} — Chi tiet theo lop dat**")
-            _layers = _chk_all[_zc]["layers"]
-
-            def _fmt_param(info, highlight_req=True):
-                """n(Dat/Thieu/-) cho cell."""
-                if not info or info.get("n", 0) == 0:
-                    return "-"
-                n   = info["n"]
-                ok  = info.get("ok")  # True/False/None
-                if ok is True:
-                    return f"{n} (Dat)"
-                elif ok is False:
-                    return f"{n} (Thieu)"
-                return str(n)  # khong ap dung yeu cau n>=6
-
-            _rows_ly = []
-            for _ly in _layers:
-                _p = _ly["params"]
-                row = {
-                    "Lop (USCS)":  _ly["symbol"],
-                    "Dat yeu":     "Co" if _ly["is_soft"] else "-",
-                    "n mau":       _ly["n_total"],
-                    "Cc (n)":      _fmt_param(_p.get("Cc")),
-                    "Cc mean":     round(_p["Cc"]["mean"], 3) if _p.get("Cc", {}).get("n", 0) > 0 else "-",
-                    "Cc std":      round(_p["Cc"]["std"], 3)  if _p.get("Cc", {}).get("n", 0) > 1 else "-",
-                    "Cs (n)":      _fmt_param(_p.get("Cs")),
-                    "Cv (n)":      _fmt_param(_p.get("Cv")),
-                    "PC (n)":      _fmt_param(_p.get("PC")),
-                    "phi (n)":     _fmt_param(_p.get("phi")),
-                    "c (n)":       _fmt_param(_p.get("c")),
-                }
-                _rows_ly.append(row)
-
-            _df_ly = pd.DataFrame(_rows_ly)
-
-            def _color_cell(val):
-                if "(Dat)" in str(val):
-                    return "background-color:#d4edda; color:#155724"
-                elif "(Thieu)" in str(val):
-                    return "background-color:#f8d7da; color:#721c24"
-                return ""
-
-            _styled = _df_ly.style.applymap(
-                _color_cell,
-                subset=["Cc (n)", "Cs (n)", "Cv (n)", "PC (n)"]
-            )
-            st.dataframe(_styled, use_container_width=True, hide_index=True)
-
-        # Bảng tổng hợp 3 zone
-        st.divider()
-        st.markdown("**Tom tat 3 zone — Thong so lun chinh (Cc/Cs/Cv/PC)**")
-        _sum_rows = []
-        for _zc in ["NHC", "BXN", "KE"]:
-            if _zc not in _chk_all:
-                continue
-            _s = _chk_all[_zc]["zone_summary"]
-            _sum_rows.append({
-                "Zone":            _zc,
-                "Lop yeu":         _s["n_layers_soft"],
-                "Cc Dat/Thieu":    f"{_s['params_ok'].get('Cc',0)}/{_s['params_fail'].get('Cc',0)}",
-                "Cs Dat/Thieu":    f"{_s['params_ok'].get('Cs',0)}/{_s['params_fail'].get('Cs',0)}",
-                "Cv Dat/Thieu":    f"{_s['params_ok'].get('Cv',0)}/{_s['params_fail'].get('Cv',0)}",
-                "PC Dat/Thieu":    f"{_s['params_ok'].get('PC',0)}/{_s['params_fail'].get('PC',0)}",
-                "VST":             _chk_all[_zc]["n_vst_zone"],
-            })
-        if _sum_rows:
-            st.dataframe(pd.DataFrame(_sum_rows), use_container_width=True, hide_index=True)
-        st.info(
-            "Xanh = lop dat du n>=6 mau | Do = thieu mau (<6) | '-' = khong co mau hoac khong ap dung. "
-            "Zone KE chua co mau Cc nao — can uu tien bo sung truoc."
-        )
