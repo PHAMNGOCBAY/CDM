@@ -357,7 +357,9 @@ _L: dict[str, tuple[str, str]] = {
     "qu_lbl":       ("qu thiết kế HT (kPa)",        "qu Design Field (kPa)"),
     "fs_lab":       ("FS quy đổi TN→HT",            "FS Lab→Field Conversion"),
     "geo_params":   ("Thông số địa kỹ thuật",       "Geotechnical Parameters"),
+    "top_clay_lbl": ("Cao độ đỉnh lớp bùn (m)",    "Top of Soft Clay Elev. (m)"),
     "h_clay_lbl":   ("Bề dày lớp bùn h₁ (m)",      "Soft Clay Thickness h₁ (m)"),
+    "bot_clay_info":("Đáy lớp bùn = {v:+.2f} m",   "Bottom of Soft Clay = {v:+.2f} m"),
     "su_lbl":       ("Su trung bình (kPa)",         "Average Su (kPa)"),
     "gamma_lbl":    ("γ tự nhiên (kN/m³)",          "Unit Weight γ (kN/m³)"),
     "loads_title":  ("Tải trọng gây lún",           "Settlement Loads"),
@@ -1210,6 +1212,7 @@ def q_total(loads: dict) -> float:
 _DEFAULTS = {
     "cdm_zone": "KE",
     "cdm_bh": None,
+    "cdm_top_clay": 0.8,
     "cdm_h_clay": 24.8,
     "cdm_Su": 11.2,
     "cdm_gamma": 15.0,
@@ -2225,7 +2228,7 @@ def _export_word_bytes(
 # ═══════════════════════════════════════════════════════════════════════════════
 # PROJECT SAVE / LOAD
 # ═══════════════════════════════════════════════════════════════════════════════
-_SAVE_KEYS = ["cdm_zone","cdm_bh","cdm_h_clay","cdm_Su","cdm_gamma","cdm_elevation",
+_SAVE_KEYS = ["cdm_zone","cdm_bh","cdm_top_clay","cdm_h_clay","cdm_Su","cdm_gamma","cdm_elevation",
               "cdm_D","cdm_Lc","cdm_CDTK","cdm_qu","cdm_FS_lab","cdm_arrangement",
               "cdm_cement_type","cdm_dosage","cdm_WC","cdm_spacings","cdm_rec_idx","cdm_loads",
               "cdm_quckse","cdm_Fs_mat","cdm_theta","cdm_qa_mat"]
@@ -3035,12 +3038,16 @@ elif _page == "params":
 
         with c3:
             st.markdown(f"**{_t('geo_params')}**")
+            top_clay = st.number_input(_t("top_clay_lbl"), -20.0, 20.0,
+                                       _get("cdm_top_clay"), 0.1)
             h_clay  = st.number_input(_t("h_clay_lbl"), 1.0, 60.0, _get("cdm_h_clay"), 0.5)
             Su      = st.number_input(_t("su_lbl"), 1.0, 100.0, _get("cdm_Su"), 0.5)
             gamma   = st.number_input(_t("gamma_lbl"), 10.0, 22.0, _get("cdm_gamma"), 0.1)
+            st.info(_t("bot_clay_info", v=top_clay - h_clay))
             Es_show = 250 * Su
             st.info(f"Es = 250×Su = {int(Es_show):,} kN/m²")
-            st.session_state.update({"cdm_h_clay": h_clay, "cdm_Su": Su, "cdm_gamma": gamma})
+            st.session_state.update({"cdm_top_clay": top_clay, "cdm_h_clay": h_clay,
+                                     "cdm_Su": Su, "cdm_gamma": gamma})
 
         with c4:
             st.markdown(f"**{_t('loads_title')}**")
