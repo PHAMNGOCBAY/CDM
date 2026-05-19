@@ -4049,14 +4049,14 @@ if _page == "ke_sw":
             return []
 
     @st.cache_data(show_spinner=False)
-    def _load_ke_sw() -> dict:
+    def _load_ke_sw(_mtime: float = 0) -> dict:
         try:
             return json.loads(_KE_JSON.read_text(encoding="utf-8"))
         except Exception:
             return {}
 
     _sw_piles  = _load_sw_catalog()
-    _ke_data   = _load_ke_sw()
+    _ke_data   = _load_ke_sw(_KE_JSON.stat().st_mtime if _KE_JSON.exists() else 0)
     _sw_names  = sorted({p["name"] for p in _sw_piles})
     _Ec_table  = {
         "fc30 MPa": 26_561_000,
