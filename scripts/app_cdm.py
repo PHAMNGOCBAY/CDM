@@ -2546,54 +2546,61 @@ if _page == "geology":
 elif _page == "sample_check":
     import sys as _sys2
     _sys2.path.insert(0, str(_ROOT / "scripts"))
+
+    # Import độc lập — section A không phụ thuộc section B
     try:
         from settlement_calc import check_samples_vs_tccs41 as _chk537
+        _HAS_537 = True
+    except Exception as _exc537:
+        _HAS_537 = False
+        st.error(f"Không tải được settlement_calc: {_exc537}")
+
+    try:
         from cdm_column_calc import check_qc_adequacy as _chk9403
-        _HAS_CHK = True
-    except Exception as _exc_chk:
-        _HAS_CHK = False
-        st.error(f"Khong tai duoc module kiem tra mau: {_exc_chk}")
+        _HAS_9403 = True
+    except Exception:
+        _HAS_9403 = False  # module chưa tồn tại — ẩn section B
 
-    if _HAS_CHK:
-        st.subheader("Kiem tra mau thi nghiem — TCCS 41:2022 & TCVN 9403:2012")
+    st.subheader("Kiểm tra mẫu thí nghiệm — TCCS 41:2022 & TCVN 9403:2012")
 
-        # ── A. TCCS 41:2022 Điều 5.3.7 ──────────────────────────────────────
-        st.markdown("## A. Mau nen co ket — TCCS 41:2022 Dieu 5.3.7")
-        st.caption(
-            "Dieu 5.3.7: Moi lop dat yeu, moi chi tieu dua vao tinh toan can co **>= 6 so lieu thi nghiem**. "
-            "Tri so tinh toan: Delta_t = Delta_tb +/- delta  (delta = do lech chuan mau). "
-            "Ap dung cho Cc, Cs, Cv, PC cua cac lop dat yeu (CH/CL/MH/ML va bien the)."
-        )
+    # ── A. TCCS 41:2022 Điều 5.3.7 ──────────────────────────────────────────
+    st.markdown("## A. Mẫu nén cố kết — TCCS 41:2022 Điều 5.3.7")
+    st.caption(
+        "Điều 5.3.7: Mỗi lớp đất yếu, mỗi chỉ tiêu đưa vào tính toán cần có **≥ 6 số liệu thí nghiệm**. "
+        "Trị số tính toán: Δt = Δtb ± δ  (δ = độ lệch chuẩn mẫu). "
+        "Áp dụng cho Cc, Cs, Cv, PC của các lớp đất yếu (CH/CL/MH/ML và biến thể)."
+    )
 
-        # Tải dữ liệu 3 zone
+    if _HAS_537:
+        # Tải dữ liệu 3 khu vực
         _chk_all = {}
         for _zc in ["NHC", "BXN", "KE"]:
             try:
                 _chk_all[_zc] = _chk537(_zc)
             except Exception as _ex:
-                st.error(f"Zone {_zc}: {_ex}")
+                st.error(f"Khu vực {_zc}: {_ex}")
 
-        # Metric cards
+        # Metric cards tóm tắt
         _lun_params = ["Cc", "Cs", "Cv", "PC"]
         _met_cols = st.columns(3)
         for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
             if _zc not in _chk_all:
                 continue
-            _s = _chk_all[_zc]["zone_summary"]
+            _s       = _chk_all[_zc]["zone_summary"]
             _n_soft  = _s["n_layers_soft"]
             _ok_cc   = _s["params_ok"].get("Cc", 0)
             _fail_cc = _s["params_fail"].get("Cc", 0)
             with _met_cols[_ci]:
                 st.metric(
-                    f"Zone {_zc}",
-                    f"{_ok_cc}/{_n_soft} lop du Cc",
-                    f"{_fail_cc} lop thieu mau (n<6)",
+                    f"Khu vực {_zc}",
+                    f"{_ok_cc}/{_n_soft} lớp đủ Cc",
+                    f"{_fail_cc} lớp thiếu mẫu (n<6)",
                     delta_color="normal" if _fail_cc == 0 else "inverse",
                 )
                 st.caption(
-                    f"Tong lop: {_s['n_layers_total']} | Lop yeu: {_n_soft}  \n"
+                    f"Tổng lớp: {_s['n_layers_total']} | Lớp yếu: {_n_soft}  \n"
                     + "  ".join(
-                        f"{p}: {_s['params_ok'].get(p,0)}D/{_s['params_fail'].get(p,0)}T"
+                        f"{p}: {_s['params_ok'].get(p,0)}Đ/{_s['params_fail'].get(p,0)}T"
                         for p in _lun_params
                     )
                 )
@@ -2603,30 +2610,30 @@ elif _page == "sample_check":
                 return "-"
             n  = info["n"]
             ok = info.get("ok")
-            if ok is True:   return f"{n} (Dat)"
-            if ok is False:  return f"{n} (Thieu)"
+            if ok is True:  return f"{n} (Đạt)"
+            if ok is False: return f"{n} (Thiếu)"
             return str(n)
 
         def _cell_color(val):
-            if "(Dat)"   in str(val): return "background-color:#d4edda; color:#155724"
-            if "(Thieu)" in str(val): return "background-color:#f8d7da; color:#721c24"
+            if "(Đạt)"   in str(val): return "background-color:#d4edda; color:#155724"
+            if "(Thiếu)" in str(val): return "background-color:#f8d7da; color:#721c24"
             return ""
 
-        # Bảng per zone
+        # Bảng chi tiết per khu vực
         for _zc in ["NHC", "BXN", "KE"]:
             if _zc not in _chk_all:
                 continue
-            st.markdown(f"**Zone {_zc} — Chi tiet theo lop dat**")
+            st.markdown(f"**Khu vực {_zc} — Chi tiết theo lớp đất**")
             _rows_ly = []
             for _ly in _chk_all[_zc]["layers"]:
                 _p = _ly["params"]
                 _rows_ly.append({
-                    "Lop (USCS)": _ly["symbol"],
-                    "Dat yeu":    "Co" if _ly["is_soft"] else "-",
-                    "n mau":      _ly["n_total"],
+                    "Lớp (USCS)": _ly["symbol"],
+                    "Đất yếu":    "Có" if _ly["is_soft"] else "-",
+                    "n mẫu":      _ly["n_total"],
                     "Cc (n)":     _fmt_p(_p.get("Cc")),
-                    "Cc mean":    round(_p["Cc"]["mean"], 3) if _p.get("Cc", {}).get("n", 0) > 0 else "-",
-                    "Cc std":     round(_p["Cc"]["std"], 3)  if _p.get("Cc", {}).get("n", 0) > 1 else "-",
+                    "Cc trung bình": round(_p["Cc"]["mean"], 3) if _p.get("Cc", {}).get("n", 0) > 0 else "-",
+                    "Cc độ lệch":    round(_p["Cc"]["std"], 3)  if _p.get("Cc", {}).get("n", 0) > 1 else "-",
                     "Cs (n)":     _fmt_p(_p.get("Cs")),
                     "Cv (n)":     _fmt_p(_p.get("Cv")),
                     "PC (n)":     _fmt_p(_p.get("PC")),
@@ -2640,59 +2647,65 @@ elif _page == "sample_check":
                 use_container_width=True, hide_index=True,
             )
 
-        # Tóm tắt 3 zone
+        # Tóm tắt 3 khu vực
         st.divider()
-        st.markdown("**Tom tat 3 zone — Thong so lun chinh (Cc/Cs/Cv/PC)**")
+        st.markdown("**Tóm tắt 3 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
         _sum_rows = []
         for _zc in ["NHC", "BXN", "KE"]:
             if _zc not in _chk_all:
                 continue
             _s = _chk_all[_zc]["zone_summary"]
             _sum_rows.append({
-                "Zone":         _zc,
-                "Lop yeu":      _s["n_layers_soft"],
-                "Cc Dat/Thieu": f"{_s['params_ok'].get('Cc',0)}/{_s['params_fail'].get('Cc',0)}",
-                "Cs Dat/Thieu": f"{_s['params_ok'].get('Cs',0)}/{_s['params_fail'].get('Cs',0)}",
-                "Cv Dat/Thieu": f"{_s['params_ok'].get('Cv',0)}/{_s['params_fail'].get('Cv',0)}",
-                "PC Dat/Thieu": f"{_s['params_ok'].get('PC',0)}/{_s['params_fail'].get('PC',0)}",
-                "VST":          _chk_all[_zc]["n_vst_zone"],
+                "Khu vực":      _zc,
+                "Lớp yếu":      _s["n_layers_soft"],
+                "Cc Đạt/Thiếu": f"{_s['params_ok'].get('Cc',0)}/{_s['params_fail'].get('Cc',0)}",
+                "Cs Đạt/Thiếu": f"{_s['params_ok'].get('Cs',0)}/{_s['params_fail'].get('Cs',0)}",
+                "Cv Đạt/Thiếu": f"{_s['params_ok'].get('Cv',0)}/{_s['params_fail'].get('Cv',0)}",
+                "PC Đạt/Thiếu": f"{_s['params_ok'].get('PC',0)}/{_s['params_fail'].get('PC',0)}",
+                "VST":           _chk_all[_zc]["n_vst_zone"],
             })
         if _sum_rows:
             st.dataframe(pd.DataFrame(_sum_rows), use_container_width=True, hide_index=True)
         st.info(
-            "Xanh = du n>=6 | Do = thieu mau (<6) | '-' = khong co mau hoac khong ap dung. "
-            "Zone KE chua co mau Cc nao — uu tien bo sung."
+            "Xanh = đủ n≥6 | Đỏ = thiếu mẫu (<6) | '-' = không có mẫu hoặc không áp dụng. "
+            "Khu vực KE chưa có mẫu Cc — ưu tiên bổ sung."
         )
 
-        # ── B. TCVN 9403:2012 Bảng B.1 — QC mẫu CDM ────────────────────────
-        st.divider()
-        st.markdown("## B. Mau kiem tra chat luong CDM — TCVN 9403:2012 Bang B.1")
-        st.caption(
-            "Bang B.1: So mau thi nghiem nen mau (phong) va so mau kiem tra hien truong "
-            "toi thieu theo so luong cot CDM thi cong. Nhap so lieu de kiem tra."
+    # ── B. TCVN 9403:2012 Bảng B.1 — QC mẫu CDM ────────────────────────────
+    st.divider()
+    st.markdown("## B. Mẫu kiểm tra chất lượng CDM — TCVN 9403:2012 Bảng B.1")
+    st.caption(
+        "Bảng B.1: Số mẫu thí nghiệm nén mẫu (phòng) và số mẫu kiểm tra hiện trường "
+        "tối thiểu theo số lượng cột CDM thi công. Nhập số liệu để kiểm tra."
+    )
+
+    # Bảng yêu cầu Bảng B.1
+    _b1_rows = [
+        {"Số cột CDM": "≤ 100",      "Mẫu phòng (min/lớp)": 2,  "Kiểm tra hiện trường (min)": 5},
+        {"Số cột CDM": "101 – 500",   "Mẫu phòng (min/lớp)": 5,  "Kiểm tra hiện trường (min)": 10},
+        {"Số cột CDM": "501 – 1 000", "Mẫu phòng (min/lớp)": 10, "Kiểm tra hiện trường (min)": 30},
+        {"Số cột CDM": "1 001 – 2 000","Mẫu phòng (min/lớp)": 15, "Kiểm tra hiện trường (min)": 50},
+        {"Số cột CDM": "> 2 000",     "Mẫu phòng (min/lớp)": 20, "Kiểm tra hiện trường (min)": 100},
+    ]
+    st.dataframe(pd.DataFrame(_b1_rows), use_container_width=True, hide_index=True)
+
+    if not _HAS_9403:
+        st.info(
+            "Module cdm_column_calc chưa được triển khai. "
+            "Phần kiểm tra tự động sẽ khả dụng sau khi thêm file scripts/cdm_column_calc.py."
         )
-
-        # Bảng yêu cầu Bảng B.1
-        _b1_rows = [
-            {"So cot CDM": "≤ 100",        "Mau phong (min/lop)": 2,  "KT hien truong (min)": 5},
-            {"So cot CDM": "101 – 500",     "Mau phong (min/lop)": 5,  "KT hien truong (min)": 10},
-            {"So cot CDM": "501 – 1000",    "Mau phong (min/lop)": 10, "KT hien truong (min)": 30},
-            {"So cot CDM": "1001 – 2000",   "Mau phong (min/lop)": 15, "KT hien truong (min)": 50},
-            {"So cot CDM": "> 2000",        "Mau phong (min/lop)": 20, "KT hien truong (min)": 100},
-        ]
-        st.dataframe(pd.DataFrame(_b1_rows), use_container_width=True, hide_index=True)
-
-        st.markdown("**Nhap so lieu kiem tra thuc te:**")
+    else:
+        st.markdown("**Nhập số liệu kiểm tra thực tế:**")
         _qc_cols = st.columns(3)
         _qc_zone_inputs = {}
         for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
             with _qc_cols[_ci]:
-                st.markdown(f"**Zone {_zc}**")
-                _n_col = st.number_input(f"So cot CDM ({_zc})", 0, 10000, 0, 50,
+                st.markdown(f"**Khu vực {_zc}**")
+                _n_col = st.number_input(f"Số cột CDM ({_zc})", 0, 10000, 0, 50,
                                          key=f"qc_ncol_{_zc}")
-                _n_lab = st.number_input(f"Mau phong hien co ({_zc})", 0, 500, 0, 1,
+                _n_lab = st.number_input(f"Mẫu phòng hiện có ({_zc})", 0, 500, 0, 1,
                                          key=f"qc_nlab_{_zc}")
-                _n_fld = st.number_input(f"KT hien truong hien co ({_zc})", 0, 500, 0, 1,
+                _n_fld = st.number_input(f"Kiểm tra hiện trường hiện có ({_zc})", 0, 500, 0, 1,
                                          key=f"qc_nfld_{_zc}")
                 _qc_zone_inputs[_zc] = (_n_col, _n_lab, _n_fld)
 
@@ -2702,30 +2715,32 @@ elif _page == "sample_check":
                 continue
             _res9403 = _chk9403(_nc, _nl, _nf)
             _qc_result_rows.append({
-                "Zone":           _zc,
-                "So cot":         _nc,
-                "Mau phong can":  _res9403["required_lab"],
-                "Mau phong co":   _nl,
-                "MP Thieu":       _res9403["lab_gap"],
-                "MP Dat":         "Dat" if _res9403["lab_ok"] else "Khong dat",
-                "KT ht can":      _res9403["required_field"],
-                "KT ht co":       _nf,
-                "KT Thieu":       _res9403["field_gap"],
-                "KT Dat":         "Dat" if _res9403["field_ok"] else "Khong dat",
+                "Khu vực":           _zc,
+                "Số cột":            _nc,
+                "Mẫu phòng cần":     _res9403["required_lab"],
+                "Mẫu phòng có":      _nl,
+                "MP thiếu":          _res9403["lab_gap"],
+                "MP kết quả":        "Đạt" if _res9403["lab_ok"] else "Không đạt",
+                "KT h.trường cần":   _res9403["required_field"],
+                "KT h.trường có":    _nf,
+                "KT thiếu":          _res9403["field_gap"],
+                "KT kết quả":        "Đạt" if _res9403["field_ok"] else "Không đạt",
             })
         if _qc_result_rows:
             _df_qc = pd.DataFrame(_qc_result_rows)
             st.dataframe(
                 _df_qc.style.apply(
-                    lambda col: ["background-color:#d4edda" if v == "Dat"
-                                 else "background-color:#f8d7da" if v == "Khong dat"
-                                 else "" for v in col],
-                    subset=["MP Dat", "KT Dat"]
+                    lambda col: [
+                        "background-color:#d4edda" if v == "Đạt"
+                        else "background-color:#f8d7da" if v == "Không đạt"
+                        else "" for v in col
+                    ],
+                    subset=["MP kết quả", "KT kết quả"],
                 ),
                 use_container_width=True, hide_index=True,
             )
         else:
-            st.info("Nhap so cot CDM > 0 de kiem tra yeu cau mau theo Bang B.1.")
+            st.info("Nhập số cột CDM > 0 để kiểm tra yêu cầu mẫu theo Bảng B.1.")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 2 – THÔNG SỐ
