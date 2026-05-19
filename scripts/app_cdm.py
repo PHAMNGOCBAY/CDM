@@ -154,6 +154,15 @@ def _load_theory() -> str:
     except FileNotFoundError:
         return ""
 
+_PUNCH_THEORY = _ROOT / "41-cdm-choc-thung-dem-ximang.md"
+
+@st.cache_data(show_spinner=False)
+def _load_punch_theory() -> str:
+    try:
+        return _PUNCH_THEORY.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return ""
+
 st.set_page_config(
     page_title="CDM Design Tool",
     page_icon="🏗",
@@ -3583,6 +3592,11 @@ elif _page == "result":
         use_container_width=True, hide_index=True,
         column_config={_CF: st.column_config.TextColumn(width="large")},
     )
+
+    _punch_md = _load_punch_theory()
+    if _punch_md:
+        with st.expander("Diễn giải công thức kiểm tra chọc thủng lớp đệm xi măng", expanded=False):
+            st.markdown(_punch_md)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
