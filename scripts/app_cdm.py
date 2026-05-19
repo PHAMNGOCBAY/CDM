@@ -299,10 +299,10 @@ _L: dict[str, tuple[str, str]] = {
     "p_compare":    ("Kết quả CDM",                 "CDM Results"),
     "p_settlement": ("Dự báo độ lún",               "Settlement Prediction"),
     "p_export":     ("Xuất kết quả",                "Export Results"),
-    "p_cdm_bvt":    ("TKBVT CDM",                   "CDM Detail Design"),
+    "p_cdm_bvt":    ("TKBVTC CDM",                  "CDM Detail Design"),
     "p_tkcs_sw":    ("TKCS Cọc ván",                "Sheet Pile Prelim Design"),
     "p_ke_sw":      ("Cọc ván SW (Kè)",             "Sheet Pile SW (Ke)"),
-    "p_sw_bvt":     ("TKBVT Cọc ván",              "Sheet Pile Detail Design"),
+    "p_sw_bvt":     ("TKBVTC Cọc SW",              "Sheet Pile Detail Design"),
     # Page 1 – Geology
     "p1_sub":       ("Địa chất – Chọn hố khoan",    "Geology – Borehole Selection"),
     "zone_lbl":     ("Zone",                        "Zone"),
@@ -4566,12 +4566,12 @@ if _page == "ke_sw":
                 "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
             )
 
-# ── Placeholder: TKBVT CDM ───────────────────────────────────────────────────
+# ── Placeholder: TKBVTC CDM ──────────────────────────────────────────────────
 if _page == "cdm_bvt":
-    st.markdown("## TKBVT CDM")
+    st.markdown("## TKBVTC CDM")
     st.info("Trang đang phát triển — thiết kế bản vẽ thi công CDM.")
 
-# ── Placeholder: TKBVT Cọc ván ───────────────────────────────────────────────
+# ── Placeholder: TKBVTC Cọc SW ───────────────────────────────────────────────
 if _page == "sw_bvt":
-    st.markdown("## TKBVT Cọc ván")
+    st.markdown("## TKBVTC Cọc SW")
     st.info("Trang đang phát triển — thiết kế bản vẽ thi công cọc ván SW.")
