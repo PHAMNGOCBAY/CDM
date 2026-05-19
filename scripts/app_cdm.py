@@ -3068,28 +3068,6 @@ elif _page == "params":
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
 
-    # ── Kiểm tra chọc thủng – thông số đệm xi măng ───────────────────────────
-    with st.expander(_t("punch_exp"), expanded=False):
-        _km1, _km2, _km3, _km4 = st.columns(4)
-        with _km1:
-            _quckse = st.number_input(_t("qu_mat_lbl"), 100.0, 3000.0,
-                                      _get("cdm_quckse"), 50.0)
-            st.session_state["cdm_quckse"] = _quckse
-        with _km2:
-            _Fs_mat = st.number_input(_t("fs_mat_lbl"), 1.0, 5.0,
-                                      _get("cdm_Fs_mat"), 0.5)
-            _tase_p = _quckse / (2.0 * _Fs_mat)
-            st.info(f"τase = **{_tase_p:.1f} kPa**")
-            st.session_state["cdm_Fs_mat"] = _Fs_mat
-        with _km3:
-            _theta = st.number_input(_t("theta_lbl"), 30.0, 89.0,
-                                     _get("cdm_theta"), 5.0)
-            st.session_state["cdm_theta"] = _theta
-        with _km4:
-            _qa_mat = st.number_input(_t("qa_lbl"), 0.0, 200.0,
-                                      _get("cdm_qa_mat"), 5.0)
-            st.session_state["cdm_qa_mat"] = _qa_mat
-
     # ── Hình minh họa bên phải: mặt cắt (trên) + lưới (dưới) ────────────────
     with _col_sec:
         _ld_s = _get("cdm_loads")
