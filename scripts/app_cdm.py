@@ -1893,13 +1893,23 @@ def _export_excel(scenarios: list[dict], params: dict) -> bytes:
     return buf.getvalue()
 
 
-def _export_word_bytes(scenarios: list[dict], params: dict, rec_idx: int) -> bytes:
+def _export_word_bytes(
+    scenarios: list[dict],
+    params: dict,
+    rec_idx: int,
+    co_name: str = "",
+    co_staff: str = "",
+    logo_bytes: bytes | None = None,
+) -> bytes:
     """Tạo Word thuyết minh CDM và trả về bytes."""
     sys.path.insert(0, str(_CDM_SC))
     try:
         import docx_helpers as H
         from docx import Document
         from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement as _Oxm
+        from docx.shared import Cm as _Cm
         import math as _m
     except ImportError as e:
         return b""
@@ -1907,6 +1917,56 @@ def _export_word_bytes(scenarios: list[dict], params: dict, rec_idx: int) -> byt
     H.reset_counters()
     doc = Document()
     H.setup_page(doc)
+
+    # ── Header / Footer ───────────────────────────────────────────────────────
+    def _field_run(para, field: str) -> None:
+        """Chèn Word field (PAGE / NUMPAGES) vào paragraph."""
+        run = para.add_run()
+        fc_b = _Oxm("w:fldChar"); fc_b.set(_qn("w:fldCharType"), "begin")
+        instr = _Oxm("w:instrText"); instr.text = field
+        instr.set(_qn("xml:space"), "preserve")
+        fc_e = _Oxm("w:fldChar"); fc_e.set(_qn("w:fldCharType"), "end")
+        run._r.append(fc_b); run._r.append(instr); run._r.append(fc_e)
+
+    def _no_tbl_border(tbl) -> None:
+        tblPr = tbl._tbl.tblPr
+        borders = _Oxm("w:tblBorders")
+        for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            b = _Oxm(f"w:{edge}"); b.set(_qn("w:val"), "none"); borders.append(b)
+        tblPr.append(borders)
+
+    sec = doc.sections[0]
+    _pw = sec.page_width - sec.left_margin - sec.right_margin  # usable width (EMU)
+
+    # Header: logo (trái) | tên công ty (phải)
+    sec.header.is_linked_to_previous = False
+    _ht = sec.header.add_table(1, 2, width=_pw)
+    _no_tbl_border(_ht)
+    _ht.cell(0, 0).width = _Cm(3)
+    _ht.cell(0, 1).width = _pw - _Cm(3)
+    _logo_p = _ht.cell(0, 0).paragraphs[0]
+    if logo_bytes:
+        try:
+            _logo_p.add_run().add_picture(io.BytesIO(logo_bytes), height=_Cm(1.2))
+        except Exception:
+            pass
+    _name_p = _ht.cell(0, 1).paragraphs[0]
+    _name_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    H._fmt(_name_p.add_run(co_name), size=9, bold=True)
+
+    # Footer: nhân sự (trái) | Trang X/Y (phải)
+    sec.footer.is_linked_to_previous = False
+    _ft = sec.footer.add_table(1, 2, width=_pw)
+    _no_tbl_border(_ft)
+    _ft.cell(0, 0).width = _pw - _Cm(3)
+    _ft.cell(0, 1).width = _Cm(3)
+    H._fmt(_ft.cell(0, 0).paragraphs[0].add_run(co_staff), size=9)
+    _pg_p = _ft.cell(0, 1).paragraphs[0]
+    _pg_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    H._fmt(_pg_p.add_run("Trang "), size=9)
+    _field_run(_pg_p, "PAGE")
+    H._fmt(_pg_p.add_run(" / "), size=9)
+    _field_run(_pg_p, "NUMPAGES")
 
     D    = params["D"]
     Lc   = params["Lc"]
@@ -3562,9 +3622,37 @@ elif _page == "export":
     with c_word:
         st.markdown(f"#### {_t('word_title')}")
         st.caption(_t("word_cap"))
+
+        # ── Thông tin đơn vị (header / footer) ───────────────────────────
+        st.text_input(
+            "Tên công ty",
+            key="export_co_name",
+            placeholder="VD: CÔNG TY CỔ PHẦN TƯ VẤN XÂY DỰNG ABC",
+        )
+        st.text_input(
+            "Nhân sự thực hiện",
+            key="export_co_staff",
+            placeholder="VD: KS. Nguyễn Văn A",
+        )
+        _logo_file = st.file_uploader(
+            "Logo công ty (PNG/JPG)",
+            type=["png", "jpg", "jpeg"],
+            key="export_logo_uploader",
+        )
+        if _logo_file is not None:
+            st.session_state["export_logo_bytes"] = _logo_file.read()
+        if "export_logo_bytes" in st.session_state:
+            st.image(st.session_state["export_logo_bytes"], width=80)
+
+        st.divider()
         if st.button(_t("create_word"), type="primary"):
             with st.spinner(_t("creating")):
-                word_bytes = _export_word_bytes(scenarios, params, rec)
+                word_bytes = _export_word_bytes(
+                    scenarios, params, rec,
+                    co_name=st.session_state.get("export_co_name", ""),
+                    co_staff=st.session_state.get("export_co_staff", ""),
+                    logo_bytes=st.session_state.get("export_logo_bytes"),
+                )
             if word_bytes:
                 st.download_button(
                     _t("dl_docx"),
