@@ -297,7 +297,7 @@ _L: dict[str, tuple[str, str]] = {
     "p_tkcs_cdm":   ("TKCS CDM",                    "CDM Prelim Design"),
     "p_params":     ("Thông số",                    "Parameters"),
     "p_compare":    ("Kết quả CDM",                 "CDM Results"),
-    "p_settlement": ("Lún nền",                     "Settlement"),
+    "p_settlement": ("Dự báo độ lún",               "Settlement Prediction"),
     "p_export":     ("Xuất kết quả",                "Export Results"),
     "p_cdm_bvt":    ("TKBVT CDM",                   "CDM Detail Design"),
     "p_tkcs_sw":    ("TKCS Cọc ván",                "Sheet Pile Prelim Design"),
