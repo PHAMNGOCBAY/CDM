@@ -571,7 +571,9 @@ def _draw_boreholes_3d(
     show_cdm_top: bool = False,
     cdm_top_z: float = 2.7,
     focus_bh: str | None = None,
+    pair_highlight: tuple | None = None,
 ) -> "go.Figure":
+    """pair_highlight = (bh1_name, bh2_name, dist_m) — vẽ đường kích thước giữa 2 HK."""
     from collections import defaultdict
 
     bhs, lays = _load_borehole_3d_data()
@@ -711,6 +713,46 @@ def _draw_boreholes_3d(
             name="Viền đỉnh CDM", showlegend=False,
         ))
 
+    # Đường kích thước giữa 2 hố khoan (khi user chọn cặp)
+    if pair_highlight:
+        _ph_b1, _ph_b2, _ph_dist = pair_highlight
+        _ph_bh1 = next((b for b in bhs if b["name"] == _ph_b1), None)
+        _ph_bh2 = next((b for b in bhs if b["name"] == _ph_b2), None)
+        if _ph_bh1 and _ph_bh2:
+            _ph_z = max(_ph_bh1["elevation_m"], _ph_bh2["elevation_m"]) + 4
+            _ph_mx = (_ph_bh1["x_coord_m"] + _ph_bh2["x_coord_m"]) / 2
+            _ph_my = (_ph_bh1["y_coord_m"] + _ph_bh2["y_coord_m"]) / 2
+            fig.add_trace(go.Scatter3d(
+                x=[_ph_bh1["x_coord_m"], _ph_bh2["x_coord_m"]],
+                y=[_ph_bh1["y_coord_m"], _ph_bh2["y_coord_m"]],
+                z=[_ph_z, _ph_z],
+                mode="lines",
+                line=dict(color="#FF6F00", width=6),
+                name=f"Khoảng cách {_ph_b1}↔{_ph_b2}",
+                showlegend=True,
+                hovertemplate=f"<b>{_ph_b1} ↔ {_ph_b2}</b><br>Khoảng cách: {_ph_dist:.1f} m<extra></extra>",
+            ))
+            # Nhãn khoảng cách tại trung điểm
+            fig.add_trace(go.Scatter3d(
+                x=[_ph_mx], y=[_ph_my], z=[_ph_z + 1.5],
+                mode="text",
+                text=[f"  {_ph_dist:.1f} m"],
+                textfont=dict(size=14, color="#E65100"),
+                showlegend=False,
+                hovertemplate=f"{_ph_dist:.1f} m<extra></extra>",
+            ))
+            # Đường dọc từ mặt đất xuống đến đường kích thước (2 đầu)
+            for _ph_bh in (_ph_bh1, _ph_bh2):
+                fig.add_trace(go.Scatter3d(
+                    x=[_ph_bh["x_coord_m"], _ph_bh["x_coord_m"]],
+                    y=[_ph_bh["y_coord_m"], _ph_bh["y_coord_m"]],
+                    z=[_ph_bh["elevation_m"] + 1, _ph_z],
+                    mode="lines",
+                    line=dict(color="#FF6F00", width=2, dash="dot"),
+                    showlegend=False,
+                    hoverinfo="skip",
+                ))
+
     # Layout
     all_x = [b["x_coord_m"] for b in bhs]
     all_y = [b["y_coord_m"] for b in bhs]
@@ -720,7 +762,7 @@ def _draw_boreholes_3d(
     min_z = min(b["elevation_m"] - b["depth_m"] for b in bhs) - 2
 
     fig.update_layout(
-        height=660,
+        height=420,
         margin=dict(l=0, r=0, t=30, b=0),
         legend=dict(
             x=1.01, y=0.95,
@@ -2324,16 +2366,112 @@ if _page == "geology":
                         _t("elev_lbl"), value=_cdm_top_z, step=0.1, key="_3d_cdm_top_z")
                 _vst_focus = _get("cdm_vst_sel")
                 _focus_bh = _vst_focus[0] if len(_vst_focus) == 1 else None
-                if _sel_zones:
-                    st.plotly_chart(
-                        _draw_boreholes_3d(
-                            _sel_zones, _show_clay, _show_cdm, _cdm_top_z,
-                            focus_bh=_focus_bh,
-                        ),
-                        use_container_width=True, config={"displayModeBar": True},
-                    )
-                else:
-                    st.info(_t("no_zone"))
+
+                # ── Layout 2 cột: 3D (trái) | Bảng khoảng cách (phải) ──────
+                _col3d, _col_sp = st.columns([3, 2], gap="medium")
+
+                # ── Bảng khoảng cách (phải) — đọc trước để lấy pair_sel ────
+                _pair_sel = None
+                with _col_sp:
+                    st.markdown("#### Khoảng cách hố khoan — Điều 5.3.2")
+                    try:
+                        import sys as _sys2
+                        _sys2.path.insert(0, str(_ROOT / "scripts"))
+                        from borehole_spacing import check_spacing_532 as _chk_sp
+                        _bhs_sp = [b for b in _bhs_all if b.get("zone") in (_sel_zones or [])]
+                        _step_opts = {
+                            "BVTK (100–150 m)": "BVTK",
+                            "LAPDA (250–500 m)": "LAPDA",
+                        }
+                        _step_lbl = st.selectbox(
+                            "Bước thiết kế",
+                            list(_step_opts.keys()),
+                            key="_sp_step_sel",
+                        )
+                        _step_code = _step_opts[_step_lbl]
+                        _sp_res = _chk_sp(_bhs_sp, _step_code, same_zone_only=True)
+                        _sp_s   = _sp_res["summary"]
+
+                        # Metric tóm tắt
+                        _mc1, _mc2 = st.columns(2)
+                        _mc1.metric(
+                            "Cặp đạt yêu cầu",
+                            f"{_sp_s['n_ok']}/{_sp_s['n_pairs']}",
+                            delta=f"Gần: {_sp_s['n_too_close']} | Xa: {_sp_s['n_too_far']}",
+                            delta_color="normal" if _sp_s["n_ok"] == _sp_s["n_pairs"] else "inverse",
+                        )
+                        if _sp_s["min_dist_m"] is not None:
+                            _mc2.metric(
+                                "Khoảng cách (min–max)",
+                                f"{_sp_s['min_dist_m']:.0f} – {_sp_s['max_dist_m']:.0f} m",
+                                delta=f"Yêu cầu: {_sp_res['limit_min_m']:.0f}–{_sp_res['limit_max_m']:.0f} m",
+                                delta_color="off",
+                            )
+
+                        # Chọn cặp HK để hiển thị kích thước trên 3D
+                        _sp_pairs = _sp_res["pairs"]
+                        _pair_labels = [
+                            f"{p['bh1']} ↔ {p['bh2']}  ({p['distance_m']:.0f} m — {p['status']})"
+                            for p in _sp_pairs
+                        ]
+                        _pair_choice = st.selectbox(
+                            "Chọn cặp HK để đo kích thước trên 3D",
+                            ["(không chọn)"] + _pair_labels,
+                            key="_sp_pair_sel",
+                        )
+                        if _pair_choice != "(không chọn)":
+                            _pidx = _pair_labels.index(_pair_choice)
+                            _pp   = _sp_pairs[_pidx]
+                            _pair_sel = (_pp["bh1"], _pp["bh2"], _pp["distance_m"])
+
+                        # Bảng chi tiết
+                        if _sp_pairs:
+                            _sp_rows = [
+                                {
+                                    "Hố khoan 1":    p["bh1"],
+                                    "Hố khoan 2":    p["bh2"],
+                                    "Khu vực":       p["zone1"],
+                                    "Khoảng cách (m)": p["distance_m"],
+                                    "Kết quả":       p["status"],
+                                }
+                                for p in _sp_pairs
+                            ]
+                            _sp_df = pd.DataFrame(_sp_rows)
+
+                            def _sp_color(val):
+                                if val == "Đạt":
+                                    return "background-color:#d4edda; color:#155724"
+                                if val in ("Gần quá", "Xa quá"):
+                                    return "background-color:#f8d7da; color:#721c24"
+                                return ""
+
+                            st.dataframe(
+                                _sp_df.style.applymap(_sp_color, subset=["Kết quả"]),
+                                use_container_width=True,
+                                hide_index=True,
+                                height=260,
+                            )
+                        else:
+                            st.info("Chưa có tọa độ hố khoan để tính khoảng cách.")
+                        st.caption(
+                            f"Tiêu chuẩn: TCCS 41:2022 Điều 5.3.2 — {_sp_res['limit_label']}"
+                        )
+                    except Exception as _sp_exc:
+                        st.warning(f"Không tải được borehole_spacing: {_sp_exc}")
+
+                # ── 3D chart (trái) ─────────────────────────────────────────
+                with _col3d:
+                    if _sel_zones:
+                        st.plotly_chart(
+                            _draw_boreholes_3d(
+                                _sel_zones, _show_clay, _show_cdm, _cdm_top_z,
+                                focus_bh=_focus_bh,
+                                pair_highlight=_pair_sel,
+                            ),
+                            use_container_width=True, config={"displayModeBar": True},
+                        )
+                    else:
+                        st.info(_t("no_zone"))
 
             # ── MAP VIEW ──────────────────────────────────────────────────────
             else:

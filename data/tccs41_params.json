@@ -23,7 +23,25 @@
   },
 
   "tccs41_sampling_requirements": {
-    "_note": "Bảng 7.4.2 + Điều 5.3.3 — mẫu nén cố kết tối thiểu",
+    "_note": "Bảng 7.4.2 + Điều 5.3.3 + Điều 5.3.2 — mẫu nén cố kết tối thiểu",
+    "borehole_spacing_532": {
+      "_ref": "TCCS41:2022 Điều 5.3.2",
+      "LAPDA": {
+        "label": "Lập dự án đầu tư — Điều 5.3.2.1",
+        "along_alignment_min_m": 250,
+        "along_alignment_max_m": 500,
+        "min_bh_per_cross_section": 1
+      },
+      "BVTK": {
+        "label": "Bước BVTK — dọc tuyến — Điều 5.3.2.2",
+        "along_alignment_min_m": 100,
+        "along_alignment_max_m": 150,
+        "min_bh_per_cross_section": 3,
+        "cross_section_spacing_min_m": 150,
+        "cross_section_spacing_max_m": 300,
+        "_note_highway": "Đường cao tốc và cấp III trở lên: dọc tuyến 100 m"
+      }
+    },
     "borehole_spacing_m": {
       "survey":  500,
       "TKKT":    250,
