@@ -226,7 +226,7 @@ _LAYER_COLORS: dict[str, str] = {
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
 _ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
 
-_PAGE_IDS = ["geology", "sample_check", "params", "compare", "result", "export", "settlement", "ke_sw"]
+_PAGE_IDS = ["geology", "sample_check", "params", "compare", "result", "export", "settlement", "ke_sw", "cdm_bvt", "sw_bvt"]
 
 # ─── Bảng dịch VN / EN ────────────────────────────────────────────────────────
 _L: dict[str, tuple[str, str]] = {
@@ -239,12 +239,17 @@ _L: dict[str, tuple[str, str]] = {
     "lang_lbl":     ("Ngôn ngữ / Language",          "Language / Ngôn ngữ"),
     # Pages
     "p_geology":    ("Địa chất",                    "Geology"),
+    "p_sample_check":("Kiểm tra mẫu TN",            "Sample Check"),
+    "p_tkcs_cdm":   ("TKCS CDM",                    "CDM Prelim Design"),
     "p_params":     ("Thông số",                    "Parameters"),
     "p_compare":    ("So sánh PA",                  "Comparison"),
     "p_result":     ("Kết quả",                     "Results"),
-    "p_export":     ("Xuất",                        "Export"),
-    "p_sample_check":("Kiểm tra mẫu TN",              "Sample Check"),
     "p_settlement": ("Lún nền",                     "Settlement"),
+    "p_export":     ("Xuất kết quả",                "Export Results"),
+    "p_cdm_bvt":    ("TKBVT CDM",                   "CDM Detail Design"),
+    "p_tkcs_sw":    ("TKCS Cọc ván",                "Sheet Pile Prelim Design"),
+    "p_ke_sw":      ("Cọc ván SW (Kè)",             "Sheet Pile SW (Ke)"),
+    "p_sw_bvt":     ("TKBVT Cọc ván",              "Sheet Pile Detail Design"),
     # Page 1 – Geology
     "p1_sub":       ("Địa chất – Chọn hố khoan",    "Geology – Borehole Selection"),
     "zone_lbl":     ("Zone",                        "Zone"),
@@ -370,8 +375,6 @@ _L: dict[str, tuple[str, str]] = {
     "create_word":  ("Tạo file Word",              "Generate Word File"),
     "creating":     ("Đang tạo tài liệu...",        "Generating document..."),
     "dl_docx":      ("Tải xuống (.docx)",           "Download (.docx)"),
-    # Page KE-SW
-    "p_ke_sw":      ("Cọc ván SW (Kè)",           "Sheet Pile SW (Ke)"),
     # Sidebar summary
     "si_bh":        ("**HK:**",                    "**BH:**"),
 }
@@ -2158,15 +2161,31 @@ with st.sidebar.expander(_t("save_load"), expanded=False):
 
 st.sidebar.divider()
 
-_page_labels = [
-    _t("p_geology"), _t("p_sample_check"), _t("p_params"), _t("p_compare"),
-    _t("p_result"),  _t("p_export"), _t("p_settlement"), _t("p_ke_sw"),
-]
-_page = st.sidebar.radio(
-    "", _PAGE_IDS,
-    format_func=lambda pid: _page_labels[_PAGE_IDS.index(pid)],
-    label_visibility="collapsed",
-)
+if "_page" not in st.session_state:
+    st.session_state["_page"] = "geology"
+
+def _nav(label: str, pid: str, indent: bool = False) -> None:
+    pfx = "    " if indent else ""
+    if st.sidebar.button(pfx + label, key=f"_nav_{pid}",
+                         use_container_width=True,
+                         type="primary" if st.session_state.get("_page") == pid else "secondary"):
+        st.session_state["_page"] = pid
+        st.rerun()
+
+_nav(_t("p_geology"),      "geology")
+_nav(_t("p_sample_check"), "sample_check")
+st.sidebar.markdown(f"**{_t('p_tkcs_cdm')}**")
+_nav(_t("p_params"),    "params",     indent=True)
+_nav(_t("p_compare"),   "compare",    indent=True)
+_nav(_t("p_result"),    "result",     indent=True)
+_nav(_t("p_settlement"),"settlement", indent=True)
+_nav(_t("p_export"),    "export",     indent=True)
+_nav(_t("p_cdm_bvt"),   "cdm_bvt")
+st.sidebar.markdown(f"**{_t('p_tkcs_sw')}**")
+_nav(_t("p_ke_sw"),  "ke_sw",  indent=True)
+_nav(_t("p_sw_bvt"), "sw_bvt")
+
+_page = st.session_state.get("_page", "geology")
 
 # Info sidebar dưới cùng
 st.sidebar.divider()
@@ -4353,3 +4372,12 @@ if _page == "ke_sw":
                 "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
             )
 
+# ── Placeholder: TKBVT CDM ───────────────────────────────────────────────────
+if _page == "cdm_bvt":
+    st.markdown("## TKBVT CDM")
+    st.info("Trang đang phát triển — thiết kế bản vẽ thi công CDM.")
+
+# ── Placeholder: TKBVT Cọc ván ───────────────────────────────────────────────
+if _page == "sw_bvt":
+    st.markdown("## TKBVT Cọc ván")
+    st.info("Trang đang phát triển — thiết kế bản vẽ thi công cọc ván SW.")
