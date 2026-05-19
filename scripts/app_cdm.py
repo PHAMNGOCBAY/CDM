@@ -2085,6 +2085,24 @@ if _page == "geology":
             if su:
                 st.metric(_t("su_avg"), f"{su:.1f} kPa")
 
+        # Bảng thống kê nén cố kết
+        st.markdown("---")
+        st.markdown("**Thí nghiệm nén cố kết**")
+        df_cc = _load_consol_summary(zone)
+        if df_cc.empty:
+            st.caption("Chưa có dữ liệu nén cố kết cho khu vực này.")
+        else:
+            df_cc_disp = df_cc.rename(columns={
+                "borehole": "Hố khoan",
+                "n_Cc":     "n",
+                "Cc_tb":    "Cc tb",
+                "Cs_tb":    "Cs tb",
+                "e0_tb":    "e₀ tb",
+                "PC_min":   "PC min\n(kPa)",
+                "PC_max":   "PC max\n(kPa)",
+            })[["Hố khoan", "n", "Cc tb", "Cs tb", "e₀ tb", "PC min\n(kPa)", "PC max\n(kPa)"]]
+            st.dataframe(df_cc_disp, use_container_width=True, hide_index=True)
+
     with col_prof:
         layers = _load_layers(bh_name)
         if layers:
