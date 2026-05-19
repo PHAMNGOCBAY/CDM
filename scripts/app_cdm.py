@@ -2446,7 +2446,7 @@ if _page == "geology":
                                 return ""
 
                             st.dataframe(
-                                _sp_df.style.applymap(_sp_color, subset=["Kết quả"]),
+                                _sp_df.style.map(_sp_color, subset=["Kết quả"]),
                                 use_container_width=True,
                                 hide_index=True,
                                 height=260,
@@ -2635,7 +2635,7 @@ elif _page == "sample_check":
                 })
             _df_ly = pd.DataFrame(_rows_ly)
             st.dataframe(
-                _df_ly.style.applymap(_cell_color,
+                _df_ly.style.map(_cell_color,
                     subset=["Cc (n)", "Cs (n)", "Cv (n)", "PC (n)"]),
                 use_container_width=True, hide_index=True,
             )
