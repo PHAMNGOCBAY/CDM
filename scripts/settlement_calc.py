@@ -166,6 +166,27 @@ def calc_combined_U(Uv: float, Uh: float) -> float:
     return 1.0 - (1.0 - Uv) * (1.0 - Uh)
 
 
+def calc_cdm_stress_beta(zone_params: dict, area_ratio: Optional[float] = None) -> float:
+    """
+    Hệ số phân bổ ứng suất vào đất giữa cột CDM — TCVN 9403:2012 Phụ lục C.
+    beta = Es / (a*Ec + (1-a)*Es)
+
+    Ứng suất thực trong đất = Delta_sigma * beta.
+    Khi Ec >> Es: beta → 0 (cột chịu gần hết tải → đất lún ít).
+    Khi Ec = Es: beta = 1 (CDM không giúp gì về lún).
+    """
+    a   = area_ratio if area_ratio is not None else zone_params.get("cdm_area_ratio", 0.25)
+    Cu  = zone_params.get("Cu_avg_kPa", 15.0)
+    qu_lab = zone_params.get("cdm_qu_lab_kPa", 1000.0)
+    f   = zone_params.get("cdm_field_lab_ratio", 0.33)
+    Ef  = zone_params.get("cdm_Ec_factor", 75.0)
+    Es  = 250.0 * Cu                 # Mesri: Es = 250 Cu
+    Cc_col = f * qu_lab / 2.0        # Cc = qu_field/2
+    Ec  = Ef * Cc_col                # Ec = (50-100)*Cc_col per TCVN 9403
+    denom = a * Ec + (1.0 - a) * Es
+    return min(Es / denom, 1.0) if denom > 0 else 1.0
+
+
 # ──────────────────────────────────────────────────────────────────
 # 3. TÍNH LÚN TỔNG TỪ DB
 # ──────────────────────────────────────────────────────────────────
@@ -174,8 +195,14 @@ def calc_settlement_from_db(bh_name: str,
                              H_fill_m: float = 3.0,
                              gamma_fill: float = 20.0,
                              gwt_depth_m: float = 0.0,
-                             fallback_zone_params: Optional[dict] = None
+                             fallback_zone_params: Optional[dict] = None,
+                             stress_scale: float = 1.0,
                              ) -> dict:
+    """
+    stress_scale: nhân với Delta_sigma trước khi tính lún.
+    = 1.0: không xử lý (mặc định)
+    = beta (< 1): CDM — stress sharing theo TCVN 9403 C.2
+    """
     """
     Tính tổng lún sơ cấp cho hố khoan từ dữ liệu lab_tests.
 
@@ -190,11 +217,11 @@ def calc_settlement_from_db(bh_name: str,
       }
     """
     samples = load_consol_samples(bh_name)
-    delta_sigma = calc_delta_sigma(H_fill_m, gamma_fill)
+    delta_sigma = calc_delta_sigma(H_fill_m, gamma_fill) * stress_scale
 
     if not samples and fallback_zone_params:
-        # Dùng thông số trung bình của zone
-        return _calc_settlement_zone_avg(fallback_zone_params, H_fill_m, gamma_fill, gwt_depth_m)
+        return _calc_settlement_zone_avg(fallback_zone_params, H_fill_m, gamma_fill,
+                                         gwt_depth_m, stress_scale=stress_scale)
 
     if not samples:
         return {
@@ -269,9 +296,10 @@ def calc_settlement_from_db(bh_name: str,
 
 
 def _calc_settlement_zone_avg(zone_params: dict, H_fill_m: float,
-                               gamma_fill: float, gwt_depth_m: float) -> dict:
+                               gamma_fill: float, gwt_depth_m: float,
+                               stress_scale: float = 1.0) -> dict:
     """Tính lún dùng thông số trung bình của zone (khi không có mẫu cụ thể)."""
-    delta_sigma = calc_delta_sigma(H_fill_m, gamma_fill)
+    delta_sigma = calc_delta_sigma(H_fill_m, gamma_fill) * stress_scale
     gamma_sat   = zone_params.get("gamma_sat_kNm3", 16.5)
     gamma_prime = gamma_sat - GAMMA_W
     Cc  = zone_params.get("Cc_avg", 0.48)
@@ -328,12 +356,13 @@ def calc_time_series(S_total_cm: float,
                      pvd_pattern: str = "triangular",
                      sd_diameter_mm: float = 400.0,
                      sd_spacing_m: float = 1.5,
-                     cdm_area_ratio: float = 0.25,
                      ) -> list[dict]:
     """
     Tính S(t) cho từng phương án xử lý.
 
     method: 'no_treat' | 'pvd' | 'sand_drain' | 'cdm'
+    S_total_cm: tổng lún THỰC TẾ của phương án (đã giảm theo CDM beta cho CDM,
+                hoặc đúng bằng S_no_treat cho các phương án khác).
 
     Trả về: [{'t_months', 't_years', 'U_pct', 'S_cm'}]
     """
@@ -344,14 +373,8 @@ def calc_time_series(S_total_cm: float,
     drainage = zone_params.get("drainage", "two_way")
     Hdr_eff = Hdr_m / 2 if drainage == "two_way" else Hdr_m
 
-    # S_effective: lún dưới tải THIẾT KẾ (không phải tải surcharge)
-    # Surcharge chỉ tăng tốc độ cố kết, không thay đổi S_total dưới tải thiết kế
-    # CDM: giảm lún theo tỷ lệ diện tích thay thế (as=25% → giảm ~21%)
-    if method == "cdm":
-        reduction = 1.0 - cdm_area_ratio * 0.85
-        S_effective = S_total_cm * reduction
-    else:
-        S_effective = S_total_cm
+    # S_effective = S_total_cm đã được caller điều chỉnh (CDM dùng stress-sharing)
+    S_effective = S_total_cm
 
     result = []
     for t_m in t_months_list:
@@ -436,6 +459,15 @@ def compare_methods(bh_name: str,
     scenarios_out = []
     time_series_out = {}
 
+    # CDM stress-sharing beta (tính trước, dùng cho tất cả scenario CDM)
+    cdm_beta = calc_cdm_stress_beta(zone_params)
+    cdm_area_ratio = zone_params.get("cdm_area_ratio", 0.25)
+    # S dưới tải CDM: tái tính Cc với Delta_sigma × beta (cột chịu bớt tải)
+    cdm_detail = calc_settlement_from_db(bh_name, H_fill_m, gamma_fill,
+                                          fallback_zone_params=zone_params,
+                                          stress_scale=cdm_beta)
+    S_cdm = cdm_detail["S_total_cm"] or S_total * (1.0 - cdm_area_ratio * 0.85)
+
     for sc in scenarios_cfg:
         method = sc["id"]
         label  = sc["label"]
@@ -445,9 +477,13 @@ def compare_methods(bh_name: str,
         sd_d   = sc.get("sd_diameter_mm") or 400.0
         sd_s   = sc.get("sd_spacing_m") or 1.5
 
-        method_type = sc.get("method", "no_treat")   # 'pvd'|'sand_drain'|'cdm'|'no_treat'
+        method_type = sc.get("method", "no_treat")
+
+        # CDM dùng S đã giảm theo stress-sharing; các phương án khác dùng S_total
+        S_input = S_cdm if method_type == "cdm" else S_total
+
         ts = calc_time_series(
-            S_total, method_type, zone_params, t_list,
+            S_input, method_type, zone_params, t_list,
             pvd_spacing_m=pvd_s, pvd_pattern=pvd_pat,
             sd_diameter_mm=sd_d, sd_spacing_m=sd_s,
         )
@@ -463,7 +499,6 @@ def compare_methods(bh_name: str,
         S_final  = ts[-1]["S_cm"]   # ~100% U (20 năm)
         residual = max(S_final - S_constr, 0.0)
 
-        # Tìm t_90% (U ≥ 90%)
         t_90 = next((pt["t_months"] for pt in ts if pt["U_pct"] >= 90.0), None)
 
         scenarios_out.append({
@@ -476,18 +511,21 @@ def compare_methods(bh_name: str,
             "t_90_months":       t_90,
             "feasible":          residual <= residual_limit_cm,
             "H_surcharge_m":     H_sur,
+            "cdm_beta":          round(cdm_beta, 3) if method_type == "cdm" else None,
         })
 
     return {
-        "bh_name":       bh_name,
-        "zone_code":     zone_code,
-        "H_fill_m":      H_fill_m,
-        "S_total_cm":    S_total,
-        "S_detail":      result,
-        "residual_limit_cm": residual_limit_cm,
+        "bh_name":            bh_name,
+        "zone_code":          zone_code,
+        "H_fill_m":           H_fill_m,
+        "S_total_cm":         S_total,
+        "S_detail":           result,
+        "cdm_beta":           round(cdm_beta, 3),
+        "cdm_area_ratio":     cdm_area_ratio,
+        "residual_limit_cm":  residual_limit_cm,
         "t_construction_months": t_construction_months,
-        "scenarios":     scenarios_out,
-        "time_series":   time_series_out,
+        "scenarios":          scenarios_out,
+        "time_series":        time_series_out,
     }
 
 
