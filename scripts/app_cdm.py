@@ -4038,8 +4038,8 @@ if _page == "ke_sw":
                 "Rs (kN)":           _nt2.get("Rs_kN", "–"),
                 "Rp (kN)":           _nt2.get("Rp_kN", "–"),
                 "RR (kN)":           _nt2.get("RR_kN", "–"),
-                "W (kN)":            round(_bh.get("W_pile_kN", 0), 1),
-                "RR/W":              round(_nt2.get("ratio", 0), 2) if _nt2 else "–",
+                "W (kN)":            round(_bh.get("W_pile_kN") or 0, 1),
+                "RR/W":              round(_nt2.get("ratio") or 0, 2) if _nt2 else "–",
                 "Ghi chú":           _bh.get("note", ""),
             })
 
