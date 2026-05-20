@@ -5352,7 +5352,7 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                         "Vùng NC/cắt qua PC là vùng có lún Cc lớn nhất nếu không xử lý."
                     )
 
-                # ── Lý thuyết tính lún ────────────────────────────────────────
+                # ── Lý thuyết + giải thích kết quả (LaTeX, có giá trị thực) ────
                 with st.expander("Lý thuyết tính lún và giải thích kết quả CDM"):
                     _beta_txt = _cmp.get("cdm_beta", 1.0)
                     _a_txt    = _cmp.get("cdm_area_ratio", 0.25)
@@ -5360,81 +5360,104 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                     _Ec_txt   = _cmp.get("cdm_Ec_kPa", 0)
                     _Es_txt   = _cmp.get("cdm_Es_kPa", 0)
                     _Etb_txt  = _cmp.get("cdm_composite_kPa", 0)
-                    st.markdown(f"""
-**1. Lún cố kết sơ cấp (không xử lý / bấc thấm / giếng cát) — Phụ lục A TCCS 41:2022**
+                    st.markdown(r"""
+## 1. Lún cố kết sơ cấp — Phụ lục A TCCS 41:2022
 
-Mỗi lớp i được tính theo trạng thái cố kết:
+Áp dụng cho các phương án: **không xử lý, bấc thấm, giếng cát**. Mỗi lớp đất yếu $i$
+tính theo trạng thái cố kết.
 
-| Trạng thái | Điều kiện | Công thức |
-|---|---|---|
-| Quá cố kết (OC) | σvf ≤ PC | Si = Hi × Cs/(1+e0) × log(σvf/σv0) |
-| Cắt qua PC | σv0 < PC < σvf | Si = Hi × [Cs/(1+e0)×log(PC/σv0) + Cc/(1+e0)×log(σvf/PC)] |
-| Bình thường cố kết (NC) | σv0 ≥ PC | Si = Hi × Cc/(1+e0) × log(σvf/σv0) |
+### 1.1 Đất quá cố kết (OC) — $\sigma'_{vf} \leq P_C$
 
-Trong đó: σv0 = ứng suất hữu hiệu ban đầu; σvf = σv0 + Δσ; PC = áp lực tiền cố kết.
+$$S_i = H_i \cdot \frac{C_s}{1 + e_0} \cdot \log \frac{\sigma'_{vf}}{\sigma'_{v0}}$$
 
-Phạm vi tính: tất cả lớp đất yếu (mẫu nén cố kết có Cc). Chiều dày đại diện H_i dùng
-boundary trung điểm giữa các mẫu liền kề (không phải chiều dày mẫu 0.6m).
+### 1.2 Cắt qua $P_C$ — $\sigma'_{v0} < P_C < \sigma'_{vf}$
 
----
+$$S_i = H_i \left[ \frac{C_s}{1+e_0} \log \frac{P_C}{\sigma'_{v0}}
+                 + \frac{C_c}{1+e_0} \log \frac{\sigma'_{vf}}{P_C} \right]$$
 
-**2. Lún CDM — TCVN 9403:2012 Phụ lục C (lún đàn hồi khối gia cố)**
+### 1.3 Đất bình thường cố kết (NC) — $\sigma'_{v0} \geq P_C$
 
-CDM thay thế đất yếu bằng nền hỗn hợp (composite ground). Lún tính theo:
+$$S_i = H_i \cdot \frac{C_c}{1 + e_0} \cdot \log \frac{\sigma'_{vf}}{\sigma'_{v0}}$$
 
-```
-S = S1 + S2
-S1 = q × H_soft / (a×Ec + (1-a)×Es)   [đàn hồi tức thời trong khối gia cố]
-S2 = lún cố kết bên dưới cột            [= 0 nếu CDM cắm đến lớp cứng]
-```
-
-Trong đó:
-```
-Ec = 75 × Cc_col = 75 × (field_lab_ratio × qu_lab / 2)   [TCVN 9403 B.5.1]
-Es = 250 × Cu                                              [tương quan Mesri]
-```
-
-**Kết quả cho zone này (a = {_a_txt:.2f}):**
-- Ec = {_Ec_txt:.0f} kPa | Es = {_Es_txt:.0f} kPa | E_tổng hợp = {_Etb_txt:.0f} kPa
-- **S1 = {_S1_txt:.1f} cm** (đàn hồi, xảy ra tức thời trong quá trình thi công)
-- **S2 = 0 cm** (giả thiết CDM cắm đến lớp cứng)
-
-*Hệ số beta = {_beta_txt:.3f}* (tỷ lệ ứng suất vào đất giữa cột — chỉ để tham khảo biên độ ứng suất).
+Trong đó $\sigma'_{vf} = \sigma'_{v0} + \Delta\sigma$. Phạm vi tính: mọi lớp có mẫu nén cố kết
+($C_c$ đo được). Chiều dày đại diện $H_i$ dùng boundary trung điểm giữa các mẫu liền kề.
 
 ---
 
-**3. Tại sao lún CDM thấp hơn rất nhiều so với không xử lý?**
+## 2. Lún CDM — TCVN 9403:2012 Phụ lục C
 
-| Phương pháp | Cơ sở vật lý | Biên độ |
-|---|---|---|
-| Không xử lý | Cc cố kết (log) | {_cmp['S_total_cm']:.0f} cm (lún dài hạn) |
-| CDM | S1 đàn hồi (tuyến tính) | {_S1_txt:.0f} cm (tức thời) |
+CDM thay đất yếu bằng nền hỗn hợp (composite). Lún tổng:
 
-Lún Cc phụ thuộc log(σvf/σv0) — tăng mạnh khi đất NC và H_soft lớn.
-Lún đàn hồi CDM phụ thuộc E_tổng hợp — càng cao (cột cứng hơn, mật độ lớn hơn) thì lún càng nhỏ.
+$$S = S_1 + S_2$$
 
-**Để giảm S1 thêm:** Tăng diện tích thay thế a (cắt chặt hơn), hoặc tăng qu_lab (> 1 MPa).
+### 2.1 Lún đàn hồi tức thời trong khối gia cố
 
----
+$$S_1 = \frac{q \cdot H_{\text{soft}}}{a \cdot E_c + (1 - a) \cdot E_s}$$
 
-**4. Lún còn lại sau thi công (ΔS)**
+### 2.2 Lún cố kết bên dưới mũi cột
 
-CDM: S1 là lún đàn hồi — xảy ra NGAY trong quá trình đắp. ΔS ≈ 0 (không có lún còn lại).
+$$S_2 = 0 \quad \text{(giả thiết CDM cắm đến lớp cứng)}$$
 
-Các phương án khác:
-```
-ΔS = S_total × (1 - U(t_tc))
-```
-U(t) phụ thuộc vào phương pháp xử lý:
-- Không xử lý: chỉ Uv (Terzaghi, Cv, Hdr)
-- Bấc thấm / Giếng cát: U = 1-(1-Uv)(1-Uh) (cố kết kết hợp)
+### 2.3 Mô-đun thành phần
 
-**Surcharge**: tăng ứng suất → tăng tốc độ cố kết trong thời gian gia tải,
-nhưng không thay đổi S_total dưới tải thiết kế.
+$$E_c = 75 \cdot C_{c,\text{col}} = 75 \cdot \left(\text{ratio}_{lab \to field} \cdot \frac{q_{u,lab}}{2}\right)
+\quad \text{(TCVN 9403 B.5.1)}$$
 
-TCCS 41:2022 yêu cầu ΔS ≤ {_cmp['residual_limit_cm']:.0f} cm
-(đường cấp 1 đoạn thông thường) sau khi làm xong mặt đường.
+$$E_s = 250 \cdot C_u \quad \text{(tương quan Mesri)}$$
+
+$$E_{\text{composite}} = a \cdot E_c + (1 - a) \cdot E_s$$
 """)
+                    st.info(
+                        f"**Kết quả cho zone này** ($a = {_a_txt:.2f}$):\n\n"
+                        f"- $E_c = {_Ec_txt:.0f}$ kPa | $E_s = {_Es_txt:.0f}$ kPa | "
+                        f"$E_{{\\text{{composite}}}} = {_Etb_txt:.0f}$ kPa\n"
+                        f"- **$S_1 = {_S1_txt:.1f}$ cm** (đàn hồi tức thời trong quá trình thi công)\n"
+                        f"- $S_2 = 0$ cm (CDM cắm đến lớp cứng)\n"
+                        f"- Hệ số $\\beta = {_beta_txt:.3f}$ "
+                        f"(tỷ lệ ứng suất vào đất giữa cột)"
+                    )
+                    st.markdown("---")
+                    st.markdown("## 3. So sánh CDM vs không xử lý")
+                    st.markdown(
+                        "| Phương pháp | Cơ sở vật lý | Biên độ |\n"
+                        "|---|---|---|\n"
+                        f"| Không xử lý | $C_c$ cố kết (log) | **{_cmp['S_total_cm']:.0f} cm** (lún dài hạn) |\n"
+                        f"| CDM | $S_1$ đàn hồi (tuyến tính) | **{_S1_txt:.0f} cm** (tức thời) |"
+                    )
+                    st.markdown(r"""
+**Tại sao chênh lệch lớn?**
+
+- Lún $C_c$: $S \propto \log\!\left(\dfrac{\sigma'_{vf}}{\sigma'_{v0}}\right)$ — tăng mạnh khi đất NC và $H_{\text{soft}}$ lớn.
+- Lún đàn hồi CDM: $S_1 \propto \dfrac{1}{E_{\text{composite}}}$ — càng cao (cột cứng hơn, mật độ lớn hơn) → lún càng nhỏ.
+
+**Để giảm $S_1$ thêm**: tăng diện tích thay thế $a$ (rút khoảng cách $e$), hoặc tăng $q_{u,lab}$ ($> 1$ MPa).
+
+---
+
+## 4. Lún còn lại sau thi công $\Delta S$
+
+### 4.1 CDM
+
+$$\Delta S \approx 0 \quad (\text{$S_1$ đàn hồi — lún xảy ra ngay khi đắp})$$
+
+### 4.2 Phương án khác (không xử lý / bấc thấm / giếng cát)
+
+$$\Delta S = S_{\text{total}} \cdot \bigl(1 - U(t_{tc})\bigr)$$
+
+| Phương án | $U(t)$ |
+|---|---|
+| Không xử lý | $U_v$ — Terzaghi đứng, phụ thuộc $C_v$, $H_{dr}$ |
+| Bấc thấm / giếng cát | $U = 1 - (1 - U_v)(1 - U_h)$ — cố kết kết hợp |
+
+### 4.3 Surcharge (gia tải tạm)
+
+Tăng ứng suất $> $ tải thiết kế → tăng tốc độ cố kết → giảm $\Delta S$ sau khi dỡ tải. **Không** thay đổi $S_{\text{total}}$ dưới tải thiết kế.
+""")
+                    st.markdown(f"### 4.4 Yêu cầu TCCS 41:2022")
+                    st.latex(
+                        rf"\Delta S \leq {_cmp['residual_limit_cm']:.0f} \text{{ cm}}"
+                        r" \quad \text{(đường cấp 1 đoạn thông thường)}"
+                    )
 
         # ── PHẦN 1b: Lún sơ bộ TKCS — Điều 9.2.3 TCCS 41:2022 ──────────────
         st.divider()
