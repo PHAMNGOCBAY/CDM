@@ -5873,6 +5873,122 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                     "Giải thích: xem 'Lý thuyết tính lún' cuối trang."
                 )
 
+                # ── Biểu đồ tổng hợp so sánh phương án xử lý ─────────────────
+                if _HAS_PLOTLY:
+                    _labels  = [r["Phương án"] for r in _sc_rows]
+                    _S_tot   = [r["Lún tổng (cm)"]    for r in _sc_rows]
+                    _S_resi  = [r["Lún còn lại (cm)"] for r in _sc_rows]
+                    _U_tc    = [r["U tại TC (%)"]     for r in _sc_rows]
+                    _t90_num = [(float(r["t90% (tháng)"]) if r["t90% (tháng)"] != ">240" else 240)
+                                for r in _sc_rows]
+                    _eval    = [r["Đánh giá"] for r in _sc_rows]
+                    _color_bar = ["#2E7D32" if e == "Đạt" else "#C62828" for e in _eval]
+
+                    from plotly.subplots import make_subplots
+                    _fig_cmp4 = make_subplots(
+                        rows=2, cols=2,
+                        subplot_titles=(
+                            "Lún tổng vs Lún còn lại (cm)",
+                            "Độ cố kết U(t) tại kết thúc thi công (%)",
+                            "Thời gian t₉₀ — đạt 90% cố kết (tháng)",
+                            "Lún còn lại vs Giới hạn ΔS (cm)",
+                        ),
+                        specs=[[{"secondary_y": False}, {}], [{}, {}]],
+                        vertical_spacing=0.18, horizontal_spacing=0.12,
+                    )
+
+                    # (1,1): Bar group — Lún tổng vs Lún còn lại
+                    _fig_cmp4.add_trace(go.Bar(
+                        x=_labels, y=_S_tot,
+                        name="Lún tổng",
+                        marker_color="#4472C4",
+                        text=[f"{v:.0f}" for v in _S_tot], textposition="outside",
+                    ), row=1, col=1)
+                    _fig_cmp4.add_trace(go.Bar(
+                        x=_labels, y=_S_resi,
+                        name="Lún còn lại",
+                        marker_color="#ED7D31",
+                        text=[f"{v:.1f}" for v in _S_resi], textposition="outside",
+                    ), row=1, col=1)
+
+                    # (1,2): Độ cố kết U%
+                    _fig_cmp4.add_trace(go.Bar(
+                        x=_labels, y=_U_tc,
+                        marker_color=_color_bar,
+                        text=[f"{v:.0f}%" for v in _U_tc], textposition="outside",
+                        showlegend=False,
+                    ), row=1, col=2)
+                    _fig_cmp4.add_hline(y=90, line_dash="dash", line_color="#888",
+                                        annotation_text="U=90%", row=1, col=2)
+
+                    # (2,1): t₉₀ (tháng)
+                    _fig_cmp4.add_trace(go.Bar(
+                        x=_labels, y=_t90_num,
+                        marker_color="#9C27B0",
+                        text=[r["t90% (tháng)"] for r in _sc_rows],
+                        textposition="outside",
+                        showlegend=False,
+                    ), row=2, col=1)
+                    _fig_cmp4.add_hline(y=float(_sl_tc), line_dash="dash", line_color="#1565C0",
+                                        annotation_text=f"t_TC = {_sl_tc:.0f} tháng",
+                                        row=2, col=1)
+
+                    # (2,2): Lún còn lại vs giới hạn
+                    _fig_cmp4.add_trace(go.Bar(
+                        x=_labels, y=_S_resi,
+                        marker_color=_color_bar,
+                        text=[f"{v:.1f}" for v in _S_resi], textposition="outside",
+                        showlegend=False,
+                    ), row=2, col=2)
+                    _fig_cmp4.add_hline(y=float(_sl_lim), line_dash="dash", line_color="#E53935",
+                                        annotation_text=f"Giới hạn ΔS ≤ {_sl_lim:.0f} cm",
+                                        row=2, col=2)
+
+                    _fig_cmp4.update_layout(
+                        title=dict(text="<b>Bảng tổng hợp so sánh phương án xử lý đất yếu</b>",
+                                   font=dict(size=14)),
+                        height=720, margin=dict(t=80, b=60, l=50, r=20),
+                        barmode="group", showlegend=True,
+                        legend=dict(orientation="h", y=1.06, x=0.3),
+                        plot_bgcolor="#FAFAFA",
+                    )
+                    _fig_cmp4.update_yaxes(title_text="cm",    row=1, col=1)
+                    _fig_cmp4.update_yaxes(title_text="U (%)", row=1, col=2, range=[0, 110])
+                    _fig_cmp4.update_yaxes(title_text="tháng", row=2, col=1)
+                    _fig_cmp4.update_yaxes(title_text="cm",    row=2, col=2)
+                    _fig_cmp4.update_xaxes(tickangle=-15)
+                    st.plotly_chart(_fig_cmp4, use_container_width=True)
+
+                    # ── Biểu đồ tóm tắt: stacked horizontal bar — Lún tại TC vs Còn lại ──
+                    _fig_stk = go.Figure()
+                    _fig_stk.add_trace(go.Bar(
+                        y=_labels,
+                        x=[r["Lún tại TC (cm)"] for r in _sc_rows],
+                        name="Lún tại kết thúc TC",
+                        marker_color="#1565C0",
+                        orientation="h",
+                        text=[f"{r['Lún tại TC (cm)']:.1f}" for r in _sc_rows],
+                        textposition="inside",
+                    ))
+                    _fig_stk.add_trace(go.Bar(
+                        y=_labels,
+                        x=_S_resi,
+                        name="Lún còn lại",
+                        marker_color="#E53935",
+                        orientation="h",
+                        text=[f"{v:.1f}" for v in _S_resi],
+                        textposition="inside",
+                    ))
+                    _fig_stk.update_layout(
+                        title="<b>Phân bố lún: hoàn thành tại TC vs còn lại</b>",
+                        barmode="stack",
+                        xaxis_title="cm",
+                        height=320, margin=dict(t=50, b=40, l=180, r=20),
+                        legend=dict(orientation="h", y=1.15),
+                        plot_bgcolor="#FAFAFA",
+                    )
+                    st.plotly_chart(_fig_stk, use_container_width=True)
+
                 # Biểu đồ S(t)
                 if _HAS_PLOTLY:
                     _colors_sl = {
