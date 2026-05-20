@@ -8930,6 +8930,26 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 else:
                     st.info("Cần áp HK ở trên để có lớp đất tính áp lực đất (Ka/Kp theo từng lớp).")
 
+                # Nút quick-set: CDM ngàm vào lớp đất tốt 1.0 m
+                _btn_cd1, _btn_cd2 = st.columns([2, 5])
+                with _btn_cd1:
+                    if st.button("Đặt CDM ngàm 1.0m vào đất tốt",
+                                  key=f"btn_cdm_ngam_1m_{_hk_iter}",
+                                  help="Tự động set cdm_L_ngam = 1.0m và cdm_Lc = H₁ + 1.0m "
+                                       "(ngàm tối thiểu 1m vào lớp tốt theo TCVN 9403)"):
+                        st.session_state["cdm_L_ngam"] = 1.0
+                        st.session_state["cdm_Lc"] = float(_dpy_H1) + 1.0
+                        st.rerun()
+                with _btn_cd2:
+                    _cdm_Lc_cur = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
+                    _cdm_Lng_cur = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
+                    st.caption(
+                        f"_CDM hiện tại: Lc = {_cdm_Lc_cur:.1f}m "
+                        f"(ngàm {_cdm_Lng_cur:.1f}m vào đất tốt). "
+                        f"Bấm nút trái → Lc = H₁ ({float(_dpy_H1):.1f}) + 1.0 = "
+                        f"{float(_dpy_H1) + 1.0:.1f}m._"
+                    )
+
                 # Auto-run (bỏ nút) — mọi expander tự tính khi mở
                 if True:
                     # Lấy chiều dài CDM từ tab "Thiết kế CDM" (session_state)
@@ -9169,6 +9189,39 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                   fontsize=7, color="green", fontweight="bold",
                                                   arrowprops=dict(arrowstyle="->", color="green", lw=0.8))
 
+                            # Đáy lớp bùn sét (Z - H1) — đường nét đứt nâu
+                            _bun_bot_F = _Z_w - float(_dpy_H1)
+                            _bun_bot_B = _Zb_w - float(_dpy_H1)
+                            _axw[0].plot([-3, -0.5], [_bun_bot_F, _bun_bot_F],
+                                          color="#8B4513", linestyle=":", lw=1.0, alpha=0.7)
+                            _axw[0].plot([0.5, 3], [_bun_bot_B, _bun_bot_B],
+                                          color="#8B4513", linestyle=":", lw=1.0, alpha=0.7)
+                            # Annotation cao độ đáy lớp bùn (lấy mức cao hơn để gọn)
+                            _bun_bot_show = max(_bun_bot_F, _bun_bot_B)
+                            _axw[0].annotate(f"Đáy bùn = {_bun_bot_show:+.2f}m\nH₁ = {float(_dpy_H1):.1f}m",
+                                              xy=(0.5, _bun_bot_B),
+                                              xytext=(1.8, _bun_bot_B + 0.4),
+                                              fontsize=6.5, color="#8B4513",
+                                              arrowprops=dict(arrowstyle="->", color="#8B4513", lw=0.8))
+
+                            # Thông số Su Front / Back ở giữa lớp bùn (annotation góc)
+                            _su_mid_F = (_Z_w + _bun_bot_F) / 2.0
+                            _su_mid_B = (_Zb_w + _bun_bot_B) / 2.0
+                            _axw[0].text(-2.95, _su_mid_F,
+                                          f"Lớp 1 (Front)\nCtd = {float(_dpy_su):.0f} kPa",
+                                          fontsize=6, color="#8B4513", style="italic",
+                                          va="center", ha="left",
+                                          bbox=dict(boxstyle="round,pad=0.15",
+                                                    facecolor="#FFF8E1",
+                                                    edgecolor="#8B4513", lw=0.4, alpha=0.85))
+                            _axw[0].text(0.6, _su_mid_B,
+                                          f"Lớp 1 (Back)\nSu = {float(_dpy_sub):.0f} kPa",
+                                          fontsize=6, color="#FF6F00", style="italic",
+                                          va="center", ha="left",
+                                          bbox=dict(boxstyle="round,pad=0.15",
+                                                    facecolor="#FFF3E0",
+                                                    edgecolor="#FF6F00", lw=0.4, alpha=0.85))
+
                             # Front/Back labels
                             _axw[0].text(-2.8, _top_w + 0.6, "Front", fontsize=8, color="brown",
                                           fontweight="bold", style="italic")
@@ -9241,6 +9294,163 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _plt_w.close(_fig_w)
                         except Exception as _e_mpl:
                             st.warning(f"Không vẽ được biểu đồ matplotlib: {_e_mpl}")
+
+                        # ───────────────────────────────────────────────────────
+                        # Phân tích nội lực theo TỪNG LOẠI TẢI TRỌNG
+                        # (chạy Winkler riêng cho mỗi component → so sánh + tổng)
+                        # ───────────────────────────────────────────────────────
+                        try:
+                            st.markdown("##### Nội lực theo từng loại tải trọng")
+                            st.caption(
+                                "Chạy Winkler riêng cho mỗi thành phần (F áp dụng dạng "
+                                "lực tập trung ở đỉnh + mô-men từ tay đòn tới điểm đặt). "
+                                "Kết quả TỔNG = chồng chất tuyến tính của các thành phần."
+                            )
+
+                            # Helper: chạy Winkler với 1 lực + tay đòn
+                            def _calc_for_load(_F_v: float, _arm_v: float):
+                                if abs(_F_v) < 0.1:
+                                    return None
+                                _M_v = _F_v * _arm_v
+                                return _calc_py_winkler(
+                                    bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
+                                    pile_name=_dpy_pile, L_m=float(_dpy_L),
+                                    H_kNm=float(_F_v), M_kNm=float(_M_v),
+                                    cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
+                                    k_cdm_factor=_k_cdm_fac,
+                                )
+
+                            # Tay đòn từng loại tải (top → điểm đặt resultant)
+                            # z_app ước lượng: Active 1/3 fill từ chân; Passive ở phía dưới đáy đào;
+                            # Water/Surcharge dùng z_net từ EP
+                            _arm_act = (float(_dpy_top_ke) - _Z_w) / 2.0   # mid fill
+                            _arm_pas = float(_dpy_top_ke) - (_Zb_w - 1.0)  # mid passive (gần đáy đào)
+                            try:
+                                _arm_water = float(_dpy_top_ke) - float(_ep_res_cdm.get("z_net", _Z_w))
+                            except Exception:
+                                _arm_water = (float(_dpy_top_ke) - _Z_w) * 0.7
+                            _arm_bs = float(_dpy_top_ke) - _Z_w * 0.5     # Boussinesq lan dần xuống
+
+                            _comp_rows = []
+                            _comp_colors = {
+                                "Active":    "#C62828",
+                                "Passive":   "#1565C0",
+                                "Nước":      "#0277BD",
+                                "Surcharge": "#FF6F00",
+                                "TỔNG":      "#1B5E20",
+                            }
+                            _comp_results = {}
+                            for _name, _F_kn, _arm in [
+                                ("Active",    _F_act_v,    _arm_act),
+                                ("Passive",   -_F_pas_v,   _arm_pas),  # dấu âm: kháng
+                                ("Nước",      _F_water_v,  _arm_water),
+                                ("Surcharge", _F_bs_v,     _arm_bs),
+                            ]:
+                                _r = _calc_for_load(_F_kn, _arm)
+                                if _r is None or "error" in (_r or {}):
+                                    continue
+                                _comp_results[_name] = _r
+                                _comp_rows.append({
+                                    "Tải":         _name,
+                                    "F (kN/m)":    _F_kn,
+                                    "Tay đòn (m)": _arm,
+                                    "u_top (mm)":  _r["u_top_mm"],
+                                    "M_max (kNm)": _r["M_max_kNm"],
+                                    "Q_max (kN)":  _r.get("Q_max_kN", 0.0),
+                                })
+
+                            # TỔNG = chồng chất tuyến tính u/M/Q của các thành phần
+                            if _comp_results:
+                                import numpy as _np_sum
+                                _ux_sum = None; _M_sum = None; _Q_sum = None
+                                _zs_ref = None
+                                for _nm, _r in _comp_results.items():
+                                    _ux = _np_sum.array(_r["ux"])
+                                    _Ms = _np_sum.array(_r["Ms"])
+                                    _Qs = _np_sum.array(_r.get("Qs", [0]*len(_r["Ms"])))
+                                    if _ux_sum is None:
+                                        _ux_sum = _ux.copy()
+                                        _M_sum = _Ms.copy()
+                                        _Q_sum = _Qs.copy()
+                                        _zs_ref = _r["zs"]
+                                    else:
+                                        _ux_sum += _ux
+                                        _M_sum += _Ms
+                                        _Q_sum += _Qs
+                                _comp_results["TỔNG"] = {
+                                    "zs": _zs_ref,
+                                    "ux": _ux_sum.tolist(),
+                                    "Ms": _M_sum.tolist(),
+                                    "Qs": _Q_sum.tolist(),
+                                    "u_top_mm":  float(_ux_sum[0]),
+                                    "u_max_mm":  float(_np_sum.max(_np_sum.abs(_ux_sum))),
+                                    "M_max_kNm": float(_np_sum.max(_np_sum.abs(_M_sum))),
+                                    "Q_max_kN":  float(_np_sum.max(_np_sum.abs(_Q_sum))),
+                                }
+                                _comp_rows.append({
+                                    "Tải":         "TỔNG",
+                                    "F (kN/m)":    sum(r["F (kN/m)"] for r in _comp_rows),
+                                    "Tay đòn (m)": 0.0,
+                                    "u_top (mm)":  _comp_results["TỔNG"]["u_top_mm"],
+                                    "M_max (kNm)": _comp_results["TỔNG"]["M_max_kNm"],
+                                    "Q_max (kN)":  _comp_results["TỔNG"]["Q_max_kN"],
+                                })
+
+                            # Bảng
+                            if _comp_rows:
+                                st.dataframe(
+                                    pd.DataFrame(_comp_rows),
+                                    use_container_width=True, hide_index=True,
+                                    column_config={
+                                        "F (kN/m)":    st.column_config.NumberColumn(format="%.1f"),
+                                        "Tay đòn (m)": st.column_config.NumberColumn(format="%.2f"),
+                                        "u_top (mm)":  st.column_config.NumberColumn(format="%.2f"),
+                                        "M_max (kNm)": st.column_config.NumberColumn(format="%.1f"),
+                                        "Q_max (kN)":  st.column_config.NumberColumn(format="%.1f"),
+                                    },
+                                )
+
+                                # Biểu đồ overlay u(z), M(z), Q(z) cho 5 loại tải
+                                if _HAS_PLOTLY:
+                                    from plotly.subplots import make_subplots as _msub_cmp
+                                    _fig_cmp_lc = _msub_cmp(
+                                        rows=1, cols=3, shared_yaxes=True,
+                                        subplot_titles=("Chuyển vị u (mm)",
+                                                        "Moment M (kNm)",
+                                                        "Lực cắt Q (kN)"),
+                                    )
+                                    for _nm, _r in _comp_results.items():
+                                        _color = _comp_colors.get(_nm, "#666")
+                                        _zs_p = _r["zs"]
+                                        _el_p = [float(_dpy_top_ke) - z for z in _zs_p]
+                                        _el_mid_p = [float(_dpy_top_ke) - (_zs_p[i] + _zs_p[i+1])/2
+                                                      for i in range(len(_zs_p)-1)]
+                                        _lw = 2.5 if _nm == "TỔNG" else 1.3
+                                        _ls = None if _nm == "TỔNG" else "dot"
+                                        _fig_cmp_lc.add_trace(go.Scatter(
+                                            x=_r["ux"], y=_el_p, mode="lines",
+                                            line=dict(color=_color, width=_lw, dash=_ls),
+                                            name=_nm, legendgroup=_nm, showlegend=True,
+                                        ), row=1, col=1)
+                                        _fig_cmp_lc.add_trace(go.Scatter(
+                                            x=_r["Ms"], y=_el_mid_p, mode="lines",
+                                            line=dict(color=_color, width=_lw, dash=_ls),
+                                            name=_nm, legendgroup=_nm, showlegend=False,
+                                        ), row=1, col=2)
+                                        _fig_cmp_lc.add_trace(go.Scatter(
+                                            x=_r.get("Qs", []), y=_el_mid_p, mode="lines",
+                                            line=dict(color=_color, width=_lw, dash=_ls),
+                                            name=_nm, legendgroup=_nm, showlegend=False,
+                                        ), row=1, col=3)
+                                    _fig_cmp_lc.update_yaxes(title_text="Cao độ (m)", row=1, col=1)
+                                    _fig_cmp_lc.update_layout(
+                                        height=480, margin=dict(t=60, b=40),
+                                        legend=dict(orientation="h", y=-0.15),
+                                        title=f"Nội lực theo từng tải — {_dpy_pile} L={_Lw:.0f}m",
+                                    )
+                                    st.plotly_chart(_fig_cmp_lc, use_container_width=True)
+                        except Exception as _e_per_load:
+                            st.caption(f"_(Không vẽ được phân tích per-tải: {_e_per_load})_")
 
                         # ═══════════════════════════════════════════════════════════
                         # E. ỔN ĐỊNH TỔNG THỂ TƯỜNG SW + CDM (3 kiểm tra)
