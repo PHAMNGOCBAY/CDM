@@ -4648,6 +4648,54 @@ elif _page == "compare":
         use_container_width=True,
     )
 
+    # ── Matplotlib fallback cho mọi biểu đồ (đảm bảo luôn có dù plotly fail) ─
+    def _mpl_compare_charts(_df, _rec_idx, _scenarios, _punch):
+        import matplotlib.pyplot as plt
+        _xs = [f"e={s['e (m)']}m" for s in _scenarios]
+        _cols = ['#ED7D31' if i == _rec_idx else '#4472C4' for i in range(len(_scenarios))]
+
+        fig, axs = plt.subplots(2, 2, figsize=(13, 8))
+        # S1 vs e
+        axs[0,0].bar(_xs, [s["S₁ (cm)"] for s in _scenarios], color=_cols, edgecolor='black')
+        for i, v in enumerate([s["S₁ (cm)"] for s in _scenarios]):
+            axs[0,0].text(i, v+0.3, f"{v:.2f}", ha='center', fontsize=9)
+        axs[0,0].set_title("S₁ theo khoảng cách e"); axs[0,0].set_ylabel("S₁ (cm)")
+        axs[0,0].grid(True, axis='y', ls=':', alpha=0.4)
+
+        # Etb vs e
+        axs[0,1].bar(_xs, [s["Etb (kN/m²)"] for s in _scenarios], color=_cols, edgecolor='black')
+        for i, v in enumerate([s["Etb (kN/m²)"] for s in _scenarios]):
+            axs[0,1].text(i, v*1.01, f"{v:,.0f}", ha='center', fontsize=8)
+        axs[0,1].set_title("Etb theo khoảng cách e"); axs[0,1].set_ylabel("Etb (kN/m²)")
+        axs[0,1].grid(True, axis='y', ls=':', alpha=0.4)
+
+        # Pcol vs Qa
+        _pcol = [s["Pcol (kN)"] for s in _scenarios]
+        _qa   = [s["Qa (kN)"]   for s in _scenarios]
+        axs[1,0].bar(_xs, _pcol, color=_cols, edgecolor='black', label='Pcol')
+        axs[1,0].plot(_xs, _qa, 'D-', color='#E53935', lw=2, markersize=8, label='Qa (giới hạn)')
+        for i, v in enumerate(_pcol):
+            axs[1,0].text(i, v+max(_pcol)*0.02, f"{v:.0f}", ha='center', fontsize=9)
+        axs[1,0].set_title("Sức chịu tải: P_col vs Q_a")
+        axs[1,0].set_ylabel("kN"); axs[1,0].legend(loc='upper left')
+        axs[1,0].grid(True, axis='y', ls=':', alpha=0.4)
+
+        # τse chọc thủng
+        _tse = [pr["tse_kPa"] for pr in _punch]
+        _tase = _punch[0]["tase_kPa"] if _punch else 100
+        axs[1,1].bar(_xs, _tse, color=_cols, edgecolor='black')
+        axs[1,1].axhline(y=_tase, ls='--', color='#E53935', lw=1.5)
+        axs[1,1].text(len(_xs)-1, _tase, f"τase={_tase:.0f}", color='#E53935',
+                      fontsize=9, va='bottom', ha='right')
+        for i, v in enumerate(_tse):
+            axs[1,1].text(i, v+max(_tse)*0.02, f"{v:.1f}", ha='center', fontsize=9)
+        axs[1,1].set_title("τse chọc thủng đệm xi măng"); axs[1,1].set_ylabel("τse (kPa)")
+        axs[1,1].grid(True, axis='y', ls=':', alpha=0.4)
+
+        fig.suptitle("So sánh phương án — cam = PA kiến nghị", fontsize=12, fontweight='bold')
+        fig.tight_layout()
+        return fig
+
     if _HAS_PLOTLY:
         ca, cb, cc = st.columns(3)
         with ca:
@@ -4656,6 +4704,11 @@ elif _page == "compare":
             st.plotly_chart(_chart_etb(df, rec_idx), use_container_width=True)
         with cc:
             st.plotly_chart(_chart_combined(df, rec_idx), use_container_width=True)
+    elif _HAS_MPL:
+        st.caption("_Plotly không khả dụng — hiển thị biểu đồ matplotlib._")
+        _fig_cmp_mpl = _mpl_compare_charts(df, rec_idx, scenarios, _punch)
+        st.pyplot(_fig_cmp_mpl, use_container_width=True)
+        plt.close(_fig_cmp_mpl)
 
         # Biểu đồ chọc thủng
         _x_sp = [f"e={s['e (m)']}m" for s in scenarios]
@@ -4928,6 +4981,50 @@ elif _page == "compare":
             st.plotly_chart(_fig_hm, use_container_width=True)
 
     # ── BIỂU ĐỒ TỔNG HỢP: Sensitivity S₁ theo qu/D/h_mat (normalized) ──────────
+    # Matplotlib fallback luôn vẽ
+    if _HAS_MPL and not _HAS_PLOTLY:
+        import matplotlib.pyplot as plt
+        st.caption("_Phân tích độ nhạy (matplotlib fallback)._")
+        fig, axs = plt.subplots(1, 3, figsize=(15, 4))
+        # qu
+        _qu_x = [r["qu (kPa)"] for r in _qu_rows]
+        _qu_s = [r["S₁ (cm)"] for r in _qu_rows]
+        axs[0].plot(_qu_x, _qu_s, 'o-', color='#1565C0', lw=2)
+        for x, y in zip(_qu_x, _qu_s):
+            axs[0].annotate(f"{y:.2f}", (x, y), xytext=(0, 6), textcoords='offset points',
+                            ha='center', fontsize=8)
+        axs[0].axvline(qu, ls=':', color='red', alpha=0.6, label=f'qu hiện tại={int(qu)}')
+        axs[0].set_xlabel('qu (kPa)'); axs[0].set_ylabel('S₁ (cm)')
+        axs[0].set_title('S₁ theo qu')
+        axs[0].grid(True, ls=':', alpha=0.5); axs[0].legend(fontsize=8)
+        # D
+        _D_x = [r["D (m)"] for r in _D_rows]
+        _D_s = [r["S₁ (cm)"] for r in _D_rows]
+        axs[1].plot(_D_x, _D_s, 's-', color='#2E7D32', lw=2)
+        for x, y in zip(_D_x, _D_s):
+            axs[1].annotate(f"{y:.2f}", (x, y), xytext=(0, 6), textcoords='offset points',
+                            ha='center', fontsize=8)
+        axs[1].axvline(D, ls=':', color='red', alpha=0.6, label=f'D hiện tại={D}m')
+        axs[1].set_xlabel('D (m)'); axs[1].set_ylabel('S₁ (cm)')
+        axs[1].set_title('S₁ theo D')
+        axs[1].grid(True, ls=':', alpha=0.5); axs[1].legend(fontsize=8)
+        # h_mat
+        _hm_x = [r["h_mat (m)"] for r in _hm_rows]
+        _hm_s = [r["ΔS₁ (cm)"] for r in _hm_rows]
+        axs[2].plot(_hm_x, _hm_s, '^-', color='#E53935', lw=2)
+        for x, y in zip(_hm_x, _hm_s):
+            axs[2].annotate(f"{y:.2f}", (x, y), xytext=(0, 6), textcoords='offset points',
+                            ha='center', fontsize=8)
+        axs[2].axvline(_hmat_cur, ls=':', color='red', alpha=0.6,
+                       label=f'h_mat hiện tại={_hmat_cur}m')
+        axs[2].set_xlabel('h_mat (m)'); axs[2].set_ylabel('S₁ (cm)')
+        axs[2].set_title('S₁ theo h_mat')
+        axs[2].grid(True, ls=':', alpha=0.5); axs[2].legend(fontsize=8)
+        fig.suptitle("Độ nhạy của S₁ theo các tham số thiết kế", fontsize=12, fontweight='bold')
+        fig.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
+
     if _HAS_PLOTLY:
         _fig_sens = go.Figure()
         # Normalize: lấy S1 ở giá trị "current" làm baseline 100%
