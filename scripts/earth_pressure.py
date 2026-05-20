@@ -90,13 +90,17 @@ def _eff_gamma(gamma: float, gamma_sub: float,
 
 
 def _layer_at(elev: float, ref_top: float, layers: list[SoilLayer]) -> SoilLayer | None:
-    """Tìm lớp chứa cao độ elev (layers sắp xếp từ nông đến sâu)."""
+    """Tìm lớp chứa cao độ elev (layers sắp xếp từ nông đến sâu).
+
+    Trả None nếu elev nằm DƯỚI lớp đáy cùng — tránh fallback gây sai khi PA sau
+    xử lý CDM (Front chỉ còn fill đến z_mat, dưới z_mat phải là 0).
+    """
     cur_top = ref_top
     for lay in layers:
         if lay.tip_elev <= elev <= cur_top:
             return lay
         cur_top = lay.tip_elev
-    return layers[-1] if layers else None
+    return None   # không fallback — sigma_h = 0 dưới lớp đáy
 
 
 def _build_grid(geom: EpGeometry,
