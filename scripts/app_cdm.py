@@ -5280,36 +5280,9 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
         st.markdown(f"#### {_t('word_title')}")
         st.caption(_t("word_cap"))
 
-        # ── Thông tin đơn vị (header / footer) ───────────────────────────
-        st.text_input(
-            "Tên công ty",
-            key="export_co_name",
-            placeholder="VD: CÔNG TY CỔ PHẦN TƯ VẤN XÂY DỰNG ABC",
-        )
-        st.text_input(
-            "Nhân sự thực hiện",
-            key="export_co_staff",
-            placeholder="VD: KS. Nguyễn Văn A",
-        )
-        _logo_file = st.file_uploader(
-            "Logo công ty (PNG/JPG)",
-            type=["png", "jpg", "jpeg"],
-            key="export_logo_uploader",
-        )
-        if _logo_file is not None:
-            st.session_state["export_logo_bytes"] = _logo_file.read()
-        if "export_logo_bytes" in st.session_state:
-            st.image(st.session_state["export_logo_bytes"], width=80)
-
-        st.divider()
         if st.button(_t("create_word"), type="primary"):
             with st.spinner(_t("creating")):
-                word_bytes = _export_word_bytes(
-                    scenarios, params, rec,
-                    co_name=st.session_state.get("export_co_name", ""),
-                    co_staff=st.session_state.get("export_co_staff", ""),
-                    logo_bytes=st.session_state.get("export_logo_bytes"),
-                )
+                word_bytes = _export_word_bytes(scenarios, params, rec)
             if word_bytes:
                 st.download_button(
                     _t("dl_docx"),
@@ -5318,7 +5291,7 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 )
             else:
-                st.error("Lỗi tạo Word. Kiểm tra CDM/scripts/docx_helpers.py.")
+                st.error("Không tạo được file Word. Liên hệ kỹ thuật để kiểm tra.")
 
     with c_excel:
         st.markdown("#### Tính toán chi tiết (Excel)")
