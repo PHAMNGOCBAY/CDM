@@ -7665,9 +7665,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _dpy_cdm_thk = st.number_input("Bề dày CDM tăng cường (m)", 0.0, 10.0, 3.0, 0.5,
                                                  key="dpy_cdm_thk")
             st.caption(
-                "**Quy ước:** Front (TRÁI) = phía sông / phía đào → áp lực đất + nước "
-                "đẩy cừ SW về phía công trình. Back (PHẢI) = phía đất giữ / công trình. "
-                "Cừ SW làm tâm; mặt đất / lớp đất hai bên có thể khác nhau."
+                "**Quy ước:** **Front (TRÁI)** = phía đất đắp / mặt đường / xe chạy / người đi / "
+                "tải trọng công trình → áp lực + tải trọng đẩy cừ SW về phía Back. "
+                "**Back (PHẢI)** = phía đào / sông / mặt nước hở (chịu áp lực bị động dưới đáy đào). "
+                "Cừ SW làm tâm sơ đồ; mặt đất + lớp đất hai bên thường khác nhau "
+                "(Front có fill cao hơn, Back đào xuống thấp)."
             )
             _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4 = st.columns(4)
             _dpy_eps50 = _dpy_w1.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
@@ -7679,13 +7681,13 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             _dpy_bc    = _dpy_w4.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"],
                                             key="dpy_bc")
 
-            # ── Hàng nhập đất phía Back (riêng biệt với Front) ──────────────
-            st.markdown("**Đất phía Back (sau cọc — phía công trình):**")
+            # ── Hàng nhập đất phía Back (phía đào / sông) ───────────────────
+            st.markdown("**Đất phía Back (sau cọc — phía đào / sông):**")
             _dpy_b1, _dpy_b2, _dpy_b3, _dpy_b4 = st.columns(4)
-            _dpy_Zb     = _dpy_b1.number_input("Cao độ Ground B (m)", -5.0, 5.0,
-                                                  float(_dpy_Z) + 1.0, 0.05,
+            _dpy_Zb     = _dpy_b1.number_input("Cao độ Ground B (m)", -10.0, 5.0,
+                                                  float(_dpy_Z) - 2.0, 0.05,
                                                   key="dpy_Z_back",
-                                                  help="Cao độ mặt đất phía Back (≥ Front nếu Back chưa đào)")
+                                                  help="Cao độ đáy đào phía Back (thấp hơn Front do đã đào)")
             _dpy_H1b    = _dpy_b2.number_input("H₁ Back (m)", 1.0, 35.0, float(_dpy_H1), 0.5,
                                                   key="dpy_H1_back",
                                                   help="Bề dày lớp bùn sét phía Back")
@@ -7693,10 +7695,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                   float(_dpy_su), 1.0,
                                                   key="dpy_su_back",
                                                   help="Sức kháng cắt phía Back có thể khác Front")
-            _dpy_wlvl_b = _dpy_b4.number_input("Mực nước Back (m)", -5.0, 5.0,
+            _dpy_wlvl_b = _dpy_b4.number_input("Mực nước Back (m)", -10.0, 5.0,
                                                   float(_dpy_wlvl), 0.5,
                                                   key="dpy_wlvl_back",
-                                                  help="Mực nước phía Back (thường cao hơn Front)")
+                                                  help="Mực nước phía Back (sông/đào — thường thấp)")
 
         with _col_schem_d:
             if _HAS_MPL:
