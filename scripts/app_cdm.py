@@ -5967,8 +5967,9 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
             from wall_internal_force import (
                 sw_pile_props as _wif_sw, WallGeometry as _WIF_WG,
                 EarthLayer as _WIF_EL, SoilLayer as _WIF_SL,
-                build_lateral_load as _wif_build, solve_pynite_dist as _wif_solve,
+                build_lateral_load as _wif_build,
             )
+            from winkler_np import solve_numpy_dist as _wif_solve
             import matplotlib.pyplot as _plt_7
             from matplotlib.patches import Rectangle as _Rect7
             from docx import Document as _Doc7
@@ -8292,55 +8293,33 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
     # Solver Winkler — ưu tiên PyNiteFEA (MIT, pure Python, Cloud-ready),
     # fallback về anastruct (legacy). Xem scripts/wall_internal_force.py.
-    _pynite_err = ""
-    _anastruct_err = ""
+    # Solver Winkler thuần NumPy — không phụ thuộc PyNite/anastruct,
+    # chạy mọi Python version. Xem scripts/winkler_np.py.
+    _numpy_err = ""
     try:
         import sys as _sys_wif
         _sys_wif.path.insert(0, str(_ROOT / "scripts"))
-        # Test import Pynite TRƯỚC khi load wrapper (wall_internal_force chỉ
-        # import Pynite lazy bên trong hàm → cần test thật)
-        from Pynite import FEModel3D as _FEModel3D_test  # noqa: F401
-        from wall_internal_force import (
-            solve_pynite as _solve_pynite,
+        from winkler_np import (
+            solve_numpy as _solve_pynite,  # alias giữ tên biến cũ
             SoilLayer as _WIF_SoilLayer,
-            sw_pile_props as _wif_sw_props,
         )
-        _HAS_PYNITE = True
-    except Exception as _e_pn:
-        _HAS_PYNITE = False
+        from wall_internal_force import sw_pile_props as _wif_sw_props
+        _HAS_WINKLER_SOLVER = True
+    except Exception as _e_np:
+        _HAS_WINKLER_SOLVER = False
         _solve_pynite = None
-        _pynite_err = f"{type(_e_pn).__name__}: {_e_pn}"
-    try:
-        from anastruct import SystemElements as _SE
-        _HAS_ANASTRUCT = True
-    except Exception as _e_an:
-        _HAS_ANASTRUCT = False
-        _SE = None
-        _anastruct_err = f"{type(_e_an).__name__}: {_e_an}"
-    _HAS_WINKLER_SOLVER = _HAS_PYNITE or _HAS_ANASTRUCT
+        _numpy_err = f"{type(_e_np).__name__}: {_e_np}"
 
-    # Cảnh báo sớm nếu không có solver Winkler nào
     if not _HAS_WINKLER_SOLVER:
         import sys as _sys_diag
         st.error(
-            "**Tính năng p-y Winkler cần thư viện FEM Python.** "
-            "Hiện không có `PyNiteFEA` cũng không có `anastruct` trong môi trường.\n\n"
+            "**Solver Winkler không load được.**\n\n"
             f"- **Python:** `{_sys_diag.version.split()[0]}` ({_sys_diag.platform})\n"
-            f"- **PyNiteFEA lỗi:** `{_pynite_err or '(không thử)'}`\n"
-            f"- **anastruct lỗi:** `{_anastruct_err or '(không thử)'}`\n\n"
-            "**Local:**\n"
-            "```\npip install PyNiteFEA>=2.0 anastruct>=1.6\n```\n"
-            "Sau đó khởi động lại Streamlit (đóng tab + chạy lại `start_app.bat`).\n\n"
-            "**Streamlit Cloud:** kiểm tra build log → xem deps có cài được không."
+            f"- **Lỗi:** `{_numpy_err}`\n\n"
+            "Kiểm tra `scripts/winkler_np.py` có tồn tại và `numpy` có cài chưa."
         )
     else:
-        # Ưu tiên anastruct (ổn định trên Streamlit Cloud); PyNite là fallback
-        _solver_used = ("anastruct" if _HAS_ANASTRUCT
-                         else "PyNiteFEA (fallback)")
-        _caption_extra = ""
-        if not _HAS_ANASTRUCT and _anastruct_err:
-            _caption_extra = f" — anastruct lỗi: `{_anastruct_err}`"
-        st.caption(f"_Solver Winkler hiện dùng: **{_solver_used}**{_caption_extra}_")
+        st.caption("_Solver Winkler: phương pháp ma trận độ cứng (Euler-Bernoulli + lò xo p-y), NumPy thuần._")
 
     if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có solver
         # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
@@ -8360,147 +8339,68 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     "rồi khởi động lại Streamlit."
                 )}
 
-            # Path PyNite — sạch, không phụ thuộc legacy code.
-            # Chỉ dùng khi anastruct không có (anastruct là solver chính trên Cloud)
-            if _HAS_PYNITE and not _HAS_ANASTRUCT:
-                _pl_obj = _sw_by_name(pile_name)
-                if not _pl_obj:
-                    return {"error": f"Không có cọc {pile_name}"}
-                _pile_pn = _wif_sw_props(
-                    H_mm=float(_pl_obj["H_mm"]),
-                    Itd_cm4=float(_pl_obj.get("Itd_cm4") or 0),
-                    Mcr_Tm=float(_pl_obj.get("Mcr_Tm") or 0),
-                    Atd_cm2=float(_pl_obj.get("Atd_cm2") or 0),
-                    fc_MPa=70.0, name=pile_name,
-                )
-                # Layers từ DB — query trực tiếp, KHÔNG dùng _load_layers (cached)
-                # để tránh nested cache + lỗi sqlite trên Streamlit Cloud
-                _bh_short = bh_name.replace("KE-", "")
-                _ly_raw = []
-                try:
-                    _con_py = sqlite3.connect(str(_DB))
-                    _con_py.row_factory = sqlite3.Row
-                    _rows_py = _con_py.execute("""
-                        SELECT l.symbol, l.thickness_m,
-                               ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
-                               ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
-                               ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
-                        FROM layers l
-                        JOIN boreholes b ON l.borehole_id = b.id
-                        LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
-                            AND lt.depth_from_m >= l.depth_top_m
-                            AND lt.depth_to_m <= l.depth_bot_m
-                        WHERE b.name = ?
-                        GROUP BY l.id ORDER BY l.depth_top_m
-                    """, (_bh_short,)).fetchall()
-                    _con_py.close()
-                    for _r in _rows_py:
-                        _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
-                        _ly_raw.append({
-                            "symbol": _r["symbol"] or "1",
-                            "thickness_m": _r["thickness_m"] or 0,
-                            "Su_kPa": _su if _su is not None else 11.0,
-                            "gamma_kNm3": _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
-                        })
-                except Exception:
-                    pass
-                if not _ly_raw:
-                    _ly_raw = [{"symbol": "1", "thickness_m": L_m + 5.0,
-                                "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
-                _ly_pn = [
-                    _WIF_SoilLayer(
-                        symbol=str(_lr["symbol"]),
-                        thickness_m=float(_lr["thickness_m"] or 0),
-                        Su_kPa=float(_lr["Su_kPa"]),
-                        gamma_kNm3=float(_lr["gamma_kNm3"]),
-                    ) for _lr in _ly_raw
-                ]
-                _res_pn = _solve_pynite(
-                    layers=_ly_pn, pile=_pile_pn, L_m=float(L_m),
-                    H_kNm=float(H_kNm), M_kNm=float(M_kNm),
-                    N=max(20, int(L_m * 2)),
-                    eps50=float(eps50),
-                    k_sand_kNm3=10_000.0,
-                    cdm_thickness_m=float(cdm_thk_m),
-                    cdm_factor=float(k_cdm_factor),
-                )
-                if not _res_pn.get("error"):
-                    return _res_pn   # đã có u_top_mm, M_max_kNm, ...
-
-            # Fallback anastruct legacy
-            if not _HAS_ANASTRUCT:
-                return {"error": "anastruct chưa cài"}
-            import numpy as _np
-            _pl = _sw_by_name(pile_name)
-            if not _pl:
+            # NumPy Winkler solver — không phụ thuộc PyNite/anastruct
+            _pl_obj = _sw_by_name(pile_name)
+            if not _pl_obj:
                 return {"error": f"Không có cọc {pile_name}"}
-            D_p = _pl["H_mm"] / 1000.0
-            I_p = (_pl.get("Itd_cm4") or 0) * 1e-8
-            EI  = 31.6e6 * I_p
-            if EI <= 0:
-                return {"error": "EI cọc = 0"}
-            # Layers từ DB
-            _ly = _load_layers(bh_name.replace("KE-", ""))
-            if not _ly:
-                _ly = [{"symbol": "1", "thickness_m": L_m + 5.0,
-                        "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
-            # Discretize
-            N = max(20, int(L_m * 2))
-            dz = L_m / (N - 1)
-            zs = _np.linspace(0, L_m, N)
-            k_h = _np.zeros(N)
-            for i, z in enumerate(zs):
-                su_z, gam_z, is_clay = 11.0, 15.0, True
-                dep = 0.0
-                for lr in _ly:
-                    h = lr.get("thickness_m") or 0
-                    if dep + h >= z:
-                        su_z  = lr.get("Su_kPa") or 11.0
-                        gam_z = lr.get("gamma_kNm3") or 15.0
-                        sym   = (lr.get("symbol") or "1").lower()
-                        is_clay = sym in {"1", "xmd", "3", "5"}
-                        break
-                    dep += h
-                if is_clay:
-                    Np  = min(3 + gam_z * z / max(su_z, 1), 9.0)
-                    pu  = Np * su_z * D_p
-                    y50 = 2.5 * eps50 * D_p
-                    kz  = pu / y50 if y50 > 0 else 1000.0
-                else:
-                    kz  = 10_000 * z
-                if z < cdm_thk_m:
-                    kz *= k_cdm_factor
-                k_h[i] = kz
-            # Solve Winkler
-            ss = _SE(EA=1e9, EI=EI)
-            for i in range(N - 1):
-                ss.add_element(location=[[0, -zs[i]], [0, -zs[i+1]]], EI=EI)
-            for i in range(1, N + 1):
-                ss.add_support_spring(node_id=i, translation=1, k=k_h[i-1] * dz)
-            ss.point_load(node_id=1, Fx=H_kNm)
-            if M_kNm > 0:
-                ss.moment_load(node_id=1, Ty=M_kNm)
+            _pile_pn = _wif_sw_props(
+                H_mm=float(_pl_obj["H_mm"]),
+                Itd_cm4=float(_pl_obj.get("Itd_cm4") or 0),
+                Mcr_Tm=float(_pl_obj.get("Mcr_Tm") or 0),
+                Atd_cm2=float(_pl_obj.get("Atd_cm2") or 0),
+                fc_MPa=70.0, name=pile_name,
+            )
+            # Layers từ DB — query trực tiếp, KHÔNG dùng _load_layers (cached)
+            # để tránh nested cache + lỗi sqlite trên Streamlit Cloud
+            _bh_short = bh_name.replace("KE-", "")
+            _ly_raw = []
             try:
-                ss.solve()
-                disp = ss.get_node_displacements()
-                ux   = [d["ux"] * 1000 for d in disp]
-                er   = ss.get_element_results(verbose=False)
-                Ms   = [e["Mmax"] for e in er]
-                Qs   = [e.get("wmax", 0) or e.get("qmax", 0) for e in er]
-                return {
-                    "u_top_mm": ux[0],
-                    "u_max_mm": max(abs(u) for u in ux),
-                    "M_max_kNm": max(abs(m) for m in Ms) if Ms else 0.0,
-                    "Mcr_kNm":   (_pl.get("Mcr_Tm", 0) or 0) * 9.81,
-                    "EI_kNm2":   EI,
-                    "D_mm":      D_p * 1000,
-                    "zs":        zs.tolist(),
-                    "ux":        ux,
-                    "Ms":        Ms,
-                    "k_h":       k_h.tolist(),
-                }
-            except Exception as e:
-                return {"error": f"Solver: {e}"}
+                _con_py = sqlite3.connect(str(_DB))
+                _con_py.row_factory = sqlite3.Row
+                _rows_py = _con_py.execute("""
+                    SELECT l.symbol, l.thickness_m,
+                           ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
+                           ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
+                           ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                    FROM layers l
+                    JOIN boreholes b ON l.borehole_id = b.id
+                    LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
+                        AND lt.depth_from_m >= l.depth_top_m
+                        AND lt.depth_to_m <= l.depth_bot_m
+                    WHERE b.name = ?
+                    GROUP BY l.id ORDER BY l.depth_top_m
+                """, (_bh_short,)).fetchall()
+                _con_py.close()
+                for _r in _rows_py:
+                    _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                    _ly_raw.append({
+                        "symbol": _r["symbol"] or "1",
+                        "thickness_m": _r["thickness_m"] or 0,
+                        "Su_kPa": _su if _su is not None else 11.0,
+                        "gamma_kNm3": _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
+                    })
+            except Exception:
+                pass
+            if not _ly_raw:
+                _ly_raw = [{"symbol": "1", "thickness_m": L_m + 5.0,
+                            "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
+            _ly_pn = [
+                _WIF_SoilLayer(
+                    symbol=str(_lr["symbol"]),
+                    thickness_m=float(_lr["thickness_m"] or 0),
+                    Su_kPa=float(_lr["Su_kPa"]),
+                    gamma_kNm3=float(_lr["gamma_kNm3"]),
+                ) for _lr in _ly_raw
+            ]
+            return _solve_pynite(
+                layers=_ly_pn, pile=_pile_pn, L_m=float(L_m),
+                H_kNm=float(H_kNm), M_kNm=float(M_kNm),
+                N=max(20, int(L_m * 2)),
+                eps50=float(eps50),
+                k_sand_kNm3=10_000.0,
+                cdm_thickness_m=float(cdm_thk_m),
+                cdm_factor=float(k_cdm_factor),
+            )
 
         # ═══════════════════════════════════════════════════════════════════════
         # D.1. Nhập dữ liệu p-y Winkler + sơ đồ trực quan

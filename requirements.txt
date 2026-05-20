@@ -1,9 +1,9 @@
 python-docx==1.2.0
 streamlit>=1.35.0
-numpy>=1.26
-pandas>=2.0
+numpy>=2.0,<3.0
+pandas>=2.2.2          # pandas <2.2.2 pin numpy<2 → conflict
 plotly>=6.0
-matplotlib>=3.8
+matplotlib>=3.9        # matplotlib <3.9 pin numpy<2 → conflict
 openpyxl>=3.1
 xlrd>=2.0
 jinja2>=3.1
@@ -16,8 +16,9 @@ unidecode>=1.4
 shapely>=2.1
 sqlalchemy>=2.0
 geojson>=3.2
-scipy>=1.13
-anastruct>=1.6
-PyNiteFEA>=2.0      # Solver Winkler chính (§20) — Cloud
-geotech-staff-engineer>=4.6   # slope_stability — 3 kiểm tra ổn định tổng thể
+scipy>=1.16            # scipy <1.16 pin numpy<2.3
+# Solver Winkler p-y: dùng scripts/winkler_np.py (NumPy thuần) — KHÔNG cần PyNite/anastruct
+# Lý do bỏ: PyNiteFEA + anastruct fail build trên Streamlit Cloud Python 3.14
+# (numpy/scipy chưa có wheel cho 3.14). winkler_np.py chạy mọi Python.
+geotech-staff-engineer>=4.6,<5.0   # slope_stability; đòi numpy>=2.0 nên giữ numpy 2.x
 # openseespy/gmsh/geopandas: chỉ local (cần binary C++/GDAL) — KHÔNG đưa lên Cloud
