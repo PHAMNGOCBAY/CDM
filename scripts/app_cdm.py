@@ -7975,7 +7975,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
         _wc1, _wc2 = st.columns(2)
         _water_lvl_c = _wc1.number_input("Mực nước (m)", -5.0, 3.0, -1.0, 0.5, key="sw_wlvl")
-        _bc_type_c   = _wc2.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"], key="sw_bc")
+        _bc_type_c   = _wc2.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"], key="sw_bc")
 
     with _col_schem:
         if _HAS_MPL:
@@ -8496,7 +8496,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                  help="w ≥ 100m ≈ tải vô hạn")
             _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
                                                  key="dpy_wlvl")
-            _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"],
+            _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"],
                                             key="dpy_bc")
 
             # ── Hàng nhập đất phía Back (phía đào / sông) ───────────────────
