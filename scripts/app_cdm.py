@@ -1329,6 +1329,145 @@ def _linreg(xs: list, ys: list) -> tuple[float, float]:
     return a, b
 
 
+def _chart_su_profile_mpl(
+    df_vst: pd.DataFrame,
+    selected_locs: list[str] | None = None,
+):
+    """Matplotlib fallback cho biểu đồ Su–VST khi không có plotly."""
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(figsize=(7, 6))
+    if df_vst.empty:
+        ax.text(0.5, 0.5, "Không có dữ liệu VST", ha="center", va="center", transform=ax.transAxes)
+        return fig
+
+    all_locs  = sorted(df_vst["loc_name"].unique())
+    show_locs = selected_locs if selected_locs else all_locs
+    _colors = ["#E53935","#1565C0","#2E7D32","#F57F17","#6A1B9A",
+               "#00838F","#AD1457","#558B2F","#4527A0","#00695C"]
+
+    for i, loc in enumerate(all_locs):
+        if loc not in show_locs:
+            continue
+        grp    = df_vst[df_vst["loc_name"] == loc].sort_values("depth_m")
+        color  = _colors[i % len(_colors)]
+        depths = grp["depth_m"].tolist()
+        sus    = grp["Su_kPa"].tolist()
+        y_plot = [-d for d in depths]
+        ax.plot(sus, y_plot, "-o", color=color, lw=1.5, ms=5, label=loc)
+        for x, y in zip(sus, y_plot):
+            ax.annotate(f"{x:.1f}", (x, y), xytext=(4, 0), textcoords="offset points",
+                        fontsize=7, color=color, va="center")
+        if len(depths) >= 2:
+            a, b = _linreg(depths, sus)
+            d_ext = (max(depths) - min(depths)) * 0.1
+            dd = [min(depths) - d_ext, max(depths) + d_ext]
+            ax.plot([a*d + b for d in dd], [-d for d in dd],
+                    "--", color=color, lw=1.0, alpha=0.7)
+            sign = "+" if b >= 0 else "−"
+            eq = f"Su={a:+.2f}z{sign}{abs(b):.2f}".replace("+-", "−")
+            ax.text(a*dd[-1] + b, -dd[-1], eq, fontsize=7, color=color,
+                    bbox=dict(facecolor="white", alpha=0.75, edgecolor=color, lw=0.5, pad=1))
+
+    ax.set_xlabel("Su (kPa)", fontsize=9)
+    ax.set_ylabel("Cao độ (m)", fontsize=9)
+    title = "Biểu đồ Su – Cắt cánh (VST)"
+    title += f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ"
+    ax.set_title(title, fontsize=10)
+    ax.grid(True, ls=":", color="#CCC", lw=0.5)
+    ax.legend(loc="lower right", fontsize=8, framealpha=0.85)
+    ax.tick_params(labelsize=8)
+    fig.tight_layout()
+    return fig
+
+
+def _draw_soil_column_mpl(
+    layers: list[dict], bh_name: str = "",
+    spt: list[dict] | None = None,
+):
+    """Matplotlib fallback cho cột địa chất + SPT."""
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
+    def _tc(hex_color: str) -> str:
+        h = hex_color.lstrip("#")
+        if len(h) < 6:
+            return "#212121"
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        return "white" if (0.299*r + 0.587*g + 0.114*b) < 140 else "#212121"
+
+    def _spt_color(n: int) -> str:
+        if n <= 2:   return "#E53935"
+        if n <= 5:   return "#FB8C00"
+        if n <= 10:  return "#FDD835"
+        if n <= 30:  return "#66BB6A"
+        return "#1565C0"
+
+    has_spt = bool(spt)
+    if not layers:
+        fig, ax = plt.subplots(figsize=(4, 6))
+        ax.text(0.5, 0.5, f"Không có địa tầng\n{bh_name}", ha="center", va="center",
+                transform=ax.transAxes, fontsize=10, color="#666")
+        ax.axis("off")
+        return fig
+
+    y_bot = layers[-1]["depth_bot_m"]
+    if has_spt:
+        fig, (ax_col, ax_spt) = plt.subplots(
+            1, 2, figsize=(7, 7), sharey=True,
+            gridspec_kw={"width_ratios": [0.4, 0.6], "wspace": 0.05},
+        )
+    else:
+        fig, ax_col = plt.subplots(figsize=(4, 7))
+        ax_spt = None
+
+    for lay in layers:
+        y0, y1 = lay["depth_top_m"], lay["depth_bot_m"]
+        sym   = (lay.get("symbol") or "").strip()
+        color = _LAYER_COLORS.get(
+            sym, _LAYER_COLORS.get(sym[:2] if len(sym) > 2 else sym, _LAYER_DEFAULT_COLOR))
+        ax_col.add_patch(mpatches.Rectangle(
+            (0, y0), 1, y1 - y0, facecolor=color, edgecolor="#555", lw=0.6))
+        ax_col.text(1.04, y0, f"{y0:.1f}", fontsize=7, color="#555", va="center")
+        if (y1 - y0) >= 0.5:
+            mid = (y0 + y1) / 2
+            sym_lbl = sym if sym else f"L{layers.index(lay)+1}"
+            desc = (lay.get("description") or "")[:18]
+            lbl = f"{sym_lbl}\n{desc}" if (y1-y0) >= 2.5 and desc else sym_lbl
+            ax_col.text(0.5, mid, lbl, fontsize=8, color=_tc(color),
+                        ha="center", va="center", fontweight="bold")
+    ax_col.text(1.04, y_bot, f"{y_bot:.1f}", fontsize=7, color="#555", va="center")
+    ax_col.set_xlim(-0.05, 1.5)
+    ax_col.set_ylim(y_bot + 1, -0.5)
+    ax_col.set_xticks([])
+    ax_col.set_ylabel("Độ sâu (m)", fontsize=9)
+    ax_col.tick_params(labelsize=8)
+    ax_col.grid(True, axis="y", ls=":", color="#EEE", lw=0.5)
+    ax_col.set_title("Địa chất" if has_spt else f"Cột ĐC: {bh_name}",
+                     fontsize=10, color="#1F4E79")
+
+    if has_spt and ax_spt is not None:
+        _n_max = max((s["N"] or 0 for s in spt), default=10)
+        _x_max = max(60, _n_max + 5)
+        depths = [s["depth_m"] for s in spt]
+        N_vals = [min(s["N"] or 0, 60) for s in spt]
+        colors = [_spt_color(n) for n in N_vals]
+        ax_spt.barh(depths, N_vals, height=0.6, color=colors, edgecolor="#444", lw=0.5)
+        for d, n in zip(depths, N_vals):
+            ax_spt.text(n + 1, d, str(n), fontsize=7, va="center")
+        ax_spt.plot(N_vals, depths, ":", color="#333", lw=1)
+        ax_spt.axvline(4, ls="--", color="#E53935", lw=1, alpha=0.6)
+        ax_spt.text(4.2, -0.2, "N=4", fontsize=7, color="#E53935")
+        ax_spt.set_xlim(0, _x_max)
+        ax_spt.set_xlabel("N (blows/30cm)", fontsize=9)
+        ax_spt.tick_params(labelsize=8)
+        ax_spt.grid(True, axis="x", ls=":", color="#EEE", lw=0.5)
+        ax_spt.set_title("SPT – N", fontsize=10, color="#1F4E79")
+        fig.suptitle(f"Cột ĐC: {bh_name}", fontsize=10, color="#1F4E79", y=0.995)
+
+    fig.tight_layout()
+    return fig
+
+
 def _chart_su_profile(
     df_vst: pd.DataFrame,
     selected_locs: list[str] | None = None,
@@ -2566,19 +2705,28 @@ if _page == "geology":
                     _chart_su_profile(df_vst, _vst_pass),
                     use_container_width=True,
                 )
+            elif _HAS_MPL:
+                _fig_vst_mpl = _chart_su_profile_mpl(df_vst, _vst_pass)
+                st.pyplot(_fig_vst_mpl, use_container_width=True)
+                plt.close(_fig_vst_mpl)
             else:
                 st.dataframe(df_vst)
     with _sc_col:
         _bh_sc = bh_name if bh_name != "(trống)" else None
-        if _bh_sc and _HAS_PLOTLY:
+        if _bh_sc and (_HAS_PLOTLY or _HAS_MPL):
             try:
                 _sc_layers = _load_layers(_bh_sc)
                 _sc_spt    = _load_spt(_bh_sc)
-                st.plotly_chart(
-                    _draw_soil_column(_sc_layers, _bh_sc, spt=_sc_spt or None),
-                    use_container_width=True,
-                    config={"displayModeBar": False},
-                )
+                if _HAS_PLOTLY:
+                    st.plotly_chart(
+                        _draw_soil_column(_sc_layers, _bh_sc, spt=_sc_spt or None),
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+                else:
+                    _fig_col_mpl = _draw_soil_column_mpl(_sc_layers, _bh_sc, spt=_sc_spt or None)
+                    st.pyplot(_fig_col_mpl, use_container_width=True)
+                    plt.close(_fig_col_mpl)
             except Exception as _e:
                 st.warning(f"Không vẽ được cột địa chất: {_e}")
         else:
