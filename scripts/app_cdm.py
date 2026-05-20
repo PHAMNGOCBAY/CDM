@@ -7685,9 +7685,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             st.markdown("**Đất phía Back (sau cọc — phía đào / sông):**")
             _dpy_b1, _dpy_b2, _dpy_b3, _dpy_b4 = st.columns(4)
             _dpy_Zb     = _dpy_b1.number_input("Cao độ Ground B (m)", -10.0, 5.0,
-                                                  float(_dpy_Z) - 2.0, 0.05,
+                                                  -2.0, 0.05,
                                                   key="dpy_Z_back",
-                                                  help="Cao độ đáy đào phía Back (thấp hơn Front do đã đào)")
+                                                  help="Cao độ đáy đào phía Back (mặc định −2.0m; thấp hơn Front do đã đào)")
             _dpy_H1b    = _dpy_b2.number_input("H₁ Back (m)", 1.0, 35.0, float(_dpy_H1), 0.5,
                                                   key="dpy_H1_back",
                                                   help="Bề dày lớp bùn sét phía Back")
