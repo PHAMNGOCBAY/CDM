@@ -3886,6 +3886,12 @@ elif _page == "sample_check":
 elif _page == "params":
     st.subheader(_t("p2_sub"))
 
+    # ── Lý thuyết tính toán (đặt trên cùng để xem trước khi nhập thông số) ───
+    _theory_text = _load_theory()
+    if _theory_text:
+        with st.expander(_t("theory_exp"), expanded=False):
+            st.markdown(_theory_text)
+
     # Layout: thông số nhập full-width, hình minh họa bên dưới
     _col_inp = st.container()
 
@@ -4111,12 +4117,6 @@ elif _page == "params":
         st.pyplot(_fig_grd, use_container_width=True)
         _fig_grd.clf()
 
-    # ── Lý thuyết tính toán ──────────────────────────────────────────────────
-    _theory_text = _load_theory()
-    if _theory_text:
-        st.divider()
-        with st.expander(_t("theory_exp"), expanded=False):
-            st.markdown(_theory_text)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
