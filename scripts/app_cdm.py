@@ -26,6 +26,12 @@ try:
 except ImportError:
     _HAS_MPL = False
 
+try:
+    import pydeck as pdk
+    _HAS_PYDECK = True
+except ImportError:
+    _HAS_PYDECK = False
+
 import sqlite3
 
 # ── Đường dẫn ────────────────────────────────────────────────────────────────
@@ -1130,6 +1136,212 @@ def _draw_boreholes_3d_mpl(
 
     fig.tight_layout()
     return fig
+
+
+def _build_borehole_3d_deck(
+    selected_zones: list[str],
+    show_clay_bottom: bool = False,
+    show_cdm_top: bool = False,
+    cdm_top_z: float = 2.7,
+    pair_highlight: tuple | None = None,
+    z_scale: float = 5.0,
+):
+    """Pydeck 3D map cho hố khoan — native drag/zoom/rotate qua deck.gl.
+    z_scale: phóng đại trục Z (vì khoảng cách HK ~100m, độ sâu chỉ ~30m,
+             nếu không scale sẽ thấy như mặt phẳng)."""
+    bhs, lays = _load_borehole_3d_data()
+    bhs = [b for b in bhs if b["zone"] in selected_zones]
+    if not bhs:
+        return None
+    bh_ids = {b["id"] for b in bhs}
+    lays = [l for l in lays if l["borehole_id"] in bh_ids]
+
+    # VN2000 → WGS84
+    for b in bhs:
+        _lat, _lon = _vn2000_to_latlon(b["y_coord_m"], b["x_coord_m"])
+        b["lat"], b["lon"] = _lat, _lon
+    bh_by_id = {b["id"]: b for b in bhs}
+
+    def _hex_rgb(h: str) -> list[int]:
+        h = h.lstrip("#")
+        if len(h) < 6:
+            return [200, 200, 200]
+        return [int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)]
+
+    # PathLayer: mỗi lớp = đường thẳng đứng 2 điểm [lon, lat, z*scale]
+    paths = []
+    for l in lays:
+        b = bh_by_id.get(l["borehole_id"])
+        if b is None:
+            continue
+        sym  = l["symbol"]
+        col  = _LAYER_COLORS.get(sym, _LAYER_DEFAULT_COLOR)
+        rgb  = _hex_rgb(col)
+        z0   = (b["elevation_m"] - l["depth_top_m"]) * z_scale
+        z1   = (b["elevation_m"] - l["depth_bot_m"]) * z_scale
+        paths.append({
+            "path":  [[b["lon"], b["lat"], z0], [b["lon"], b["lat"], z1]],
+            "color": rgb,
+            "bh":    b["name"],
+            "sym":   sym,
+            "desc":  (l.get("description") or sym)[:40],
+            "rng":   f"{l['depth_top_m']:.1f}–{l['depth_bot_m']:.1f} m",
+        })
+
+    layers_deck = [
+        pdk.Layer(
+            "PathLayer",
+            paths,
+            pickable=True,
+            get_path="path",
+            get_color="color",
+            get_width=4,
+            width_min_pixels=4,
+            width_max_pixels=12,
+            width_units="pixels",
+        ),
+    ]
+
+    # Nhãn tên HK
+    _zone_rgb = {"KE": [229, 57, 53], "BXN": [21, 101, 192], "NHC": [46, 125, 50]}
+    label_data = [
+        {
+            "position": [b["lon"], b["lat"], (b["elevation_m"] + 3) * z_scale],
+            "text":     b["name"].replace("BXN-CV-", "").replace("KE-", ""),
+            "color":    _zone_rgb.get(b["zone"], [50, 50, 50]),
+        }
+        for b in bhs
+    ]
+    layers_deck.append(pdk.Layer(
+        "TextLayer",
+        label_data,
+        get_position="position",
+        get_text="text",
+        get_color="color",
+        get_size=14,
+        size_units="pixels",
+        get_alignment_baseline="'bottom'",
+        pickable=False,
+    ))
+
+    # Markers HK (ScatterplotLayer)
+    marker_data = [
+        {
+            "position": [b["lon"], b["lat"], b["elevation_m"] * z_scale],
+            "color":    _zone_rgb.get(b["zone"], [50, 50, 50]),
+            "bh":       b["name"],
+            "zone":     b["zone"],
+        }
+        for b in bhs
+    ]
+    layers_deck.append(pdk.Layer(
+        "ScatterplotLayer",
+        marker_data,
+        get_position="position",
+        get_fill_color="color",
+        get_radius=6,
+        radius_units="pixels",
+        pickable=True,
+    ))
+
+    # Đáy lớp bùn
+    if show_clay_bottom:
+        _clay = [c for c in _load_clay_bottom_3d() if c["zone"] in selected_zones]
+        if _clay:
+            clay_data = []
+            for c in _clay:
+                _lat, _lon = _vn2000_to_latlon(c["y_coord_m"], c["x_coord_m"])
+                clay_data.append({
+                    "position": [_lon, _lat, c["clay_bot_elev"] * z_scale],
+                    "bh":       c["name"],
+                    "elev":     c["clay_bot_elev"],
+                    "depth":    c["clay_bot_depth"],
+                })
+            layers_deck.append(pdk.Layer(
+                "ScatterplotLayer",
+                clay_data,
+                get_position="position",
+                get_fill_color=[13, 71, 161, 200],
+                get_radius=8,
+                radius_units="pixels",
+                pickable=True,
+            ))
+
+    # Mặt phẳng đỉnh trụ CDM (PolygonLayer)
+    if show_cdm_top:
+        all_lons = [b["lon"] for b in bhs]
+        all_lats = [b["lat"] for b in bhs]
+        pad = 0.0005
+        mn_lon, mx_lon = min(all_lons) - pad, max(all_lons) + pad
+        mn_lat, mx_lat = min(all_lats) - pad, max(all_lats) + pad
+        cdm_data = [{
+            "polygon": [
+                [mn_lon, mn_lat], [mx_lon, mn_lat],
+                [mx_lon, mx_lat], [mn_lon, mx_lat],
+            ],
+            "z": cdm_top_z * z_scale,
+        }]
+        layers_deck.append(pdk.Layer(
+            "PolygonLayer",
+            cdm_data,
+            get_polygon="polygon",
+            get_elevation="z",
+            extruded=False,
+            get_fill_color=[233, 30, 99, 70],
+            get_line_color=[194, 24, 91],
+            line_width_min_pixels=1,
+        ))
+
+    # Đường kích thước giữa 2 HK
+    if pair_highlight:
+        _b1n, _b2n, _dist = pair_highlight
+        _b1 = next((b for b in bhs if b["name"] == _b1n), None)
+        _b2 = next((b for b in bhs if b["name"] == _b2n), None)
+        if _b1 and _b2:
+            _zline = (max(_b1["elevation_m"], _b2["elevation_m"]) + 4) * z_scale
+            layers_deck.append(pdk.Layer(
+                "PathLayer",
+                [{
+                    "path": [[_b1["lon"], _b1["lat"], _zline],
+                             [_b2["lon"], _b2["lat"], _zline]],
+                    "color": [255, 111, 0],
+                    "label": f"{_dist:.1f} m",
+                }],
+                get_path="path",
+                get_color="color",
+                get_width=4,
+                width_units="pixels",
+                pickable=True,
+            ))
+            _mid_lon = (_b1["lon"] + _b2["lon"]) / 2
+            _mid_lat = (_b1["lat"] + _b2["lat"]) / 2
+            layers_deck.append(pdk.Layer(
+                "TextLayer",
+                [{
+                    "position": [_mid_lon, _mid_lat, _zline + 1],
+                    "text":     f"{_dist:.1f} m",
+                    "color":    [230, 81, 0],
+                }],
+                get_position="position",
+                get_text="text",
+                get_color="color",
+                get_size=16,
+                size_units="pixels",
+            ))
+
+    mid_lat = sum(b["lat"] for b in bhs) / len(bhs)
+    mid_lon = sum(b["lon"] for b in bhs) / len(bhs)
+    view = pdk.ViewState(
+        latitude=mid_lat, longitude=mid_lon,
+        zoom=16, pitch=55, bearing=-20,
+    )
+    return pdk.Deck(
+        layers=layers_deck,
+        initial_view_state=view,
+        tooltip={"html": "<b>{bh}</b><br>Lớp {sym}: {desc}<br>{rng}",
+                 "style": {"color": "white", "backgroundColor": "rgba(33,33,33,0.85)"}},
+        map_style=None,
+    )
 
 
 _VN2000_CM  = 105.75          # kinh tuyến trục TP.HCM: 105°45'E
@@ -2984,8 +3196,76 @@ if _page == "geology":
 
     # ── 3D / Map toggle ───────────────────────────────────────────────────────
     st.divider()
-    if not _HAS_PLOTLY and _HAS_MPL:
-        # Matplotlib 3D fallback (khi plotly chưa cài trên Cloud)
+    if not _HAS_PLOTLY and _HAS_PYDECK:
+        # Pydeck 3D — native drag/zoom/rotate qua deck.gl
+        _bhs_all_pd, _ = _load_borehole_3d_data()
+        _zones_with_coords_pd = sorted({b["zone"] for b in _bhs_all_pd})
+        if not _zones_with_coords_pd:
+            st.info(_t("no_coords_db"))
+        else:
+            st.markdown("#### Bản đồ 3D địa chất (pydeck — kéo-xoay-zoom)")
+            _pc1, _pc2 = st.columns([3, 2])
+            with _pc1:
+                _sel_zones_pd = st.multiselect(
+                    _t("zone_lbl"), _zones_with_coords_pd,
+                    default=_zones_with_coords_pd, key="_3d_pd_zones",
+                )
+            with _pc2:
+                _show_clay_pd = st.checkbox(_t("clay_surf"), value=True, key="_3d_pd_clay")
+                _show_cdm_pd  = st.checkbox(_t("cdm_top_show"), value=False, key="_3d_pd_top")
+            _cdm_z_pd = float(_get("cdm_CDTK"))
+            _zscale_col, _cdmz_col = st.columns(2)
+            if _show_cdm_pd:
+                _cdm_z_pd = _cdmz_col.number_input(
+                    _t("elev_lbl"), value=_cdm_z_pd, step=0.1, key="_3d_pd_top_z")
+            _z_scale_pd = _zscale_col.slider(
+                "Phóng đại trục Z", 1.0, 20.0, 5.0, 0.5, key="_3d_pd_zscale",
+                help="Z (cao độ) thường rất nhỏ so với khoảng cách XY → phóng đại để dễ nhìn",
+            )
+
+            # ── Đo khoảng cách 2 HK ────────────────────────────────────────
+            _pair_sel_pd = None
+            _bhs_in_zone_pd = [b for b in _bhs_all_pd if b["zone"] in (_sel_zones_pd or [])]
+            _bh_names_pd = sorted({b["name"] for b in _bhs_in_zone_pd})
+            if len(_bh_names_pd) >= 2:
+                _pp1, _pp2 = st.columns(2)
+                _b1p = _pp1.selectbox("Đo khoảng cách: HK 1",
+                                      ["(không chọn)"] + _bh_names_pd, key="_3d_pd_pair1")
+                _b2p = _pp2.selectbox("HK 2",
+                                      ["(không chọn)"] + _bh_names_pd, key="_3d_pd_pair2")
+                if (_b1p != "(không chọn)" and _b2p != "(không chọn)" and _b1p != _b2p):
+                    _b1 = next((b for b in _bhs_in_zone_pd if b["name"] == _b1p), None)
+                    _b2 = next((b for b in _bhs_in_zone_pd if b["name"] == _b2p), None)
+                    if _b1 and _b2:
+                        _dx = _b1["x_coord_m"] - _b2["x_coord_m"]
+                        _dy = _b1["y_coord_m"] - _b2["y_coord_m"]
+                        _dist_pd = (_dx*_dx + _dy*_dy) ** 0.5
+                        _pair_sel_pd = (_b1p, _b2p, _dist_pd)
+                        st.metric(f"Khoảng cách {_b1p} ↔ {_b2p}", f"{_dist_pd:.1f} m")
+
+            if _sel_zones_pd:
+                try:
+                    _deck = _build_borehole_3d_deck(
+                        _sel_zones_pd,
+                        show_clay_bottom=_show_clay_pd,
+                        show_cdm_top=_show_cdm_pd,
+                        cdm_top_z=_cdm_z_pd,
+                        pair_highlight=_pair_sel_pd,
+                        z_scale=_z_scale_pd,
+                    )
+                    if _deck is not None:
+                        st.pydeck_chart(_deck, use_container_width=True, height=560)
+                        st.caption(
+                            "Kéo chuột = xoay  •  Shift+kéo = pan  •  Lăn chuột = zoom  •  "
+                            "Hover trên cọc để xem chi tiết lớp. "
+                            f"Trục Z đang phóng đại ×{_z_scale_pd:.1f}."
+                        )
+                    else:
+                        st.info("Không có dữ liệu cho khu vực đã chọn.")
+                except Exception as _e:
+                    st.warning(f"Không vẽ được bản đồ pydeck: {_e}")
+    elif not _HAS_PLOTLY and _HAS_MPL:
+        # Matplotlib 3D fallback (khi không có cả plotly và pydeck)
         _bhs_all_mpl, _ = _load_borehole_3d_data()
         _zones_with_coords_mpl = sorted({b["zone"] for b in _bhs_all_mpl})
         if not _zones_with_coords_mpl:
@@ -3005,55 +3285,19 @@ if _page == "geology":
             if _show_cdm_mpl:
                 _cdm_z_mpl = st.number_input(
                     _t("elev_lbl"), value=_cdm_z_mpl, step=0.1, key="_3d_mpl_top_z")
-
-            # ── Điều khiển góc nhìn + zoom ─────────────────────────────────
             _vc1, _vc2, _vc3 = st.columns(3)
             _elev_mpl = _vc1.slider("Góc nhìn dọc (elev°)", -90, 90, 20, 5, key="_3d_mpl_elev")
             _azim_mpl = _vc2.slider("Góc xoay ngang (azim°)", -180, 180, -60, 10, key="_3d_mpl_azim")
             _zoom_mpl = _vc3.slider("Zoom", 0.3, 3.0, 1.0, 0.1, key="_3d_mpl_zoom")
-
-            # ── Đo khoảng cách 2 HK ─────────────────────────────────────────
-            _pair_sel_mpl = None
-            _bhs_in_zone = [b for b in _bhs_all_mpl if b["zone"] in (_sel_zones_mpl or [])]
-            _bh_names_mpl = sorted({b["name"] for b in _bhs_in_zone})
-            if len(_bh_names_mpl) >= 2:
-                _pc1, _pc2 = st.columns(2)
-                _bh1_pick = _pc1.selectbox("Đo khoảng cách: HK 1",
-                                           ["(không chọn)"] + _bh_names_mpl,
-                                           key="_3d_mpl_pair1")
-                _bh2_pick = _pc2.selectbox("HK 2",
-                                           ["(không chọn)"] + _bh_names_mpl,
-                                           key="_3d_mpl_pair2")
-                if (_bh1_pick != "(không chọn)" and _bh2_pick != "(không chọn)"
-                        and _bh1_pick != _bh2_pick):
-                    _b1 = next((b for b in _bhs_in_zone if b["name"] == _bh1_pick), None)
-                    _b2 = next((b for b in _bhs_in_zone if b["name"] == _bh2_pick), None)
-                    if _b1 and _b2:
-                        _dx = _b1["x_coord_m"] - _b2["x_coord_m"]
-                        _dy = _b1["y_coord_m"] - _b2["y_coord_m"]
-                        _dist_mpl = (_dx*_dx + _dy*_dy) ** 0.5
-                        _pair_sel_mpl = (_bh1_pick, _bh2_pick, _dist_mpl)
-                        st.metric(f"Khoảng cách {_bh1_pick} ↔ {_bh2_pick}",
-                                  f"{_dist_mpl:.1f} m")
-
             if _sel_zones_mpl:
                 try:
                     _fig_3d_mpl = _draw_boreholes_3d_mpl(
-                        _sel_zones_mpl,
-                        show_clay_bottom=_show_clay_mpl,
-                        show_cdm_top=_show_cdm_mpl,
-                        cdm_top_z=_cdm_z_mpl,
-                        pair_highlight=_pair_sel_mpl,
-                        elev=_elev_mpl,
-                        azim=_azim_mpl,
-                        zoom=_zoom_mpl,
+                        _sel_zones_mpl, show_clay_bottom=_show_clay_mpl,
+                        show_cdm_top=_show_cdm_mpl, cdm_top_z=_cdm_z_mpl,
+                        elev=_elev_mpl, azim=_azim_mpl, zoom=_zoom_mpl,
                     )
                     st.pyplot(_fig_3d_mpl, use_container_width=True)
                     plt.close(_fig_3d_mpl)
-                    st.caption(
-                        "Dùng các slider để xoay / zoom; chọn 2 HK để đo khoảng cách. "
-                        "Cài plotly để có bản đồ tương tác kéo-thả trực tiếp."
-                    )
                 except Exception as _e:
                     st.warning(f"Không vẽ được bản đồ 3D: {_e}")
     elif not _HAS_PLOTLY:
