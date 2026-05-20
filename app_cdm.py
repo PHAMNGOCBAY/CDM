@@ -2995,29 +2995,55 @@ st.sidebar.caption(
     f"**qu,tk =** {_qu:.0f} kPa"
 )
 
-# ── Print-friendly CSS (Ctrl+P → Save as PDF) — quy tắc an toàn ─────────────
-# Chỉ ẩn UI chrome + cho phép ngắt trang gọn. KHÔNG force expand expander
-# (gây side-effect trên Cloud); user tự mở expander cần in trước khi Ctrl+P.
+# ── Print-friendly CSS (Ctrl+P → Save as PDF) — multi-page support ──────────
+# Streamlit mặc định dùng position:fixed + overflow:hidden + height:100vh trên
+# layout container → chỉ in được 1 trang. CSS dưới override để content chảy
+# tự do qua nhiều trang khi in.
 st.markdown("""
 <style>
 @media print {
+  /* Ẩn UI chrome */
   [data-testid="stSidebar"], header, footer,
   [data-testid="stToolbar"], [data-testid="stDecoration"],
-  [data-testid="stStatusWidget"], .stDeployButton {
+  [data-testid="stStatusWidget"], .stDeployButton,
+  [data-testid="stHeader"], [data-testid="collapsedControl"] {
     display: none !important;
+  }
+  /* Quan trọng: phá bỏ height fixed + overflow hidden của Streamlit
+     để content chảy tự do qua nhiều trang */
+  html, body,
+  [data-testid="stAppViewContainer"],
+  [data-testid="stAppViewBlockContainer"],
+  .stApp, .main, .appview-container,
+  section.main, .block-container,
+  div[data-testid="stMainBlockContainer"] {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
   }
   .main .block-container {
     max-width: 100% !important;
     padding: 0.5rem !important;
+    margin: 0 !important;
   }
+  /* Tránh ngắt giữa expander/chart/bảng */
   div[data-testid="stExpander"],
-  .stPlotlyChart, .stImage, table, .stDataFrame {
+  .stPlotlyChart, .stImage, table, .stDataFrame,
+  div[data-testid="stVerticalBlock"] > div {
     break-inside: avoid;
     page-break-inside: avoid;
   }
+  /* Expander: mở rộng khi in (bỏ summary, hiện nội dung) */
+  details[data-testid="stExpander"] > div { display: block !important; }
   a { text-decoration: none !important; color: inherit !important; }
-  body { font-size: 11pt; }
+  body { font-size: 10.5pt; line-height: 1.35; }
+  /* Plotly iframe: cho hiển thị đầy đủ */
+  iframe { max-width: 100% !important; page-break-inside: avoid; }
 }
+@page { margin: 12mm 10mm; }
 </style>
 """, unsafe_allow_html=True)
 
