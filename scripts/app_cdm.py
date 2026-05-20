@@ -8936,27 +8936,55 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _cdm_thk_eff = max(0.0, _cdm_Lc_val - _cdm_Lng_val)
                     _k_cdm_fac = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
 
-                    # Tải đầu cọc: AUTO từ tổng áp lực đất EP (F_total_net SAU CDM)
-                    # — phản ánh đúng tải thực mà cọc chịu. User vẫn có thể cộng thêm
-                    # H_load tay (vd: tải xe trên đỉnh kè) qua widget bên trên.
-                    _F_auto = abs(locals().get("_F_total_net") or 0.0)
-                    _H_total = _F_auto + float(_dpy_H)
-                    # Mô-men tại đỉnh: F_net × (top_elev − z_net) — tay đòn tới đỉnh cọc
-                    try:
-                        _z_net_v = float(_ep_res_cdm.get("z_net", _dpy_top_ke))
-                        _M_auto = _F_auto * (float(_dpy_top_ke) - _z_net_v)
-                    except Exception:
-                        _M_auto = 0.0
-                    _M_total = abs(_M_auto) + float(_dpy_M)
+                    # Winkler chỉ dùng tải user (H, M). KHÔNG cộng F từ EP làm point
+                    # load — sai vật lý (EP là distributed, không được lump ở đỉnh).
+                    # F per component HIỂN THỊ ở bảng bên dưới để user tham khảo.
+                    _H_total = float(_dpy_H)
+                    _M_total = float(_dpy_M)
 
-                    if _F_auto > 0.1:
-                        st.caption(
-                            f"**Tải đầu cọc dùng tính Winkler:** "
-                            f"H = {_F_auto:.1f} (auto từ EP) + {float(_dpy_H):.1f} (user) "
-                            f"= **{_H_total:.1f} kN/m** · "
-                            f"M = {abs(_M_auto):.1f} (auto) + {float(_dpy_M):.1f} (user) "
-                            f"= **{_M_total:.1f} kNm/m**"
-                        )
+                    # Bảng chi tiết F per component (lấy từ EP + Boussinesq)
+                    _F_act_v = float(locals().get("_ep_res_cdm", {}).get("F_active", 0.0) or 0.0)
+                    _F_pas_v = float(locals().get("_ep_res_cdm", {}).get("F_passive", 0.0) or 0.0)
+                    _F_water_v = 0.0
+                    try:
+                        _trap_fn_w = (getattr(_np_ep, "trapezoid", None)
+                                      or getattr(_np_ep, "trapz"))
+                        _F_water_v = abs(float(_trap_fn_w(_pw_net_t, _elevs_t)))
+                    except Exception:
+                        pass
+                    _F_bs_v = float(locals().get("_F_bs", 0.0) or 0.0)
+                    _F_sum_check = _F_act_v - _F_pas_v + _F_water_v + _F_bs_v
+
+                    _ld_rows = [
+                        {"Loại tải": "Áp lực chủ động Active (Front)",
+                         "F (kN/m)": _F_act_v,
+                         "Chiều": "→ Back (đẩy cừ)"},
+                        {"Loại tải": "Áp lực bị động Passive (Back, kháng)",
+                         "F (kN/m)": _F_pas_v,
+                         "Chiều": "← Front (giữ cừ)"},
+                        {"Loại tải": "Chênh lệch nước Front − Back",
+                         "F (kN/m)": _F_water_v,
+                         "Chiều": "→ Back" if (_wlvl_s_v := float(_dpy_wlvl)) > float(_dpy_wlvl_b) else "← Front"},
+                        {"Loại tải": "Boussinesq từ tải khai thác q",
+                         "F (kN/m)": _F_bs_v,
+                         "Chiều": "→ Back"},
+                        {"Loại tải": "TỔNG NET = Active − Passive + Nước + q",
+                         "F (kN/m)": _F_sum_check,
+                         "Chiều": "→ Back" if _F_sum_check > 0 else "← Front"},
+                    ]
+                    st.markdown("**Chi tiết các loại tải trọng tác dụng lên cừ:**")
+                    st.dataframe(
+                        pd.DataFrame(_ld_rows),
+                        use_container_width=True, hide_index=True,
+                        column_config={
+                            "F (kN/m)": st.column_config.NumberColumn(format="%.1f"),
+                        },
+                    )
+                    st.caption(
+                        f"_Winkler dùng tải đầu cọc do user nhập: H = {_H_total:.1f} kN/m, "
+                        f"M = {_M_total:.1f} kNm/m. EP là tải phân bố — chỉ tham khảo, "
+                        f"không lump điểm vào Winkler._"
+                    )
 
                     _res_d1 = _calc_py_winkler(
                         bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
@@ -9074,32 +9102,82 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _cdm_top_w = _Z_w
                             _cdm_bot_w = _Z_w - _cdm_thk_eff if _cdm_thk_eff > 0 else _Z_w
 
-                            # Panel 0: sơ đồ cừ + CDM
+                            # Panel 0: sơ đồ cừ + CDM (kèm dimension labels để kiểm tra)
                             _bot_pile_w = _top_w - _Lw
+                            _Zb_w = float(_dpy_Zb)
+                            _wlvl_F = float(_dpy_wlvl)
+                            _wlvl_B = float(_dpy_wlvl_b)
+
+                            # Cừ
                             _axw[0].add_patch(_RectW((-0.5, _bot_pile_w), 1.0, _Lw,
                                                       facecolor="#444444", edgecolor="black",
-                                                      linewidth=1.2, label="Cừ SW"))
+                                                      linewidth=1.2, label=f"Cừ SW L={_Lw:.1f}m"))
+                            # CDM
                             if _cdm_thk_eff > 0:
                                 _axw[0].add_patch(_RectW((-3, _cdm_bot_w), 2.5, _cdm_thk_eff,
                                                           facecolor="#90c890", edgecolor="green",
                                                           alpha=0.7, hatch="//",
                                                           label=f"CDM Lc={_cdm_Lc_val:.1f}m"))
+                            # Đất đắp Front
                             if _top_w - _Z_w > 0:
                                 _axw[0].add_patch(_RectW((-3, _Z_w), 2.5, _top_w - _Z_w,
                                                           facecolor="#d4a373", alpha=0.4,
-                                                          label="Đất đắp"))
-                            _axw[0].axhline(_Z_w - 0.5, color="cyan", linestyle="-", lw=1.2, alpha=0.5)
-                            _axw[0].text(2.5, _Z_w - 0.4, "MNN", fontsize=7, color="cyan")
+                                                          label=f"Đắp {(_top_w - _Z_w):.1f}m"))
+                            # Mặt đất Back (đào sâu hơn)
                             _axw[0].plot([-3, -0.5], [_Z_w, _Z_w], "k-", lw=1.5)
-                            _axw[0].plot([0.5, 3], [_Z_w - 1, _Z_w - 1], "k-", lw=1.5)
-                            _axw[0].text(-2.8, _Z_w + 0.3, "Front (đắp)", fontsize=7, color="brown")
-                            _axw[0].text(0.8, _Z_w - 0.7, "Back (đào)", fontsize=7, color="orange")
+                            _axw[0].plot([0.5, 3], [_Zb_w, _Zb_w], "k-", lw=1.5)
+                            # Mực nước
+                            _axw[0].axhline(_wlvl_F, color="cyan", linestyle="-", lw=1.0, alpha=0.5,
+                                             xmin=0, xmax=0.5)
+                            _axw[0].axhline(_wlvl_B, color="cyan", linestyle="-", lw=1.0, alpha=0.5,
+                                             xmin=0.5, xmax=1.0)
+
+                            # ── Dimension labels (annotation cao độ + chiều dài) ──
+                            # Cao độ đỉnh kè
+                            _axw[0].annotate(f"top = {_top_w:+.2f}m",
+                                              xy=(0.5, _top_w), xytext=(2.0, _top_w + 0.5),
+                                              fontsize=7, color="#1565C0", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#1565C0", lw=0.8))
+                            # Cao độ mặt đất Front (Z)
+                            _axw[0].annotate(f"Z = {_Z_w:+.2f}m",
+                                              xy=(-0.5, _Z_w), xytext=(-3.3, _Z_w + 0.3),
+                                              fontsize=7, color="#8B4513", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#8B4513", lw=0.8))
+                            # Cao độ mặt đất Back (Zb)
+                            _axw[0].annotate(f"Zb = {_Zb_w:+.2f}m",
+                                              xy=(0.5, _Zb_w), xytext=(1.8, _Zb_w - 0.6),
+                                              fontsize=7, color="#FF6F00", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#FF6F00", lw=0.8))
+                            # Mực nước Front + Back
+                            _axw[0].text(-3.3, _wlvl_F + 0.1, f"MNN_F = {_wlvl_F:+.2f}",
+                                          fontsize=6, color="cyan")
+                            _axw[0].text(1.8, _wlvl_B + 0.1, f"MNN_B = {_wlvl_B:+.2f}",
+                                          fontsize=6, color="cyan")
+                            # Chân cừ
+                            _axw[0].annotate(f"tip = {_bot_pile_w:+.2f}m",
+                                              xy=(0, _bot_pile_w), xytext=(1.5, _bot_pile_w - 0.5),
+                                              fontsize=7, color="#444", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#444", lw=0.8))
+                            # Đáy CDM
+                            if _cdm_thk_eff > 0:
+                                _axw[0].annotate(f"CDM bot = {_cdm_bot_w:+.2f}m",
+                                                  xy=(-2, _cdm_bot_w), xytext=(-3.3, _cdm_bot_w - 0.4),
+                                                  fontsize=7, color="green", fontweight="bold",
+                                                  arrowprops=dict(arrowstyle="->", color="green", lw=0.8))
+
+                            # Front/Back labels
+                            _axw[0].text(-2.8, _top_w + 0.6, "Front", fontsize=8, color="brown",
+                                          fontweight="bold", style="italic")
+                            _axw[0].text(2.0, _top_w + 0.6, "Back", fontsize=8, color="#FF6F00",
+                                          fontweight="bold", style="italic")
+
                             _axw[0].set_xlim(-3.5, 3.5)
                             _axw[0].set_ylabel("Cao độ (m)")
-                            _axw[0].set_title("Sơ đồ cừ + CDM", fontsize=10)
+                            _axw[0].set_title(f"Sơ đồ kích thước hình học\nL={_Lw:.1f}m, Lc={_cdm_Lc_val:.1f}m",
+                                               fontsize=9)
                             _axw[0].set_xticks([])
                             _axw[0].grid(alpha=0.3)
-                            _axw[0].legend(fontsize=7, loc="lower left")
+                            _axw[0].legend(fontsize=6, loc="lower left")
 
                             # Panel 1: u(z)
                             if _cdm_thk_eff > 0:
