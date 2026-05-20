@@ -3260,8 +3260,9 @@ elif _page == "params":
                     "_src":        _src,
                 })
             _df_p = pd.DataFrame(_p_rows)
+            _src_map_p = _df_p["_src"].to_dict()
             def _hl_p(row):
-                return ["background-color:#FFF8DC"]*len(row) if row["_src"] else [""]*len(row)
+                return ["background-color:#FFF8DC"]*len(row) if _src_map_p.get(row.name) else [""]*len(row)
             with st.expander(f"Thông số địa chất — {_p_bh}", expanded=True):
                 st.dataframe(
                     _df_p.drop(columns=["_src"]).style.apply(_hl_p, axis=1),
@@ -4051,9 +4052,10 @@ if _page == "settlement":
                             "_src":        _src,
                         })
                     _df_geo = pd.DataFrame(_param_rows)
+                    _src_map_sl = _df_geo["_src"].to_dict()
 
                     def _highlight_borrowed(row):
-                        if row["_src"]:
+                        if _src_map_sl.get(row.name):
                             return ["background-color: #FFF8DC"] * len(row)
                         return [""] * len(row)
 
