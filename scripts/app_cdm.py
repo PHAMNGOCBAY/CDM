@@ -4574,6 +4574,152 @@ elif _page == "sample_check":
                     use_container_width=True, hide_index=True,
                 )
 
+                # ─────────────────────────────────────────────────────────────
+                # Biểu đồ phân tích nâng cao (statistical + parametric)
+                # ─────────────────────────────────────────────────────────────
+                st.markdown("---")
+                st.markdown("#### Phân tích thống kê + độ nhạy")
+
+                # 5. Histogram qu + KDE
+                _fig_hist = go.Figure()
+                _fig_hist.add_trace(go.Histogram(
+                    x=_qu_arr, nbinsx=8,
+                    marker_color="#1565C0", opacity=0.7,
+                    name="Phân bố qu R7", histnorm="probability density",
+                ))
+                # KDE qua scipy
+                try:
+                    from scipy.stats import gaussian_kde as _kde
+                    _kde_fn = _kde(_qu_arr)
+                    _x_kde = _np_cdm.linspace(_qu_arr.min() - 50, _qu_arr.max() + 50, 100)
+                    _fig_hist.add_trace(go.Scatter(
+                        x=_x_kde, y=_kde_fn(_x_kde),
+                        mode="lines", line=dict(color="#E65100", width=2.5),
+                        name="KDE",
+                    ))
+                except Exception:
+                    pass
+                _fig_hist.add_vline(x=_qu_avg, line_dash="dash", line_color="black",
+                                     annotation_text=f"μ={_qu_avg:.0f}")
+                _fig_hist.add_vline(x=_qu_avg + _qu_arr.std(), line_dash="dot", line_color="gray",
+                                     annotation_text="+σ")
+                _fig_hist.add_vline(x=_qu_avg - _qu_arr.std(), line_dash="dot", line_color="gray",
+                                     annotation_text="-σ")
+                if _qu_design_req > 0:
+                    _fig_hist.add_vline(x=_qu_design_req, line_dash="dash", line_color="red",
+                                         annotation_text=f"yêu cầu={_qu_design_req:.0f}")
+                _fig_hist.update_layout(
+                    title=f"Phân bố qu R7 (n={len(_qu_arr)}, μ={_qu_avg:.0f}, σ={_qu_arr.std():.0f} kPa)",
+                    xaxis_title="qu R7 (kPa)", yaxis_title="Mật độ xác suất",
+                    height=380, margin=dict(t=50, b=40),
+                    bargap=0.05, showlegend=False,
+                )
+
+                # 6. CDF (Cumulative Distribution)
+                _sorted_qu = _np_cdm.sort(_qu_arr)
+                _cdf_y = _np_cdm.arange(1, len(_sorted_qu) + 1) / len(_sorted_qu)
+                _fig_cdf = go.Figure()
+                _fig_cdf.add_trace(go.Scatter(
+                    x=_sorted_qu, y=_cdf_y * 100,
+                    mode="lines+markers",
+                    line=dict(color="#2E7D32", width=2.5, shape="hv"),
+                    marker=dict(size=8),
+                    name="CDF",
+                ))
+                if _qu_design_req > 0:
+                    _frac_below = (_sorted_qu < _qu_design_req).sum() / len(_sorted_qu) * 100
+                    _fig_cdf.add_vline(x=_qu_design_req, line_dash="dash", line_color="red",
+                                         annotation_text=f"yêu cầu ({_frac_below:.0f}% mẫu không đạt)")
+                _fig_cdf.add_hline(y=50, line_dash="dot", line_color="gray",
+                                     annotation_text="median (50%)")
+                _fig_cdf.update_layout(
+                    title="Đường cong phân bố tích lũy CDF — qu R7",
+                    xaxis_title="qu R7 (kPa)", yaxis_title="P(qu ≤ x) (%)",
+                    height=380, margin=dict(t=50, b=40),
+                    yaxis=dict(range=[0, 105]),
+                    showlegend=False,
+                )
+
+                _hcol1, _hcol2 = st.columns(2)
+                _hcol1.plotly_chart(_fig_hist, use_container_width=True)
+                _hcol2.plotly_chart(_fig_cdf, use_container_width=True)
+
+                # 7. Sensitivity: độ tăng qu per +20 kg/m³ dosage cho mỗi tổ hợp
+                _sens_rows = []
+                for _combo_s in _df_cdm7["Combo"].unique():
+                    _sub_s = _df_cdm7[_df_cdm7["Combo"] == _combo_s].sort_values("Hàm lượng (kg/m³)")
+                    if len(_sub_s) < 2:
+                        continue
+                    _slope_s, _intc_s = _np_cdm.polyfit(_sub_s["Hàm lượng (kg/m³)"],
+                                                          _sub_s["qu R7 (kPa)"], 1)
+                    _sens_rows.append({
+                        "Tổ hợp":          _combo_s,
+                        "Δqu / +20 kg/m³": _slope_s * 20,
+                        "qu @ 220":        _slope_s * 220 + _intc_s,
+                        "qu @ 260":        _slope_s * 260 + _intc_s,
+                        "Hệ số (kPa/kg/m³)": _slope_s,
+                    })
+                _df_sens = pd.DataFrame(_sens_rows)
+                if not _df_sens.empty:
+                    _fig_sens = go.Figure()
+                    _fig_sens.add_trace(go.Bar(
+                        y=_df_sens["Tổ hợp"], x=_df_sens["Δqu / +20 kg/m³"],
+                        orientation="h",
+                        marker_color="#9C27B0",
+                        text=[f"+{v:.0f} kPa" for v in _df_sens["Δqu / +20 kg/m³"]],
+                        textposition="outside",
+                    ))
+                    _fig_sens.update_layout(
+                        title="Độ nhạy: Δqu khi tăng hàm lượng +20 kg/m³",
+                        xaxis_title="Δqu R7 (kPa)",
+                        height=320, margin=dict(t=50, b=40, l=200),
+                        showlegend=False,
+                    )
+
+                    # 8. 3D surface (W/C × dosage × qu) cho mỗi cement type
+                    _fig_3d = go.Figure()
+                    _colors_3d = {"Xỉ Tam Điệp": "Blues", "Hoàng Thạch PCB40": "Reds"}
+                    for _ct_3d in _df_cdm7["Loại xi măng"].unique():
+                        _sub3 = _df_cdm7[_df_cdm7["Loại xi măng"] == _ct_3d]
+                        _fig_3d.add_trace(go.Scatter3d(
+                            x=_sub3["W/C"], y=_sub3["Hàm lượng (kg/m³)"],
+                            z=_sub3["qu R7 (kPa)"],
+                            mode="markers+text",
+                            marker=dict(size=8,
+                                          color=_sub3["qu R7 (kPa)"],
+                                          colorscale=_colors_3d.get(_ct_3d, "Viridis"),
+                                          showscale=False),
+                            text=_sub3["Mã mẫu"], textposition="top center",
+                            name=_ct_3d,
+                        ))
+                    _fig_3d.update_layout(
+                        title="Phân bố 3D: W/C × Hàm lượng × qu R7",
+                        scene=dict(xaxis_title="W/C", yaxis_title="Hàm lượng (kg/m³)",
+                                    zaxis_title="qu R7 (kPa)"),
+                        height=480, margin=dict(t=50, b=40),
+                        legend=dict(orientation="h", y=1.10),
+                    )
+
+                    _s1, _s2 = st.columns(2)
+                    _s1.plotly_chart(_fig_sens, use_container_width=True)
+                    _s2.plotly_chart(_fig_3d, use_container_width=True)
+
+                    # Bảng độ nhạy
+                    st.markdown("**Bảng độ nhạy — qu tăng theo hàm lượng xi măng:**")
+                    st.dataframe(
+                        _df_sens.style.format({
+                            "Δqu / +20 kg/m³":   "{:+.1f}",
+                            "qu @ 220":          "{:.1f}",
+                            "qu @ 260":          "{:.1f}",
+                            "Hệ số (kPa/kg/m³)": "{:.3f}",
+                        }),
+                        use_container_width=True, hide_index=True,
+                    )
+                    st.caption(
+                        "Hệ số tuyến tính dqu/d(dosage) cho biết hiệu quả tăng cường độ khi tăng "
+                        "hàm lượng xi măng. Tổ hợp có hệ số cao = đáng đầu tư thêm xi măng."
+                    )
+
             # Tổ hợp tốt nhất (qu cao nhất)
             _best = _df_cdm7.loc[_df_cdm7["qu R7 (kPa)"].idxmax()]
             st.success(
