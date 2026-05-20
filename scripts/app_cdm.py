@@ -6972,6 +6972,39 @@ if _page == "ke_sw":
                 st.session_state["sw_applied_fields"] = _applied
                 st.rerun()
 
+    # ── Áp dữ liệu từ tab Thiết kế CDM (geology) ──────────────────────────────
+    _geo_zone = st.session_state.get("cdm_zone")
+    _geo_bh   = st.session_state.get("cdm_bh")
+    _geo_elev = st.session_state.get("cdm_elevation")
+    _geo_hcl  = st.session_state.get("cdm_h_clay")
+    _geo_su   = st.session_state.get("cdm_Su")
+    _geo_top  = st.session_state.get("cdm_top_clay")
+    _geo_gam  = st.session_state.get("cdm_gamma")
+    if _geo_bh and _geo_hcl and _geo_su:
+        _gc1, _gc2 = st.columns([2, 3])
+        with _gc1:
+            st.markdown(f"**Tab Thiết kế CDM** — Zone `{_geo_zone}` · HK `{_geo_bh}`")
+        with _gc2:
+            st.info(
+                f"Z = {_geo_elev:+.2f}m | top_clay = {_geo_top:.2f}m | "
+                f"H_clay = {_geo_hcl:.1f}m | Su = {_geo_su:.1f} kPa | γ = {_geo_gam:.1f} kN/m³"
+            )
+        if st.button(f"Áp dữ liệu từ Thiết kế CDM ({_geo_bh}) → form bên dưới",
+                     key="btn_apply_geo"):
+            _src_lbl = f"Thiết kế CDM ({_geo_bh})"
+            _applied_g = {}
+            if _geo_elev is not None:
+                st.session_state["sw_Z"]  = float(_geo_elev)
+                _applied_g["sw_Z"]  = {"src": _src_lbl, "value": float(_geo_elev)}
+            if _geo_hcl is not None:
+                st.session_state["sw_H1"] = float(_geo_hcl)
+                _applied_g["sw_H1"] = {"src": _src_lbl, "value": float(_geo_hcl)}
+            if _geo_su is not None:
+                st.session_state["sw_su"] = float(_geo_su)
+                _applied_g["sw_su"] = {"src": f"{_src_lbl} VST", "value": float(_geo_su)}
+            st.session_state["sw_applied_fields"] = _applied_g
+            st.rerun()
+
     # ── Helper: tô màu label + caption nguồn cho field áp từ HK ───────────────
     _sw_applied = st.session_state.get("sw_applied_fields", {}) or {}
 
