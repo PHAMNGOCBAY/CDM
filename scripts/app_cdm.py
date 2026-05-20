@@ -7664,33 +7664,70 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                           key="dpy_M_load")
                 _dpy_cdm_thk = st.number_input("Bề dày CDM tăng cường (m)", 0.0, 10.0, 3.0, 0.5,
                                                  key="dpy_cdm_thk")
+            st.caption(
+                "**Quy ước:** Front (TRÁI) = phía sông / phía đào → áp lực đất + nước "
+                "đẩy cừ SW về phía công trình. Back (PHẢI) = phía đất giữ / công trình. "
+                "Cừ SW làm tâm; mặt đất / lớp đất hai bên có thể khác nhau."
+            )
             _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4 = st.columns(4)
             _dpy_eps50 = _dpy_w1.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
                                                  key="dpy_eps50", format="%.3f")
             _dpy_kf    = _dpy_w2.number_input("Hệ số tăng k_h CDM", 1.0, 10.0, 4.0, 0.5,
                                                  key="dpy_kf")
-            _dpy_wlvl  = _dpy_w3.number_input("Mực nước (m)", -5.0, 3.0, -1.0, 0.5,
+            _dpy_wlvl  = _dpy_w3.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
                                                  key="dpy_wlvl")
             _dpy_bc    = _dpy_w4.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"],
                                             key="dpy_bc")
 
+            # ── Hàng nhập đất phía Back (riêng biệt với Front) ──────────────
+            st.markdown("**Đất phía Back (sau cọc — phía công trình):**")
+            _dpy_b1, _dpy_b2, _dpy_b3, _dpy_b4 = st.columns(4)
+            _dpy_Zb     = _dpy_b1.number_input("Cao độ Ground B (m)", -5.0, 5.0,
+                                                  float(_dpy_Z) + 1.0, 0.05,
+                                                  key="dpy_Z_back",
+                                                  help="Cao độ mặt đất phía Back (≥ Front nếu Back chưa đào)")
+            _dpy_H1b    = _dpy_b2.number_input("H₁ Back (m)", 1.0, 35.0, float(_dpy_H1), 0.5,
+                                                  key="dpy_H1_back",
+                                                  help="Bề dày lớp bùn sét phía Back")
+            _dpy_sub    = _dpy_b3.number_input("Su Back (kN/m²)", 5.0, 100.0,
+                                                  float(_dpy_su), 1.0,
+                                                  key="dpy_su_back",
+                                                  help="Sức kháng cắt phía Back có thể khác Front")
+            _dpy_wlvl_b = _dpy_b4.number_input("Mực nước Back (m)", -5.0, 5.0,
+                                                  float(_dpy_wlvl), 0.5,
+                                                  key="dpy_wlvl_back",
+                                                  help="Mực nước phía Back (thường cao hơn Front)")
+
         with _col_schem_d:
             if _HAS_MPL:
-                _lyr_mid_d  = _dpy_Z - _dpy_H1
+                # Layers Front (trái)
+                _lyr_mid_F  = _dpy_Z - _dpy_H1
                 _pile_tip_d = _dpy_top_ke - _dpy_L
-                _layers_sch_d = [
-                    ("Bùn sét", _dpy_Z,      _lyr_mid_d,  16.0, 0.0),
-                    ("Lớp cứng", _lyr_mid_d, _pile_tip_d, 18.0, 20.0),
+                _layers_F = [
+                    ("Bùn sét F",  _dpy_Z,    _lyr_mid_F,  16.0, 0.0),
+                    ("Lớp cứng F", _lyr_mid_F, _pile_tip_d, 18.0, 20.0),
+                ]
+                # Layers Back (phải)
+                _lyr_mid_B  = _dpy_Zb - _dpy_H1b
+                _layers_B = [
+                    ("Bùn sét B",  _dpy_Zb,    _lyr_mid_B,  16.0, 0.0),
+                    ("Lớp cứng B", _lyr_mid_B, _pile_tip_d, 18.0, 20.0),
                 ]
                 _fig_sch_d = draw_pile_schematic(
                     L_m=_dpy_L, water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
-                    H_kN=_dpy_H, M_kNm=_dpy_M, layers=_layers_sch_d, bc_type=_dpy_bc,
-                    soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Z,
-                    water_lvl_back=_dpy_wlvl,
+                    H_kN=_dpy_H, M_kNm=_dpy_M,
+                    layers=_layers_F, bc_type=_dpy_bc,
+                    soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Zb,
+                    water_lvl_back=_dpy_wlvl_b,
+                    back_layers=_layers_B,
                 )
                 if _fig_sch_d:
                     st.pyplot(_fig_sch_d, use_container_width=True)
                     plt.close(_fig_sch_d)
+                st.caption(
+                    f"Front: Z={_dpy_Z:+.2f}m, MN={_dpy_wlvl:+.2f}m, Su={_dpy_su:.0f} kPa  | "
+                    f"Back: Z={_dpy_Zb:+.2f}m, MN={_dpy_wlvl_b:+.2f}m, Su={_dpy_sub:.0f} kPa"
+                )
 
         # Nút tính
         _dpy_btn_c1, _dpy_btn_c2 = st.columns([1, 4])
