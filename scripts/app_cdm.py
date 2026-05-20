@@ -1476,9 +1476,9 @@ def _draw_cdm_section(
             ha="center", va="center", fontsize=8.5,
             color="white", fontweight="bold", zorder=4)
 
-    # CDTK = đỉnh cọc + đệm + đắp (đỉnh lớp cát đắp, dưới mặt đường)
-    ax.axhline(z_fill, color="#E53935", lw=1.5, ls="--", zorder=5)
-    ax.text(W * 0.98, z_fill + 0.08, f"CDTK = {z_fill:+.2f} m",
+    # Cao độ thiết kế = đỉnh lớp kết cấu áo đường (z_road)
+    ax.axhline(z_road, color="#E53935", lw=1.5, ls="--", zorder=5)
+    ax.text(W * 0.98, z_road + 0.08, f"Cao độ TK = {z_road:+.2f} m",
             ha="right", va="bottom", fontsize=8.5, color="#E53935",
             fontweight="bold", zorder=7,
             bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#E53935",
