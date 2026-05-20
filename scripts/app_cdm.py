@@ -9236,48 +9236,96 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _axw[0].grid(alpha=0.3)
                             _axw[0].legend(fontsize=6, loc="lower left")
 
+                            # ── Helper: thêm reference lines + cao độ chú thích ───
+                            def _add_elev_refs(_ax):
+                                """Vẽ các đường tham chiếu cao độ giống Panel 0 (sơ đồ kích thước)."""
+                                # Vùng CDM
+                                if _cdm_thk_eff > 0:
+                                    _ax.axhspan(_cdm_bot_w, _cdm_top_w,
+                                                 alpha=0.12, color="green")
+                                # Đỉnh kè
+                                _ax.axhline(_top_w, color="#1565C0", linestyle="-", lw=0.8, alpha=0.6)
+                                # Mặt đất Front (Z)
+                                _ax.axhline(_Z_w, color="#8B4513", linestyle="-", lw=0.7, alpha=0.6)
+                                # Mặt đất Back (Zb)
+                                _ax.axhline(_Zb_w, color="#FF6F00", linestyle="-", lw=0.7, alpha=0.5)
+                                # Đáy lớp bùn (Z - H1)
+                                _ax.axhline(_bun_bot_F, color="#8B4513",
+                                             linestyle=":", lw=0.7, alpha=0.5)
+                                # Mực nước
+                                _ax.axhline(_wlvl_F, color="cyan", linestyle="-", lw=0.6, alpha=0.4)
+                                # Chân cừ
+                                _ax.axhline(_bot_pile_w, color="#444", linestyle="-", lw=0.8, alpha=0.6)
+                                # Đáy CDM
+                                if _cdm_thk_eff > 0:
+                                    _ax.axhline(_cdm_bot_w, color="green",
+                                                 linestyle="--", lw=0.7, alpha=0.5)
+
+                            def _add_elev_labels(_ax, _xlim_max):
+                                """Thêm text cao độ ở mép phải biểu đồ (dùng cho panel đầu các loại)."""
+                                _x_lbl = _xlim_max * 0.98
+                                for _yv, _txt, _col in [
+                                    (_top_w,      f"top={_top_w:+.1f}",     "#1565C0"),
+                                    (_Z_w,        f"Z={_Z_w:+.1f}",         "#8B4513"),
+                                    (_bun_bot_F,  f"đáy bùn={_bun_bot_F:+.1f}", "#8B4513"),
+                                    (_Zb_w,       f"Zb={_Zb_w:+.1f}",       "#FF6F00"),
+                                    (_bot_pile_w, f"tip={_bot_pile_w:+.1f}", "#444"),
+                                ]:
+                                    _ax.text(_x_lbl, _yv, _txt, fontsize=5.5,
+                                             color=_col, ha="right", va="center", alpha=0.8,
+                                             bbox=dict(boxstyle="round,pad=0.1",
+                                                       facecolor="white", edgecolor="none",
+                                                       alpha=0.6))
+
                             # Panel 1: u(z)
-                            if _cdm_thk_eff > 0:
-                                _axw[1].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green",
-                                                 label="Vùng CDM")
-                            _axw[1].plot(_res_d1["ux"], _el_pile, "b-", lw=2.0)
+                            _add_elev_refs(_axw[1])
+                            _axw[1].plot(_res_d1["ux"], _el_pile, "b-", lw=2.0, label="u(z)")
                             _axw[1].axvline(25, color="red", linestyle="--", lw=1.0, label="±25 mm")
                             _axw[1].axvline(-25, color="red", linestyle="--", lw=1.0)
                             _axw[1].axvline(0, color="black", lw=0.5)
+                            _u_xmax = max(30, max(abs(u) for u in _res_d1["ux"]) * 1.1)
+                            _axw[1].set_xlim(-_u_xmax, _u_xmax)
+                            _add_elev_labels(_axw[1], _u_xmax)
                             _axw[1].set_xlabel("u (mm)")
                             _axw[1].set_title(
                                 f"Chuyển vị u(z)\nu_max = {_res_d1['u_max_mm']:.2f} mm",
                                 fontsize=10)
                             _axw[1].grid(alpha=0.3)
-                            _axw[1].legend(fontsize=7)
+                            _axw[1].legend(fontsize=7, loc="lower left")
 
                             # Panel 2: M(z)
-                            if _cdm_thk_eff > 0:
-                                _axw[2].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green")
-                            _axw[2].plot(_res_d1["Ms"], _el_mid, "g-", lw=2.0)
+                            _add_elev_refs(_axw[2])
+                            _axw[2].plot(_res_d1["Ms"], _el_mid, "g-", lw=2.0, label="M(z)")
                             _axw[2].axvline(_res_d1["Mcr_kNm"], color="red", linestyle="--",
                                              lw=1.0, label=f"Mcr={_res_d1['Mcr_kNm']:.0f}")
                             _axw[2].axvline(-_res_d1["Mcr_kNm"], color="red", linestyle="--", lw=1.0)
                             _axw[2].axvline(0, color="black", lw=0.5)
+                            _M_xmax = max(_res_d1["Mcr_kNm"] * 1.2,
+                                           max(abs(m) for m in _res_d1["Ms"]) * 1.1, 100.0)
+                            _axw[2].set_xlim(-_M_xmax, _M_xmax)
+                            _add_elev_labels(_axw[2], _M_xmax)
                             _axw[2].set_xlabel("M (kNm)")
                             _ratio_w = _res_d1["M_max_kNm"] / _res_d1["Mcr_kNm"] if _res_d1["Mcr_kNm"] else 0
                             _axw[2].set_title(
                                 f"Moment M(z)\nM_max={_res_d1['M_max_kNm']:.0f}  M/Mcr={_ratio_w:.2f}",
                                 fontsize=10)
                             _axw[2].grid(alpha=0.3)
-                            _axw[2].legend(fontsize=7)
+                            _axw[2].legend(fontsize=7, loc="lower left")
 
                             # Panel 3: Q(z)
                             _Qs_w = _res_d1.get("Qs", [])
                             if _Qs_w:
-                                if _cdm_thk_eff > 0:
-                                    _axw[3].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green")
-                                _axw[3].plot(_Qs_w, _el_mid, "m-", lw=2.0)
+                                _add_elev_refs(_axw[3])
+                                _axw[3].plot(_Qs_w, _el_mid, "m-", lw=2.0, label="Q(z)")
                                 _axw[3].axvline(0, color="black", lw=0.5)
                                 _Qmax_w = _res_d1.get("Q_max_kN", max(abs(q) for q in _Qs_w))
+                                _Q_xmax = max(_Qmax_w * 1.2, 10.0)
+                                _axw[3].set_xlim(-_Q_xmax, _Q_xmax)
+                                _add_elev_labels(_axw[3], _Q_xmax)
                                 _axw[3].set_title(f"Lực cắt Q(z)\nQ_max={_Qmax_w:.0f} kN", fontsize=10)
                                 _axw[3].set_xlabel("Q (kN)")
                                 _axw[3].grid(alpha=0.3)
+                                _axw[3].legend(fontsize=7, loc="lower left")
                             else:
                                 _axw[3].set_visible(False)
 
