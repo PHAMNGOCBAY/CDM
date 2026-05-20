@@ -997,6 +997,9 @@ def _draw_boreholes_3d_mpl(
     cdm_top_z: float = 2.7,
     focus_bh: str | None = None,
     pair_highlight: tuple | None = None,
+    elev: float = 20.0,
+    azim: float = -60.0,
+    zoom: float = 1.0,
 ):
     """Matplotlib fallback cho bản đồ 3D địa chất (khi không có plotly)."""
     import matplotlib.pyplot as plt
@@ -1111,7 +1114,20 @@ def _draw_boreholes_3d_mpl(
     ax.set_zlabel("Cao độ (m)", fontsize=9)
     ax.tick_params(labelsize=8)
     ax.legend(loc="upper left", fontsize=7, framealpha=0.85, ncol=2)
-    ax.view_init(elev=20, azim=-60)
+    ax.view_init(elev=float(elev), azim=float(azim))
+
+    # Zoom: thu/giãn quanh tâm trục
+    if abs(zoom - 1.0) > 1e-3:
+        for lim_get, lim_set in (
+            (ax.get_xlim, ax.set_xlim),
+            (ax.get_ylim, ax.set_ylim),
+            (ax.get_zlim, ax.set_zlim),
+        ):
+            _lo, _hi = lim_get()
+            _ctr  = 0.5 * (_lo + _hi)
+            _half = 0.5 * (_hi - _lo) / float(zoom)
+            lim_set(_ctr - _half, _ctr + _half)
+
     fig.tight_layout()
     return fig
 
@@ -2975,7 +2991,7 @@ if _page == "geology":
         if not _zones_with_coords_mpl:
             st.info(_t("no_coords_db"))
         else:
-            st.markdown("#### Bản đồ 3D địa chất (matplotlib fallback)")
+            st.markdown("#### Bản đồ 3D địa chất (matplotlib)")
             _mc1, _mc2 = st.columns([3, 2])
             with _mc1:
                 _sel_zones_mpl = st.multiselect(
@@ -2989,6 +3005,37 @@ if _page == "geology":
             if _show_cdm_mpl:
                 _cdm_z_mpl = st.number_input(
                     _t("elev_lbl"), value=_cdm_z_mpl, step=0.1, key="_3d_mpl_top_z")
+
+            # ── Điều khiển góc nhìn + zoom ─────────────────────────────────
+            _vc1, _vc2, _vc3 = st.columns(3)
+            _elev_mpl = _vc1.slider("Góc nhìn dọc (elev°)", -90, 90, 20, 5, key="_3d_mpl_elev")
+            _azim_mpl = _vc2.slider("Góc xoay ngang (azim°)", -180, 180, -60, 10, key="_3d_mpl_azim")
+            _zoom_mpl = _vc3.slider("Zoom", 0.3, 3.0, 1.0, 0.1, key="_3d_mpl_zoom")
+
+            # ── Đo khoảng cách 2 HK ─────────────────────────────────────────
+            _pair_sel_mpl = None
+            _bhs_in_zone = [b for b in _bhs_all_mpl if b["zone"] in (_sel_zones_mpl or [])]
+            _bh_names_mpl = sorted({b["name"] for b in _bhs_in_zone})
+            if len(_bh_names_mpl) >= 2:
+                _pc1, _pc2 = st.columns(2)
+                _bh1_pick = _pc1.selectbox("Đo khoảng cách: HK 1",
+                                           ["(không chọn)"] + _bh_names_mpl,
+                                           key="_3d_mpl_pair1")
+                _bh2_pick = _pc2.selectbox("HK 2",
+                                           ["(không chọn)"] + _bh_names_mpl,
+                                           key="_3d_mpl_pair2")
+                if (_bh1_pick != "(không chọn)" and _bh2_pick != "(không chọn)"
+                        and _bh1_pick != _bh2_pick):
+                    _b1 = next((b for b in _bhs_in_zone if b["name"] == _bh1_pick), None)
+                    _b2 = next((b for b in _bhs_in_zone if b["name"] == _bh2_pick), None)
+                    if _b1 and _b2:
+                        _dx = _b1["x_coord_m"] - _b2["x_coord_m"]
+                        _dy = _b1["y_coord_m"] - _b2["y_coord_m"]
+                        _dist_mpl = (_dx*_dx + _dy*_dy) ** 0.5
+                        _pair_sel_mpl = (_bh1_pick, _bh2_pick, _dist_mpl)
+                        st.metric(f"Khoảng cách {_bh1_pick} ↔ {_bh2_pick}",
+                                  f"{_dist_mpl:.1f} m")
+
             if _sel_zones_mpl:
                 try:
                     _fig_3d_mpl = _draw_boreholes_3d_mpl(
@@ -2996,12 +3043,16 @@ if _page == "geology":
                         show_clay_bottom=_show_clay_mpl,
                         show_cdm_top=_show_cdm_mpl,
                         cdm_top_z=_cdm_z_mpl,
+                        pair_highlight=_pair_sel_mpl,
+                        elev=_elev_mpl,
+                        azim=_azim_mpl,
+                        zoom=_zoom_mpl,
                     )
                     st.pyplot(_fig_3d_mpl, use_container_width=True)
                     plt.close(_fig_3d_mpl)
                     st.caption(
-                        "Không có plotly trên Cloud — đang dùng matplotlib 3D. "
-                        "View tĩnh, không xoay được. Cài plotly để có bản đồ tương tác."
+                        "Dùng các slider để xoay / zoom; chọn 2 HK để đo khoảng cách. "
+                        "Cài plotly để có bản đồ tương tác kéo-thả trực tiếp."
                     )
                 except Exception as _e:
                     st.warning(f"Không vẽ được bản đồ 3D: {_e}")
