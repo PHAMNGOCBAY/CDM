@@ -7778,9 +7778,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             use_container_width=True,
                         )
 
-                    # ── Hàng 3: Cột địa chất + VST cùng hàng, cùng size + font ──
-                    # Cả 2 đặt cạnh nhau trong 50% column → dùng figsize=(7,6)
-                    # VST font scale ×2 để match SPT-N (anno 7→14, axis 9→18)
+                    # ── Hàng 3: Cột địa chất + VST cùng hàng, font giảm để không tràn ──
+                    # Cả 2 đặt cạnh nhau trong 50% column → figsize=(7,6).
+                    # Font: soil column 0.75, VST 1.25 — match nhưng không chữ to quá.
                     _col_sc, _col_vst = st.columns(2, gap="medium")
                     with _col_sc:
                         st.markdown(f"**Cột địa chất {_bh_n}**")
@@ -7790,7 +7790,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             if _sc_lay and _HAS_MPL:
                                 _fig_sc = _draw_soil_column_mpl(
                                     _sc_lay, _bh_n, spt=_sc_spt or None,
-                                    figsize=(7, 6),
+                                    figsize=(7, 6), font_scale=0.75,
                                 )
                                 st.pyplot(_fig_sc, use_container_width=True)
                                 plt.close(_fig_sc)
@@ -7813,7 +7813,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             if _vst_match:
                                 _fig_vst = _chart_su_profile_mpl(
                                     _df_vst_ke, _vst_match,
-                                    figsize=(7, 6), font_scale=2.0,
+                                    figsize=(7, 6), font_scale=1.25,
                                 )
                                 st.pyplot(_fig_vst, use_container_width=True)
                                 plt.close(_fig_vst)
