@@ -4712,7 +4712,8 @@ if _page == "params":   # tiếp nội dung Kết quả CDM (gộp vào tab Thô
         st.pyplot(_fig_cmp_mpl, use_container_width=True)
         plt.close(_fig_cmp_mpl)
 
-        # Biểu đồ chọc thủng
+    if _HAS_PLOTLY:
+        # Biểu đồ chọc thủng (chỉ render khi có Plotly)
         _x_sp = [f"e={s['e (m)']}m" for s in scenarios]
         _col_ct = ["#ED7D31" if i == rec_idx else "#4472C4" for i in range(len(scenarios))]
         _tase_v = _punch[0]["tase_kPa"] if _punch else 100.0
