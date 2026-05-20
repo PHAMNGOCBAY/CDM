@@ -1427,12 +1427,13 @@ def _draw_cdm_section(
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 
-    z_mat      = CDTK + h_mat
-    z_fill     = z_mat + h_fill
-    z_road     = z_fill + h_road
-    z_clay_bot = CDTK - h_clay
-    z_pile_bot = CDTK - Lc
-    z_base     = min(z_clay_bot, z_pile_bot) - 1.5
+    z_mat         = CDTK + h_mat
+    z_fill        = z_mat + h_fill
+    z_road        = z_fill + h_road
+    _clay_top_eff = top_clay if top_clay is not None else CDTK
+    z_clay_bot    = _clay_top_eff - h_clay
+    z_pile_bot    = CDTK - Lc
+    z_base        = min(z_clay_bot, z_pile_bot) - 1.5
 
     W  = max(4.0 * D, 2.5)
     cx = W / 2
@@ -1456,12 +1457,14 @@ def _draw_cdm_section(
                 (0, y0), W, y1 - y0, fc=fc, ec=ec, lw=0.7, zorder=zo
             ))
 
-    hrect(z_base,     z_clay_bot, "#BCAAA4", "#795548")
-    hrect(z_clay_bot, CDTK,       "#BBDEFB", "#1565C0")
+    hrect(z_base,        z_clay_bot,    "#BCAAA4", "#795548")
+    hrect(z_clay_bot,    _clay_top_eff, "#BBDEFB", "#1565C0")
+    if top_clay is not None and top_clay < CDTK - 0.05:
+        hrect(_clay_top_eff, CDTK,     "#FFD54F", "#E6BE00")
     if h_mat > 0:
-        hrect(CDTK,   z_mat,      "#FFA726", "#E65100")
-    hrect(z_mat,      z_fill,     "#FFD54F", "#E6BE00")
-    hrect(z_fill,     z_road,     "#90A4AE", "#546E7A")
+        hrect(CDTK,      z_mat,        "#FFA726", "#E65100")
+    hrect(z_mat,         z_fill,       "#FFD54F", "#E6BE00")
+    hrect(z_fill,        z_road,       "#90A4AE", "#546E7A")
 
     p_bot = max(z_pile_bot, z_base + 0.1)
     ax.add_patch(mpatches.Rectangle(
@@ -1497,11 +1500,9 @@ def _draw_cdm_section(
                           alpha=0.9, lw=0.6))
 
     # Đáy lớp bùn (nét gạch nâu nhạt)
-    _clay_top_a = top_clay if top_clay is not None else CDTK
-    _clay_bot_a = _clay_top_a - h_clay
-    ax.axhline(_clay_bot_a, color="#6D4C41", lw=1.0, ls="-.", zorder=4, alpha=0.7)
-    ax.text(W * 0.02, _clay_bot_a - 0.08,
-            f"Đáy lớp bùn = {_clay_bot_a:+.2f} m",
+    ax.axhline(z_clay_bot, color="#6D4C41", lw=1.0, ls="-.", zorder=4, alpha=0.7)
+    ax.text(W * 0.02, z_clay_bot - 0.08,
+            f"Đáy lớp bùn = {z_clay_bot:+.2f} m",
             ha="left", va="top", fontsize=7.5, color="#6D4C41", zorder=5,
             bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#6D4C41",
                       alpha=0.9, lw=0.6))
@@ -1514,13 +1515,13 @@ def _draw_cdm_section(
             bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
 
     # Kích thước phần cọc ngàm vào đất tốt (bên trái cọc)
-    _emb = _clay_bot_a - z_pile_bot
+    _emb = z_clay_bot - z_pile_bot
     if _emb > 0.05:
         dim_x_l = cx - r - W * 0.07
-        ax.annotate("", xy=(dim_x_l, z_pile_bot), xytext=(dim_x_l, _clay_bot_a),
+        ax.annotate("", xy=(dim_x_l, z_pile_bot), xytext=(dim_x_l, z_clay_bot),
                     arrowprops=dict(arrowstyle="<->", color="#D84315", lw=1.4),
                     zorder=5)
-        ax.text(dim_x_l - W * 0.015, (z_pile_bot + _clay_bot_a) / 2,
+        ax.text(dim_x_l - W * 0.015, (z_pile_bot + z_clay_bot) / 2,
                 f"Ngàm\n={_emb:.2f}m",
                 ha="right", va="center", fontsize=7.5, color="#D84315",
                 fontweight="bold", zorder=5,
@@ -1532,12 +1533,15 @@ def _draw_cdm_section(
             ax.text(W * 0.03, (y0 + y1) / 2, txt,
                     ha="left", va="center", fontsize=8, color=color, zorder=6)
 
-    layer_text(z_base,     z_clay_bot, "Đất tốt",               "#5D4037")
-    layer_text(z_clay_bot, CDTK,       f"Bùn sét  h={h_clay:.1f}m", "#0D47A1")
+    layer_text(z_base,        z_clay_bot,    "Đất tốt",                       "#5D4037")
+    layer_text(z_clay_bot,    _clay_top_eff, f"Bùn sét  h={h_clay:.1f}m",     "#0D47A1")
+    if top_clay is not None and top_clay < CDTK - 0.05:
+        _h_fill_below = CDTK - top_clay
+        layer_text(_clay_top_eff, CDTK,     f"Cát đắp  h={_h_fill_below:.1f}m", "#827717")
     if h_mat > 0:
-        layer_text(CDTK,   z_mat,      f"Đệm cát  h={h_mat:.1f}m",  "#E65100")
-    layer_text(z_mat,      z_fill,     f"Cát đắp  h={h_fill:.1f}m",  "#827717")
-    layer_text(z_fill,     z_road,     f"Mặt đường h={h_road:.1f}m", "#37474F")
+        layer_text(CDTK,      z_mat,        f"Đệm cát  h={h_mat:.1f}m",       "#E65100")
+    layer_text(z_mat,         z_fill,       f"Cát đắp  h={h_fill:.1f}m",       "#827717")
+    layer_text(z_fill,        z_road,       f"Mặt đường h={h_road:.1f}m",      "#37474F")
 
     dim_yD = (CDTK + z_mat) / 2 if h_mat > 0.2 else CDTK + 0.25
     ax.annotate("", xy=(cx + r, dim_yD), xytext=(cx - r, dim_yD),

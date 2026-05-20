@@ -20,6 +20,12 @@ try:
 except ImportError:
     _HAS_PLOTLY = False
 
+try:
+    import matplotlib.pyplot as plt
+    _HAS_MPL = True
+except ImportError:
+    _HAS_MPL = False
+
 import sqlite3
 
 # ── Đường dẫn ────────────────────────────────────────────────────────────────
@@ -29,10 +35,131 @@ _CDM_SC  = _ROOT / "CDM" / "scripts"
 _THEORY  = _ROOT / "35-ly-thuyet-cdm.md"
 
 
+# ── Pile schematic (GEO5 style) — dùng cho tab Cọc ván SW mục C ──────────────
+def draw_pile_schematic(
+    L_m, water_lvl, top_elev, H_kN, M_kNm, layers, bc_type,
+    pile_H_mm=840,
+    soil_lvl_front=None,
+    soil_lvl_back=None,
+    back_layers=None,
+    gamma_fill=18.0,
+    phi_fill=25.0,
+    c_fill=5.0,
+    water_lvl_back=None,
+):
+    if not _HAS_MPL:
+        return None
+    bot  = top_elev - L_m
+    ypad = max(L_m * 0.06, 0.8)
+    y_top = top_elev + ypad * 2.2
+    y_bot = bot - ypad * 1.2
+
+    fig, ax = plt.subplots(figsize=(4.5, 5.5), dpi=90)
+    ax.set_facecolor("white")
+    fig.patch.set_facecolor("white")
+    ax.set_xlim(-5, 5)
+    ax.set_ylim(y_bot, y_top)
+    ax.set_ylabel("Elevation [m]", fontsize=9)
+    ax.set_xticks([])
+    ax.tick_params(axis="y", labelsize=8)
+    for sp in ["top", "right", "bottom"]:
+        ax.spines[sp].set_visible(False)
+
+    _fill_label = f"Fill\nγ={gamma_fill:.0f} kN/m³\nφ={phi_fill:.0f}°  c={c_fill:.0f} kPa"
+    if soil_lvl_front is not None and top_elev > soil_lvl_front:
+        ax.fill_between(
+            [-4.8, 0], [soil_lvl_front, soil_lvl_front], [top_elev, top_elev],
+            color="#c8a96e", alpha=0.35, hatch="\\\\", zorder=2,
+            linewidth=0.5, edgecolor="#a07040",
+        )
+        ax.text(-2.4, (soil_lvl_front + top_elev) / 2, _fill_label,
+                fontsize=7, color="#7a5020", ha="center", va="center",
+                style="italic", linespacing=1.4)
+
+    if soil_lvl_front is not None:
+        ax.plot([-4.8, 0], [soil_lvl_front, soil_lvl_front],
+                color="saddlebrown", lw=1.8, solid_capstyle="round", zorder=6)
+        ax.text(-4.8, soil_lvl_front + ypad * 0.15, "Ground F",
+                fontsize=8, color="saddlebrown", va="bottom", fontweight="bold")
+    if soil_lvl_back is not None:
+        ax.plot([0, 4.8], [soil_lvl_back, soil_lvl_back],
+                color="saddlebrown", lw=1.8, solid_capstyle="round", zorder=6)
+        ax.text(0.2, soil_lvl_back + ypad * 0.15, "Ground B",
+                fontsize=8, color="saddlebrown", va="bottom", fontweight="bold")
+
+    ax.plot([0, 0], [bot, top_elev], color="red", lw=3.5, solid_capstyle="butt", zorder=10)
+    ax.plot([-4.8, 5], [top_elev, top_elev], color="#888", lw=1.0, ls="--", zorder=5)
+    ax.plot([-0.25], [top_elev], "v", color="#444", ms=7, zorder=11,
+            markerfacecolor="none", markeredgewidth=1.5)
+    ax.text(-4.8, top_elev + ypad * 0.22, "SP Top", fontsize=9, color="#333", va="bottom")
+    ax.text(0.25, top_elev + ypad * 0.05, f"{top_elev:.2f} m", fontsize=7.5, color="#555", va="bottom")
+
+    for i, (nm, zt, zb, gm, ph, *_) in enumerate(layers):
+        if i > 0:
+            ax.plot([-4.8, 0], [zt, zt], color="goldenrod", lw=1.0, ls="--", zorder=5)
+            ax.plot([-0.25], [zt], "v", color="goldenrod", ms=7, zorder=11,
+                    markerfacecolor="none", markeredgewidth=1.5)
+            ax.text(-4.8, zt + ypad * 0.12, f"Soil {i}", fontsize=9, color="goldenrod", va="bottom")
+
+    if back_layers:
+        for i, (nm, zt, zb, gm, ph, *_) in enumerate(back_layers):
+            if i > 0:
+                ax.plot([0, 4.8], [zt, zt], color="goldenrod", lw=0.9, ls=":", zorder=4, alpha=0.8)
+                ax.text(0.3, zt + ypad * 0.12, f"Back {i}", fontsize=8, color="goldenrod", va="bottom", alpha=0.85)
+
+    ax.text(0.25, bot - ypad * 0.05, f"{bot:.2f} m", fontsize=7.5, color="#555", va="top")
+
+    w_gap = ypad * 0.18
+    ax.plot([-4.2, -0.8], [water_lvl, water_lvl], color="steelblue", lw=2.0, zorder=7)
+    ax.plot([-3.8, -1.1], [water_lvl - w_gap, water_lvl - w_gap], color="steelblue", lw=1.5, zorder=7)
+    ax.text(-4.8, water_lvl + ypad * 0.15, f"Water F  {water_lvl:.2f} m", fontsize=8, color="steelblue")
+    _wlb = water_lvl_back if water_lvl_back is not None else water_lvl
+    ax.plot([0.8, 4.2], [_wlb, _wlb], color="steelblue", lw=2.0, zorder=7, ls="--")
+    ax.plot([1.1, 3.8], [_wlb - w_gap, _wlb - w_gap], color="steelblue", lw=1.5, zorder=7, ls="--")
+    ax.text(0.3, _wlb + ypad * 0.15, f"Water B  {_wlb:.2f} m", fontsize=8, color="steelblue")
+
+    if bc_type == "Fixed":
+        ax.plot([-0.6, 0.6], [bot, bot], color="#333", lw=1.8, zorder=8)
+        for k in range(6):
+            x0 = -0.40 + k * 0.16
+            ax.plot([x0, x0 - 0.12], [bot, bot - ypad * 0.25], color="#333", lw=0.8, zorder=7)
+    elif bc_type == "Cantilever":
+        ax.plot([0], [bot], "^", ms=12, color="#333", zorder=8,
+                markerfacecolor="none", markeredgewidth=2.0)
+        ax.plot([-0.5, 0.5], [bot - ypad * 0.12, bot - ypad * 0.12], "#333", lw=1.0, zorder=7)
+    elif bc_type == "Free":
+        ax.plot([-0.2, 0.2], [bot, bot], "#333", lw=1.5, ls=":", zorder=7)
+
+    if abs(H_kN) > 1e-3:
+        sign = 1 if H_kN > 0 else -1
+        ax.annotate("", xy=(0, top_elev), xytext=(-sign * 2.8, top_elev),
+                    arrowprops=dict(arrowstyle="->, head_width=0.35, head_length=0.20",
+                                   color="red", lw=2.2), zorder=12)
+        ax.text(-sign * 1.4, top_elev + ypad * 0.50, f"H = {H_kN:.0f} kN",
+                fontsize=9, color="red", ha="center", fontweight="bold")
+    if abs(M_kNm) > 1e-3:
+        ax.text(0.4, top_elev + ypad * 1.2, f"M = {M_kNm:.0f} kN.m",
+                fontsize=8.5, color="darkorange", ha="left", fontweight="bold")
+
+    ax.text(-4.0, y_bot + ypad * 0.4, "Front", fontsize=10, color="#666", style="italic")
+    ax.text(1.5,  y_bot + ypad * 0.4, "Back",  fontsize=10, color="#666", style="italic")
+    plt.tight_layout()
+    return fig
+
+
 @st.cache_data(show_spinner=False)
 def _load_theory() -> str:
     try:
         return _THEORY.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return ""
+
+_PUNCH_THEORY = _ROOT / "41-cdm-choc-thung-dem-ximang.md"
+
+@st.cache_data(show_spinner=False)
+def _load_punch_theory() -> str:
+    try:
+        return _PUNCH_THEORY.read_text(encoding="utf-8")
     except FileNotFoundError:
         return ""
 
@@ -43,7 +170,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── CSS nhỏ để khớp style app hiện tại ───────────────────────────────────────
+# ── CSS app + print PDF ───────────────────────────────────────────────────────
 st.markdown("""
 <style>
 [data-testid="stSidebar"] { min-width: 220px; max-width: 280px; }
@@ -52,6 +179,53 @@ div[data-testid="stMetricValue"] { font-size: 1.1rem; }
 [data-testid="stToolbar"] { display: none; }
 [data-testid="stDecoration"] { display: none; }
 footer { visibility: hidden; }
+
+/* ── Nội dung lý thuyết trong expander: font rõ hơn trên màn hình ── */
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] li,
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] td,
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] th {
+    font-size: 15px;
+    line-height: 1.75;
+}
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] h2 { font-size: 18px; margin-top: 1.2em; }
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] h3 { font-size: 16px; margin-top: 1em; }
+[data-testid="stExpander"] [data-testid="stMarkdownContainer"] h4 { font-size: 15px; }
+
+/* ── Print / PDF ── */
+@media print {
+    /* Ẩn sidebar và toolbar khi in */
+    [data-testid="stSidebar"],
+    [data-testid="stToolbar"],
+    [data-testid="stDecoration"],
+    footer { display: none !important; }
+
+    /* Mở rộng vùng nội dung ra full trang */
+    [data-testid="stAppViewContainer"] > section { padding: 0 !important; }
+    .block-container { max-width: 100% !important; padding: 0 1cm !important; }
+
+    /* Font báo cáo kỹ thuật */
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    [data-testid="stMarkdownContainer"] td,
+    [data-testid="stMarkdownContainer"] th {
+        font-family: "Times New Roman", Times, serif !important;
+        font-size: 12pt !important;
+        line-height: 1.6 !important;
+        color: #000 !important;
+    }
+    [data-testid="stMarkdownContainer"] h1 { font-size: 16pt !important; font-weight: bold !important; page-break-after: avoid; }
+    [data-testid="stMarkdownContainer"] h2 { font-size: 14pt !important; font-weight: bold !important; page-break-after: avoid; }
+    [data-testid="stMarkdownContainer"] h3 { font-size: 13pt !important; font-weight: bold !important; page-break-after: avoid; }
+    [data-testid="stMarkdownContainer"] h4 { font-size: 12pt !important; font-weight: bold !important; page-break-after: avoid; }
+
+    /* Không ngắt trang giữa bảng */
+    [data-testid="stMarkdownContainer"] table { page-break-inside: avoid; }
+
+    /* Mở expander khi in */
+    details { display: block !important; }
+    summary { display: none !important; }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -108,8 +282,6 @@ _LAYER_COLORS: dict[str, str] = {
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
 _ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
 
-_PAGE_IDS = ["geology", "sample_check", "params", "compare", "result", "export", "settlement", "ke_sw"]
-
 # ─── Bảng dịch VN / EN ────────────────────────────────────────────────────────
 _L: dict[str, tuple[str, str]] = {
     # Sidebar
@@ -121,12 +293,16 @@ _L: dict[str, tuple[str, str]] = {
     "lang_lbl":     ("Ngôn ngữ / Language",          "Language / Ngôn ngữ"),
     # Pages
     "p_geology":    ("Địa chất",                    "Geology"),
+    "p_sample_check":("Kiểm tra mẫu TN",            "Sample Check"),
+    "p_tkcs_cdm":   ("TKCS CDM",                    "CDM Prelim Design"),
     "p_params":     ("Thông số",                    "Parameters"),
-    "p_compare":    ("So sánh PA",                  "Comparison"),
-    "p_result":     ("Kết quả",                     "Results"),
-    "p_export":     ("Xuất",                        "Export"),
-    "p_sample_check":("Kiểm tra mẫu TN",              "Sample Check"),
-    "p_settlement": ("Lún nền",                     "Settlement"),
+    "p_compare":    ("Kết quả CDM",                 "CDM Results"),
+    "p_settlement": ("Dự báo độ lún",               "Settlement Prediction"),
+    "p_export":     ("Xuất kết quả",                "Export Results"),
+    "p_cdm_bvt":    ("TKBVTC CDM",                  "CDM Detail Design"),
+    "p_tkcs_sw":    ("TKCS Cọc ván",                "Sheet Pile Prelim Design"),
+    "p_ke_sw":      ("Cọc ván SW (Kè)",             "Sheet Pile SW (Ke)"),
+    "p_sw_bvt":     ("TKBVTC Cọc SW",              "Sheet Pile Detail Design"),
     # Page 1 – Geology
     "p1_sub":       ("Địa chất – Chọn hố khoan",    "Geology – Borehole Selection"),
     "zone_lbl":     ("Zone",                        "Zone"),
@@ -181,7 +357,9 @@ _L: dict[str, tuple[str, str]] = {
     "qu_lbl":       ("qu thiết kế HT (kPa)",        "qu Design Field (kPa)"),
     "fs_lab":       ("FS quy đổi TN→HT",            "FS Lab→Field Conversion"),
     "geo_params":   ("Thông số địa kỹ thuật",       "Geotechnical Parameters"),
+    "top_clay_lbl": ("Cao độ đỉnh lớp bùn (m)",    "Top of Soft Clay Elev. (m)"),
     "h_clay_lbl":   ("Bề dày lớp bùn h₁ (m)",      "Soft Clay Thickness h₁ (m)"),
+    "bot_clay_info":("Đáy lớp bùn = {v:+.2f} m",   "Bottom of Soft Clay = {v:+.2f} m"),
     "su_lbl":       ("Su trung bình (kPa)",         "Average Su (kPa)"),
     "gamma_lbl":    ("γ tự nhiên (kN/m³)",          "Unit Weight γ (kN/m³)"),
     "loads_title":  ("Tải trọng gây lún",           "Settlement Loads"),
@@ -252,8 +430,6 @@ _L: dict[str, tuple[str, str]] = {
     "create_word":  ("Tạo file Word",              "Generate Word File"),
     "creating":     ("Đang tạo tài liệu...",        "Generating document..."),
     "dl_docx":      ("Tải xuống (.docx)",           "Download (.docx)"),
-    # Page KE-SW
-    "p_ke_sw":      ("Cọc ván SW (Kè)",           "Sheet Pile SW (Ke)"),
     # Sidebar summary
     "si_bh":        ("**HK:**",                    "**BH:**"),
 }
@@ -527,6 +703,7 @@ def _load_borehole_3d_data() -> tuple[list[dict], list[dict]]:
         "b.x_coord_m, b.y_coord_m "
         "FROM boreholes b JOIN zones z ON z.id=b.zone_id "
         "WHERE b.x_coord_m IS NOT NULL "
+        "  AND b.elevation_m IS NOT NULL AND b.depth_m IS NOT NULL "
         "ORDER BY z.id, b.name"
     ).fetchall()]
     ids = [b["id"] for b in bhs]
@@ -1035,6 +1212,7 @@ def q_total(loads: dict) -> float:
 _DEFAULTS = {
     "cdm_zone": "KE",
     "cdm_bh": None,
+    "cdm_top_clay": 0.8,
     "cdm_h_clay": 24.8,
     "cdm_Su": 11.2,
     "cdm_gamma": 15.0,
@@ -1243,17 +1421,19 @@ def _draw_cdm_section(
     D: float, Lc: float, CDTK: float,
     h_clay: float, h_road: float, h_fill: float, h_mat: float,
     q_traffic: float,
+    top_clay: float | None = None,
 ):
     """Mặt cắt ngang CDM: các lớp đất, trụ CDM, mũi tên tải, kích thước D/Lc."""
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 
-    z_mat      = CDTK + h_mat
-    z_fill     = z_mat + h_fill
-    z_road     = z_fill + h_road
-    z_clay_bot = CDTK - h_clay
-    z_pile_bot = CDTK - Lc
-    z_base     = min(z_clay_bot, z_pile_bot) - 1.5
+    z_mat         = CDTK + h_mat
+    z_fill        = z_mat + h_fill
+    z_road        = z_fill + h_road
+    _clay_top_eff = top_clay if top_clay is not None else CDTK
+    z_clay_bot    = _clay_top_eff - h_clay
+    z_pile_bot    = CDTK - Lc
+    z_base        = min(z_clay_bot, z_pile_bot) - 1.5
 
     W  = max(4.0 * D, 2.5)
     cx = W / 2
@@ -1277,12 +1457,14 @@ def _draw_cdm_section(
                 (0, y0), W, y1 - y0, fc=fc, ec=ec, lw=0.7, zorder=zo
             ))
 
-    hrect(z_base,     z_clay_bot, "#BCAAA4", "#795548")
-    hrect(z_clay_bot, CDTK,       "#BBDEFB", "#1565C0")
+    hrect(z_base,        z_clay_bot,    "#BCAAA4", "#795548")
+    hrect(z_clay_bot,    _clay_top_eff, "#BBDEFB", "#1565C0")
+    if top_clay is not None and top_clay < CDTK - 0.05:
+        hrect(_clay_top_eff, CDTK,     "#FFD54F", "#E6BE00")
     if h_mat > 0:
-        hrect(CDTK,   z_mat,      "#FFA726", "#E65100")
-    hrect(z_mat,      z_fill,     "#FFD54F", "#E6BE00")
-    hrect(z_fill,     z_road,     "#90A4AE", "#546E7A")
+        hrect(CDTK,      z_mat,        "#FFA726", "#E65100")
+    hrect(z_mat,         z_fill,       "#FFD54F", "#E6BE00")
+    hrect(z_fill,        z_road,       "#90A4AE", "#546E7A")
 
     p_bot = max(z_pile_bot, z_base + 0.1)
     ax.add_patch(mpatches.Rectangle(
@@ -1306,17 +1488,60 @@ def _draw_cdm_section(
             ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5,
             bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
 
+    # Đỉnh lớp bùn (nét gạch nâu) — chỉ vẽ khi khác CDTK > 0.05 m
+    if top_clay is not None and abs(top_clay - CDTK) > 0.05:
+        ax.axhline(top_clay, color="#6D4C41", lw=1.2, ls="-.", zorder=4, alpha=0.85)
+        _va = "bottom" if top_clay > CDTK else "top"
+        _dy = 0.08 if top_clay > CDTK else -0.08
+        ax.text(W * 0.02, top_clay + _dy,
+                f"Đỉnh lớp bùn = {top_clay:+.2f} m",
+                ha="left", va=_va, fontsize=7.5, color="#6D4C41", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#6D4C41",
+                          alpha=0.9, lw=0.6))
+
+    # Đáy lớp bùn (nét gạch nâu nhạt)
+    ax.axhline(z_clay_bot, color="#6D4C41", lw=1.0, ls="-.", zorder=4, alpha=0.7)
+    ax.text(W * 0.02, z_clay_bot - 0.08,
+            f"Đáy lớp bùn = {z_clay_bot:+.2f} m",
+            ha="left", va="top", fontsize=7.5, color="#6D4C41", zorder=5,
+            bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#6D4C41",
+                      alpha=0.9, lw=0.6))
+
+    # Đáy cọc CDM (nét chấm xanh lá)
+    ax.axhline(z_pile_bot, color="#2E7D32", lw=0.9, ls=":", zorder=4, alpha=0.8)
+    ax.text(W * 0.98, z_pile_bot - 0.08,
+            f"Đáy cọc = {z_pile_bot:+.2f} m",
+            ha="right", va="top", fontsize=7.5, color="#2E7D32", zorder=5,
+            bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="none", alpha=0.8))
+
+    # Kích thước phần cọc ngàm vào đất tốt (bên trái cọc)
+    _emb = z_clay_bot - z_pile_bot
+    if _emb > 0.05:
+        dim_x_l = cx - r - W * 0.07
+        ax.annotate("", xy=(dim_x_l, z_pile_bot), xytext=(dim_x_l, z_clay_bot),
+                    arrowprops=dict(arrowstyle="<->", color="#D84315", lw=1.4),
+                    zorder=5)
+        ax.text(dim_x_l - W * 0.015, (z_pile_bot + z_clay_bot) / 2,
+                f"Ngàm\n={_emb:.2f}m",
+                ha="right", va="center", fontsize=7.5, color="#D84315",
+                fontweight="bold", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#D84315",
+                          alpha=0.9, lw=0.6))
+
     def layer_text(y0, y1, txt, color):
         if (y1 - y0) > 0.4:
             ax.text(W * 0.03, (y0 + y1) / 2, txt,
                     ha="left", va="center", fontsize=8, color=color, zorder=6)
 
-    layer_text(z_base,     z_clay_bot, "Đất tốt",               "#5D4037")
-    layer_text(z_clay_bot, CDTK,       f"Bùn sét  h={h_clay:.1f}m", "#0D47A1")
+    layer_text(z_base,        z_clay_bot,    "Đất tốt",                       "#5D4037")
+    layer_text(z_clay_bot,    _clay_top_eff, f"Bùn sét  h={h_clay:.1f}m",     "#0D47A1")
+    if top_clay is not None and top_clay < CDTK - 0.05:
+        _h_fill_below = CDTK - top_clay
+        layer_text(_clay_top_eff, CDTK,     f"Cát đắp  h={_h_fill_below:.1f}m", "#827717")
     if h_mat > 0:
-        layer_text(CDTK,   z_mat,      f"Đệm cát  h={h_mat:.1f}m",  "#E65100")
-    layer_text(z_mat,      z_fill,     f"Cát đắp  h={h_fill:.1f}m",  "#827717")
-    layer_text(z_fill,     z_road,     f"Mặt đường h={h_road:.1f}m", "#37474F")
+        layer_text(CDTK,      z_mat,        f"Đệm cát  h={h_mat:.1f}m",       "#E65100")
+    layer_text(z_mat,         z_fill,       f"Cát đắp  h={h_fill:.1f}m",       "#827717")
+    layer_text(z_fill,        z_road,       f"Mặt đường h={h_road:.1f}m",      "#37474F")
 
     dim_yD = (CDTK + z_mat) / 2 if h_mat > 0.2 else CDTK + 0.25
     ax.annotate("", xy=(cx + r, dim_yD), xytext=(cx - r, dim_yD),
@@ -1773,13 +1998,23 @@ def _export_excel(scenarios: list[dict], params: dict) -> bytes:
     return buf.getvalue()
 
 
-def _export_word_bytes(scenarios: list[dict], params: dict, rec_idx: int) -> bytes:
+def _export_word_bytes(
+    scenarios: list[dict],
+    params: dict,
+    rec_idx: int,
+    co_name: str = "",
+    co_staff: str = "",
+    logo_bytes: bytes | None = None,
+) -> bytes:
     """Tạo Word thuyết minh CDM và trả về bytes."""
     sys.path.insert(0, str(_CDM_SC))
     try:
         import docx_helpers as H
         from docx import Document
         from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.ns import qn as _qn
+        from docx.oxml import OxmlElement as _Oxm
+        from docx.shared import Cm as _Cm
         import math as _m
     except ImportError as e:
         return b""
@@ -1787,6 +2022,56 @@ def _export_word_bytes(scenarios: list[dict], params: dict, rec_idx: int) -> byt
     H.reset_counters()
     doc = Document()
     H.setup_page(doc)
+
+    # ── Header / Footer ───────────────────────────────────────────────────────
+    def _field_run(para, field: str) -> None:
+        """Chèn Word field (PAGE / NUMPAGES) vào paragraph."""
+        run = para.add_run()
+        fc_b = _Oxm("w:fldChar"); fc_b.set(_qn("w:fldCharType"), "begin")
+        instr = _Oxm("w:instrText"); instr.text = field
+        instr.set(_qn("xml:space"), "preserve")
+        fc_e = _Oxm("w:fldChar"); fc_e.set(_qn("w:fldCharType"), "end")
+        run._r.append(fc_b); run._r.append(instr); run._r.append(fc_e)
+
+    def _no_tbl_border(tbl) -> None:
+        tblPr = tbl._tbl.tblPr
+        borders = _Oxm("w:tblBorders")
+        for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            b = _Oxm(f"w:{edge}"); b.set(_qn("w:val"), "none"); borders.append(b)
+        tblPr.append(borders)
+
+    sec = doc.sections[0]
+    _pw = sec.page_width - sec.left_margin - sec.right_margin  # usable width (EMU)
+
+    # Header: logo (trái) | tên công ty (phải)
+    sec.header.is_linked_to_previous = False
+    _ht = sec.header.add_table(1, 2, width=_pw)
+    _no_tbl_border(_ht)
+    _ht.cell(0, 0).width = _Cm(3)
+    _ht.cell(0, 1).width = _pw - _Cm(3)
+    _logo_p = _ht.cell(0, 0).paragraphs[0]
+    if logo_bytes:
+        try:
+            _logo_p.add_run().add_picture(io.BytesIO(logo_bytes), height=_Cm(1.2))
+        except Exception:
+            pass
+    _name_p = _ht.cell(0, 1).paragraphs[0]
+    _name_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    H._fmt(_name_p.add_run(co_name), size=9, bold=True)
+
+    # Footer: nhân sự (trái) | Trang X/Y (phải)
+    sec.footer.is_linked_to_previous = False
+    _ft = sec.footer.add_table(1, 2, width=_pw)
+    _no_tbl_border(_ft)
+    _ft.cell(0, 0).width = _pw - _Cm(3)
+    _ft.cell(0, 1).width = _Cm(3)
+    H._fmt(_ft.cell(0, 0).paragraphs[0].add_run(co_staff), size=9)
+    _pg_p = _ft.cell(0, 1).paragraphs[0]
+    _pg_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    H._fmt(_pg_p.add_run("Trang "), size=9)
+    _field_run(_pg_p, "PAGE")
+    H._fmt(_pg_p.add_run(" / "), size=9)
+    _field_run(_pg_p, "NUMPAGES")
 
     D    = params["D"]
     Lc   = params["Lc"]
@@ -1990,7 +2275,7 @@ def _export_word_bytes(scenarios: list[dict], params: dict, rec_idx: int) -> byt
 # ═══════════════════════════════════════════════════════════════════════════════
 # PROJECT SAVE / LOAD
 # ═══════════════════════════════════════════════════════════════════════════════
-_SAVE_KEYS = ["cdm_zone","cdm_bh","cdm_h_clay","cdm_Su","cdm_gamma","cdm_elevation",
+_SAVE_KEYS = ["cdm_zone","cdm_bh","cdm_top_clay","cdm_h_clay","cdm_Su","cdm_gamma","cdm_elevation",
               "cdm_D","cdm_Lc","cdm_CDTK","cdm_qu","cdm_FS_lab","cdm_arrangement",
               "cdm_cement_type","cdm_dosage","cdm_WC","cdm_spacings","cdm_rec_idx","cdm_loads",
               "cdm_quckse","cdm_Fs_mat","cdm_theta","cdm_qa_mat"]
@@ -2039,15 +2324,30 @@ with st.sidebar.expander(_t("save_load"), expanded=False):
 
 st.sidebar.divider()
 
-_page_labels = [
-    _t("p_geology"), _t("p_sample_check"), _t("p_params"), _t("p_compare"),
-    _t("p_result"),  _t("p_export"), _t("p_settlement"), _t("p_ke_sw"),
-]
-_page = st.sidebar.radio(
-    "", _PAGE_IDS,
-    format_func=lambda pid: _page_labels[_PAGE_IDS.index(pid)],
-    label_visibility="collapsed",
-)
+if "_page" not in st.session_state:
+    st.session_state["_page"] = "geology"
+
+def _nav(label: str, pid: str, indent: bool = False) -> None:
+    pfx = "    " if indent else ""
+    if st.sidebar.button(pfx + label, key=f"_nav_{pid}",
+                         use_container_width=True,
+                         type="primary" if st.session_state.get("_page") == pid else "secondary"):
+        st.session_state["_page"] = pid
+        st.rerun()
+
+_nav(_t("p_geology"),      "geology")
+_nav(_t("p_sample_check"), "sample_check")
+st.sidebar.markdown(f"**{_t('p_tkcs_cdm')}**")
+_nav(_t("p_params"),    "params",     indent=True)
+_nav(_t("p_compare"),   "compare",    indent=True)
+_nav(_t("p_settlement"),"settlement", indent=True)
+_nav(_t("p_export"),    "export",     indent=True)
+_nav(_t("p_cdm_bvt"),   "cdm_bvt")
+st.sidebar.markdown(f"**{_t('p_tkcs_sw')}**")
+_nav(_t("p_ke_sw"),  "ke_sw",  indent=True)
+_nav(_t("p_sw_bvt"), "sw_bvt")
+
+_page = st.session_state.get("_page", "geology")
 
 # Info sidebar dưới cùng
 st.sidebar.divider()
@@ -2785,12 +3085,16 @@ elif _page == "params":
 
         with c3:
             st.markdown(f"**{_t('geo_params')}**")
+            top_clay = st.number_input(_t("top_clay_lbl"), -20.0, 20.0,
+                                       _get("cdm_top_clay"), 0.1)
             h_clay  = st.number_input(_t("h_clay_lbl"), 1.0, 60.0, _get("cdm_h_clay"), 0.5)
             Su      = st.number_input(_t("su_lbl"), 1.0, 100.0, _get("cdm_Su"), 0.5)
             gamma   = st.number_input(_t("gamma_lbl"), 10.0, 22.0, _get("cdm_gamma"), 0.1)
+            st.info(_t("bot_clay_info", v=top_clay - h_clay))
             Es_show = 250 * Su
             st.info(f"Es = 250×Su = {int(Es_show):,} kN/m²")
-            st.session_state.update({"cdm_h_clay": h_clay, "cdm_Su": Su, "cdm_gamma": gamma})
+            st.session_state.update({"cdm_top_clay": top_clay, "cdm_h_clay": h_clay,
+                                     "cdm_Su": Su, "cdm_gamma": gamma})
 
         with c4:
             st.markdown(f"**{_t('loads_title')}**")
@@ -2816,28 +3120,6 @@ elif _page == "params":
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
 
-    # ── Kiểm tra chọc thủng – thông số đệm xi măng ───────────────────────────
-    with st.expander(_t("punch_exp"), expanded=False):
-        _km1, _km2, _km3, _km4 = st.columns(4)
-        with _km1:
-            _quckse = st.number_input(_t("qu_mat_lbl"), 100.0, 3000.0,
-                                      _get("cdm_quckse"), 50.0)
-            st.session_state["cdm_quckse"] = _quckse
-        with _km2:
-            _Fs_mat = st.number_input(_t("fs_mat_lbl"), 1.0, 5.0,
-                                      _get("cdm_Fs_mat"), 0.5)
-            _tase_p = _quckse / (2.0 * _Fs_mat)
-            st.info(f"τase = **{_tase_p:.1f} kPa**")
-            st.session_state["cdm_Fs_mat"] = _Fs_mat
-        with _km3:
-            _theta = st.number_input(_t("theta_lbl"), 30.0, 89.0,
-                                     _get("cdm_theta"), 5.0)
-            st.session_state["cdm_theta"] = _theta
-        with _km4:
-            _qa_mat = st.number_input(_t("qa_lbl"), 0.0, 200.0,
-                                      _get("cdm_qa_mat"), 5.0)
-            st.session_state["cdm_qa_mat"] = _qa_mat
-
     # ── Hình minh họa bên phải: mặt cắt (trên) + lưới (dưới) ────────────────
     with _col_sec:
         _ld_s = _get("cdm_loads")
@@ -2848,6 +3130,7 @@ elif _page == "params":
             h_fill=_ld_s.get("h_fill", 1.5),
             h_mat=_ld_s.get("h_mat", 0.4),
             q_traffic=_ld_s.get("q_traffic", 20.0),
+            top_clay=_get("cdm_top_clay"),
         )
         st.pyplot(_fig_sec, use_container_width=True)
         _fig_sec.clf()
@@ -2928,6 +3211,19 @@ elif _page == "compare":
                 "cdm_theta":  _theta_sp,
                 "cdm_qa_mat": _qa_sp,
             })
+
+    # Hình minh họa phương pháp tính (40% width mỗi cột)
+    _img_load = _ROOT / "giao dien" / "PNBAY-TAI TRONG NEN DAP LEN PHAN KHÔNG GIA CO.png"
+    _img_tse  = _ROOT / "giao dien" / "PNBAY-Tse.png"
+    _ic1, _ic2 = st.columns(2)
+    if _img_load.exists():
+        with _ic1:
+            _s1, _ = st.columns([2, 3])
+            _s1.image(str(_img_load), use_container_width=True)
+    if _img_tse.exists():
+        with _ic2:
+            _s2, _ = st.columns([2, 3])
+            _s2.image(str(_img_tse), use_container_width=True)
 
     # Tính toán
     D   = _get("cdm_D")
@@ -3214,35 +3510,24 @@ elif _page == "compare":
             )
             st.plotly_chart(_fig_hm, use_container_width=True)
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# PAGE 4 – KẾT QUẢ
-# ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "result":
+    # ── Kết quả chi tiết PA kiến nghị ─────────────────────────────────────────
+    st.divider()
     st.subheader(_t("p4_sub"))
 
-    D   = _get("cdm_D")
-    Lc  = _get("cdm_Lc")
-    qu  = _get("cdm_qu")
-    Su  = _get("cdm_Su")
-    arr = _get("cdm_arrangement")
-    q   = q_total(_get("cdm_loads"))
-    sps = _get("cdm_spacings")
-    rec = _get("cdm_rec_idx")
-
-    scenarios = build_scenarios(D, Lc, qu, Su, q, sps, arr)
-    if not scenarios or rec >= len(scenarios):
-        st.warning(_t("no_scenarios"))
-        st.stop()
-
-    s   = scenarios[rec]
+    s   = scenarios[rec_idx]
     Cc  = qu / 2
     Ec  = calc_Ec(qu)
     Es  = calc_Es(Su)
     Etb = s["Etb (kN/m²)"]
 
-    _alt_pfx = "PA" if _get("lang") == "VN" else "Alt."
-    st.success(_t("rec_pa", n=rec+1, e=s['e (m)']))
+    _CP = _t("col_param"); _CF = _t("col_formula"); _CV = _t("col_value")
+
+    def _color_sct(val):
+        if val == "Đạt":       return "color: green; font-weight: bold"
+        if val == "Không đạt": return "color: red; font-weight: bold"
+        return ""
+
+    st.success(_t("rec_pa", n=rec_idx+1, e=s['e (m)']))
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("S₁ (cm)", f"{s['S₁ (cm)']:.2f}")
@@ -3252,8 +3537,6 @@ elif _page == "result":
 
     st.divider()
     col_l, col_r = st.columns(2)
-
-    _CP = _t("col_param"); _CF = _t("col_formula"); _CV = _t("col_value")
 
     with col_l:
         st.markdown(f"**{_t('settle_calc')}**")
@@ -3329,17 +3612,7 @@ elif _page == "result":
     st.divider()
     st.markdown(f"**{_t('punch_res')}**")
     _ld_r   = _get("cdm_loads")
-    _pr_r   = calc_punching_check(
-        D=D, e=s["e (m)"],
-        Hse=_ld_r.get("h_mat", 0.4),
-        He=_ld_r.get("h_fill", 1.5),
-        quckse=_get("cdm_quckse"),
-        Fs=_get("cdm_Fs_mat"),
-        theta_deg=_get("cdm_theta"),
-        gamma_fill=_ld_r.get("g_fill", 18.0),
-        gamma_mat=_ld_r.get("g_mat", 22.5),
-        qa=_get("cdm_qa_mat"),
-    )
+    _pr_r   = _punch[rec_idx]
     if _get("lang") == "VN":
         _punch_steps = [
             ("Bề dày đệm xi măng",        "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
@@ -3374,6 +3647,11 @@ elif _page == "result":
         use_container_width=True, hide_index=True,
         column_config={_CF: st.column_config.TextColumn(width="large")},
     )
+
+    _punch_md = _load_punch_theory()
+    if _punch_md:
+        with st.expander("Diễn giải công thức kiểm tra chọc thủng lớp đệm xi măng", expanded=False):
+            st.markdown(_punch_md)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -3426,9 +3704,37 @@ elif _page == "export":
     with c_word:
         st.markdown(f"#### {_t('word_title')}")
         st.caption(_t("word_cap"))
+
+        # ── Thông tin đơn vị (header / footer) ───────────────────────────
+        st.text_input(
+            "Tên công ty",
+            key="export_co_name",
+            placeholder="VD: CÔNG TY CỔ PHẦN TƯ VẤN XÂY DỰNG ABC",
+        )
+        st.text_input(
+            "Nhân sự thực hiện",
+            key="export_co_staff",
+            placeholder="VD: KS. Nguyễn Văn A",
+        )
+        _logo_file = st.file_uploader(
+            "Logo công ty (PNG/JPG)",
+            type=["png", "jpg", "jpeg"],
+            key="export_logo_uploader",
+        )
+        if _logo_file is not None:
+            st.session_state["export_logo_bytes"] = _logo_file.read()
+        if "export_logo_bytes" in st.session_state:
+            st.image(st.session_state["export_logo_bytes"], width=80)
+
+        st.divider()
         if st.button(_t("create_word"), type="primary"):
             with st.spinner(_t("creating")):
-                word_bytes = _export_word_bytes(scenarios, params, rec)
+                word_bytes = _export_word_bytes(
+                    scenarios, params, rec,
+                    co_name=st.session_state.get("export_co_name", ""),
+                    co_staff=st.session_state.get("export_co_staff", ""),
+                    logo_bytes=st.session_state.get("export_logo_bytes"),
+                )
             if word_bytes:
                 st.download_button(
                     _t("dl_docx"),
@@ -3486,10 +3792,10 @@ if _page == "settlement":
         _HAS_SC = True
     except Exception as _exc:
         _HAS_SC = False
-        st.error(f"Khong tai duoc settlement_calc: {_exc}")
+        st.error(f"Không tải được settlement_calc: {_exc}")
 
     if _HAS_SC:
-        st.subheader("Lun nen – So sanh phuong an xu ly (TCCS 41:2022)")
+        st.subheader("Dự báo độ lún – So sánh phương án xử lý (TCCS 41:2022)")
 
         # ── PHẦN 1: So sánh phương án ────────────────────────────────────────
         if True:
@@ -3499,17 +3805,17 @@ if _page == "settlement":
                                     format_func=lambda z: _ZONE_NAMES[z],
                                     key="sl_zone")
                 _sl_bhs = [b["name"] for b in _load_boreholes_by_zone(_sl_zone)]
-                _sl_bh  = st.selectbox("Ho khoan tinh lun", _sl_bhs, key="sl_bh")
+                _sl_bh  = st.selectbox("Hố khoan tính lún", _sl_bhs, key="sl_bh")
             with _sc2:
-                _sl_H   = st.number_input("Chieu cao dap H (m)", 1.0, 10.0, 3.0, 0.5, key="sl_H")
-                _sl_lim = st.number_input("Gioi han lun con lai (cm)", 10, 50, 30, 5, key="sl_lim")
-                _sl_tc  = st.number_input("Thoi gian thi cong (thang)", 3, 36, 6, 1, key="sl_tc")
+                _sl_H   = st.number_input("Chiều cao đắp H (m)", 1.0, 10.0, 3.0, 0.5, key="sl_H")
+                _sl_lim = st.number_input("Giới hạn lún còn lại (cm)", 10, 50, 30, 5, key="sl_lim")
+                _sl_tc  = st.number_input("Thời gian thi công (tháng)", 3, 36, 6, 1, key="sl_tc")
             with _sc3:
-                st.caption("**Phuong phap tinh:** TCCS 41:2022 — Phu luc A (lun so cap), Dieu 9.3-9.4 (do co ket)")
-                st.caption("**Lun con lai DS** = lun tong − lun tai thoi diem ket thuc thi cong")
+                st.caption("**Phương pháp tính:** TCCS 41:2022 — Phụ lục A (lún sơ cấp), Điều 9.3-9.4 (độ cố kết)")
+                st.caption("**Lún còn lại ΔS** = lún tổng − lún tại thời điểm kết thúc thi công")
 
-            if st.button("Tinh toan lun", type="primary", key="sl_calc"):
-                with st.spinner("Dang tinh..."):
+            if st.button("Tính toán lún", type="primary", key="sl_calc"):
+                with st.spinner("Đang tính..."):
                     try:
                         _cmp = _sc_compare(
                             _sl_bh, _sl_zone,
@@ -3519,7 +3825,7 @@ if _page == "settlement":
                         )
                         st.session_state["sl_result"] = _cmp
                     except Exception as _e:
-                        st.error(f"Loi tinh toan: {_e}")
+                        st.error(f"Lỗi tính toán: {_e}")
 
             _cmp = st.session_state.get("sl_result")
 
@@ -3528,41 +3834,41 @@ if _page == "settlement":
                 _cdm_a    = _cmp.get("cdm_area_ratio", 0.25)
                 _col_info1, _col_info2, _col_info3 = st.columns(3)
                 with _col_info1:
-                    st.metric("Lun tu nhien (Cc)", f"{_cmp['S_total_cm']:.0f} cm",
-                              help="Tong lun co ket so cap tinh tu mau thi nghiem theo TCCS41 Phu luc A")
+                    st.metric("Lún tự nhiên (Cc)", f"{_cmp['S_total_cm']:.0f} cm",
+                              help="Tổng lún cố kết sơ cấp tính từ mẫu thí nghiệm theo TCCS41 Phụ lục A")
                 with _col_info2:
                     st.metric("CDM beta (TCVN 9403)", f"{_cdm_beta:.3f}",
-                              f"Ung suat vao dat = {_cdm_beta*100:.0f}% tai trong",
+                              f"Ứng suất vào đất = {_cdm_beta*100:.0f}% tải trọng",
                               help="beta = Es/(a*Ec+(1-a)*Es); Ec=75*Cc_col; Es=250*Cu")
                 with _col_info3:
                     _cdm_sc = next((s for s in _cmp["scenarios"] if s["method"] == "cdm"), None)
                     if _cdm_sc:
                         _cdm_red = (1 - _cdm_sc["S_total_cm"] / _cmp["S_total_cm"]) * 100
-                        st.metric("CDM lun dan hoi (S1)", f"{_cdm_sc['S_total_cm']:.0f} cm",
-                                  f"-{_cdm_red:.0f}% so voi khong xu ly | S2=0",
-                                  help="S1 = q×H/(a×Ec+(1-a)×Es) — dan hoi tuc thoi; S2=0 (CDM den lop cung). TCVN 9403:2012 Phu luc C")
+                        st.metric("CDM lún đàn hồi (S1)", f"{_cdm_sc['S_total_cm']:.0f} cm",
+                                  f"-{_cdm_red:.0f}% so với không xử lý | S2=0",
+                                  help="S1 = q×H/(a×Ec+(1-a)×Es) — đàn hồi tức thời; S2=0 (CDM đến lớp cứng). TCVN 9403:2012 Phụ lục C")
 
                 # Bảng so sánh phương án
                 _sc_rows = []
                 for _sc_item in _cmp["scenarios"]:
                     _t90_str = f"{_sc_item['t_90_months']:.0f}" if _sc_item["t_90_months"] else ">240"
                     _sc_rows.append({
-                        "Phuong an":       _sc_item["label"],
-                        "Lun tong (cm)":   _sc_item["S_total_cm"],
-                        "Lun tai TC (cm)": _sc_item["S_at_constr_cm"],
-                        "U tai TC (%)":    _sc_item["U_at_constr_pct"],
-                        "Lun con lai (cm)":_sc_item["residual_cm"],
-                        "t90% (thang)":    _t90_str,
-                        "Surcharge (m)":   _sc_item["H_surcharge_m"],
-                        "Danh gia":        "Dat" if _sc_item["feasible"] else "Khong dat",
+                        "Phương án":        _sc_item["label"],
+                        "Lún tổng (cm)":    _sc_item["S_total_cm"],
+                        "Lún tại TC (cm)":  _sc_item["S_at_constr_cm"],
+                        "U tại TC (%)":     _sc_item["U_at_constr_pct"],
+                        "Lún còn lại (cm)": _sc_item["residual_cm"],
+                        "t90% (tháng)":     _t90_str,
+                        "Surcharge (m)":    _sc_item["H_surcharge_m"],
+                        "Đánh giá":         "Đạt" if _sc_item["feasible"] else "Không đạt",
                     })
                 _df_sc = pd.DataFrame(_sc_rows)
                 st.dataframe(
                     _df_sc.style.apply(
-                        lambda col: ["background-color:#d4edda" if v == "Dat"
-                                     else "background-color:#f8d7da" if v == "Khong dat"
+                        lambda col: ["background-color:#d4edda" if v == "Đạt"
+                                     else "background-color:#f8d7da" if v == "Không đạt"
                                      else "" for v in col],
-                        subset=["Danh gia"]
+                        subset=["Đánh giá"]
                     ),
                     use_container_width=True, hide_index=True
                 )
@@ -3571,10 +3877,10 @@ if _page == "settlement":
                 _cdm_Es = _cmp.get("cdm_Es_kPa", 0)
                 _cdm_Etb = _cmp.get("cdm_composite_kPa", 0)
                 st.caption(
-                    f"CDM (TCVN 9403 Phu luc C): S1={_cdm_S1:.0f} cm (dan hoi), S2=0 cm. "
+                    f"CDM (TCVN 9403 Phụ lục C): S1={_cdm_S1:.0f} cm (đàn hồi), S2=0 cm. "
                     f"Ec={_cdm_Ec:.0f} kPa | Es={_cdm_Es:.0f} kPa | Etb={_cdm_Etb:.0f} kPa (a={_cdm_a:.2f}). "
-                    "Khong xu ly/Bac tham/Gieng cat: Cc co ket (Terzaghi+Barron). "
-                    "Giai thich: xem 'Ly thuyet tinh lun' cuoi trang."
+                    "Không xử lý/Bấc thấm/Giếng cát: Cc cố kết (Terzaghi+Barron). "
+                    "Giải thích: xem 'Lý thuyết tính lún' cuối trang."
                 )
 
                 # Biểu đồ S(t)
@@ -3604,18 +3910,18 @@ if _page == "settlement":
                     _fig_sl.add_hline(
                         y=max(_S_ref, 0),
                         line_dash="dash", line_color="red",
-                        annotation_text=f"S min de dat DS<={_sl_lim}cm",
+                        annotation_text=f"S min để đạt ΔS≤{_sl_lim}cm",
                         annotation_position="bottom right",
                     )
                     _fig_sl.add_vline(
                         x=float(_sl_tc),
                         line_dash="dot", line_color="gray",
-                        annotation_text=f"Ket thuc TC ({_sl_tc}th)",
+                        annotation_text=f"Kết thúc TC ({_sl_tc}th)",
                     )
                     _fig_sl.update_layout(
-                        title="Quan he S-t theo phuong an xu ly nen",
-                        xaxis_title="Thoi gian (thang)",
-                        yaxis_title="Do lun S (cm)",
+                        title="Quan hệ S-t theo phương án xử lý nền",
+                        xaxis_title="Thời gian (tháng)",
+                        yaxis_title="Độ lún S (cm)",
                         height=420,
                         legend=dict(orientation="h", yanchor="bottom", y=1.02),
                         margin=dict(t=60),
@@ -3623,23 +3929,23 @@ if _page == "settlement":
                     st.plotly_chart(_fig_sl, use_container_width=True)
 
                 # Chi tiết lún từng lớp
-                with st.expander("Chi tiet lun tung lop"):
+                with st.expander("Chi tiết lún từng lớp"):
                     _detail = _cmp["S_detail"]
                     if _detail.get("warning"):
                         st.warning(_detail["warning"])
                     if _detail.get("layers"):
                         _df_lay = pd.DataFrame(_detail["layers"])
                         _df_lay.columns = [
-                            "Do sau (m)", "H lop (m)",
-                            "sv0 (kPa)", "svf (kPa)", "PC (kPa)",
-                            "Cc", "Cs", "e0", "Si (cm)", "Trang thai OC"
+                            "Độ sâu (m)", "H lớp (m)",
+                            "σv0 (kPa)", "σvf (kPa)", "PC (kPa)",
+                            "Cc", "Cs", "e0", "Si (cm)", "Trạng thái OC"
                         ]
                         st.dataframe(_df_lay, use_container_width=True, hide_index=True)
 
                 # ── Biểu đồ ứng suất theo chiều sâu ──────────────────────────
                 _layers = _cmp["S_detail"].get("layers", [])
                 if _layers and _HAS_PLOTLY:
-                    st.markdown("##### Bieu do ung suat theo chieu sau (pham vi anh huong)")
+                    st.markdown("##### Biểu đồ ứng suất theo chiều sâu (phạm vi ảnh hưởng)")
                     _beta_plot = _cmp.get("cdm_beta", 1.0)
                     _dsig = _layers[0]["sigma_vf_kPa"] - _layers[0]["sigma_v0_kPa"]  # Delta_sigma
 
@@ -3647,7 +3953,7 @@ if _page == "settlement":
                     _sv0_arr = [ly["sigma_v0_kPa"]  for ly in _layers]
                     _svf_arr = [ly["sigma_vf_kPa"]  for ly in _layers]
                     _pc_arr  = [ly["PC_kPa"]         for ly in _layers]
-                    # CDM: stress giam theo beta
+                    # CDM: stress giảm theo beta
                     _svf_cdm = [ly["sigma_v0_kPa"] + _beta_plot * (ly["sigma_vf_kPa"] - ly["sigma_v0_kPa"])
                                 for ly in _layers]
                     # OC status color mapping
@@ -3657,34 +3963,29 @@ if _page == "settlement":
                     _oc_vals = [ly["OC_status"] for ly in _layers]
 
                     _fig_str = go.Figure()
-                    # Fill OC zone (sigma_v0 to sigma_vf, blue)
-                    # Plot sigma_v0
                     _fig_str.add_trace(go.Scatter(
                         x=_sv0_arr, y=_depths, mode="lines+markers",
-                        name="sv0 (ung suat ban dau)",
+                        name="σv0 (ứng suất ban đầu)",
                         line=dict(color="#1565C0", width=2),
                         marker=dict(size=5, symbol="circle"),
                     ))
-                    # Plot sigma_vf (no treat)
                     _fig_str.add_trace(go.Scatter(
                         x=_svf_arr, y=_depths, mode="lines+markers",
-                        name="svf (sau dap, khong xu ly)",
+                        name="σvf (sau đắp, không xử lý)",
                         line=dict(color="#C62828", width=2, dash="dot"),
                         marker=dict(size=5, symbol="square"),
                     ))
-                    # Plot sigma_vf_cdm
                     _fig_str.add_trace(go.Scatter(
                         x=_svf_cdm, y=_depths, mode="lines+markers",
-                        name=f"svf CDM (beta={_beta_plot:.3f})",
+                        name=f"σvf CDM (beta={_beta_plot:.3f})",
                         line=dict(color="#E65100", width=2, dash="dash"),
                         marker=dict(size=5, symbol="diamond"),
                     ))
-                    # Plot PC
                     _fig_str.add_trace(go.Scatter(
                         x=[p for p in _pc_arr if p is not None],
                         y=[_depths[i] for i, p in enumerate(_pc_arr) if p is not None],
                         mode="lines+markers",
-                        name="PC (ap luc tien co ket)",
+                        name="PC (áp lực tiền cố kết)",
                         line=dict(color="#2E7D32", width=2, dash="longdash"),
                         marker=dict(size=7, symbol="triangle-up"),
                     ))
@@ -3705,29 +4006,29 @@ if _page == "settlement":
                         )
 
                     _fig_str.update_layout(
-                        xaxis_title="Ung suat huu hieu (kPa)",
-                        yaxis_title="Do sau (m)",
+                        xaxis_title="Ứng suất hữu hiệu (kPa)",
+                        yaxis_title="Độ sâu (m)",
                         yaxis=dict(autorange="reversed", ticksuffix=" m"),
                         height=480,
                         legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
                         margin=dict(t=80, l=70),
                         annotations=[dict(
                             x=0.02, y=0.02, xref="paper", yref="paper",
-                            text="<b>Mau vung:</b> Xanh=OC | Cam=cat qua PC | Do=NC",
+                            text="<b>Màu vùng:</b> Xanh=OC | Cam=cắt qua PC | Đỏ=NC",
                             showarrow=False, font=dict(size=10),
                             bgcolor="rgba(255,255,255,0.7)", bordercolor="gray",
                         )],
                     )
                     st.plotly_chart(_fig_str, use_container_width=True)
                     st.caption(
-                        f"Delta_sigma = {_dsig:.0f} kPa (dap H={_cmp['H_fill_m']}m, gamma=20 kN/m3). "
-                        f"Duong 'svf CDM (beta={_beta_plot:.3f})' minh hoa ung suat vao dat giua cot — "
-                        "CDM tinh lun theo S1 dan hoi (TCVN 9403 Phu luc C), khong phai Cc co ket. "
-                        "Vung NC/cat qua PC la vung co lun Cc lon nhat neu khong xu ly."
+                        f"Δσ = {_dsig:.0f} kPa (đắp H={_cmp['H_fill_m']}m, γ=20 kN/m³). "
+                        f"Đường 'σvf CDM (beta={_beta_plot:.3f})' minh hoạ ứng suất vào đất giữa cột — "
+                        "CDM tính lún theo S1 đàn hồi (TCVN 9403 Phụ lục C), không phải Cc cố kết. "
+                        "Vùng NC/cắt qua PC là vùng có lún Cc lớn nhất nếu không xử lý."
                     )
 
                 # ── Lý thuyết tính lún ────────────────────────────────────────
-                with st.expander("Ly thuyet tinh lun va giai thich ket qua CDM"):
+                with st.expander("Lý thuyết tính lún và giải thích kết quả CDM"):
                     _beta_txt = _cmp.get("cdm_beta", 1.0)
                     _a_txt    = _cmp.get("cdm_area_ratio", 0.25)
                     _S1_txt   = _cmp.get("cdm_S1_cm", 0)
@@ -3735,88 +4036,88 @@ if _page == "settlement":
                     _Es_txt   = _cmp.get("cdm_Es_kPa", 0)
                     _Etb_txt  = _cmp.get("cdm_composite_kPa", 0)
                     st.markdown(f"""
-**1. Lun co ket so cap (khong xu ly / bac tham / gieng cat) — Phu luc A TCCS 41:2022**
+**1. Lún cố kết sơ cấp (không xử lý / bấc thấm / giếng cát) — Phụ lục A TCCS 41:2022**
 
-Moi lop i duoc tinh theo trang thai co ket:
+Mỗi lớp i được tính theo trạng thái cố kết:
 
-| Trang thai | Dieu kien | Cong thuc |
+| Trạng thái | Điều kiện | Công thức |
 |---|---|---|
-| Qua co ket (OC) | svf <= PC | Si = Hi × Cs/(1+e0) × log(svf/sv0) |
-| Cat qua PC | sv0 < PC < svf | Si = Hi × [Cs/(1+e0)×log(PC/sv0) + Cc/(1+e0)×log(svf/PC)] |
-| Binh thuong co ket (NC) | sv0 >= PC | Si = Hi × Cc/(1+e0) × log(svf/sv0) |
+| Quá cố kết (OC) | σvf ≤ PC | Si = Hi × Cs/(1+e0) × log(σvf/σv0) |
+| Cắt qua PC | σv0 < PC < σvf | Si = Hi × [Cs/(1+e0)×log(PC/σv0) + Cc/(1+e0)×log(σvf/PC)] |
+| Bình thường cố kết (NC) | σv0 ≥ PC | Si = Hi × Cc/(1+e0) × log(σvf/σv0) |
 
-Trong do: sv0 = ung suat huu hieu ban dau; svf = sv0 + Delta_sigma; PC = ap luc tien co ket.
+Trong đó: σv0 = ứng suất hữu hiệu ban đầu; σvf = σv0 + Δσ; PC = áp lực tiền cố kết.
 
-Pham vi tinh: tat ca lop dat yeu (mau nen co ket co Cc). Chieu day dai dien H_i dung
-boundary trung diem giua cac mau lien ke (khong phai chieu day mau 0.6m).
+Phạm vi tính: tất cả lớp đất yếu (mẫu nén cố kết có Cc). Chiều dày đại diện H_i dùng
+boundary trung điểm giữa các mẫu liền kề (không phải chiều dày mẫu 0.6m).
 
 ---
 
-**2. Lun CDM — TCVN 9403:2012 Phu luc C (lun dan hoi khoi gia co)**
+**2. Lún CDM — TCVN 9403:2012 Phụ lục C (lún đàn hồi khối gia cố)**
 
-CDM thay the dat yeu bang nen hop dong (composite ground). Lun tinh theo:
+CDM thay thế đất yếu bằng nền hỗn hợp (composite ground). Lún tính theo:
 
 ```
 S = S1 + S2
-S1 = q x H_soft / (a*Ec + (1-a)*Es)   [dan hoi tuc thoi trong khoi gia co]
-S2 = lun co ket ben duoi cot            [= 0 neu CDM cam den lop cung]
+S1 = q × H_soft / (a×Ec + (1-a)×Es)   [đàn hồi tức thời trong khối gia cố]
+S2 = lún cố kết bên dưới cột            [= 0 nếu CDM cắm đến lớp cứng]
 ```
 
-Trong do:
+Trong đó:
 ```
-Ec = 75 x Cc_col = 75 x (field_lab_ratio x qu_lab / 2)   [TCVN 9403 B.5.1]
-Es = 250 x Cu                                              [tuong quan Mesri]
+Ec = 75 × Cc_col = 75 × (field_lab_ratio × qu_lab / 2)   [TCVN 9403 B.5.1]
+Es = 250 × Cu                                              [tương quan Mesri]
 ```
 
-**Ket qua cho zone nay (a = {_a_txt:.2f}):**
-- Ec = {_Ec_txt:.0f} kPa | Es = {_Es_txt:.0f} kPa | E_tong_hop = {_Etb_txt:.0f} kPa
-- **S1 = {_S1_txt:.1f} cm** (dan hoi, xay ra tuc thoi trong qua trinh thi cong)
-- **S2 = 0 cm** (gia thiet CDM cam den lop cung)
+**Kết quả cho zone này (a = {_a_txt:.2f}):**
+- Ec = {_Ec_txt:.0f} kPa | Es = {_Es_txt:.0f} kPa | E_tổng hợp = {_Etb_txt:.0f} kPa
+- **S1 = {_S1_txt:.1f} cm** (đàn hồi, xảy ra tức thời trong quá trình thi công)
+- **S2 = 0 cm** (giả thiết CDM cắm đến lớp cứng)
 
-*He so beta = {_beta_txt:.3f}* (ty le ung suat vao dat giua cot — chi de tham khao bien do ung suat).
+*Hệ số beta = {_beta_txt:.3f}* (tỷ lệ ứng suất vào đất giữa cột — chỉ để tham khảo biên độ ứng suất).
 
 ---
 
-**3. Tai sao lun CDM thap hon rat nhieu so voi khong xu ly?**
+**3. Tại sao lún CDM thấp hơn rất nhiều so với không xử lý?**
 
-| Phuong phap | Co so vat ly | Bien do |
+| Phương pháp | Cơ sở vật lý | Biên độ |
 |---|---|---|
-| Khong xu ly | Cc co ket (log) | {_cmp['S_total_cm']:.0f} cm (lun dai han) |
-| CDM | S1 dan hoi (tuyen tinh) | {_S1_txt:.0f} cm (tuc thoi) |
+| Không xử lý | Cc cố kết (log) | {_cmp['S_total_cm']:.0f} cm (lún dài hạn) |
+| CDM | S1 đàn hồi (tuyến tính) | {_S1_txt:.0f} cm (tức thời) |
 
-Lun Cc phu thuoc log(svf/sv0) — tang manh khi dat NC va H_soft lon.
-Lun dan hoi CDM phu thuoc E_tong_hop — cang cao (cot cung hon, mat do lon hon) thi lun cang nho.
+Lún Cc phụ thuộc log(σvf/σv0) — tăng mạnh khi đất NC và H_soft lớn.
+Lún đàn hồi CDM phụ thuộc E_tổng hợp — càng cao (cột cứng hơn, mật độ lớn hơn) thì lún càng nhỏ.
 
-**De giam S1 them:** Tang dien tich thay the a (cat chat hon), hoac tang qu_lab (> 1 MPa).
+**Để giảm S1 thêm:** Tăng diện tích thay thế a (cắt chặt hơn), hoặc tăng qu_lab (> 1 MPa).
 
 ---
 
-**4. Lun con lai sau thi cong (Delta_S)**
+**4. Lún còn lại sau thi công (ΔS)**
 
-CDM: S1 la lun dan hoi — xay ra NGAY trong qua trinh dap. Delta_S ~ 0 (khong co lun con lai).
+CDM: S1 là lún đàn hồi — xảy ra NGAY trong quá trình đắp. ΔS ≈ 0 (không có lún còn lại).
 
-Cac phuong an khac:
+Các phương án khác:
 ```
-Delta_S = S_total x (1 - U(t_tc))
+ΔS = S_total × (1 - U(t_tc))
 ```
-U(t) phu thuoc vao phuong phap xu ly:
-- Khong xu ly: chi Uv (Terzaghi, Cv, Hdr)
-- Bac tham / Gieng cat: U = 1-(1-Uv)(1-Uh) (co ket ket hop)
+U(t) phụ thuộc vào phương pháp xử lý:
+- Không xử lý: chỉ Uv (Terzaghi, Cv, Hdr)
+- Bấc thấm / Giếng cát: U = 1-(1-Uv)(1-Uh) (cố kết kết hợp)
 
-**Surcharge**: tang ung suat → tang toc do co ket trong thoi gian gia tai,
-nhung khong thay doi S_total duoi tai thiet ke.
+**Surcharge**: tăng ứng suất → tăng tốc độ cố kết trong thời gian gia tải,
+nhưng không thay đổi S_total dưới tải thiết kế.
 
-TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
-(duong cap 1 doan thong thuong) sau khi lam xong mat duong.
+TCCS 41:2022 yêu cầu ΔS ≤ {_cmp['residual_limit_cm']:.0f} cm
+(đường cấp 1 đoạn thông thường) sau khi làm xong mặt đường.
 """)
 
         # ── PHẦN 1b: Lún sơ bộ TKCS — Điều 9.2.3 TCCS 41:2022 ──────────────
         st.divider()
-        st.markdown("### Tinh lun so bo TKCS — Dieu 9.2.3 TCCS 41:2022 (vong lap)")
+        st.markdown("### Tính lún sơ bộ TKCS — Điều 9.2.3 TCCS 41:2022 (vòng lặp)")
         st.caption(
-            "H'_tk = H_fill + S_gt — chieu cao dap hieu dung bao gom phan dap lun vao dat yeu. "
-            "Lap lai den khi |S_calc - S_gt| < tolerance. "
-            "Ket qua lon hon tinh toan mot lan (khong lap) do trong luong dap phan lun."
+            "H'_tk = H_fill + S_gt — chiều cao đắp hiệu dụng bao gồm phần đắp lún vào đất yếu. "
+            "Lặp lại đến khi |S_calc - S_gt| < tolerance. "
+            "Kết quả lớn hơn tính toán một lần (không lặp) do trọng lượng đắp phần lún."
         )
         _it1, _it2, _it3 = st.columns([1, 1, 2])
         with _it1:
@@ -3824,22 +4125,22 @@ TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
                                 format_func=lambda z: _ZONE_NAMES[z],
                                 key="it_zone")
             _it_bhs = [b["name"] for b in _load_boreholes_by_zone(_it_zone)]
-            _it_bh  = st.selectbox("Ho khoan", _it_bhs, key="it_bh")
+            _it_bh  = st.selectbox("Hố khoan", _it_bhs, key="it_bh")
         with _it2:
             _it_H    = st.number_input("H_fill (m)", 1.0, 10.0, 3.0, 0.5, key="it_H")
-            _it_pct  = st.number_input("S_gt ban dau (% H_soft)", 1.0, 30.0, 7.5, 0.5,
+            _it_pct  = st.number_input("S_gt ban đầu (% H_soft)", 1.0, 30.0, 7.5, 0.5,
                                         key="it_pct",
-                                        help="Dat thuong: 5-10%; Than bun: 20-30% (Dieu 9.2.3)")
+                                        help="Đất thường: 5-10%; Than bùn: 20-30% (Điều 9.2.3)")
             _it_tol  = st.number_input("Tolerance (cm)", 0.1, 5.0, 1.0, 0.1, key="it_tol")
         with _it3:
             st.caption(
-                "**Cong thuc:** H'_tk = H_fill + S_gt  →  Delta_sigma = H'_tk × gamma_fill  →  "
-                "S_c = Sum Cc-formula  →  kiem tra |S_c - S_gt| < tol"
+                "**Công thức:** H'_tk = H_fill + S_gt  →  Δσ = H'_tk × γ_fill  →  "
+                "S_c = Σ công thức Cc  →  kiểm tra |S_c - S_gt| < tol"
             )
-            st.caption("**Khi nao dung:** TKCS khi chua co mau Cc chi tiet — dung thong so trung binh zone.")
+            st.caption("**Khi nào dùng:** TKCS khi chưa có mẫu Cc chi tiết — dùng thông số trung bình zone.")
 
-        if st.button("Tinh lun so bo 9.2.3", type="secondary", key="it_calc"):
-            with st.spinner("Dang lap..."):
+        if st.button("Tính lún sơ bộ 9.2.3", type="secondary", key="it_calc"):
+            with st.spinner("Đang lặp..."):
                 try:
                     _iter_res = _sc_iter923(
                         _it_bh, _it_zone,
@@ -3849,52 +4150,52 @@ TCCS 41:2022 yeu cau Delta_S <= {_cmp['residual_limit_cm']:.0f} cm
                     )
                     st.session_state["it_result"] = _iter_res
                 except Exception as _e:
-                    st.error(f"Loi tinh toan 9.2.3: {_e}")
+                    st.error(f"Lỗi tính toán 9.2.3: {_e}")
 
         _iter_res = st.session_state.get("it_result")
         if _iter_res:
             _im1, _im2, _im3 = st.columns(3)
             with _im1:
-                st.metric("Lun khong lap (tham chieu)",
+                st.metric("Lún không lặp (tham chiếu)",
                           f"{_iter_res['S_ref_cm']:.0f} cm",
-                          help="Delta_sigma = H_fill × gamma (khong tinh phan dap lun vao)")
+                          help="Δσ = H_fill × γ (không tính phần đắp lún vào)")
             with _im2:
-                st.metric("Lun so bo TKCS (Dieu 9.2.3)",
+                st.metric("Lún sơ bộ TKCS (Điều 9.2.3)",
                           f"{_iter_res['S_final_cm']:.0f} cm",
-                          f"+{_iter_res['S_increase_pct']:.0f}% so voi khong lap",
+                          f"+{_iter_res['S_increase_pct']:.0f}% so với không lặp",
                           delta_color="inverse",
-                          help="Delta_sigma = H'_tk × gamma; H'_tk = H_fill + S_hoi_tu")
+                          help="Δσ = H'_tk × γ; H'_tk = H_fill + S_hội tụ")
             with _im3:
-                _cv_str = "Hoi tu" if _iter_res["converged"] else "Chua hoi tu"
-                st.metric(f"Vong lap ({_cv_str})",
-                          f"{_iter_res['n_iterations']} vong",
+                _cv_str = "Hội tụ" if _iter_res["converged"] else "Chưa hội tụ"
+                st.metric(f"Vòng lặp ({_cv_str})",
+                          f"{_iter_res['n_iterations']} vòng",
                           f"tol={_iter_res['tolerance_cm']} cm | S_gt_init={_iter_res['S_gt_init_cm']:.0f} cm")
 
-            st.markdown(f"**Chi tiet vong lap** — Zone {_iter_res['zone_code']}, "
+            st.markdown(f"**Chi tiết vòng lặp** — Zone {_iter_res['zone_code']}, "
                         f"HK {_iter_res['bh_name']}, H_fill={_iter_res['H_fill_m']}m, "
                         f"H_soft={_iter_res['H_soft_m']}m")
             _df_iter = pd.DataFrame(_iter_res["iterations"]).rename(columns={
-                "iter":       "Vong",
+                "iter":       "Vòng",
                 "S_gt_cm":    "S_gt (cm)",
                 "H_eff_m":    "H'_tk (m)",
-                "Dsigma_kPa": "Delta_sigma (kPa)",
+                "Dsigma_kPa": "Δσ (kPa)",
                 "S_calc_cm":  "S_calc (cm)",
                 "delta_cm":   "Delta (cm)",
-                "converged":  "Hoi tu",
+                "converged":  "Hội tụ",
             })
             st.dataframe(
                 _df_iter.style.apply(
                     lambda col: ["background-color:#d4edda" if v is True
                                  else "background-color:#fff3cd" if v is False
                                  else "" for v in col],
-                    subset=["Hoi tu"]
+                    subset=["Hội tụ"]
                 ),
                 use_container_width=True, hide_index=True,
             )
             st.caption(
-                f"Lun so bo TKCS = {_iter_res['S_final_cm']:.0f} cm "
-                f"(lon hon {_iter_res['S_increase_pct']:.0f}% so voi tinh mot lan). "
-                "Nguyen nhan: dat yeu bi nao xuong, can them dap bu → tang tai trong → tang lun them."
+                f"Lún sơ bộ TKCS = {_iter_res['S_final_cm']:.0f} cm "
+                f"(lớn hơn {_iter_res['S_increase_pct']:.0f}% so với tính một lần). "
+                "Nguyên nhân: đất yếu bị nào xuống, cần thêm đắp bù → tăng tải trọng → tăng lún thêm."
             )
 
 
@@ -3916,14 +4217,18 @@ if _page == "ke_sw":
             return []
 
     @st.cache_data(show_spinner=False)
-    def _load_ke_sw() -> dict:
+    def _load_ke_sw(_mtime: float = 0) -> dict:
         try:
             return json.loads(_KE_JSON.read_text(encoding="utf-8"))
         except Exception:
             return {}
 
     _sw_piles  = _load_sw_catalog()
-    _ke_data   = _load_ke_sw()
+    try:
+        _mtime = _KE_JSON.stat().st_mtime
+    except OSError:
+        _mtime = 0
+    _ke_data   = _load_ke_sw(_mtime)
     _sw_names  = sorted({p["name"] for p in _sw_piles})
     _Ec_table  = {
         "fc30 MPa": 26_561_000,
@@ -3940,201 +4245,385 @@ if _page == "ke_sw":
 
     st.subheader("Cọc ván thép dự ứng lực SW — Kè Công Viên (KE)")
 
-    _sw_tab1, _sw_tab2, _sw_tab3 = st.tabs([
-        "Catalog tiết diện",
-        "Kết quả thiết kế TTHC",
-        "Kiểm tra NT1 / NT2",
-    ])
+    # ── A. Catalog tiết diện ────────────────────────────────────────────────────
+    st.markdown("### A. Catalog tiết diện SW")
+    if not _sw_piles:
+        st.warning("Không tải được catalog. Kiểm tra `data/sw_pile_catalog.json`.")
+    else:
+        _fc_sel = st.selectbox("Cường độ bê tông (cho tính Ec)", list(_Ec_table.keys()),
+                               index=2, key="sw_fc")
+        _Ec_sel = _Ec_table[_fc_sel]
 
-    # ── Tab 1: Catalog ──────────────────────────────────────────────────────────
-    with _sw_tab1:
-        st.markdown("**Danh mục cọc ván thép dự ứng lực SW** — thông số kỹ thuật")
-        if not _sw_piles:
-            st.warning("Không tải được catalog. Kiểm tra `data/sw_pile_catalog.json`.")
-        else:
-            _fc_sel = st.selectbox("Cường độ bê tông (cho tính Ec)", list(_Ec_table.keys()),
-                                   index=2, key="sw_fc")
-            _Ec_sel = _Ec_table[_fc_sel]
+        _cat_rows = []
+        for p in _sw_piles:
+            _Itd  = p.get("Itd_cm4", 0) or 0
+            _Atd  = p.get("Atd_cm2", 0) or 0
+            _Mcr  = p.get("Mcr_Tm", 0) or 0
+            _EI   = _Ec_sel * _Itd * 1e-8
+            _EI_m = _EI / (p.get("width_mm", 996) / 1000)
+            _cat_rows.append({
+                "Loại cọc":         p["name"],
+                "H (mm)":           p.get("H_mm"),
+                "t (mm)":           p.get("t_mm"),
+                "Cáp (sợi)":        p.get("n_strands"),
+                "φ cáp (mm)":       p.get("phi_strand_mm"),
+                "Atd (cm²)":        _Atd,
+                "Itd (cm⁴)":        _Itd,
+                "Mcr (T.m)":        _Mcr,
+                "Mcr (kN.m)":       round(_Mcr * 9.81, 1),
+                "EI (kN·m²/m)":     round(_EI_m, 0),
+                "TL (T/cọc)":       p.get("weight_T"),
+                "L tc (m)":         p.get("L_std_m"),
+                "L min (m)":        p.get("L_min_m"),
+                "L max (m)":        p.get("L_max_m"),
+                "Spacing (mm)":     p.get("width_mm", 996),
+            })
 
-            _cat_rows = []
-            for p in _sw_piles:
-                _Itd  = p.get("Itd_cm4", 0) or 0
-                _Atd  = p.get("Atd_cm2", 0) or 0
-                _Mcr  = p.get("Mcr_Tm", 0) or 0
-                _EI   = _Ec_sel * _Itd * 1e-8          # kN·m²/m (chia spacing 0.996 m)
-                _EI_m = _EI / (p.get("width_mm", 996) / 1000)
-                _cat_rows.append({
-                    "Loại cọc":        p["name"],
-                    "H (mm)":          p.get("H_mm"),
-                    "t (mm)":          p.get("t_mm"),
-                    "Cáp (sợi)":       p.get("n_strands"),
-                    "φ cáp (mm)":      p.get("phi_strand_mm"),
-                    "Atd (cm²)":       _Atd,
-                    "Itd (cm⁴)":       _Itd,
-                    "Mcr (T.m)":       _Mcr,
-                    "Mcr (kN.m)":      round(_Mcr * 9.81, 1),
-                    "EI (kN·m²/m)":    round(_EI_m, 0),
-                    "TL (T/cọc)":      p.get("weight_T"),
-                    "L tiêu chuẩn (m)":p.get("L_std_m"),
-                    "L min (m)":       p.get("L_min_m"),
-                    "L max (m)":       p.get("L_max_m"),
-                    "Spacing (mm)":    p.get("width_mm", 996),
-                })
+        def _hi_sw(row):
+            if row["Loại cọc"] in ("SW-840", "SW-940"):
+                return ["background-color:#fff3cd"] * len(row)
+            return [""] * len(row)
 
-            _df_cat = pd.DataFrame(_cat_rows)
-            # Highlight hàng SW-840 và SW-940 (cọc được chọn cho TTHC)
-            def _hi_sw(row):
-                if row["Loại cọc"] in ("SW-840", "SW-940"):
-                    return ["background-color:#fff3cd"] * len(row)
-                return [""] * len(row)
-
-            st.dataframe(
-                _df_cat.style.apply(_hi_sw, axis=1),
-                use_container_width=True, hide_index=True,
-            )
-            st.caption(
-                f"Ec = {_Ec_sel/1000:.0f} MPa ({_fc_sel}). "
-                "Hàng vàng = cọc đã chọn cho dự án TTHC (SW-840 / SW-940). "
-                "EI tính trên 1 m dài tường (chia spacing)."
-            )
-
-            # Biểu đồ Mcr vs H
-            if _HAS_PLOTLY:
-                _fig_cat = go.Figure()
-                _xs = [p.get("H_mm") for p in _sw_piles]
-                _ys = [round((p.get("Mcr_Tm") or 0) * 9.81, 1) for p in _sw_piles]
-                _nm = [p["name"] for p in _sw_piles]
-                _fig_cat.add_trace(go.Scatter(
-                    x=_xs, y=_ys, mode="markers+text", text=_nm,
-                    textposition="top center",
-                    marker=dict(size=10,
-                                color=["#FF6B35" if n in ("SW-840","SW-940") else "#4A90D9"
-                                       for n in _nm]),
-                    name="Mcr (kN·m/cọc)",
-                ))
-                _fig_cat.update_layout(
-                    title="Mô men nứt Mcr theo chiều cao tiết diện",
-                    xaxis_title="Chiều cao H (mm)",
-                    yaxis_title="Mcr (kN·m/cọc)",
-                    height=350, margin=dict(t=40, b=40),
-                )
-                st.plotly_chart(_fig_cat, use_container_width=True)
-
-    # ── Tab 2: Kết quả TTHC ─────────────────────────────────────────────────────
-    with _sw_tab2:
-        st.markdown("**Kết quả thiết kế cọc ván SW — Kè Công Viên TTHC**")
-        if not _ke_data:
-            st.warning("Không tải được dữ liệu. Kiểm tra `data/ke_sw_202605_TTHC.json`.")
-        else:
-            _dc = _ke_data.get("design_conditions", {})
-            _bhs_ke = _ke_data.get("boreholes", [])
-            _sum_ke = _ke_data.get("pile_selection_summary", {})
-
-            # Điều kiện thiết kế
-            _d1, _d2, _d3 = st.columns(3)
-            _d1.metric("Cao độ đỉnh kè (m)", _dc.get("top_ke_elevation_m", "–"))
-            _d2.metric("Lớp bùn sét yếu", _dc.get("soft_clay_layer_symbol", "–"))
-            _d3.metric("Xuyên qua lớp yếu (m)", _dc.get("min_penetration_below_soft_clay_m", "–"))
-
-            st.divider()
-
-            # Bảng tổng hợp hố khoan
-            _ke_rows = []
-            for _bh in _bhs_ke:
-                _nt2 = _bh.get("NT2_multilayer") or {}
-                _ke_rows.append({
-                    "Hố khoan":         _bh["name"],
-                    "Z mặt đất (m)":    _bh.get("Z_m"),
-                    "H lớp 1 (m)":      _bh.get("H_layer1_m"),
-                    "L yêu cầu NT1 (m)":_bh.get("L_req_m"),
-                    "Cọc kiến nghị":    _bh.get("recommended_pile"),
-                    "L thiết kế (m)":   _bh.get("recommended_L_m"),
-                    "NT1":              _bh.get("NT1"),
-                    "NT2":              _bh.get("NT2"),
-                    "RR/W":             round(_nt2.get("ratio", 0), 2) if _nt2 else "–",
-                    "Ghi chú":          _bh.get("note", ""),
-                })
-
-            _df_ke = pd.DataFrame(_ke_rows)
-
-            def _color_nt(val):
-                if val in ("PASS", True):
-                    return "background-color:#d4edda; color:#155724"
-                if val == "PASS_CRITICAL":
-                    return "background-color:#fff3cd; color:#856404"
-                if val in ("FAIL", False):
-                    return "background-color:#f8d7da; color:#721c24"
-                if val == "SPECIAL":
-                    return "background-color:#e2e3e5; color:#383d41"
-                return ""
-
-            st.dataframe(
-                _df_ke.style.map(_color_nt, subset=["NT1", "NT2"]),
-                use_container_width=True, hide_index=True,
-            )
-
-            # Kết luận chọn cọc
-            st.divider()
-            _sc1, _sc2 = st.columns(2)
-            with _sc1:
-                st.markdown("**Phương án A — Đồng nhất tuyến**")
-                _oA = _sum_ke.get("option_A", {})
-                st.info(
-                    f"Cọc: **{_oA.get('pile_type')}**  \n"
-                    f"Chiều dài: **{_oA.get('L_m')} m**  \n"
-                    f"Áp dụng: {', '.join(_oA.get('applies_to', []))}"
-                )
-            with _sc2:
-                st.markdown("**Phương án B — Khu vực HK10**")
-                _oB = _sum_ke.get("option_B", {})
-                st.warning(
-                    f"Cọc: **{_oB.get('pile_type')}**  \n"
-                    f"Chiều dài: **{_oB.get('L_m')} m**  \n"
-                    f"Lý do: {_oB.get('note', '')}"
-                )
-
-            # Biểu đồ NT2 ratio
-            if _HAS_PLOTLY and _ke_rows:
-                _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
-                _ratios_plot = [float(r["RR/W"]) for r in _ke_rows if r["RR/W"] != "–"]
-                _colors_plot = [
-                    "#FF6B35" if v == min(_ratios_plot) else "#4A90D9"
-                    for v in _ratios_plot
-                ]
-                _fig_nt2 = go.Figure()
-                _fig_nt2.add_trace(go.Bar(
-                    x=_names_plot, y=_ratios_plot,
-                    marker_color=_colors_plot,
-                    text=[f"{v:.2f}" for v in _ratios_plot],
-                    textposition="outside",
-                    name="RR/W",
-                ))
-                _fig_nt2.add_hline(y=1.0, line_dash="dash", line_color="red",
-                                   annotation_text="Giới hạn NT2 (RR ≥ W)")
-                _fig_nt2.update_layout(
-                    title="Tỷ số NT2: RR/W theo hố khoan",
-                    yaxis_title="RR / W", xaxis_title="Hố khoan",
-                    height=350, margin=dict(t=40, b=40),
-                    yaxis=dict(range=[0, max(_ratios_plot) * 1.2 if _ratios_plot else 3]),
-                )
-                st.plotly_chart(_fig_nt2, use_container_width=True)
-            st.caption(
-                "Hố kiểm soát NT2: HK8 (tỷ số 1.86 — mũi cọc dừng ở cát 2b, "
-                "lớp 1 ngắn nhất H=19.5m). Nguồn: ke_sw_202605_TTHC.json."
-            )
-
-    # ── Tab 3: Kiểm tra NT1 / NT2 tùy chỉnh ─────────────────────────────────
-    with _sw_tab3:
-        st.markdown("**Kiểm tra sức chịu tải cọc SW — nhập thông số tùy chỉnh**")
-        st.info(
-            "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
-            "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
-            "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
+        st.dataframe(
+            pd.DataFrame(_cat_rows).style.apply(_hi_sw, axis=1),
+            use_container_width=True, hide_index=True,
+        )
+        st.caption(
+            f"Ec = {_Ec_sel/1000:.0f} MPa ({_fc_sel}). "
+            "Hàng vàng = cọc đã chọn cho dự án TTHC (SW-840 / SW-940). "
+            "EI tính trên 1 m dài tường (chia spacing)."
         )
 
+        if _HAS_PLOTLY:
+            _fig_cat = go.Figure()
+            _xs = [p.get("H_mm") for p in _sw_piles]
+            _ys = [round((p.get("Mcr_Tm") or 0) * 9.81, 1) for p in _sw_piles]
+            _nm = [p["name"] for p in _sw_piles]
+            _fig_cat.add_trace(go.Scatter(
+                x=_xs, y=_ys, mode="markers+text", text=_nm,
+                textposition="top center",
+                marker=dict(size=10,
+                            color=["#FF6B35" if n in ("SW-840", "SW-940") else "#4A90D9"
+                                   for n in _nm]),
+                name="Mcr (kN·m/cọc)",
+            ))
+            _fig_cat.update_layout(
+                title="Mô men nứt Mcr theo chiều cao tiết diện",
+                xaxis_title="Chiều cao H (mm)",
+                yaxis_title="Mcr (kN·m/cọc)",
+                height=320, margin=dict(t=40, b=40),
+            )
+            st.plotly_chart(_fig_cat, use_container_width=True)
+
+    # ── B. Kết quả thiết kế TTHC ────────────────────────────────────────────────
+    st.divider()
+    st.markdown("### B. Kết quả thiết kế — Kè Công Viên TTHC")
+    if not _ke_data:
+        st.warning("Không tải được dữ liệu. Kiểm tra `data/ke_sw_202605_TTHC.json`.")
+    else:
+        _dc     = _ke_data.get("design_conditions", {})
+        _bhs_ke = _ke_data.get("boreholes", [])
+        _sum_ke = _ke_data.get("pile_selection_summary", {})
+
+        _d1, _d2, _d3 = st.columns(3)
+        _d1.metric("Cao độ đỉnh kè (m)", _dc.get("top_ke_elevation_m", "–"))
+        _d2.metric("Lớp bùn sét yếu", _dc.get("soft_clay_layer_symbol", "–"))
+        _d3.metric("Xuyên qua lớp yếu (m)", _dc.get("min_penetration_below_soft_clay_m", "–"))
+
+        # Catalog duy nhất, sort theo H_mm tăng dần → dùng để chọn cọc tối ưu
+        _seen_names: set = set()
+        _catalog_sorted: list = []
+        for _p in sorted(_sw_piles, key=lambda x: x.get("H_mm", 0)):
+            if _p["name"] not in _seen_names:
+                _seen_names.add(_p["name"])
+                _catalog_sorted.append(_p)
+        _pile_options = [_p["name"] for _p in _catalog_sorted]
+        # Lookup: tên cọc → L_max_m
+        _pile_lmax: dict[str, float] = {
+            _p["name"]: _p.get("L_max_m") or 0 for _p in _catalog_sorted
+        }
+
+        def _optimal_pile(L_req: float) -> tuple[str, float]:
+            """Cọc nhỏ nhất có L_max ≥ L_req. Trả (name, L_max)."""
+            for _p in _catalog_sorted:
+                if (_p.get("L_max_m") or 0) >= L_req:
+                    return _p["name"], _p.get("L_max_m", 0)
+            last = _catalog_sorted[-1] if _catalog_sorted else {}
+            return "Vượt catalog", last.get("L_max_m", 0)
+
+        # Session state: lưu "Cọc kiến nghị" và "L thiết kế" do người dùng chọn
+        _rec_key = "ke_sw_rec_piles"
+        _ltk_key = "ke_sw_L_thiet_ke"
+        if _rec_key not in st.session_state:
+            st.session_state[_rec_key] = {}
+        if _ltk_key not in st.session_state:
+            st.session_state[_ltk_key] = {}
+
+        # Bảng tổng hợp — chỉ các HK trên tuyến kè SW (on_sw_alignment=True)
+        _bhs_on_alignment = [b for b in _bhs_ke if b.get("on_sw_alignment")]
+
+        # Nút tự động điền cọc tối ưu + L_max tương ứng
+        _btn_opt = st.button("Dùng cọc tối ưu cho tất cả", key="btn_use_optimal")
+        if _btn_opt:
+            for _bh in _bhs_on_alignment:
+                _on, _olmax = _optimal_pile(_bh.get("L_req_m") or 0)
+                st.session_state[_rec_key][_bh["name"]] = _on
+                st.session_state[_ltk_key][_bh["name"]] = _olmax
+            st.rerun()
+
+        _ke_rows = []
+        for _bh in _bhs_on_alignment:
+            _nt2    = _bh.get("NT2_multilayer") or {}
+            _L_req  = _bh.get("L_req_m") or 0
+            _opt_name, _opt_Lmax = _optimal_pile(_L_req)
+            # "Cọc kiến nghị": session_state → JSON default → optimal
+            _rec = st.session_state[_rec_key].get(
+                _bh["name"],
+                _bh.get("recommended_pile") or _opt_name,
+            )
+            # "L thiết kế": session_state → L_max của cọc kiến nghị → JSON default
+            _ltk = st.session_state[_ltk_key].get(
+                _bh["name"],
+                _pile_lmax.get(_rec) or _bh.get("recommended_L_m") or _opt_Lmax,
+            )
+            _ke_rows.append({
+                "Hố khoan":          _bh["name"],
+                "Z (m)":             _bh.get("Z_m"),
+                "H lớp 1 (m)":       _bh.get("H_layer1_m"),
+                "L yêu cầu (m)":     _L_req,
+                "Cọc tối ưu":        _opt_name,
+                "L_max (m)":         _opt_Lmax,
+                "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
+                "Cọc kiến nghị":     _rec,
+                "L thiết kế (m)":    float(_ltk) if _ltk is not None else _opt_Lmax,
+                "NT1":               _bh.get("NT1"),
+                "NT2":               _bh.get("NT2"),
+                "Rs (kN)":           _nt2.get("Rs_kN", "–"),
+                "Rp (kN)":           _nt2.get("Rp_kN", "–"),
+                "RR (kN)":           _nt2.get("RR_kN", "–"),
+                "W (kN)":            round(_bh.get("W_pile_kN") or 0, 1),
+                "RR/W":              round(_nt2.get("ratio") or 0, 2) if _nt2 else "–",
+                "Ghi chú":           _bh.get("note", ""),
+            })
+
+        if not _ke_rows:
+            st.warning("Không có hố khoan nào có on_sw_alignment=True trong dữ liệu.")
+        else:
+            _df_b = pd.DataFrame(_ke_rows)
+            _editable_b = {"Cọc kiến nghị", "L thiết kế (m)"}
+            _disabled_b = [c for c in _df_b.columns if c not in _editable_b]
+            _edited_b = st.data_editor(
+                _df_b,
+                column_config={
+                    "Cọc kiến nghị": st.column_config.SelectboxColumn(
+                        "Cọc kiến nghị",
+                        options=_pile_options,
+                        required=True,
+                        width="medium",
+                    ),
+                    "L thiết kế (m)": st.column_config.NumberColumn(
+                        "L thiết kế (m)",
+                        min_value=1.0,
+                        max_value=40.0,
+                        step=0.5,
+                        format="%.1f",
+                        width="small",
+                    ),
+                    "Đủ chiều dài": st.column_config.Column(width="small"),
+                },
+                disabled=_disabled_b,
+                hide_index=True,
+                use_container_width=True,
+                key="ke_b_editor",
+            )
+            # Lưu chỉnh sửa vào session state — chỉ khi người dùng thay đổi
+            _edit_cols = ["Cọc kiến nghị", "L thiết kế (m)"]
+            if not _edited_b[_edit_cols].equals(_df_b[_edit_cols]):
+                for _, _row in _edited_b.iterrows():
+                    _bh_n = _row["Hố khoan"]
+                    st.session_state[_rec_key][_bh_n] = _row["Cọc kiến nghị"]
+                    st.session_state[_ltk_key][_bh_n] = _row["L thiết kế (m)"]
+
+        # Kết luận phương án
+        _sc1, _sc2 = st.columns(2)
+        with _sc1:
+            st.markdown("**Phương án A — Đồng nhất tuyến**")
+            _oA = _sum_ke.get("option_A", {})
+            st.info(
+                f"Cọc: **{_oA.get('pile_type')}**  \n"
+                f"Chiều dài: **{_oA.get('L_m')} m**  \n"
+                f"Áp dụng: {', '.join(_oA.get('applies_to', []))}"
+            )
+        with _sc2:
+            st.markdown("**Phương án B — Khu vực KE-HK10**")
+            _oB = _sum_ke.get("option_B", {})
+            st.warning(
+                f"Cọc: **{_oB.get('pile_type')}**  \n"
+                f"Chiều dài: **{_oB.get('L_m')} m**  \n"
+                f"Lý do: {_oB.get('note', '')}"
+            )
+
+        if _HAS_PLOTLY and _ke_rows:
+            _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
+            _ratios_plot = [float(r["RR/W"]) for r in _ke_rows if r["RR/W"] != "–"]
+            _min_ratio   = min(_ratios_plot) if _ratios_plot else 0
+            _colors_plot = [
+                "#FF6B35" if v == _min_ratio else "#2E7D32"
+                for v in _ratios_plot
+            ]
+            _fig_nt2 = go.Figure()
+            _fig_nt2.add_trace(go.Bar(
+                x=_names_plot, y=_ratios_plot,
+                marker_color=_colors_plot,
+                text=[f"{v:.2f}" for v in _ratios_plot],
+                textposition="outside",
+                name="RR/W",
+            ))
+            _fig_nt2.add_hline(y=1.0, line_dash="dash", line_color="red",
+                               annotation_text="Giới hạn NT2 (RR ≥ W)")
+            _fig_nt2.update_layout(
+                title="Tỷ số NT2: RR/W theo hố khoan trên tuyến kè SW  (cam = HK kiểm soát)",
+                yaxis_title="RR / W", xaxis_title="Hố khoan",
+                height=350, margin=dict(t=50, b=40),
+                yaxis=dict(range=[0, max(_ratios_plot) * 1.2 if _ratios_plot else 3]),
+            )
+            st.plotly_chart(_fig_nt2, use_container_width=True)
+        st.caption(
+            "Hiển thị 7 hố khoan trên tuyến kè SW: KE-HK2, HK3, HK7, HK8, HK9, HK10, HK11. "
+            "Cam = HK kiểm soát (tỷ số RR/W nhỏ nhất). "
+            "Nguồn: ke_sw_202605_TTHC.json (on_sw_alignment=True)."
+        )
+
+        # ── Chi tiết NT1/NT2 từng hố khoan (SQLite) ─────────────────────────────
+        with st.expander("Chi tiết tính toán NT1/NT2 từng hố khoan"):
+            _SRC_BADGE = {
+                "VST":     "🟢 VST",
+                "lab":     "🔵 Lab",
+                "default": "🟡 Giả định",
+                "sand":    "⬛ Cát",
+                "unknown": "🔴 Không rõ",
+            }
+            try:
+                _con_nt = sqlite3.connect(str(_DB))
+                _cur_nt = _con_nt.cursor()
+                _cur_nt.execute(
+                    "SELECT bh_name, pile_type, L_design_m, Z_m, Z_source, "
+                    "fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source, "
+                    "L_req_nt1_m, margin_nt1_m, nt1_result, "
+                    "Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN, "
+                    "ratio_nt2, nt2_result, su_warnings "
+                    "FROM ke_sw_nt_detail ORDER BY bh_name"
+                )
+                _nt_rows = _cur_nt.fetchall()
+                _con_nt.close()
+                if not _nt_rows:
+                    st.info(
+                        "Chưa có dữ liệu NT1/NT2 trong SQLite. "
+                        "Chạy `scripts/ke_sw_nt_calc.py` để tạo dữ liệu."
+                    )
+                else:
+                    for _nt in _nt_rows:
+                        (
+                            _bh_n, _pile_t, _L_d, _Z_m, _Z_src,
+                            _fill_m, _L_soil, _tip_d, _D_bot, _D_src,
+                            _L_req1, _marg1, _res1,
+                            _Rs, _tip_sym, _tip_su, _Rp, _RR, _W,
+                            _rat2, _res2, _warns,
+                        ) = _nt
+                        st.markdown(f"#### {_bh_n}")
+
+                        # Cảnh báo su mặc định (nếu có)
+                        if _warns:
+                            st.warning(
+                                "**Cảnh báo — su giả định:** Một số lớp không có dữ liệu "
+                                "VST/lab trong SQLite, đã dùng giá trị mặc định theo ký hiệu.\n\n"
+                                + "\n\n".join(f"- {w}" for w in _warns.split("; "))
+                            )
+
+                        _cn1, _cn2 = st.columns(2)
+                        with _cn1:
+                            st.markdown("**NT1 — Chiều dài xuyên qua lớp yếu**")
+                            st.metric(
+                                "Kết quả NT1", _res1,
+                                delta=f"Biên an toàn = {_marg1:+.2f} m",
+                                delta_color="normal" if _marg1 >= 0 else "inverse",
+                            )
+                            st.caption(
+                                f"L thiết kế = **{_L_d:.1f} m** | L yêu cầu = {_L_req1:.1f} m  \n"
+                                f"Đáy lớp mềm = {_D_bot:.2f} m [{_D_src}]  \n"
+                                f"Z mặt đất = {_Z_m:.3f} m [{_Z_src}] | "
+                                f"Đất đắp = {_fill_m:.2f} m | Trong đất = {_L_soil:.2f} m"
+                            )
+                        with _cn2:
+                            st.markdown("**NT2 — Sức kháng nhổ (TCVN 11823-10:2017)**")
+                            st.metric(
+                                "Kết quả NT2", _res2,
+                                delta=f"RR/W = {_rat2:.2f}",
+                                delta_color="normal" if _rat2 >= 1 else "inverse",
+                            )
+                            st.caption(
+                                f"Rs = {_Rs:.0f} kN | Rp = {_Rp:.0f} kN  \n"
+                                f"RR = φ × (Rs + Rp) = {_RR:.0f} kN | W = {_W:.0f} kN  \n"
+                                f"Lớp mũi cọc: **{_tip_sym}** (su = {_tip_su:.0f} kPa)"
+                            )
+
+                        # Bảng lớp đất NT2 — join với ke_sw_nt_detail (không ke_sw_design)
+                        _con2 = sqlite3.connect(str(_DB))
+                        _cur2 = _con2.cursor()
+                        _cur2.execute(
+                            "SELECT l.symbol, l.L_m, l.su_kPa, l.su_source, "
+                            "l.alpha, l.Rs_kN, l.note "
+                            "FROM ke_sw_nt2_layers l "
+                            "JOIN ke_sw_nt_detail d ON l.sw_design_id = d.id "
+                            "WHERE d.bh_name=? ORDER BY l.layer_order",
+                            (_bh_n,),
+                        )
+                        _lyrs = _cur2.fetchall()
+                        _con2.close()
+                        if _lyrs:
+                            _ldf = []
+                            for _sym, _Llyr, _su, _su_src, _alp, _Rs_lyr, _note in _lyrs:
+                                _ldf.append({
+                                    "Lớp đất": _sym,
+                                    "L (m)": round(_Llyr, 2),
+                                    "su (kPa)": round(_su, 1) if _su else 0,
+                                    "Nguồn su": _SRC_BADGE.get(_su_src or "", _su_src or ""),
+                                    "α": round(_alp, 3) if _alp else 0,
+                                    "Rs lớp (kN)": round(_Rs_lyr, 1),
+                                    "Chiều sâu": _note,
+                                })
+                            st.dataframe(
+                                pd.DataFrame(_ldf),
+                                hide_index=True,
+                                use_container_width=True,
+                            )
+                        st.caption(
+                            f"Cọc: {_pile_t} | L thiết kế = {_L_d:.1f} m | "
+                            f"Chiều sâu mũi cọc = {_tip_d:.2f} m  \n"
+                            "Nguồn su: 🟢 VST (cắt cánh) · 🔵 Lab (Cu/c thí nghiệm) · "
+                            "🟡 Giả định theo ký hiệu lớp (cần bổ sung thí nghiệm)"
+                        )
+                        st.divider()
+            except Exception as _exc_nt:
+                st.error(f"Lỗi khi đọc dữ liệu NT: {_exc_nt}")
+
+    # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
+    st.divider()
+    st.markdown("### C. Kiểm tra NT1 / NT2 — nhập thông số tùy chỉnh")
+    st.info(
+        "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
+        "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
+        "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
+    )
+
+    _col_form, _col_schem = st.columns([3, 2], gap="large")
+
+    with _col_form:
         _c1, _c2, _c3 = st.columns(3)
         with _c1:
-            _sw_sel   = st.selectbox("Loại cọc SW", _sw_names, index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0, key="sw_sel")
+            _sw_sel   = st.selectbox("Loại cọc SW", _sw_names,
+                                     index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
+                                     key="sw_sel")
             _L_des    = st.number_input("Chiều dài thiết kế L (m)", 10.0, 35.0, 29.0, 0.5, key="sw_L")
             _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
         with _c2:
@@ -4145,93 +4634,112 @@ if _page == "ke_sw":
             _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
             _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
             _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
+        _wc1, _wc2 = st.columns(2)
+        _water_lvl_c = _wc1.number_input("Mực nước (m)", -5.0, 3.0, -1.0, 0.5, key="sw_wlvl")
+        _bc_type_c   = _wc2.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"], key="sw_bc")
 
-        if st.button("Kiểm tra NT1 / NT2", type="primary", key="sw_check"):
-            _pile = _sw_by_name(_sw_sel)
-            if _pile is None:
-                st.error(f"Không tìm thấy cọc {_sw_sel} trong catalog.")
-            else:
-                # Thông số cọc
-                _TL_T   = _pile.get("weight_T", 0) or 0
-                _Lstd   = _pile.get("L_std_m", 1) or 1
-                _spc_m  = (_pile.get("width_mm", 996)) / 1000
-                _peri_m = (_pile.get("perimeter_mm") or 0) / 1000
-                _Ap_m2  = (_pile.get("Atd_cm2", 0) or 0) * 1e-4
-                _Mcr_kNm = (_pile.get("Mcr_Tm", 0) or 0) * 9.81
+    with _col_schem:
+        if _HAS_MPL:
+            _lyr_mid = _Z_nat - _H_lyr1
+            _pile_tip = _top_ke - _L_des
+            _layers_sch = [
+                ("Bùn sét", _Z_nat,    _lyr_mid,  16.0, 0.0),
+                ("Lớp cứng", _lyr_mid, _pile_tip,  18.0, 20.0),
+            ]
+            _fig_sch = draw_pile_schematic(
+                L_m=_L_des, water_lvl=_water_lvl_c, top_elev=_top_ke,
+                H_kN=0, M_kNm=0, layers=_layers_sch, bc_type=_bc_type_c,
+                soil_lvl_front=_Z_nat, soil_lvl_back=_Z_nat,
+                water_lvl_back=_water_lvl_c,
+            )
+            if _fig_sch:
+                st.pyplot(_fig_sch, use_container_width=True)
+                plt.close(_fig_sch)
 
-                # Trọng lượng cọc
-                _w_per_pile = _TL_T * 9.81 / _Lstd         # kN/m/cọc
-                _W_pile     = _w_per_pile * _L_des          # kN/cọc
+    if st.button("Kiểm tra NT1 / NT2", type="primary", key="sw_check"):
+        _pile = _sw_by_name(_sw_sel)
+        if _pile is None:
+            st.error(f"Không tìm thấy cọc {_sw_sel} trong catalog.")
+        else:
+            _TL_T    = _pile.get("weight_T", 0) or 0
+            _Lstd    = _pile.get("L_std_m", 1) or 1
+            _spc_m   = (_pile.get("width_mm", 996)) / 1000
+            _peri_m  = (_pile.get("perimeter_mm") or 0) / 1000
+            _Ap_m2   = (_pile.get("Atd_cm2", 0) or 0) * 1e-4
 
-                # NT1: chiều dài tối thiểu
-                _L_req_nt1  = _top_ke - _Z_nat + _H_lyr1 + _min_pen
-                _nt1_ok     = _L_des >= _L_req_nt1
-                _nt1_margin = _L_des - _L_req_nt1
+            _w_per_pile = _TL_T * 9.81 / _Lstd
+            _W_pile     = _w_per_pile * _L_des
 
-                # NT2: alpha-method
-                _fill_m   = _top_ke - _Z_nat
-                _L_soil_m = max(0.0, _L_des - _fill_m)
-                _Rs_kN    = _alpha_sw * _su_avg * _peri_m * _L_soil_m if _peri_m > 0 else 0
-                _Rp_kN    = 9.0 * _su_avg * _Ap_m2
-                _Rn_kN    = _Rs_kN + _Rp_kN
-                _RR_kN    = _phi_stat * _Rn_kN
-                _nt2_ok   = _RR_kN >= _W_pile
-                _ratio_nt2 = _RR_kN / _W_pile if _W_pile > 0 else 0
+            _L_req_nt1  = _top_ke - _Z_nat + _H_lyr1 + _min_pen
+            _nt1_ok     = _L_des >= _L_req_nt1
+            _nt1_margin = _L_des - _L_req_nt1
 
-                # Hiển thị
-                _r1, _r2, _r3, _r4 = st.columns(4)
-                _r1.metric("NT1 — L yêu cầu (m)", f"{_L_req_nt1:.1f}",
-                           f"{'Đạt' if _nt1_ok else 'Không đạt'} (biên {_nt1_margin:+.1f} m)",
-                           delta_color="normal" if _nt1_ok else "inverse")
-                _r2.metric("W cọc (kN)", f"{_W_pile:.1f}",
-                           f"{_TL_T:.2f} T × 9.81 / {_Lstd}m × {_L_des}m")
-                _r3.metric("RR = φ(Rs+Rp) (kN)", f"{_RR_kN:.1f}",
-                           f"Rs={_Rs_kN:.0f}  Rp={_Rp_kN:.0f}",
-                           delta_color="normal" if _nt2_ok else "inverse")
-                _r4.metric("NT2 — Tỷ số RR/W", f"{_ratio_nt2:.2f}",
-                           "Đạt" if _nt2_ok else "Không đạt",
-                           delta_color="normal" if _nt2_ok else "inverse")
+            _fill_m    = _top_ke - _Z_nat
+            _L_soil_m  = max(0.0, _L_des - _fill_m)
+            _Rs_kN     = _alpha_sw * _su_avg * _peri_m * _L_soil_m if _peri_m > 0 else 0
+            _Rp_kN     = 9.0 * _su_avg * _Ap_m2
+            _RR_kN     = _phi_stat * (_Rs_kN + _Rp_kN)
+            _nt2_ok    = _RR_kN >= _W_pile
+            _ratio_nt2 = _RR_kN / _W_pile if _W_pile > 0 else 0
 
-                st.divider()
-                _det = {
+            _r1, _r2, _r3, _r4 = st.columns(4)
+            _r1.metric("NT1 — L yêu cầu (m)", f"{_L_req_nt1:.1f}",
+                       f"{'Đạt' if _nt1_ok else 'Không đạt'} (biên {_nt1_margin:+.1f} m)",
+                       delta_color="normal" if _nt1_ok else "inverse")
+            _r2.metric("W cọc (kN)", f"{_W_pile:.1f}",
+                       f"{_TL_T:.2f} T × 9.81 / {_Lstd}m × {_L_des}m")
+            _r3.metric("RR = φ(Rs+Rp) (kN)", f"{_RR_kN:.1f}",
+                       f"Rs={_Rs_kN:.0f}  Rp={_Rp_kN:.0f}",
+                       delta_color="normal" if _nt2_ok else "inverse")
+            _r4.metric("NT2 — Tỷ số RR/W", f"{_ratio_nt2:.2f}",
+                       "Đạt" if _nt2_ok else "Không đạt",
+                       delta_color="normal" if _nt2_ok else "inverse")
+
+            st.dataframe(
+                pd.DataFrame({
                     "Thông số": [
-                        "Loại cọc", "Chiều dài L (m)", "Spacing (m)", "Chu vi (m)",
-                        "Diện tích mũi Ap (cm²)", "Trọng lượng w (kN/m/cọc)", "W cọc (kN)",
-                        "Phần đất đắp fill (m)", "Phần trong đất L_soil (m)",
-                        "Rs (kN)", "Rp (kN)", "RR = φ×(Rs+Rp) (kN)",
-                        "Kết quả NT2",
+                        "Loại cọc", "Chiều dài L (m)", "Spacing (m)", "Chu vi P (m)",
+                        "Diện tích mũi Ap (cm²)", "w (kN/m/cọc)", "W cọc (kN)",
+                        "Phần đất đắp (m)", "Phần trong đất L_soil (m)",
+                        "Rs (kN)", "Rp (kN)", "RR = φ×(Rs+Rp) (kN)", "Kết quả NT2",
                     ],
                     "Giá trị": [
                         _sw_sel, f"{_L_des:.1f}", f"{_spc_m:.3f}",
-                        f"{_peri_m:.4f}" if _peri_m > 0 else "– (thiếu trong catalog)",
+                        f"{_peri_m:.4f}" if _peri_m > 0 else "– (chưa có trong catalog)",
                         f"{_Ap_m2*1e4:.0f}",
                         f"{_w_per_pile:.2f}", f"{_W_pile:.1f}",
                         f"{_fill_m:.2f}", f"{_L_soil_m:.2f}",
                         f"{_Rs_kN:.1f}", f"{_Rp_kN:.1f}", f"{_RR_kN:.1f}",
                         "Đạt" if _nt2_ok else "Không đạt",
                     ],
-                }
-                st.dataframe(
-                    pd.DataFrame(_det).style.apply(
-                        lambda col: [
-                            "background-color:#d4edda" if "Đạt" in str(v) and "Không" not in str(v)
-                            else "background-color:#f8d7da" if "Không đạt" in str(v)
-                            else "" for v in col
-                        ],
-                        subset=["Giá trị"],
-                    ),
-                    use_container_width=True, hide_index=True,
+                }).style.apply(
+                    lambda col: [
+                        "background-color:#d4edda" if "Đạt" in str(v) and "Không" not in str(v)
+                        else "background-color:#f8d7da" if "Không đạt" in str(v)
+                        else "" for v in col
+                    ],
+                    subset=["Giá trị"],
+                ),
+                use_container_width=True, hide_index=True,
+            )
+
+            if _peri_m == 0:
+                st.warning(
+                    f"Cọc {_sw_sel} chưa có chu vi trong catalog (perimeter_mm = null). "
+                    "Rs = 0. Cần bổ sung thông số từ nhà sản xuất để tính NT2 chính xác."
                 )
+            st.caption(
+                "Công thức: Rs = α × Su × P × L_soil  |  "
+                "Rp = 9 × Su × Ap  |  RR = 0,35 × (Rs + Rp)  |  "
+                "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
+            )
 
-                if _peri_m == 0:
-                    st.warning(
-                        f"Cọc {_sw_sel} chưa có chu vi trong catalog (perimeter_mm = null). "
-                        "Rs = 0. Cần bổ sung thông số từ nhà sản xuất để tính NT2 chính xác."
-                    )
+# ── Placeholder: TKBVTC CDM ──────────────────────────────────────────────────
+if _page == "cdm_bvt":
+    st.markdown("## TKBVTC CDM")
+    st.info("Trang đang phát triển — thiết kế bản vẽ thi công CDM.")
 
-                st.caption(
-                    "Công thức: Rs = α × Su × P × L_soil  |  "
-                    "Rp = 9 × Su × Ap  |  RR = 0,35 × (Rs + Rp)  |  "
-                    "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
-                )
-
+# ── Placeholder: TKBVTC Cọc SW ───────────────────────────────────────────────
+if _page == "sw_bvt":
+    st.markdown("## TKBVTC Cọc SW")
+    st.info("Trang đang phát triển — thiết kế bản vẽ thi công cọc ván SW.")
