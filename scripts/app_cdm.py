@@ -7915,6 +7915,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
                 _ep_front_layers = []
                 _real_param_rows = []   # cho caption hiển thị nguồn
+                _ep_soil_types: list[str] = []
+                _ep_sus: list[float] = []
+                # Phân loại sét/cát theo symbol TCVN
+                _CLAY_SYMS = {"1", "XMD", "3", "5", "5A", "5B"}
+                _SAND_SYMS = {"F", "2A", "2B", "2C", "4", "6", "7"}
                 for _sym, _desc, _dt, _db in _real_lyrs:
                     if _dt is None or _db is None:
                         continue
@@ -7951,20 +7956,43 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     if _e_bot_ep < _dpy_top_ke - _dpy_L - 0.01:
                         _e_bot_ep = _dpy_top_ke - _dpy_L - 0.01
                     _g_sub_ep = max(float(_gam_v) - 9.81, 8.0)
+                    # Phân loại Sand/Clay theo SYMBOL TCVN (không theo phi)
+                    if _sym_u in _CLAY_SYMS:
+                        _soil_type = "Clay"
+                        # Clay: dùng c (cu) cho công thức Ka·σ'v - 2c√Ka
+                        _c_use = _c_for_lyr
+                    elif _sym_u in _SAND_SYMS:
+                        _soil_type = "Sand"
+                        # Sand: bỏ c (cohesionless) → Ka·σ'v
+                        _c_use = 0.0
+                    else:
+                        # Symbol lạ: dựa theo phi
+                        _soil_type = "Clay" if _c_for_lyr > 5.0 else "Sand"
+                        _c_use = _c_for_lyr if _soil_type == "Clay" else 0.0
+                    _ep_soil_types.append(_soil_type)
+                    _ep_sus.append(_c_use)
                     _ep_front_layers.append(_SL(
                         tip_elev=float(_e_bot_ep),
                         gamma=float(_gam_v),
                         gamma_sub=float(_g_sub_ep),
                         phi=float(_phi_v),
-                        c=float(_c_for_lyr),
+                        c=float(_c_use),
                         delta=float(_ep_delta),
                     ))
+                    # Tính Ka/Kp cho hiển thị
+                    import math as _math_kak
+                    _phi_r = _math_kak.radians(float(_phi_v))
+                    _ka_lyr = _math_kak.tan(_math_kak.radians(45 - float(_phi_v)/2))**2
+                    _kp_lyr = _math_kak.tan(_math_kak.radians(45 + float(_phi_v)/2))**2
                     _real_param_rows.append({
-                        "Lớp": _sym, "Mô tả": (_desc or "")[:30],
+                        "Lớp": _sym, "Mô tả": (_desc or "")[:25],
+                        "Loại": _soil_type,
                         "z (m)": f"{_dt:.1f}–{_db:.1f}",
                         "γ (kN/m³)": round(float(_gam_v), 1),
                         "φ (°)": round(float(_phi_v), 1),
-                        "c/cu (kPa)": round(_c_for_lyr, 1),
+                        "c/cu (kPa)": round(_c_use, 1),
+                        "Ka": round(_ka_lyr, 3),
+                        "Kp": round(_kp_lyr, 3),
                         "n mẫu": _n_samp or 0,
                     })
                 _con_lab.close()
@@ -7998,6 +8026,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     fill=_ep_fill,
                     ka_method=_ep_ka_method,
                     kp_method=_ep_kp_method,
+                    delta_deg=float(_ep_delta),
+                    front_soil_types=_ep_soil_types,
+                    front_sus=_ep_sus,
+                    back_soil_types=_ep_soil_types,
+                    back_sus=_ep_sus,
                 )
                 if _ep_res.get("fig"):
                     st.pyplot(_ep_res["fig"], use_container_width=True)
@@ -8010,16 +8043,24 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _ep_m3.metric("F Net (kN/m)", f"{_ep_res['F_net']:.1f}",
                                 f"tại z = {_ep_res['z_net']:+.2f}m (Active − Passive)")
 
-                # Bảng thông số đất từ lab_tests (transparency)
+                # Bảng thông số đất + Ka/Kp tính được
                 if _real_param_rows:
-                    st.markdown("**Thông số đất dùng tính áp lực — trung bình mẫu lab trong từng lớp:**")
+                    st.markdown("**Thông số đất dùng tính áp lực — từ SQLite lab_tests:**")
                     st.dataframe(pd.DataFrame(_real_param_rows),
                                   use_container_width=True, hide_index=True)
+                    st.markdown("**Công thức áp dụng (TCVN 11823-3:2017 §10.5):**")
+                    st.latex(r"\text{Đất sét: } \sigma_h^{active} = K_a \cdot \sigma'_v - 2c\sqrt{K_a}, \quad \sigma_h^{passive} = K_p \cdot \sigma'_v + 2c\sqrt{K_p}")
+                    st.latex(r"\text{Đất cát: } \sigma_h^{active} = K_a \cdot \sigma'_v, \quad \sigma_h^{passive} = K_p \cdot \sigma'_v \quad (c = 0)")
+                    st.latex(r"K_a = \tan^2(45° - \varphi/2), \quad K_p = \tan^2(45° + \varphi/2) \quad \text{(Rankine)}")
                     st.caption(
-                        f"Nguồn: SQLite `lab_tests` của HK `{_dpy_apply_bh}` "
-                        f"(γ, φ, c trung bình theo `depth_from_m`/`depth_to_m`). "
-                        f"Nếu φ=0 → dùng `Cu_UU` làm c. Thiếu mẫu → fallback theo TCVN symbol. "
-                        f"Tải mặt q = {_ep_surcharge:.0f} kN/m² · Ka {_ep_ka_method} (δ={_ep_delta}°)"
+                        f"**Nguồn:** SQLite `lab_tests` của HK `{_dpy_apply_bh}` — "
+                        f"γ, φ, c, Cu_UU trung bình theo `depth_from_m`/`depth_to_m`.  \n"
+                        f"**Phân loại Sand/Clay:** theo SYMBOL TCVN, KHÔNG theo φ "
+                        f"(Clay: 1, XMD, 3, 5, 5A, 5B; Sand: F, 2A-C, 4, 6, 7).  \n"
+                        f"**Sét:** dùng c = c_lab nếu có, ngược lại dùng Cu_UU. "
+                        f"**Cát:** c = 0 (cohesionless).  \n"
+                        f"**Tải mặt** q = {_ep_surcharge:.0f} kN/m² · "
+                        f"Ka {_ep_ka_method} (δ={_ep_delta}°)"
                     )
             except Exception as _e_ep:
                 st.warning(f"Không vẽ được biểu đồ áp lực đất: {_e_ep}")
