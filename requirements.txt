@@ -11,6 +11,7 @@ sympy>=1.14
 pydeck>=0.9
 reportlab>=4.0
 ezdxf>=1.4
+unidecode>=1.4
 shapely>=2.1
 sqlalchemy>=2.0
 geojson>=3.2
