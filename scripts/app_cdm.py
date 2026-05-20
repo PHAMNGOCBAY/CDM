@@ -8186,6 +8186,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         with _col_form_d:
             _df_c1, _df_c2, _df_c3 = st.columns(3)
             with _df_c1:
+                # Lọc cọc theo Mục B (chỉ cọc đã được kiến nghị ở B), fallback toàn catalog
+                _rec_piles_b = sorted({
+                    p for p in (st.session_state.get("ke_sw_rec_piles", {}) or {}).values() if p
+                })
                 _sw_opts_d = [n for n in _sw_names if n in _rec_piles_b] or _sw_names
                 _dpy_pile_idx = (_sw_opts_d.index("SW-840") if "SW-840" in _sw_opts_d else 0)
                 _dpy_pile = st.selectbox(
