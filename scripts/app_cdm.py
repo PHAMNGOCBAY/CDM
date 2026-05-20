@@ -9458,45 +9458,103 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                     },
                                 )
 
-                                # Biểu đồ overlay u(z), M(z), Q(z) cho 5 loại tải
-                                if _HAS_PLOTLY:
-                                    from plotly.subplots import make_subplots as _msub_cmp
-                                    _fig_cmp_lc = _msub_cmp(
-                                        rows=1, cols=3, shared_yaxes=True,
-                                        subplot_titles=("Chuyển vị u (mm)",
-                                                        "Moment M (kNm)",
-                                                        "Lực cắt Q (kN)"),
+                                # Biểu đồ matplotlib overlay 5 loại tải — đồng bộ style
+                                # với biểu đồ nội lực tổng (cao độ ref lines + Front/Back)
+                                try:
+                                    import matplotlib.pyplot as _plt_pl
+                                    _fig_pl, _axpl = _plt_pl.subplots(
+                                        1, 3, figsize=(13, 6.5), sharey=True,
                                     )
-                                    for _nm, _r in _comp_results.items():
-                                        _color = _comp_colors.get(_nm, "#666")
-                                        _zs_p = _r["zs"]
-                                        _el_p = [float(_dpy_top_ke) - z for z in _zs_p]
-                                        _el_mid_p = [float(_dpy_top_ke) - (_zs_p[i] + _zs_p[i+1])/2
-                                                      for i in range(len(_zs_p)-1)]
-                                        _lw = 2.5 if _nm == "TỔNG" else 1.3
-                                        _ls = None if _nm == "TỔNG" else "dot"
-                                        _fig_cmp_lc.add_trace(go.Scatter(
-                                            x=_r["ux"], y=_el_p, mode="lines",
-                                            line=dict(color=_color, width=_lw, dash=_ls),
-                                            name=_nm, legendgroup=_nm, showlegend=True,
-                                        ), row=1, col=1)
-                                        _fig_cmp_lc.add_trace(go.Scatter(
-                                            x=_r["Ms"], y=_el_mid_p, mode="lines",
-                                            line=dict(color=_color, width=_lw, dash=_ls),
-                                            name=_nm, legendgroup=_nm, showlegend=False,
-                                        ), row=1, col=2)
-                                        _fig_cmp_lc.add_trace(go.Scatter(
-                                            x=_r.get("Qs", []), y=_el_mid_p, mode="lines",
-                                            line=dict(color=_color, width=_lw, dash=_ls),
-                                            name=_nm, legendgroup=_nm, showlegend=False,
-                                        ), row=1, col=3)
-                                    _fig_cmp_lc.update_yaxes(title_text="Cao độ (m)", row=1, col=1)
-                                    _fig_cmp_lc.update_layout(
-                                        height=480, margin=dict(t=60, b=40),
-                                        legend=dict(orientation="h", y=-0.15),
-                                        title=f"Nội lực theo từng tải — {_dpy_pile} L={_Lw:.0f}m",
+
+                                    def _refs_pl(_ax):
+                                        if _cdm_thk_eff > 0:
+                                            _ax.axhspan(_cdm_bot_w, _cdm_top_w,
+                                                         alpha=0.10, color="green")
+                                        _ax.axhline(_top_w, color="#1565C0", lw=0.8, alpha=0.5)
+                                        _ax.axhline(_Z_w, color="#8B4513", lw=0.7, alpha=0.5)
+                                        _ax.axhline(_Zb_w, color="#FF6F00", lw=0.7, alpha=0.4)
+                                        _ax.axhline(_bun_bot_F, color="#8B4513",
+                                                     linestyle=":", lw=0.7, alpha=0.4)
+                                        _ax.axhline(_wlvl_F, color="cyan", lw=0.5, alpha=0.4)
+                                        _ax.axhline(_bot_pile_w, color="#444", lw=0.8, alpha=0.5)
+                                        if _cdm_thk_eff > 0:
+                                            _ax.axhline(_cdm_bot_w, color="green",
+                                                         linestyle="--", lw=0.7, alpha=0.4)
+
+                                    # Tính xmax cho mỗi panel để vừa khít
+                                    _xmax_u = max((max(abs(u) for u in _r["ux"])
+                                                    for _r in _comp_results.values()), default=10.0) * 1.1
+                                    _xmax_M = max((max(abs(m) for m in _r["Ms"])
+                                                    for _r in _comp_results.values()), default=10.0) * 1.1
+                                    _xmax_Q = max((max(abs(q) for q in _r.get("Qs", [0]))
+                                                    for _r in _comp_results.values()), default=10.0) * 1.1
+
+                                    for _i_p, (_ax_p, _xmax_p, _key, _xlbl, _ymid_key) in enumerate([
+                                        (_axpl[0], _xmax_u, "ux", "u (mm)", "_zs"),
+                                        (_axpl[1], _xmax_M, "Ms", "M (kNm)", "_mid"),
+                                        (_axpl[2], _xmax_Q, "Qs", "Q (kN)", "_mid"),
+                                    ]):
+                                        _refs_pl(_ax_p)
+                                        for _nm, _r in _comp_results.items():
+                                            _color = _comp_colors.get(_nm, "#666")
+                                            _zs_p = _r["zs"]
+                                            if _ymid_key == "_zs":
+                                                _ys = [float(_dpy_top_ke) - z for z in _zs_p]
+                                            else:
+                                                _ys = [float(_dpy_top_ke) - (_zs_p[i] + _zs_p[i+1])/2
+                                                        for i in range(len(_zs_p)-1)]
+                                            _xs = _r.get(_key, [])
+                                            if not _xs:
+                                                continue
+                                            _is_total = (_nm == "TỔNG")
+                                            _ax_p.plot(
+                                                _xs, _ys,
+                                                color=_color,
+                                                lw=2.5 if _is_total else 1.3,
+                                                ls="-" if _is_total else ":",
+                                                alpha=1.0 if _is_total else 0.85,
+                                                label=_nm,
+                                            )
+                                        _ax_p.axvline(0, color="black", lw=0.5)
+                                        _ax_p.set_xlim(-_xmax_p, _xmax_p)
+                                        _ax_p.set_xlabel(_xlbl)
+                                        _ax_p.grid(alpha=0.3)
+                                        # Cao độ chú thích bên phải
+                                        for _yv, _txt, _col in [
+                                            (_top_w,      f"top={_top_w:+.1f}",     "#1565C0"),
+                                            (_Z_w,        f"Z={_Z_w:+.1f}",         "#8B4513"),
+                                            (_bun_bot_F,  f"đáy bùn={_bun_bot_F:+.1f}", "#8B4513"),
+                                            (_Zb_w,       f"Zb={_Zb_w:+.1f}",       "#FF6F00"),
+                                            (_bot_pile_w, f"tip={_bot_pile_w:+.1f}", "#444"),
+                                        ]:
+                                            _ax_p.text(_xmax_p * 0.98, _yv, _txt, fontsize=5.5,
+                                                        color=_col, ha="right", va="center", alpha=0.75,
+                                                        bbox=dict(boxstyle="round,pad=0.1",
+                                                                  facecolor="white", edgecolor="none",
+                                                                  alpha=0.55))
+
+                                    _axpl[0].set_ylabel("Cao độ (m)")
+                                    _axpl[0].set_title("Chuyển vị u(z)", fontsize=10)
+                                    _axpl[1].set_title("Moment M(z)", fontsize=10)
+                                    _axpl[2].set_title("Lực cắt Q(z)", fontsize=10)
+                                    # Mcr trên panel M
+                                    _Mcr_pl = _res_d1["Mcr_kNm"]
+                                    _axpl[1].axvline(_Mcr_pl, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    _axpl[1].axvline(-_Mcr_pl, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    # u=±25mm trên panel u
+                                    _axpl[0].axvline(25, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    _axpl[0].axvline(-25, color="red", linestyle="--", lw=0.8, alpha=0.7)
+
+                                    _axpl[0].legend(fontsize=7, loc="lower left", framealpha=0.85)
+                                    _fig_pl.suptitle(
+                                        f"Nội lực theo từng loại tải trọng — {_dpy_pile} L={_Lw:.0f}m",
+                                        fontsize=11, fontweight="bold",
                                     )
-                                    st.plotly_chart(_fig_cmp_lc, use_container_width=True)
+                                    _plt_pl.tight_layout()
+                                    st.pyplot(_fig_pl, use_container_width=True)
+                                    _plt_pl.close(_fig_pl)
+                                except Exception as _e_pl_mpl:
+                                    st.caption(f"_(Không vẽ được biểu đồ per-tải mpl: {_e_pl_mpl})_")
                         except Exception as _e_per_load:
                             st.caption(f"_(Không vẽ được phân tích per-tải: {_e_per_load})_")
 
