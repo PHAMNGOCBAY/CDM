@@ -7709,84 +7709,95 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         with _col_schem_d:
             if _HAS_MPL:
                 _pile_tip_d = _dpy_top_ke - _dpy_L
-                # Đáy lớp bùn sét — DÙNG CHUNG cả 2 phía (giả định cùng đáy lớp 1)
-                _clay_bot_elev = _dpy_Z - _dpy_H1
-                _layers_F = [
-                    ("Bùn sét",  _dpy_Z,        _clay_bot_elev, 16.0, 0.0),
-                    ("Lớp cứng", _clay_bot_elev, _pile_tip_d,   18.0, 20.0),
-                ]
-                _layers_B = [
-                    ("Bùn sét",  _dpy_Zb,       _clay_bot_elev, 16.0, 0.0),
-                    ("Lớp cứng", _clay_bot_elev, _pile_tip_d,   18.0, 20.0),
-                ]
 
-                # ── 2m lớp đất dưới chân cừ — query SQLite từ HK gần nhất ──
-                _below_layers_F: list = []
-                _below_layers_B: list = []
+                # ── Lấy TẤT CẢ lớp đất từ SQLite cho HK đang áp ──────────────
+                _all_layers_F: list = []
+                _all_layers_B: list = []
+                _has_real_layers = False
                 if _dpy_apply_bh and _dpy_apply_bh != "(không áp)":
                     try:
-                        # Lấy elevation của HK đang áp + layers từ DB
-                        _con_below = sqlite3.connect(str(_DB))
-                        _cur_below = _con_below.cursor()
-                        _row_bh = _cur_below.execute(
+                        _con_real = sqlite3.connect(str(_DB))
+                        _cur_real = _con_real.cursor()
+                        _row_bh_r = _cur_real.execute(
                             "SELECT id, elevation_m FROM boreholes WHERE name LIKE ? LIMIT 1",
                             (f"%{_dpy_apply_bh}%",),
                         ).fetchone()
-                        if _row_bh:
-                            _bh_id_bel, _bh_elev_bel = _row_bh
-                            _bh_elev_bel = _bh_elev_bel or 0.0
-                            _ly_below = _cur_below.execute(
-                                "SELECT symbol, description, depth_top_m, depth_bot_m "
-                                "FROM layers WHERE borehole_id=? ORDER BY depth_top_m",
-                                (_bh_id_bel,),
+                        if _row_bh_r:
+                            _bh_id_r, _bh_elev_r = _row_bh_r
+                            _bh_elev_r = _bh_elev_r or 0.0
+                            _ly_real = _cur_real.execute(
+                                "SELECT symbol, description, depth_top_m, depth_bot_m, "
+                                "thickness_m FROM layers WHERE borehole_id=? "
+                                "ORDER BY depth_top_m",
+                                (_bh_id_r,),
                             ).fetchall()
-                            # Pile tip depth from BH surface
-                            _tip_depth = float(_bh_elev_bel) - _pile_tip_d
-                            _max_depth = _tip_depth + 2.0   # 2m dưới chân cừ
-                            for _sym, _desc, _dt, _db in _ly_below:
+                            _max_depth_r = float(_bh_elev_r) - _pile_tip_d + 2.0
+                            for _sym, _desc, _dt, _db, _thk in _ly_real:
+                                # Sử dụng depth_top/bot nếu có, fallback theo thickness
                                 if _dt is None or _db is None:
-                                    continue
-                                # Chỉ lấy layers giao [pile_tip_depth, pile_tip_depth + 2m]
-                                if _db < _tip_depth or _dt > _max_depth:
-                                    continue
-                                # Convert depth → elev
-                                _e_top = _bh_elev_bel - max(_dt, _tip_depth)
-                                _e_bot = _bh_elev_bel - min(_db, _max_depth)
-                                _gam_b = 18.5 if _sym in ("4", "F") else 19.0
-                                _phi_b = 28.0 if _sym in ("4", "F") else 22.0
-                                _nm_b  = f"L{_sym}: {(_desc or '')[:18]}"
-                                _below_layers_F.append((_nm_b, _e_top, _e_bot, _gam_b, _phi_b))
-                                _below_layers_B.append((_nm_b, _e_top, _e_bot, _gam_b, _phi_b))
-                        _con_below.close()
+                                    if _thk is None:
+                                        continue
+                                    _dt = sum(L[2] - L[1] if L[2] is None else 0
+                                              for L in _ly_real)  # bo qua neu thieu
+                                # Bo lop o ngoai pham vi
+                                if _db is None or _db > _max_depth_r:
+                                    if _dt is None or _dt > _max_depth_r:
+                                        continue
+                                    _db = _max_depth_r
+                                _e_top_r = _bh_elev_r - _dt
+                                _e_bot_r = _bh_elev_r - _db
+                                # γ/φ theo symbol thuc te
+                                _sym_l = (_sym or "").upper()
+                                if _sym_l == "F":
+                                    _gam_r, _phi_r = 18.0, 28.0
+                                elif _sym_l in ("1", "XMD"):
+                                    _gam_r, _phi_r = 15.0, 0.0
+                                elif _sym_l == "3":
+                                    _gam_r, _phi_r = 17.0, 12.0
+                                elif _sym_l == "4":
+                                    _gam_r, _phi_r = 19.0, 30.0
+                                elif _sym_l in ("5", "5A", "5B"):
+                                    _gam_r, _phi_r = 19.5, 25.0
+                                else:
+                                    _gam_r, _phi_r = 18.0, 20.0
+                                _nm_r = f"L{_sym}: {(_desc or '')[:18]}"
+                                _all_layers_F.append((_nm_r, _e_top_r, _e_bot_r, _gam_r, _phi_r))
+                                # Back side: cùng layers, shift theo Z_back nếu khác Z_front
+                                _shift = float(_dpy_Zb) - float(_bh_elev_r)
+                                _all_layers_B.append((_nm_r, _e_top_r + _shift,
+                                                        _e_bot_r + _shift, _gam_r, _phi_r))
+                            _has_real_layers = len(_all_layers_F) > 0
+                        _con_real.close()
                     except Exception:
                         pass
 
-                _layers_F.extend(_below_layers_F)
-                _layers_B.extend(_below_layers_B)
+                _layers_F = _all_layers_F
+                _layers_B = _all_layers_B
 
-                _fig_sch_d = draw_pile_schematic(
-                    L_m=_dpy_L + 2.0,   # vẽ thêm 2m bên dưới chân cừ
-                    water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
-                    H_kN=_dpy_H, M_kNm=_dpy_M,
-                    layers=_layers_F, bc_type=_dpy_bc,
-                    soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Zb,
-                    water_lvl_back=_dpy_wlvl_b,
-                    back_layers=_layers_B,
-                )
-                if _fig_sch_d:
-                    st.pyplot(_fig_sch_d, use_container_width=True)
-                    plt.close(_fig_sch_d)
-                # H1_back auto = Zb - clay_bot_elev (cùng đáy lớp bùn)
-                _H1b_auto = _dpy_Zb - _clay_bot_elev
-                _dpy_H1b  = _H1b_auto   # dùng cho tính toán p-y nếu cần
-                _below_src = (f"từ HK {_dpy_apply_bh}" if _below_layers_F
-                               and _dpy_apply_bh != "(không áp)" else "giả định")
-                st.caption(
-                    f"**Front:** Z={_dpy_Z:+.2f}m · MN={_dpy_wlvl:+.2f}m · Su={_dpy_su:.0f} kPa · H₁={_dpy_H1:.1f}m  \n"
-                    f"**Back:** Z={_dpy_Zb:+.2f}m · MN={_dpy_wlvl_b:+.2f}m · Su={_dpy_sub:.0f} kPa · "
-                    f"H₁ auto = {_H1b_auto:.1f}m (đáy chung {_clay_bot_elev:+.2f}m)  \n"
-                    f"**Dưới chân cừ 2m:** {len(_below_layers_F)} lớp ({_below_src})"
-                )
+                if _has_real_layers:
+                    _fig_sch_d = draw_pile_schematic(
+                        L_m=_dpy_L + 2.0,
+                        water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
+                        H_kN=_dpy_H, M_kNm=_dpy_M,
+                        layers=_layers_F, bc_type=_dpy_bc,
+                        soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Zb,
+                        water_lvl_back=_dpy_wlvl_b,
+                        back_layers=_layers_B,
+                    )
+                    if _fig_sch_d:
+                        st.pyplot(_fig_sch_d, use_container_width=True)
+                        plt.close(_fig_sch_d)
+                    st.caption(
+                        f"**Front:** Z={_dpy_Z:+.2f}m · MN={_dpy_wlvl:+.2f}m · Su={_dpy_su:.0f} kPa  \n"
+                        f"**Back:** Z={_dpy_Zb:+.2f}m · MN={_dpy_wlvl_b:+.2f}m · Su={_dpy_sub:.0f} kPa  \n"
+                        f"**Lớp đất:** {len(_layers_F)} lớp từ HK `{_dpy_apply_bh}` "
+                        f"(bao gồm 2m dưới chân cừ); KHÔNG dùng giá trị giả định."
+                    )
+                else:
+                    st.warning(
+                        "**Chưa có lớp đất để vẽ.** Cần chọn HK ở \"Áp dữ liệu HK từ Mục B\" "
+                        "ở trên — lớp đất sẽ được lấy trực tiếp từ SQLite, không dùng giá trị giả định."
+                    )
 
         # Nút tính
         _dpy_btn_c1, _dpy_btn_c2 = st.columns([1, 4])
