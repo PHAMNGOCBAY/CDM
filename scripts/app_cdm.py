@@ -8334,11 +8334,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             "**Streamlit Cloud:** kiểm tra build log → xem deps có cài được không."
         )
     else:
-        _solver_used = ("PyNiteFEA" if _HAS_PYNITE
-                         else "anastruct (fallback)")
+        # Ưu tiên anastruct (ổn định trên Streamlit Cloud); PyNite là fallback
+        _solver_used = ("anastruct" if _HAS_ANASTRUCT
+                         else "PyNiteFEA (fallback)")
         _caption_extra = ""
-        if not _HAS_PYNITE and _pynite_err:
-            _caption_extra = f" — PyNite lỗi: `{_pynite_err}`"
+        if not _HAS_ANASTRUCT and _anastruct_err:
+            _caption_extra = f" — anastruct lỗi: `{_anastruct_err}`"
         st.caption(f"_Solver Winkler hiện dùng: **{_solver_used}**{_caption_extra}_")
 
     if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có solver
@@ -8359,8 +8360,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     "rồi khởi động lại Streamlit."
                 )}
 
-            # Path PyNite — sạch, không phụ thuộc legacy code
-            if _HAS_PYNITE:
+            # Path PyNite — sạch, không phụ thuộc legacy code.
+            # Chỉ dùng khi anastruct không có (anastruct là solver chính trên Cloud)
+            if _HAS_PYNITE and not _HAS_ANASTRUCT:
                 _pl_obj = _sw_by_name(pile_name)
                 if not _pl_obj:
                     return {"error": f"Không có cọc {pile_name}"}
