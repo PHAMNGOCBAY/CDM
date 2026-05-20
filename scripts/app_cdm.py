@@ -3134,8 +3134,8 @@ elif _page == "params":
                 help="Cao độ đỉnh mặt đường thiết kế",
             )
             _top_clay_now = _get("cdm_top_clay")
+            _cdtk_now     = _get("cdm_CDTK")
             _H = ld["z_tk"] - _top_clay_now
-            st.info(f"H = {ld['z_tk']:+.2f} − {_top_clay_now:+.2f} = **{_H:.2f} m**")
             if _H < 0:
                 st.error("Cao độ TK thấp hơn đỉnh bùn → H < 0")
             _hdr_style = "font-size:12px; font-weight:600; color:#444; margin-bottom:2px"
@@ -3149,21 +3149,31 @@ elif _page == "params":
             ld["g_road"] = _cg.number_input("g_road", 10.0, 30.0, ld.get("g_road", 24.0), 0.5, key="g_road", label_visibility="collapsed")
 
             _cl, _ch, _cg = st.columns([1.5, 1, 1])
-            _cl.markdown(_t("fill"))
+            _cl.markdown("*He — cát đắp:*")
             ld["h_fill"] = _ch.number_input("h_fill", 0.0, 5.0, ld.get("h_fill", 1.5), 0.1, key="h_fill", label_visibility="collapsed")
             ld["g_fill"] = _cg.number_input("g_fill", 10.0, 24.0, ld.get("g_fill", 18.0), 0.5, key="g_fill", label_visibility="collapsed")
 
             _cl, _ch, _cg = st.columns([1.5, 1, 1])
-            _cl.markdown(_t("mat"))
+            _cl.markdown("*Hse — đệm cát:*")
             ld["h_mat"] = _ch.number_input("h_mat", 0.0, 2.0, ld.get("h_mat", 0.4), 0.1, key="h_mat", label_visibility="collapsed")
             ld["g_mat"] = _cg.number_input("g_mat", 10.0, 26.0, ld.get("g_mat", 22.5), 0.5, key="g_mat", label_visibility="collapsed")
-            _z_road_calc = _get("cdm_CDTK") + ld["h_mat"] + ld["h_fill"] + ld["h_road"]
+
+            # Ràng buộc: z_tk = CDTK + Hse + He + h_đường
+            _Hse       = ld["h_mat"]
+            _He        = ld["h_fill"]
+            _h_road    = ld["h_road"]
+            _fill_gap  = _cdtk_now - _top_clay_now          # cát đắp từ đỉnh bùn lên đỉnh cọc
+            _H_parts   = _fill_gap + _Hse + _He + _h_road   # H theo hình học
+            _z_road_calc = _cdtk_now + _Hse + _He + _h_road
+            st.info(
+                f"H = (CDTK − đỉnh bùn) + Hse + He + h_đường\n\n"
+                f"= {_fill_gap:.2f} + {_Hse:.2f} + {_He:.2f} + {_h_road:.2f} = **{_H_parts:.2f} m**"
+            )
             _dz = ld["z_tk"] - _z_road_calc
             if abs(_dz) > 0.05:
                 st.warning(
-                    f"Cao độ TK nhập ({ld['z_tk']:+.2f} m) lệch so với hình học "
-                    f"CDTK+Hse+He+h_đường = **{_z_road_calc:+.2f} m** (Δ={_dz:+.2f} m). "
-                    f"Nhấn nút bên dưới để đồng bộ."
+                    f"Cao độ TK nhập ({ld['z_tk']:+.2f} m) ≠ "
+                    f"CDTK + Hse + He + h_đường = **{_z_road_calc:+.2f} m** (Δ = {_dz:+.2f} m)."
                 )
                 if st.button("Đồng bộ cao độ TK = hình học", key="sync_ztk"):
                     ld["z_tk"] = round(_z_road_calc, 2)
