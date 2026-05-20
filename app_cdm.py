@@ -4146,8 +4146,11 @@ elif _page == "params":
                 v = _su_avg_in_range(zone_code, depth_top, depth_bot)
                 return v, ref_bh, 0.0  # cùng zone tổng hợp → no dist concept
 
-            _src_log = []   # list các (field, source_msg)
-            # 1. top_clay (cao độ đỉnh lớp bùn = elev - depth của lớp 1 đầu tiên)
+            # ── Lưu metadata để tô xanh label + caption nguồn ─────────────────
+            _applied = st.session_state.get("_applied_fields", {})
+
+            _src_log = []
+            # 1. top_clay
             _cp = _clay_params(_ap_bh, _ap_zone)
             if _cp:
                 _layers = _load_layers(_ap_bh)
@@ -4157,47 +4160,53 @@ elif _page == "params":
                     _depth_top = _first_clay["depth_top_m"]
                     _top_clay_v = round(_cp["elevation_m"] - _depth_top, 2)
                     st.session_state["cdm_top_clay"] = _top_clay_v
+                    _applied["cdm_top_clay"] = {"src": _ap_bh, "dist_m": None,
+                                                "value": _top_clay_v}
                     _src_log.append(("Cao độ đỉnh lớp bùn",
                                      f"từ {_ap_bh} (depth_top={_depth_top:.2f}m, elev={_cp['elevation_m']:.2f}m)"))
 
                 # 2. h_clay
                 st.session_state["cdm_h_clay"] = _cp["h_clay"]
                 st.session_state["cdm_Lc"]    = round(_cp["h_clay"] + 1.5, 1)
+                _applied["cdm_h_clay"] = {"src": _ap_bh, "dist_m": None,
+                                          "value": _cp["h_clay"]}
                 _src_log.append(("Bề dày lớp bùn", f"từ {_ap_bh} h_clay={_cp['h_clay']}m"))
             else:
-                # Fallback: chưa có layer cho HK này — báo lỗi
                 _src_log.append(("Lớp bùn", "HK không có dữ liệu lớp"))
 
-            # 3. Su trung bình (VST trong depth range lớp bùn)
+            # 3. Su
             _depth_bot_clay = _cp.get("depth_clay_bot", 30) if _cp else 30
             _su = _su_avg_in_range(_ap_zone, 0, _depth_bot_clay)
             if _su:
                 st.session_state["cdm_Su"] = _su
+                _applied["cdm_Su"] = {"src": f"VST zone {_ap_zone}", "dist_m": None,
+                                      "value": _su}
                 _src_log.append(("Su trung bình", f"VST zone {_ap_zone} trong 0–{_depth_bot_clay:.1f}m"))
             else:
                 _src_log.append(("Su trung bình", "không có VST — giữ giá trị cũ"))
 
-            # 4. γ trung bình
+            # 4. γ — ưu tiên HK hiện tại, nearest fallback
             _g = _gamma_avg(_ap_bh)
             if _g and _g != 15.0:
                 st.session_state["cdm_gamma"] = _g
+                _applied["cdm_gamma"] = {"src": _ap_bh, "dist_m": None, "value": _g}
                 _src_log.append(("γ tự nhiên", f"lab_tests {_ap_bh}"))
             else:
-                # Nearest fallback
                 _g_n, _g_bh, _g_dist = _gamma_nearest(_ap_bh, _DB)
                 if _g_n:
                     st.session_state["cdm_gamma"] = _g_n
+                    _applied["cdm_gamma"] = {"src": _g_bh, "dist_m": _g_dist,
+                                             "value": _g_n}
                     _src_log.append(("γ tự nhiên",
                                      f"**HK gần nhất {_g_bh} (cách {_g_dist:.0f} m)** — γ={_g_n} kN/m³"))
                 else:
                     _src_log.append(("γ tự nhiên", "không có γ — giữ giá trị mặc định 15.0"))
 
-            # Set cdm_bh + zone luôn
             st.session_state["cdm_bh"]   = _ap_bh
             st.session_state["cdm_zone"] = _ap_zone
+            st.session_state["_applied_fields"] = _applied
 
-            # Báo cáo nguồn
-            st.success(f"Đã áp địa chất từ **{_ap_bh}**")
+            st.success(f"Đã áp địa chất từ **{_ap_bh}** — các ô có nhãn xanh là số liệu vừa áp")
             for _fname, _src in _src_log:
                 st.caption(f"• **{_fname}** ← {_src}")
             st.rerun()
@@ -4248,11 +4257,43 @@ elif _page == "params":
 
         with c3:
             st.markdown(f"**{_t('geo_params')}**")
-            top_clay = st.number_input(_t("top_clay_lbl"), -20.0, 20.0,
-                                       _get("cdm_top_clay"), 0.1)
-            h_clay  = st.number_input(_t("h_clay_lbl"), 1.0, 60.0, _get("cdm_h_clay"), 0.5)
-            Su      = st.number_input(_t("su_lbl"), 1.0, 100.0, _get("cdm_Su"), 0.5)
-            gamma   = st.number_input(_t("gamma_lbl"), 10.0, 22.0, _get("cdm_gamma"), 0.1)
+            # Helper: label xanh + caption nguồn nếu field đã được áp
+            _apf = st.session_state.get("_applied_fields", {})
+
+            def _lbl(key: str, base: str) -> str:
+                return f":blue[{base}]" if key in _apf else base
+
+            def _src_cap(key: str) -> None:
+                if key not in _apf:
+                    return
+                info = _apf[key]
+                src = info.get("src", "?")
+                dist = info.get("dist_m")
+                txt = f"← áp từ **{src}**"
+                if dist:
+                    txt += f" _(cách {dist:.0f} m)_"
+                st.markdown(f":blue[{txt}]")
+
+            top_clay = st.number_input(_lbl("cdm_top_clay", _t("top_clay_lbl")),
+                                       -20.0, 20.0, _get("cdm_top_clay"), 0.1)
+            _src_cap("cdm_top_clay")
+            h_clay  = st.number_input(_lbl("cdm_h_clay", _t("h_clay_lbl")),
+                                       1.0, 60.0, _get("cdm_h_clay"), 0.5)
+            _src_cap("cdm_h_clay")
+            Su      = st.number_input(_lbl("cdm_Su", _t("su_lbl")),
+                                       1.0, 100.0, _get("cdm_Su"), 0.5)
+            _src_cap("cdm_Su")
+            gamma   = st.number_input(_lbl("cdm_gamma", _t("gamma_lbl")),
+                                       10.0, 22.0, _get("cdm_gamma"), 0.1)
+            _src_cap("cdm_gamma")
+
+            # Detect user manual override → remove "applied" flag
+            for _k, _new_v in (("cdm_top_clay", top_clay), ("cdm_h_clay", h_clay),
+                               ("cdm_Su", Su), ("cdm_gamma", gamma)):
+                if _k in _apf and abs(_apf[_k].get("value", _new_v) - _new_v) > 1e-6:
+                    _apf.pop(_k, None)
+            st.session_state["_applied_fields"] = _apf
+
             st.info(_t("bot_clay_info", v=top_clay - h_clay))
             Es_show = 250 * Su
             st.info(f"Es = 250×Su = {int(Es_show):,} kN/m²")
