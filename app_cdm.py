@@ -7662,8 +7662,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                           key="dpy_H_load")
                 _dpy_M = st.number_input("Mô-men đầu cọc M (kNm/m)", 0.0, 500.0, 0.0, 10.0,
                                           key="dpy_M_load")
-                _dpy_cdm_thk = st.number_input("Bề dày CDM tăng cường (m)", 0.0, 10.0, 3.0, 0.5,
-                                                 key="dpy_cdm_thk")
+                _dpy_q_op = st.number_input("Tải trọng khai thác q (kN/m²)", 0.0, 200.0, 20.0, 2.5,
+                                              key="dpy_q_operation",
+                                              help="Tải trọng thường xuyên trên mặt Front (xe, người, công trình). "
+                                                   "Boussinesq công thức (39) TCVN 11823-3 §10.6.2.")
             st.caption(
                 "**Quy ước:** **Front (TRÁI)** = phía đất đắp / mặt đường / xe chạy / người đi / "
                 "tải trọng công trình → áp lực + tải trọng đẩy cừ SW về phía Back. "
@@ -7671,14 +7673,18 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 "Cừ SW làm tâm sơ đồ; mặt đất + lớp đất hai bên thường khác nhau "
                 "(Front có fill cao hơn, Back đào xuống thấp)."
             )
-            _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4 = st.columns(4)
+            _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4, _dpy_w5 = st.columns(5)
             _dpy_eps50 = _dpy_w1.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
                                                  key="dpy_eps50", format="%.3f")
-            _dpy_kf    = _dpy_w2.number_input("Hệ số tăng k_h CDM", 1.0, 10.0, 4.0, 0.5,
-                                                 key="dpy_kf")
-            _dpy_wlvl  = _dpy_w3.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
+            _dpy_q_a   = _dpy_w2.number_input("a — khoảng cách tải (m)", 0.0, 20.0, 0.0, 0.5,
+                                                 key="dpy_q_a",
+                                                 help="a=0: tải sát tường; a>0: tải lùi ra xa")
+            _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 50.0, 1.0,
+                                                 key="dpy_q_w",
+                                                 help="w ≥ 100m ≈ tải vô hạn")
+            _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
                                                  key="dpy_wlvl")
-            _dpy_bc    = _dpy_w4.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"],
+            _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"],
                                             key="dpy_bc")
 
             # ── Hàng nhập đất phía Back (phía đào / sông) ───────────────────
@@ -7755,13 +7761,6 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     except Exception:
                         pass
 
-                # Nếu không có dữ liệu SQLite → giả định 2m lớp cát chặt
-                if not _below_layers_F:
-                    _below_layers_F.append(("Cát chặt (gd)", _pile_tip_d,
-                                              _pile_tip_d - 2.0, 19.0, 30.0))
-                    _below_layers_B.append(("Cát chặt (gd)", _pile_tip_d,
-                                              _pile_tip_d - 2.0, 19.0, 30.0))
-
                 _layers_F.extend(_below_layers_F)
                 _layers_B.extend(_below_layers_B)
 
@@ -7799,9 +7798,34 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
                 pile_name=_dpy_pile, L_m=float(_dpy_L),
                 H_kNm=float(_dpy_H), M_kNm=float(_dpy_M),
-                cdm_thk_m=float(_dpy_cdm_thk), eps50=float(_dpy_eps50),
-                k_cdm_factor=float(_dpy_kf),
+                cdm_thk_m=0.0, eps50=float(_dpy_eps50),
+                k_cdm_factor=1.0,
             )
+            # ── Tính tải Boussinesq từ surcharge khai thác ────────────────────
+            try:
+                import sys as _sys_b
+                _sys_b.path.insert(0, str(_ROOT / "scripts"))
+                from boussinesq_surcharge import (
+                    SurchargeStrip as _Strip,
+                    BoussiGeometry as _Geom,
+                    delta_ph_at_elev as _dph_at,
+                )
+                _bs_strip = _Strip(
+                    q=float(_dpy_q_op), a=float(_dpy_q_a), w=float(_dpy_q_w),
+                    ref_surface=float(_dpy_Z), side="Front",
+                    label=f"Tải khai thác q={_dpy_q_op} kN/m²",
+                )
+                # Profile Boussinesq từ mặt đất Front xuống chân cừ
+                import numpy as _np_b
+                _e_top_bs = float(_dpy_Z)
+                _e_tip_bs = float(_dpy_top_ke - _dpy_L)
+                _elevs_bs = _np_b.linspace(_e_top_bs, _e_tip_bs, 40)
+                _dph_bs   = [_dph_at(e, _bs_strip, _e_top_bs) for e in _elevs_bs]
+                _F_bs     = float(_np_b.trapezoid(_dph_bs, -_elevs_bs))
+            except Exception as _eb:
+                _dph_bs = None
+                _F_bs   = 0.0
+
             if "error" in _res_d1:
                 st.error(_res_d1["error"])
             else:
@@ -7817,13 +7841,14 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                              delta_color="normal" if _M_d1 < _Mcr_d1 else "inverse")
                 _r3.metric("EI cọc (kNm²)", f"{_res_d1['EI_kNm2']:.0f}")
                 _r4.metric("D cọc (mm)", f"{_res_d1['D_mm']:.0f}")
-                # Plot u, M, k_h
+                # Plot u, M, k_h, Boussinesq
                 if _HAS_PLOTLY:
                     from plotly.subplots import make_subplots as _mksub_d1
-                    _fig_d1r = _mksub_d1(rows=1, cols=3, shared_yaxes=True,
+                    _fig_d1r = _mksub_d1(rows=1, cols=4, shared_yaxes=True,
                                           subplot_titles=("Chuyển vị u (mm)",
                                                           "Mô-men M (kNm/m)",
-                                                          "k_h (kN/m²)"))
+                                                          "k_h (kN/m²)",
+                                                          "Δp_h Boussinesq (kN/m²)"))
                     _zs_d1 = _res_d1["zs"]
                     _fig_d1r.add_trace(go.Scatter(x=_res_d1["ux"], y=_zs_d1,
                                                     mode="lines+markers",
@@ -7840,13 +7865,25 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                     marker=dict(size=4),
                                                     fill="tozerox",
                                                     name="k_h"), row=1, col=3)
-                    _fig_d1r.add_hline(y=_dpy_cdm_thk, line_dash="dash",
-                                        line_color="#9C27B0",
-                                        annotation_text=f"Đáy CDM ({_dpy_cdm_thk}m)")
+                    # Boussinesq Δp_h
+                    if _dph_bs is not None:
+                        _depth_bs = [_dpy_Z - e for e in _elevs_bs]
+                        _fig_d1r.add_trace(go.Scatter(x=_dph_bs, y=_depth_bs,
+                                                        mode="lines+markers",
+                                                        line=dict(color="#FF6F00", width=2),
+                                                        marker=dict(size=4),
+                                                        fill="tozerox",
+                                                        name="Δp_h"), row=1, col=4)
                     _fig_d1r.update_yaxes(autorange="reversed", title_text="Độ sâu (m)")
-                    _fig_d1r.update_layout(height=420, showlegend=False,
-                                            title="p-y Winkler — chuyển vị, mô-men, k_h theo độ sâu")
+                    _fig_d1r.update_layout(height=440, showlegend=False,
+                                            title=f"p-y Winkler — u, M, k_h + Boussinesq Δp_h từ tải q={_dpy_q_op} kN/m²")
                     st.plotly_chart(_fig_d1r, use_container_width=True)
+                    if _F_bs > 0:
+                        st.caption(
+                            f"**Hợp lực Boussinesq:** F = {_F_bs:.1f} kN/m "
+                            f"(tải q = {_dpy_q_op} kN/m², a = {_dpy_q_a} m, w = {_dpy_q_w} m). "
+                            f"TCVN 11823-3 §10.6.2 công thức (39)."
+                        )
 
         st.markdown("---")
         # ─── Lý thuyết & công thức p-y ───────────────────────────────────────
