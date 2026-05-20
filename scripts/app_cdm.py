@@ -9,6 +9,7 @@ import io
 import json
 import math
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -3102,10 +3103,43 @@ _components_pdf.html("""
 """, height=0)
 
 st.sidebar.divider()
+st.sidebar.markdown("### Xuất PDF")
+
+# Import module pdf_export
+try:
+    import sys as _sys_pdf
+    _sys_pdf.path.insert(0, str(_ROOT / "scripts"))
+    from pdf_export import (
+        build_all_pdf as _pdf_all,
+        build_params_pdf as _pdf_params,
+        build_settlement_pdf as _pdf_settle,
+        build_ke_sw_pdf as _pdf_kesw,
+    )
+    _HAS_PDF = True
+except Exception as _e_pdf:
+    _HAS_PDF = False
+    st.sidebar.caption(f"_(reportlab chưa cài: {_e_pdf})_")
+
+if _HAS_PDF:
+    # Nút xuất PDF tổng hợp
+    try:
+        _pdf_all_bytes = _pdf_all(
+            dict(st.session_state),
+            _DB,
+            st.session_state.get("sl_result"),
+        )
+        st.sidebar.download_button(
+            "Xuất PDF Tổng hợp (tất cả tab)",
+            data=_pdf_all_bytes,
+            file_name=f"BaoCao_TongHop_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            type="primary",
+        )
+    except Exception as _e_all:
+        st.sidebar.warning(f"Không tạo PDF tổng hợp: {_e_all}")
 st.sidebar.caption(
-    "**In trang / Xuất PDF**  \n"
-    "Nhấn `Ctrl+P` (Windows) hoặc `⌘+P` (Mac) → chọn **Save as PDF**.  \n"
-    "*Mở các expander muốn in trước khi nhấn.*"
+    "_Hoặc nhấn `Ctrl+P` → Save as PDF (in nguyên trang web)._"
 )
 
 
@@ -4230,6 +4264,20 @@ elif _page == "params":
         st.pyplot(_fig_grd, use_container_width=True)
         _fig_grd.clf()
 
+    # ── Xuất PDF tab này ──────────────────────────────────────────────────────
+    if _HAS_PDF:
+        st.divider()
+        try:
+            _pdf_p = _pdf_params(dict(st.session_state))
+            st.download_button(
+                "Xuất PDF tab Thông số CDM",
+                data=_pdf_p,
+                file_name=f"ThongSoCDM_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as _e:
+            st.warning(f"Không tạo PDF: {_e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -5438,6 +5486,24 @@ TCCS 41:2022 yêu cầu ΔS ≤ {_cmp['residual_limit_cm']:.0f} cm
                 "Nguyên nhân: đất yếu bị nào xuống, cần thêm đắp bù → tăng tải trọng → tăng lún thêm."
             )
 
+        # ── Xuất PDF tab Dự báo lún ──────────────────────────────────────────
+        if _HAS_PDF:
+            st.divider()
+            try:
+                _pdf_s = _pdf_settle(
+                    dict(st.session_state),
+                    st.session_state.get("sl_result"),
+                )
+                st.download_button(
+                    "Xuất PDF tab Dự báo lún",
+                    data=_pdf_s,
+                    file_name=f"DuBaoLun_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+            except Exception as _e:
+                st.warning(f"Không tạo PDF: {_e}")
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE KE_SW – CỌC VÁN THÉP DỰ ỨNG LỰC SW (KÈ CÔNG VIÊN)
@@ -6201,6 +6267,21 @@ if _page == "ke_sw":
                 st.plotly_chart(_fig_cmp, use_container_width=True)
     except Exception as _e_cmp:
         st.warning(f"Không thực hiện được so sánh 4 phương pháp: {_e_cmp}")
+
+    # ── Xuất PDF tab Cọc ván SW ──────────────────────────────────────────────
+    if _HAS_PDF:
+        st.divider()
+        try:
+            _pdf_k = _pdf_kesw(_DB)
+            st.download_button(
+                "Xuất PDF tab Cọc ván SW",
+                data=_pdf_k,
+                file_name=f"CocVanSW_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+            )
+        except Exception as _e:
+            st.warning(f"Không tạo PDF: {_e}")
 
 # ── Placeholder: TKBVTC CDM ──────────────────────────────────────────────────
 if _page == "cdm_bvt":
