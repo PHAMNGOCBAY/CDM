@@ -5110,101 +5110,68 @@ if _page == "params":   # tiếp nội dung Kết quả CDM (gộp vào tab Thô
         # Tải tĩnh (bỏ hoạt tải xe) — dùng riêng cho lún
         _q_st_settle = q_static(_get("cdm_loads"))
         _is_tri = arr == "triangle"
-        arr_label = (_t("arr_tri") + ": a = π·D²/(2√3·e²)"
-                     if _is_tri else _t("arr_sq") + ": a = π·D²/(4·e²)")
-        if _get("lang") == "VN":
-            steps = [
-                ("Khoảng cách trụ", "e", f"{s['e (m)']} m"),
-                ("Tỷ lệ thay thế", arr_label, f"{s['a']:.4f}  ({s['a (%)']:.1f}%)"),
-                ("Mô đun trụ CDM", "Ec = 100·Cc = 100·(qu/2)", f"{int(Ec):,} kN/m²"),
-                ("Mô đun đất nền", "Es = 250·Su", f"{int(Es):,} kN/m²"),
-                ("Mô đun tương đương", "Etb = a·Ec + (1−a)·Es", f"{int(Etb):,} kN/m²"),
-                ("Tải trọng tĩnh (bỏ hoạt tải)", "q_tĩnh = đắp + đệm + mặt đường",
-                 f"{_q_st_settle:.2f} kN/m²"),
-                ("Chiều dài trụ", "Lc", f"{Lc:.1f} m"),
-                ("Độ lún bản thân CDM", "S₁ = q_tĩnh·Lc/Etb × 100", f"{s['S₁ (cm)']:.2f} cm"),
-                ("Độ lún dưới mũi trụ", "S₂ = 0 (trụ xuyên qua lớp bùn)", "0,00 cm"),
-                ("Tổng độ lún", "S = S₁ + S₂", f"{s['S₁ (cm)']:.2f} cm"),
-            ]
-        else:
-            steps = [
-                ("Pile spacing", "e", f"{s['e (m)']} m"),
-                ("Area replacement ratio", arr_label, f"{s['a']:.4f}  ({s['a (%)']:.1f}%)"),
-                ("CDM column modulus", "Ec = 100·Cc = 100·(qu/2)", f"{int(Ec):,} kN/m²"),
-                ("Soil modulus", "Es = 250·Su", f"{int(Es):,} kN/m²"),
-                ("Equivalent modulus", "Etb = a·Ec + (1−a)·Es", f"{int(Etb):,} kN/m²"),
-                ("Static load (no traffic)", "q_static = fill + mat + road",
-                 f"{_q_st_settle:.2f} kN/m²"),
-                ("Pile length", "Lc", f"{Lc:.1f} m"),
-                ("CDM block settlement", "S₁ = q_static·Lc/Etb × 100", f"{s['S₁ (cm)']:.2f} cm"),
-                ("Settlement below pile tip", "S₂ = 0 (pile through soft clay)", "0.00 cm"),
-                ("Total settlement", "S = S₁ + S₂", f"{s['S₁ (cm)']:.2f} cm"),
-            ]
-        df_steps = pd.DataFrame(steps, columns=[_CP, _CF, _CV])
-        st.dataframe(df_steps, use_container_width=True, hide_index=True,
-                     column_config={_CF: st.column_config.TextColumn(width="medium")})
+        _a_fmla = (r"$a = \dfrac{\pi D^2}{2\sqrt{3}\, e^2}$ (tam giác)"
+                   if _is_tri else r"$a = \dfrac{\pi D^2}{4 e^2}$ (vuông)")
+        # Bảng markdown với LaTeX inline ($...$) — render qua KaTeX
+        _rows_md = [
+            ("Khoảng cách trụ", "$e$", f"{s['e (m)']} m"),
+            ("Tỷ lệ thay thế", _a_fmla, f"{s['a']:.4f}  ({s['a (%)']:.1f}%)"),
+            ("Mô đun trụ CDM", r"$E_c = 100 \cdot C_c = 100 \cdot \dfrac{q_u}{2}$",
+             f"{int(Ec):,} kN/m²"),
+            ("Mô đun đất nền", r"$E_s = 250 \cdot S_u$", f"{int(Es):,} kN/m²"),
+            ("Mô đun tương đương", r"$E_{tb} = a \cdot E_c + (1-a) \cdot E_s$",
+             f"{int(Etb):,} kN/m²"),
+            ("Tải trọng tĩnh (bỏ hoạt tải)",
+             r"$q_{\text{tĩnh}} = h_{\text{đắp}}\gamma + h_{\text{đệm}}\gamma + h_{\text{đường}}\gamma$",
+             f"{_q_st_settle:.2f} kN/m²"),
+            ("Chiều dài trụ", "$L_c$", f"{Lc:.1f} m"),
+            ("Độ lún bản thân CDM",
+             r"$S_1 = \dfrac{q_{\text{tĩnh}} \cdot L_c}{E_{tb}} \times 100$",
+             f"{s['S₁ (cm)']:.2f} cm"),
+            ("Độ lún dưới mũi trụ", "$S_2 = 0$ (trụ xuyên qua lớp bùn)", "0,00 cm"),
+            ("Tổng độ lún", "$S = S_1 + S_2$", f"{s['S₁ (cm)']:.2f} cm"),
+        ]
+        # Build markdown table
+        _md = "| Thông số | Công thức | Giá trị |\n|---|---|---|\n"
+        for _name, _fml, _val in _rows_md:
+            _md += f"| {_name} | {_fml} | **{_val}** |\n"
+        st.markdown(_md)
         st.caption(
-            f"_Lưu ý: lún dùng tải tĩnh ($q_{{tĩnh}} = {_q_st_settle:.1f}$ kN/m²) — "
-            f"bỏ hoạt tải xe. Tải tổng ($q = {q:.1f}$ kN/m²) dùng riêng cho sức chịu tải bên._"
+            f"_Lưu ý: lún dùng tải tĩnh $q_{{tĩnh}} = {_q_st_settle:.1f}$ kN/m² "
+            f"(bỏ hoạt tải xe). Tải tổng $q = {q:.1f}$ kN/m² dùng riêng cho sức chịu tải._"
         )
-        # ── Công thức LaTeX ─────────────────────────────────────────────────
-        with st.expander("Công thức LaTeX — lún CDM"):
-            st.latex(r"a_{\text{tam giác}} = \frac{\pi D^2}{2\sqrt{3}\, e^2} \quad ; \quad "
-                     r"a_{\text{vuông}} = \frac{\pi D^2}{4 e^2}")
-            st.latex(r"E_c = 100 \cdot C_c = 100 \cdot \frac{q_u}{2}")
-            st.latex(r"E_s = 250 \cdot S_u \quad \text{(tương quan Mesri)}")
-            st.latex(r"E_{tb} = a \cdot E_c + (1 - a) \cdot E_s")
-            st.latex(r"S_1 = \frac{q_{\text{tĩnh}} \cdot L_c}{E_{tb}} \times 100 \quad \text{(cm)}")
-            st.latex(r"S = S_1 + S_2 \;,\quad S_2 = 0 \text{ (trụ CDM xuyên hết lớp bùn)}")
 
     with col_r:
         st.markdown(f"**{_t('bearing_calc')}**")
         bc = calc_bearing(D, Lc, Cc, Su)
-        if _get("lang") == "VN":
-            sct_steps = [
-                ("Diện tích cắt ngang", "Ac = π·D²/4", f"{math.pi*D**2/4:.4f} m²"),
-                ("Sức chịu tải mũi", "Qult_mũi = 9·Cc·Ac", f"{bc['Qult_col']:.1f} kN"),
-                ("Sức chịu tải thân", "Qult_thân = π·D·Lc·Cu", f"{bc['Qult_skin']:.1f} kN"),
-                ("Tổng sức chịu tải", "Qult = Qmũi + Qthân", f"{bc['Qult']:.1f} kN"),
-                ("Sức chịu tải cho phép", "Qa = Qult / FS = Qult / 2", f"{bc['Qa']:.1f} kN"),
-                ("Ứng suất đầu cọc", "σ_col = (Ec/Etb) × q", f"{s['σ_col (kN/m²)']:.1f} kN/m²"),
-                ("Lực nén lên 1 trụ", "Pcol = σ_col × Ac", f"{s['Pcol (kN)']:.1f} kN"),
-                ("Kiểm tra", "Pcol < Qa ?", s["Đạt SCT"]),
-            ]
-        else:
-            sct_steps = [
-                ("Cross-section area", "Ac = π·D²/4", f"{math.pi*D**2/4:.4f} m²"),
-                ("Tip resistance", "Qult_tip = 9·Cc·Ac", f"{bc['Qult_col']:.1f} kN"),
-                ("Skin resistance", "Qult_skin = π·D·Lc·Cu", f"{bc['Qult_skin']:.1f} kN"),
-                ("Total capacity", "Qult = Qtip + Qskin", f"{bc['Qult']:.1f} kN"),
-                ("Allowable capacity", "Qa = Qult / FS = Qult / 2", f"{bc['Qa']:.1f} kN"),
-                ("Stress on pile head", "σ_col = (Ec/Etb) × q", f"{s['σ_col (kN/m²)']:.1f} kN/m²"),
-                ("Load on single pile", "Pcol = σ_col × Ac", f"{s['Pcol (kN)']:.1f} kN"),
-                ("Check", "Pcol < Qa ?", s["Đạt SCT"]),
-            ]
-        df_sct = pd.DataFrame(sct_steps, columns=[_CP, _CF, _CV])
-
-        def _color_sct(val):
-            if val == "Đạt":       return "color: green; font-weight: bold"
-            if val == "Không đạt": return "color: red; font-weight: bold"
-            return ""
-
-        st.dataframe(df_sct.style.map(_color_sct, subset=[_CV]),
-                     use_container_width=True, hide_index=True,
-                     column_config={_CF: st.column_config.TextColumn(width="medium")})
+        _ok_sct = s["Đạt SCT"] == "Đạt"
+        _sct_check = ("**:green[Đạt]**" if _ok_sct else "**:red[Không đạt]**")
+        _sct_rows_md = [
+            ("Diện tích cắt ngang", r"$A_c = \dfrac{\pi D^2}{4}$",
+             f"{math.pi*D**2/4:.4f} m²"),
+            ("Sức chịu tải mũi", r"$Q_{ult,\text{mũi}} = 9 \cdot C_c \cdot A_c$",
+             f"{bc['Qult_col']:.1f} kN"),
+            ("Sức chịu tải thân", r"$Q_{ult,\text{thân}} = \pi \cdot D \cdot L_c \cdot C_u$",
+             f"{bc['Qult_skin']:.1f} kN"),
+            ("Tổng sức chịu tải",
+             r"$Q_{ult} = Q_{ult,\text{mũi}} + Q_{ult,\text{thân}}$",
+             f"{bc['Qult']:.1f} kN"),
+            ("Sức chịu tải cho phép", r"$Q_a = \dfrac{Q_{ult}}{FS}, \; FS = 2$",
+             f"{bc['Qa']:.1f} kN"),
+            ("Ứng suất đầu cọc",
+             r"$\sigma_{col} = \dfrac{E_c}{E_{tb}} \cdot q_{\text{tổng}}$",
+             f"{s['σ_col (kN/m²)']:.1f} kN/m²"),
+            ("Lực nén lên 1 trụ", r"$P_{col} = \sigma_{col} \cdot A_c$",
+             f"{s['Pcol (kN)']:.1f} kN"),
+            ("Kiểm tra", r"$P_{col} < Q_a \;?$", _sct_check),
+        ]
+        _md_sct = "| Thông số | Công thức | Giá trị |\n|---|---|---|\n"
+        for _name, _fml, _val in _sct_rows_md:
+            _md_sct += f"| {_name} | {_fml} | **{_val}** |\n"
+        st.markdown(_md_sct)
         st.caption(
-            f"_Sức chịu tải dùng tải tổng ($q = {q:.1f}$ kN/m²) — **bao gồm hoạt tải xe** (TCVN 9403 Phụ lục B)._"
+            f"_Sức chịu tải dùng tải tổng $q = {q:.1f}$ kN/m² — **bao gồm hoạt tải xe** (TCVN 9403 Phụ lục B)._"
         )
-        # ── Công thức LaTeX — sức chịu tải ─────────────────────────────────
-        with st.expander("Công thức LaTeX — sức chịu tải TCVN 9403 Phụ lục B"):
-            st.latex(r"A_c = \frac{\pi D^2}{4}")
-            st.latex(r"Q_{ult,\text{mũi}} = 9 \cdot C_c \cdot A_c")
-            st.latex(r"Q_{ult,\text{thân}} = \pi \cdot D \cdot L_c \cdot C_u")
-            st.latex(r"Q_{ult} = Q_{ult,\text{mũi}} + Q_{ult,\text{thân}}")
-            st.latex(r"Q_a = \frac{Q_{ult}}{FS} \;,\quad FS = 2")
-            st.latex(r"\sigma_{col} = \frac{E_c}{E_{tb}} \cdot q_{\text{tổng}}")
-            st.latex(r"P_{col} = \sigma_{col} \cdot A_c")
-            st.latex(r"\textbf{Đạt SCT} \;\Leftrightarrow\; P_{col} < Q_a")
 
     st.divider()
     st.markdown(f"**{_t('punch_res')}**")
