@@ -7715,8 +7715,13 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                           -5.0, 3.0, -0.80, 0.05, key="dpy_Z")
                 _dpy_H1 = st.number_input(_dlbl("dpy_H1", "Chiều dày lớp bùn sét H₁ (m)"),
                                             5.0, 35.0, 22.0, 0.5, key="dpy_H1")
-                _dpy_su = st.number_input(_dlbl("dpy_su", "Su trung bình lớp bùn (kN/m²)"),
-                                            5.0, 50.0, 10.0, 1.0, key="dpy_su")
+                _dpy_su = st.number_input(
+                    _dlbl("dpy_su", "Ctd lớp đất xử lý nền Front (kN/m²)"),
+                    value=0.0, step=1.0, key="dpy_su",
+                    help="Lực dính tương đương của lớp đất Front sau khi xử lý nền (CDM). "
+                         "Chỉ áp dụng cho Front — Back giữ Su tự nhiên. "
+                         "Dùng làm Ctd cho Phương án 3 (thay lớp bùn = đất nền tương đương)."
+                )
             with _df_c3:
                 _dpy_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 30.0, 5.0,
                                           key="dpy_H_load")
@@ -7878,8 +7883,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         st.pyplot(_fig_sch_d, use_container_width=True)
                         plt.close(_fig_sch_d)
                     st.caption(
-                        f"**Front:** Z={_dpy_Z:+.2f}m · MN={_dpy_wlvl:+.2f}m · Su={_dpy_su:.0f} kPa  \n"
-                        f"**Back:** Z={_dpy_Zb:+.2f}m · MN={_dpy_wlvl_b:+.2f}m · Su={_dpy_sub:.0f} kPa  \n"
+                        f"**Front:** Z={_dpy_Z:+.2f}m · MN={_dpy_wlvl:+.2f}m · "
+                        f"Ctd_Front (xử lý nền)={_dpy_su:.0f} kPa  \n"
+                        f"**Back:** Z={_dpy_Zb:+.2f}m · MN={_dpy_wlvl_b:+.2f}m · "
+                        f"Su_Back (tự nhiên)={_dpy_sub:.0f} kPa  \n"
                         f"**Lớp đất:** {len(_layers_F)} lớp từ HK `{_dpy_apply_bh}` "
                         f"(bao gồm 2m dưới chân cừ); KHÔNG dùng giá trị giả định."
                     )
@@ -8272,23 +8279,21 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 st.markdown("### Phương án 3 — Thay lớp bùn bằng đất nền tương đương")
                 _pa3_in1, _pa3_in2 = st.columns([3, 2])
                 with _pa3_in1:
-                    _dpy_ctd = st.number_input(
-                        "Ctd — Lực dính tương đương lớp bùn sau xử lý (kN/m²)",
-                        value=0.0, step=1.0,
-                        key="dpy_ctd_pa3",
-                        help=(f"Gợi ý từ tab Thiết kế CDM: "
-                              f"C_td = a·qu/2 + (1−a)·Su = {_cdm_a_pa3:.3f}·{_cdm_qu/2:.0f} "
-                              f"+ {1-_cdm_a_pa3:.3f}·{_cdm_Su_t:.1f} = "
-                              f"**{_c_td_pa3:.1f} kPa** "
-                              f"(D={_cdm_D:.2f}m, e={_cdm_e:.2f}m, {_cdm_arr})")
+                    st.info(
+                        f"**Ctd dùng từ ô \"Ctd lớp đất xử lý nền Front\" ở form trên: "
+                        f"= {_dpy_su:.1f} kPa**  \n"
+                        f"Gợi ý tính theo công thức tab Thiết kế CDM: "
+                        f"C_td = a·qu/2 + (1−a)·Su = {_cdm_a_pa3:.3f}·{_cdm_qu/2:.0f} "
+                        f"+ {1-_cdm_a_pa3:.3f}·{_cdm_Su_t:.1f} = **{_c_td_pa3:.1f} kPa** "
+                        f"(D={_cdm_D:.2f}m, e={_cdm_e:.2f}m, {_cdm_arr})"
                     )
                 with _pa3_in2:
-                    if st.button(f"Áp gợi ý {_c_td_pa3:.1f} kPa", key="btn_apply_ctd"):
-                        st.session_state["dpy_ctd_pa3"] = float(round(_c_td_pa3, 1))
+                    if st.button(f"Áp gợi ý Ctd = {_c_td_pa3:.1f} kPa", key="btn_apply_ctd"):
+                        st.session_state["dpy_su"] = float(round(_c_td_pa3, 1))
                         st.rerun()
 
-                # Tính PA3 dùng Ctd USER nhập (thay vì auto-computed)
-                _C_td_use = float(_dpy_ctd) if _dpy_ctd > 0 else 0.0
+                # Tính PA3 dùng Ctd = _dpy_su (ô Ctd lớp đất xử lý nền Front)
+                _C_td_use = float(_dpy_su) if _dpy_su > 0 else 0.0
                 _ep_front_layers_pa3 = []
                 _ep_soil_types_pa3   = []
                 _ep_sus_pa3          = []
