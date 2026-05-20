@@ -8251,12 +8251,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         st.pyplot(_ep_res_cdm["fig"], use_container_width=True)
                         plt.close(_ep_res_cdm["fig"])
                     _c1m, _c2m, _c3m = st.columns(3)
-                    _c1m.metric("F Active", f"{_ep_res_cdm['F_active']:.0f}", "kN/m",
-                                  f"Δ {_ep_res_cdm['F_active']-_ep_res['F_active']:+.0f}",
+                    _c1m.metric("F Active (kN/m)", f"{_ep_res_cdm['F_active']:.0f}",
+                                  delta=f"Δ {_ep_res_cdm['F_active']-_ep_res['F_active']:+.0f}",
                                   delta_color="inverse")
-                    _c2m.metric("F Passive", f"{_ep_res_cdm['F_passive']:.0f}", "kN/m")
-                    _c3m.metric("F Net", f"{_ep_res_cdm['F_net']:.0f}", "kN/m",
-                                  f"Δ {_ep_res_cdm['F_net']-_ep_res['F_net']:+.0f}",
+                    _c2m.metric("F Passive (kN/m)", f"{_ep_res_cdm['F_passive']:.0f}")
+                    _c3m.metric("F Net (kN/m)", f"{_ep_res_cdm['F_net']:.0f}",
+                                  delta=f"Δ {_ep_res_cdm['F_net']-_ep_res['F_net']:+.0f}",
                                   delta_color="inverse")
                     st.caption(
                         f"Front: fill {_dpy_top_ke:+.2f}m → z_mat = {_z_mat_top:+.2f}m "
