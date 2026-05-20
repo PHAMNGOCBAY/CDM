@@ -8232,7 +8232,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 # Hiển thị 2 biểu đồ PA1 + PA2 cạnh nhau
                 _ep_left, _ep_mid = st.columns(2, gap="medium")
                 with _ep_left:
-                    st.markdown("**(1) TRƯỚC xử lý nền — nguyên trạng**")
+                    st.markdown("**(1) SAU khi xử lý nền**")
                     if _ep_res.get("fig"):
                         _ep_res["fig"].set_size_inches(8, 4.8)
                         for _ax in _ep_res["fig"].axes:
@@ -8387,13 +8387,26 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             _dpy_run = st.button("Tính p-y Winkler", type="primary", key="btn_dpy_run")
 
         if _dpy_run:
+            # Lấy chiều dài CDM từ tab "Thiết kế CDM" (session_state)
+            # cdm_Lc = chiều dài cọc CDM total; cdm_L_ngam = phần ngàm vào đất tốt
+            # → phần CDM trong soft soil = cdm_Lc − cdm_L_ngam
+            _cdm_Lc_val = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
+            _cdm_Lng_val = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
+            _cdm_thk_eff = max(0.0, _cdm_Lc_val - _cdm_Lng_val)
+            _k_cdm_fac = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
             _res_d1 = _calc_py_winkler(
                 bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
                 pile_name=_dpy_pile, L_m=float(_dpy_L),
                 H_kNm=float(_dpy_H), M_kNm=float(_dpy_M),
-                cdm_thk_m=0.0, eps50=float(_dpy_eps50),
-                k_cdm_factor=1.0,
+                cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
+                k_cdm_factor=_k_cdm_fac,
             )
+            if _cdm_thk_eff > 0:
+                st.caption(
+                    f"CDM gia cố từ tab Thiết kế: Lc={_cdm_Lc_val:.1f}m, "
+                    f"ngàm={_cdm_Lng_val:.1f}m → vùng tăng cường k_h: "
+                    f"{_cdm_thk_eff:.1f}m (factor ×{_k_cdm_fac:.1f})"
+                )
             # ── Tính tải Boussinesq từ surcharge khai thác ────────────────────
             try:
                 import sys as _sys_b
