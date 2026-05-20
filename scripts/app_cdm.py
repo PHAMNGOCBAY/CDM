@@ -8084,6 +8084,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     water_elev_back=float(_dpy_wlvl_b),
                     surcharge_front=float(_ep_surcharge),
                 )
+                # Tính trước xử lý nền (PA1: dùng đầy đủ Front layers)
                 _ep_res = _ep_compute(
                     _ep_geom,
                     front_layers=_ep_front_layers,
@@ -8097,16 +8098,60 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     back_soil_types=_ep_soil_types,
                     back_sus=_ep_sus,
                 )
-                if _ep_res.get("fig"):
-                    st.pyplot(_ep_res["fig"], use_container_width=True)
-                    plt.close(_ep_res["fig"])
-                _ep_m1, _ep_m2, _ep_m3 = st.columns(3)
-                _ep_m1.metric("F Active (kN/m)", f"{_ep_res['F_active']:.1f}",
-                                f"tại z = {_ep_res['z_active']:+.2f}m")
-                _ep_m2.metric("F Passive (kN/m)", f"{_ep_res['F_passive']:.1f}",
-                                f"tại z = {_ep_res['z_passive']:+.2f}m")
-                _ep_m3.metric("F Net (kN/m)", f"{_ep_res['F_net']:.1f}",
-                                f"tại z = {_ep_res['z_net']:+.2f}m (Active − Passive)")
+                # Tính sau xử lý nền CDM (PA2: Front chỉ còn fill, không có sét yếu)
+                _ep_res_cdm = _ep_compute(
+                    _ep_geom,
+                    front_layers=[],   # nền đã xử lý CDM → không tính áp lực sét yếu
+                    back_layers=_ep_back_layers,
+                    fill=_ep_fill,
+                    ka_method=_ep_ka_method,
+                    kp_method=_ep_kp_method,
+                    delta_deg=float(_ep_delta),
+                    front_soil_types=[],
+                    front_sus=[],
+                    back_soil_types=_ep_soil_types,
+                    back_sus=_ep_sus,
+                )
+
+                # Hiển thị 2 biểu đồ cạnh nhau (thu nhỏ để so sánh)
+                _ep_left, _ep_right = st.columns(2, gap="medium")
+                with _ep_left:
+                    st.markdown("**(1) TRƯỚC xử lý nền — nguyên trạng**")
+                    if _ep_res.get("fig"):
+                        _ep_res["fig"].set_size_inches(8, 4.8)
+                        for _ax in _ep_res["fig"].axes:
+                            _ax.tick_params(labelsize=7)
+                            if _ax.get_title():
+                                _ax.set_title(_ax.get_title(), fontsize=8)
+                        st.pyplot(_ep_res["fig"], use_container_width=True)
+                        plt.close(_ep_res["fig"])
+                    _e1, _e2, _e3 = st.columns(3)
+                    _e1.metric("F Active", f"{_ep_res['F_active']:.0f}", "kN/m")
+                    _e2.metric("F Passive", f"{_ep_res['F_passive']:.0f}", "kN/m")
+                    _e3.metric("F Net", f"{_ep_res['F_net']:.0f}", "kN/m")
+                    st.caption(f"Front: fill + {len(_ep_front_layers)} lớp tự nhiên · "
+                                 f"Back: {len(_ep_back_layers)} lớp")
+
+                with _ep_right:
+                    st.markdown("**(2) SAU xử lý nền CDM — Front chỉ còn đất đắp**")
+                    if _ep_res_cdm.get("fig"):
+                        _ep_res_cdm["fig"].set_size_inches(8, 4.8)
+                        for _ax in _ep_res_cdm["fig"].axes:
+                            _ax.tick_params(labelsize=7)
+                            if _ax.get_title():
+                                _ax.set_title(_ax.get_title(), fontsize=8)
+                        st.pyplot(_ep_res_cdm["fig"], use_container_width=True)
+                        plt.close(_ep_res_cdm["fig"])
+                    _c1m, _c2m, _c3m = st.columns(3)
+                    _c1m.metric("F Active", f"{_ep_res_cdm['F_active']:.0f}", "kN/m",
+                                  f"Δ {_ep_res_cdm['F_active']-_ep_res['F_active']:+.0f}",
+                                  delta_color="inverse")
+                    _c2m.metric("F Passive", f"{_ep_res_cdm['F_passive']:.0f}", "kN/m")
+                    _c3m.metric("F Net", f"{_ep_res_cdm['F_net']:.0f}", "kN/m",
+                                  f"Δ {_ep_res_cdm['F_net']-_ep_res['F_net']:+.0f}",
+                                  delta_color="inverse")
+                    st.caption("Front: chỉ fill (lớp yếu thay bằng CDM) · "
+                                 f"Back: {len(_ep_back_layers)} lớp")
 
                 # Bảng thông số đất + Ka/Kp tính được
                 if _real_param_rows:
