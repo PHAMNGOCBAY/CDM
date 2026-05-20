@@ -8098,12 +8098,38 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     back_soil_types=_ep_soil_types,
                     back_sus=_ep_sus,
                 )
-                # Tính sau xử lý nền CDM (PA2: Front chỉ còn fill, không có sét yếu)
+                # ── PA2: SAU xử lý nền CDM ───────────────────────────────────
+                # Front: fill chỉ tác dụng từ top_ke xuống đỉnh đệm XMC (z_mat).
+                # Dưới z_mat là khối CDM → không có áp lực đất Active trên Front.
+                _cdm_loads_d = st.session_state.get("cdm_loads", {})
+                _cdm_CDTK    = st.session_state.get("cdm_CDTK", 0.8)
+                _cdm_h_mat   = _cdm_loads_d.get("h_mat", 0.4)
+                _z_mat_top   = float(_cdm_CDTK) + float(_cdm_h_mat)   # đỉnh đệm XMC
+
+                # Geometry PA2: soil_level_front = z_mat (đỉnh đệm)
+                _ep_geom_cdm = _EpG(
+                    top_elev=float(_dpy_top_ke),
+                    pile_length=float(_dpy_L),
+                    soil_level_front=_z_mat_top,
+                    soil_level_back=float(_dpy_Zb),
+                    water_elev_front=float(_dpy_wlvl),
+                    water_elev_back=float(_dpy_wlvl_b),
+                    surcharge_front=float(_ep_surcharge),
+                )
+                # Fill PA2: dùng cùng thông số fill từ D.1 user nhập
+                _ep_fill_cdm = _SL(
+                    tip_elev=_z_mat_top,    # fill kết thúc tại đỉnh đệm
+                    gamma=float(_dpy_gamma_fill),
+                    gamma_sub=float(_dpy_gamma_sub_fill),
+                    phi=float(_dpy_phi_fill),
+                    c=float(_dpy_c_fill),
+                    delta=float(_ep_delta),
+                )
                 _ep_res_cdm = _ep_compute(
-                    _ep_geom,
-                    front_layers=[],   # nền đã xử lý CDM → không tính áp lực sét yếu
+                    _ep_geom_cdm,
+                    front_layers=[],   # CDM blocks → không lớp tự nhiên Front
                     back_layers=_ep_back_layers,
-                    fill=_ep_fill,
+                    fill=_ep_fill_cdm,
                     ka_method=_ep_ka_method,
                     kp_method=_ep_kp_method,
                     delta_deg=float(_ep_delta),
@@ -8150,8 +8176,13 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _c3m.metric("F Net", f"{_ep_res_cdm['F_net']:.0f}", "kN/m",
                                   f"Δ {_ep_res_cdm['F_net']-_ep_res['F_net']:+.0f}",
                                   delta_color="inverse")
-                    st.caption("Front: chỉ fill (lớp yếu thay bằng CDM) · "
-                                 f"Back: {len(_ep_back_layers)} lớp")
+                    st.caption(
+                        f"Front: fill từ đỉnh kè ({_dpy_top_ke:+.2f}m) đến **đỉnh đệm XMC z_mat = {_z_mat_top:+.2f}m** "
+                        f"(CDTK={_cdm_CDTK:+.2f}m + h_mat={_cdm_h_mat:.2f}m từ tab Thiết kế CDM). "
+                        f"Dưới z_mat là khối CDM — không áp lực đất Active. "
+                        f"Back: {len(_ep_back_layers)} lớp (giữ nguyên).  \n"
+                        f"Fill γ={_dpy_gamma_fill:.1f} φ={_dpy_phi_fill:.1f}° c={_dpy_c_fill:.1f} kPa (từ D.1)."
+                    )
 
                 # Bảng thông số đất + Ka/Kp tính được
                 if _real_param_rows:
