@@ -3433,7 +3433,7 @@ if len(_winkler_missing) == 2:
     # Cả 2 đều thiếu → Winkler không chạy được
     st.sidebar.warning(
         "**Winkler p-y chưa khả dụng** — thiếu cả `PyNiteFEA` và `anastruct`.\n\n"
-        "Fix local: `pip install PyNiteFEA>=0.0.94`"
+        "Fix local: `pip install PyNiteFEA>=2.0 anastruct>=1.6`"
     )
 
 if _HAS_PDF:
@@ -8244,13 +8244,17 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     if not _HAS_WINKLER_SOLVER:
         st.warning(
             "**Tính năng p-y Winkler cần thư viện FEM Python.** "
-            "Hiện không có `PyNiteFEA` hoặc `anastruct` trong môi trường.\n\n"
-            "**Cách khắc phục local:** mở Command Prompt và chạy:\n"
-            "```\npip install PyNiteFEA>=0.0.94\n```\n"
+            "Hiện không có `PyNiteFEA` cũng không có `anastruct` trong môi trường.\n\n"
+            "**Local:**\n"
+            "```\npip install PyNiteFEA>=2.0 anastruct>=1.6\n```\n"
             "Sau đó khởi động lại Streamlit (đóng tab + chạy lại `start_app.bat`).\n\n"
-            "Trên Streamlit Cloud đã có sẵn `PyNiteFEA` trong `cdm-deploy/requirements.txt` "
-            "— push code lên Cloud qua `update_app.bat` để dùng ngay."
+            "**Streamlit Cloud:** đã có sẵn cả hai trong `cdm-deploy/requirements.txt`. "
+            "Nếu vẫn lỗi → kiểm tra build log Cloud, có thể do version conflict."
         )
+    else:
+        _solver_used = ("PyNiteFEA" if _HAS_PYNITE
+                         else "anastruct (fallback)")
+        st.caption(f"_Solver Winkler hiện dùng: **{_solver_used}**_")
 
     if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có solver
         # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
@@ -8266,7 +8270,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             if not _HAS_WINKLER_SOLVER:
                 return {"error": (
                     "Chưa cài thư viện FEM Winkler. "
-                    "Chạy: `pip install PyNiteFEA>=0.0.94` rồi khởi động lại Streamlit."
+                    "Chạy: `pip install PyNiteFEA>=2.0 anastruct>=1.6` "
+                    "rồi khởi động lại Streamlit."
                 )}
 
             # Path PyNite — sạch, không phụ thuộc legacy code
