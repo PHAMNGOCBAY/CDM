@@ -8935,26 +8935,79 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                  f"Back: {len(_ep_back_layers)} lớp")
 
                 with _ep_mid:
-                    st.markdown("**(2) SAU CDM — Front chỉ đất đắp**")
+                    st.markdown("**(2) Tổng các áp lực — Active + Water + Passive → Net**")
+                    # Đóng figure 3-panel của _ep_res_cdm (không hiển thị)
                     if _ep_res_cdm.get("fig"):
-                        _ep_res_cdm["fig"].set_size_inches(8, 4.8)
-                        for _ax in _ep_res_cdm["fig"].axes:
-                            _ax.tick_params(labelsize=7)
-                            if _ax.get_title():
-                                _ax.set_title(_ax.get_title(), fontsize=8)
-                        st.pyplot(_ep_res_cdm["fig"], use_container_width=True)
                         plt.close(_ep_res_cdm["fig"])
+
+                    # ── Vẽ biểu đồ tổng áp lực (1 panel) ──────────────────────
+                    # Component pressures (lấy từ PA2 = SAU CDM):
+                    #   p_active   = áp lực đất chủ động Front (+ kN/m²)
+                    #   p_passive  = áp lực đất bị động Back   (− kN/m², kháng)
+                    #   p_water_n  = chênh lệch áp lực nước (Front − Back)
+                    #   p_total    = p_active − p_passive + p_water_n
+                    import numpy as _np_ep
+                    _elevs_t   = _ep_res_cdm["elevs"]
+                    _pa_t      = _ep_res_cdm["active_h"]
+                    _pp_t      = _ep_res_cdm["passive_h"]
+
+                    _gw_kNm3 = 9.81
+                    _wf_t = _np_ep.maximum(0.0,
+                        float(_dpy_wlvl) - _elevs_t) * _gw_kNm3   # nước Front
+                    _wb_t = _np_ep.maximum(0.0,
+                        float(_dpy_wlvl_b) - _elevs_t) * _gw_kNm3 # nước Back
+                    _pw_net_t = _wf_t - _wb_t
+                    _p_total_t = _pa_t - _pp_t + _pw_net_t
+
+                    _fig_tot, _ax_tot = plt.subplots(figsize=(8, 4.8))
+                    _ax_tot.plot(_pa_t,     _elevs_t, "-",  color="#C62828",
+                                  lw=1.5, label="Active (Ka)")
+                    _ax_tot.plot(-_pp_t,    _elevs_t, "-",  color="#1565C0",
+                                  lw=1.5, label="Passive (Kp, kháng)")
+                    _ax_tot.plot(_pw_net_t, _elevs_t, "--", color="#0277BD",
+                                  lw=1.2, label="Nước Net (F−B)")
+                    _ax_tot.plot(_p_total_t, _elevs_t, "-", color="#1B5E20",
+                                  lw=2.4, label="TỔNG (Active+Water−Passive)")
+                    # Tô vùng tổng (dương = đẩy ra Back, âm = đẩy ra Front)
+                    _ax_tot.fill_betweenx(_elevs_t, 0, _p_total_t,
+                                           where=_p_total_t > 0,
+                                           color="#C62828", alpha=0.15)
+                    _ax_tot.fill_betweenx(_elevs_t, 0, _p_total_t,
+                                           where=_p_total_t < 0,
+                                           color="#1565C0", alpha=0.15)
+                    _ax_tot.axvline(0, color="black", lw=0.7)
+                    _ax_tot.axhline(float(_dpy_top_ke), color="#8B4513",
+                                     lw=0.7, ls=":", alpha=0.7)
+                    _ax_tot.axhline(_z_mat_top, color="#666", lw=0.6, ls="--",
+                                     alpha=0.7)
+                    _ax_tot.text(0.02, _z_mat_top,
+                                  f" z_mat = {_z_mat_top:+.2f} m",
+                                  transform=_ax_tot.get_yaxis_transform(),
+                                  fontsize=6, color="#666", va="bottom")
+                    _ax_tot.set_xlabel("Áp lực ngang (kN/m²)", fontsize=8)
+                    _ax_tot.set_ylabel("Cao độ (m)", fontsize=8)
+                    _ax_tot.set_title("Tổng áp lực ngang lên tường (SAU CDM)",
+                                       fontsize=8)
+                    _ax_tot.tick_params(labelsize=7)
+                    _ax_tot.grid(True, ls=":", color="#E0E0E0", lw=0.5)
+                    _ax_tot.legend(fontsize=6, loc="lower right", framealpha=0.85)
+                    st.pyplot(_fig_tot, use_container_width=True)
+                    plt.close(_fig_tot)
+
+                    # Tổng lực hợp lực Net
+                    _F_total_net = float(_np_ep.trapezoid(_p_total_t, _elevs_t))
                     _c1m, _c2m, _c3m = st.columns(3)
                     _c1m.metric("F Active (kN/m)", f"{_ep_res_cdm['F_active']:.0f}",
                                   delta=f"Δ {_ep_res_cdm['F_active']-_ep_res['F_active']:+.0f}",
                                   delta_color="inverse")
                     _c2m.metric("F Passive (kN/m)", f"{_ep_res_cdm['F_passive']:.0f}")
-                    _c3m.metric("F Net (kN/m)", f"{_ep_res_cdm['F_net']:.0f}",
-                                  delta=f"Δ {_ep_res_cdm['F_net']-_ep_res['F_net']:+.0f}",
-                                  delta_color="inverse")
+                    _c3m.metric("F Tổng Net (kN/m)", f"{abs(_F_total_net):.0f}",
+                                  f"{'→ Back' if _F_total_net > 0 else '→ Front'}",
+                                  delta_color="off")
                     st.caption(
                         f"Front: fill {_dpy_top_ke:+.2f}m → z_mat = {_z_mat_top:+.2f}m "
-                        f"(CDTK={_cdm_CDTK:+.2f}m + h_mat={_cdm_h_mat:.2f}m). Dưới z_mat → 0."
+                        f"(CDTK={_cdm_CDTK:+.2f}m + h_mat={_cdm_h_mat:.2f}m). "
+                        f"**Tổng** = Active + Nước_net − Passive (tích phân = lực hợp)."
                     )
 
 
