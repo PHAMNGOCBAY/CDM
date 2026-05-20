@@ -7709,29 +7709,28 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             # ── Thông số lớp đất đắp (Fill — chỉ Front) ──────────────────────
             st.markdown(
                 "**Đất đắp Front (Fill — từ đỉnh kè xuống mặt đất tự nhiên):** "
-                "*Nhập thông số thiết kế đất đắp; mặc định = sét pha đắp chặt vừa.*"
+                "*Kỹ sư nhập thông số thiết kế cụ thể của dự án.*"
             )
             _dpy_f1, _dpy_f2, _dpy_f3, _dpy_f4 = st.columns(4)
             _dpy_gamma_fill = _dpy_f1.number_input(
-                "γ_fill (kN/m³)", 14.0, 22.0, 18.0, 0.1,
+                "γ_fill (kN/m³)", value=0.0, step=0.1,
                 key="dpy_gamma_fill",
-                help="Dung trọng đất đắp ướt. Mặc định 18 kN/m³ (đất đắp chặt vừa)."
+                help="Dung trọng đất đắp ướt — kỹ sư nhập theo thiết kế dự án."
             )
             _dpy_phi_fill = _dpy_f2.number_input(
-                "φ_fill (°)", 0.0, 45.0, 28.0, 0.5,
+                "φ_fill (°)", value=0.0, step=0.5,
                 key="dpy_phi_fill",
-                help="Góc ma sát đất đắp. Mặc định 28°."
+                help="Góc ma sát đất đắp — kỹ sư nhập theo thí nghiệm / thiết kế."
             )
             _dpy_c_fill = _dpy_f3.number_input(
-                "c_fill (kPa)", 0.0, 100.0, 5.0, 1.0,
+                "c_fill (kPa)", value=0.0, step=1.0,
                 key="dpy_c_fill",
-                help="Lực dính đất đắp. Mặc định 5 kPa (đất đắp lẫn sét)."
+                help="Lực dính đất đắp — kỹ sư nhập theo thí nghiệm."
             )
             _dpy_gamma_sub_fill = _dpy_f4.number_input(
-                "γ_sub_fill (kN/m³)",
-                value=10.0, step=0.1,
+                "γ_sub_fill (kN/m³)", value=0.0, step=0.1,
                 key="dpy_gamma_sub_fill",
-                help="Dung trọng đất đắp bão hoà = γ_sat − γ_w. Tự do, không giới hạn."
+                help="Dung trọng đất đắp bão hoà = γ_sat − γ_w."
             )
 
         with _col_schem_d:
