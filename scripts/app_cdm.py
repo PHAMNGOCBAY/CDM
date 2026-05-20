@@ -8121,7 +8121,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         _hk_d_list = [nm for nm in _picks_d if nm.startswith("HK")]
         # Lấy params tải chung từ session_state (nếu user đã chỉnh ở form D.1
         # chi tiết bên dưới) — nếu chưa có thì dùng mặc định
-        _H_auto    = float(st.session_state.get("dpy_H_load", 30.0) or 30.0)
+        _H_auto    = float(st.session_state.get("dpy_H_load", 0.0) or 0.0)
         _M_auto    = float(st.session_state.get("dpy_M_load", 0.0)  or 0.0)
         _eps50_a   = float(st.session_state.get("dpy_eps50", 0.02)  or 0.02)
         _cdm_Lc_a  = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
@@ -8303,8 +8303,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                  "Mặc định 80 kN/m² — bộ chuẩn dự án (CDM 28 ngày qu ≈ 160 kPa)."
                         )
                     with _df_c3:
-                        _dpy_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 30.0, 5.0,
-                                                  key=f"dpy_H_load_{_hk_iter}")
+                        _dpy_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 0.0, 5.0,
+                                                  key=f"dpy_H_load_{_hk_iter}",
+                                                  help="Tải ngang user cộng thêm tại đỉnh cọc (vd: tải va đập, tải động). "
+                                                       "Mặc định 0 — chỉ chịu áp lực đất + nước + Boussinesq từ q.")
                         _dpy_M = st.number_input("Mô-men đầu cọc M (kNm/m)", 0.0, 500.0, 0.0, 10.0,
                                                   key=f"dpy_M_load_{_hk_iter}")
                         _dpy_q_op = st.number_input("Tải trọng khai thác q (kN/m²)", 0.0, 200.0, 15.0, 2.5,
