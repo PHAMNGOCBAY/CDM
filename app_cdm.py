@@ -3173,7 +3173,7 @@ try:
         report_ke_sw     as _pdf_kesw,
     )
     _HAS_PDF = True
-    _PDF_ENGINE = "weasyprint (HTML/CSS)"
+    _PDF_ENGINE = "Báo cáo chuẩn"
 except Exception:
     try:
         from pdf_export import (
@@ -3183,7 +3183,7 @@ except Exception:
             build_ke_sw_pdf    as _pdf_kesw,
         )
         _HAS_PDF = True
-        _PDF_ENGINE = "reportlab (fallback)"
+        _PDF_ENGINE = "Báo cáo rút gọn"
     except Exception as _e_pdf:
         st.sidebar.caption(f"_(PDF engine chưa cài: {_e_pdf})_")
 
@@ -3206,8 +3206,8 @@ if _HAS_PDF:
     except Exception as _e_all:
         st.sidebar.warning(f"Không tạo PDF tổng hợp: {_e_all}")
 st.sidebar.caption(
-    f"_Engine: {_PDF_ENGINE}_  \n"
-    "_Hoặc nhấn `Ctrl+P` → Save as PDF (in nguyên trang web)._"
+    f"_Định dạng: {_PDF_ENGINE}_  \n"
+    "_Hoặc nhấn `Ctrl+P` → Lưu thành PDF (in nguyên trang)._"
 )
 
 
@@ -3493,7 +3493,7 @@ if _page == "geology":
         if not _zones_with_coords_pd:
             st.info(_t("no_coords_db"))
         else:
-            st.markdown("#### Bản đồ 3D địa chất (pydeck — kéo-xoay-zoom)")
+            st.markdown("#### Bản đồ 3D địa chất — kéo, xoay, phóng to")
             _pc1, _pc2 = st.columns([3, 2])
             with _pc1:
                 _sel_zones_pd = st.multiselect(
@@ -3617,7 +3617,7 @@ if _page == "geology":
                     else:
                         st.info("Không có dữ liệu cho khu vực đã chọn.")
                 except Exception as _e:
-                    st.warning(f"Không vẽ được bản đồ pydeck: {_e}")
+                    st.warning(f"Không vẽ được bản đồ 3D: {_e}")
 
                 # ── Bảng chi tiết khoảng cách ───────────────────────────────
                 if _pair_lines_pd:
@@ -3653,7 +3653,7 @@ if _page == "geology":
         if not _zones_with_coords_mpl:
             st.info(_t("no_coords_db"))
         else:
-            st.markdown("#### Bản đồ 3D địa chất (matplotlib)")
+            st.markdown("#### Bản đồ 3D địa chất — chế độ tĩnh")
             _mc1, _mc2 = st.columns([3, 2])
             with _mc1:
                 _sel_zones_mpl = st.multiselect(
@@ -3683,7 +3683,7 @@ if _page == "geology":
                 except Exception as _e:
                     st.warning(f"Không vẽ được bản đồ 3D: {_e}")
     elif not _HAS_PLOTLY:
-        st.caption("Cài `plotly` (hoặc matplotlib) để xem bản đồ địa chất.")
+        st.caption("Bản đồ địa chất tạm chưa khả dụng.")
     else:
         _bhs_all, _ = _load_borehole_3d_data()
         _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
@@ -4705,7 +4705,7 @@ elif _page == "compare":
         with cc:
             st.plotly_chart(_chart_combined(df, rec_idx), use_container_width=True)
     elif _HAS_MPL:
-        st.caption("_Plotly không khả dụng — hiển thị biểu đồ matplotlib._")
+        st.caption("_Hiển thị biểu đồ chế độ đơn giản._")
         _fig_cmp_mpl = _mpl_compare_charts(df, rec_idx, scenarios, _punch)
         st.pyplot(_fig_cmp_mpl, use_container_width=True)
         plt.close(_fig_cmp_mpl)
@@ -4984,7 +4984,7 @@ elif _page == "compare":
     # Matplotlib fallback luôn vẽ
     if _HAS_MPL and not _HAS_PLOTLY:
         import matplotlib.pyplot as plt
-        st.caption("_Phân tích độ nhạy (matplotlib fallback)._")
+        st.caption("_Phân tích độ nhạy của S₁ theo các tham số thiết kế._")
         fig, axs = plt.subplots(1, 3, figsize=(15, 4))
         # qu
         _qu_x = [r["qu (kPa)"] for r in _qu_rows]
@@ -6165,8 +6165,8 @@ if _page == "ke_sw":
             )
         with _col_btn:
             st.markdown("&nbsp;", unsafe_allow_html=True)
-            if st.button("Tính lại từ SQLite", key="btn_recalc_sql",
-                          help="Chạy lại engine NT1/NT2 với danh sách HK đã chọn — số liệu từ SQLite"):
+            if st.button("Tính lại từ số liệu khảo sát", key="btn_recalc_sql",
+                          help="Chạy lại tính NT1/NT2 với danh sách HK đã chọn — lấy số liệu thí nghiệm hiện trường"):
                 try:
                     import sys as _sys_re
                     _sys_re.path.insert(0, str(_ROOT / "scripts"))
@@ -6197,7 +6197,7 @@ if _page == "ke_sw":
                             "tip_layer": _n2["tip_symbol"],
                             "tip_method": _n2.get("tip_method"),
                         }
-                    st.success(f"Đã tính lại {len(_picked_bhs)} HK từ SQLite")
+                    st.success(f"Đã tính lại {len(_picked_bhs)} hố khoan từ số liệu khảo sát")
                     st.rerun()
                 except Exception as _e_re:
                     st.warning(f"Không tính lại được: {_e_re}")
@@ -6353,8 +6353,8 @@ if _page == "ke_sw":
                 _nt_rows = sorted(_nt_rows_raw, key=lambda r: _bh_order.get(r[0], 999))
 
                 if not _nt_rows:
-                    st.info("Không có dữ liệu NT trong SQLite cho các HK đã chọn. "
-                            "Chạy `python scripts/ke_sw_nt_calc.py`.")
+                    st.info("Không có dữ liệu NT cho các HK đã chọn. "
+                            "Nhấn 'Tính lại từ số liệu khảo sát' phía trên.")
 
                 _df_vst_ke = _load_vst_su("KE") if _picked_db else pd.DataFrame()
 
