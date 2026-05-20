@@ -1146,6 +1146,8 @@ def _build_borehole_3d_deck(
     pair_highlight: tuple | None = None,
     z_scale: float = 5.0,
     col_radius: float = 2.5,
+    pair_lines: list[dict] | None = None,
+    show_pair_labels: bool = True,
 ):
     """Pydeck 3D map cho hố khoan — native drag/zoom/rotate qua deck.gl.
     z_scale: phóng đại trục Z (vì khoảng cách HK ~100m, độ sâu chỉ ~30m,
@@ -1301,26 +1303,83 @@ def _build_borehole_3d_deck(
             line_width_min_pixels=1,
         ))
 
-    # Đường kích thước giữa 2 HK
+    # Vẽ tất cả cặp khoảng cách HK (color-coded theo status TCCS41)
+    _bh_lookup = {b["name"]: b for b in bhs}
+    _status_color = {
+        "Đạt":      [46, 125, 50, 220],     # xanh
+        "Gần quá":  [229, 57, 53, 220],     # đỏ
+        "Xa quá":   [255, 152, 0, 220],     # cam
+    }
+    if pair_lines:
+        _line_data = []
+        _label_data = []
+        # Cao độ đường kích thước: max elev của tất cả HK + offset
+        _z_lines = (max(b["elevation_m"] for b in bhs) + 4) * z_scale
+        for p in pair_lines:
+            _b1 = _bh_lookup.get(p["bh1"])
+            _b2 = _bh_lookup.get(p["bh2"])
+            if not (_b1 and _b2):
+                continue
+            _col = _status_color.get(p.get("status", ""), [120, 120, 120, 200])
+            _dist = p.get("distance_m", 0.0)
+            _line_data.append({
+                "path": [[_b1["lon"], _b1["lat"], _z_lines],
+                         [_b2["lon"], _b2["lat"], _z_lines]],
+                "color":    _col,
+                "bh1":      p["bh1"],
+                "bh2":      p["bh2"],
+                "distance": f"{_dist:.1f} m",
+                "status":   p.get("status", ""),
+            })
+            if show_pair_labels:
+                _label_data.append({
+                    "position": [(_b1["lon"] + _b2["lon"]) / 2,
+                                 (_b1["lat"] + _b2["lat"]) / 2,
+                                 _z_lines + 1],
+                    "text":     f"{_dist:.0f}m",
+                    "color":    _col[:3],
+                })
+        if _line_data:
+            layers_deck.append(pdk.Layer(
+                "PathLayer",
+                _line_data,
+                get_path="path",
+                get_color="color",
+                get_width=2,
+                width_units="pixels",
+                pickable=True,
+            ))
+        if _label_data:
+            layers_deck.append(pdk.Layer(
+                "TextLayer",
+                _label_data,
+                get_position="position",
+                get_text="text",
+                get_color="color",
+                get_size=12,
+                size_units="pixels",
+                get_alignment_baseline="'bottom'",
+            ))
+
+    # Đường kích thước được highlight (cặp user chọn cụ thể)
     if pair_highlight:
         _b1n, _b2n, _dist = pair_highlight
         _b1 = next((b for b in bhs if b["name"] == _b1n), None)
         _b2 = next((b for b in bhs if b["name"] == _b2n), None)
         if _b1 and _b2:
-            _zline = (max(_b1["elevation_m"], _b2["elevation_m"]) + 4) * z_scale
+            _zline = (max(_b1["elevation_m"], _b2["elevation_m"]) + 6) * z_scale
             layers_deck.append(pdk.Layer(
                 "PathLayer",
                 [{
                     "path": [[_b1["lon"], _b1["lat"], _zline],
                              [_b2["lon"], _b2["lat"], _zline]],
-                    "color": [255, 111, 0],
-                    "label": f"{_dist:.1f} m",
+                    "color": [255, 111, 0, 255],
                 }],
                 get_path="path",
                 get_color="color",
-                get_width=4,
+                get_width=5,
                 width_units="pixels",
-                pickable=True,
+                pickable=False,
             ))
             _mid_lon = (_b1["lon"] + _b2["lon"]) / 2
             _mid_lat = (_b1["lat"] + _b2["lat"]) / 2
@@ -1334,7 +1393,7 @@ def _build_borehole_3d_deck(
                 get_position="position",
                 get_text="text",
                 get_color="color",
-                get_size=16,
+                get_size=18,
                 size_units="pixels",
             ))
 
@@ -1347,8 +1406,13 @@ def _build_borehole_3d_deck(
     return pdk.Deck(
         layers=layers_deck,
         initial_view_state=view,
-        tooltip={"html": "<b>{bh}</b><br>Lớp <b>{sym}</b>: {desc}<br>Độ sâu: {rng}<br>Dày: <b>{thk}</b>",
-                 "style": {"color": "white", "backgroundColor": "rgba(33,33,33,0.85)"}},
+        tooltip={"html": "<b>{bh}{bh1}</b>{bh2}<br>"
+                          "<span>Lớp <b>{sym}</b>: {desc}</span>"
+                          "<span>Độ sâu: {rng} | Dày: <b>{thk}</b></span>"
+                          "<span>Khoảng cách: <b>{distance}</b> — {status}</span>",
+                 "style": {"color": "white",
+                           "backgroundColor": "rgba(33,33,33,0.92)",
+                           "fontSize": "12px"}},
         map_style=None,
     )
 
@@ -3236,13 +3300,65 @@ if _page == "geology":
                 help="Bán kính trụ địa chất — to để thấy rõ bề dày, nhỏ để không che HK kế bên",
             )
 
-            # ── Đo khoảng cách 2 HK ────────────────────────────────────────
-            _pair_sel_pd = None
+            # ── Toggle overlay & spacing check ──────────────────────────────
+            _tc1, _tc2, _tc3 = st.columns([1.2, 1, 1.5])
+            _show_pairs_pd  = _tc1.checkbox(
+                "Hiện tất cả khoảng cách HK trên 3D",
+                value=True, key="_3d_pd_pairs",
+                help="Vẽ đường nối + nhãn cho mọi cặp HK cùng khu vực, màu theo TCCS41",
+            )
+            _show_labels_pd = _tc2.checkbox(
+                "Hiện nhãn khoảng cách",
+                value=True, key="_3d_pd_labels",
+            )
+            _step_opts_pd = {
+                "BVTK (100–150 m)": "BVTK",
+                "LAPDA (250–500 m)": "LAPDA",
+                "BVTK mặt cắt (150–300 m)": "BVTK_matcat",
+            }
+            _step_lbl_pd = _tc3.selectbox(
+                "Bước thiết kế (TCCS41 5.3.2)",
+                list(_step_opts_pd.keys()),
+                key="_3d_pd_step",
+            )
+            _step_code_pd = _step_opts_pd[_step_lbl_pd]
+
+            # ── Tính spacing check ──────────────────────────────────────────
+            _pair_lines_pd: list[dict] = []
+            _sp_res_pd: dict = {}
             _bhs_in_zone_pd = [b for b in _bhs_all_pd if b["zone"] in (_sel_zones_pd or [])]
+            try:
+                import sys as _sys2
+                _sys2.path.insert(0, str(_ROOT / "scripts"))
+                from borehole_spacing import check_spacing_532 as _chk_sp_pd
+                _sp_res_pd = _chk_sp_pd(_bhs_in_zone_pd, _step_code_pd, same_zone_only=True)
+                _pair_lines_pd = _sp_res_pd.get("pairs", [])
+
+                _sp_sum = _sp_res_pd["summary"]
+                _mc1, _mc2, _mc3 = st.columns(3)
+                _mc1.metric(
+                    "Cặp đạt yêu cầu",
+                    f"{_sp_sum['n_ok']}/{_sp_sum['n_pairs']}",
+                    delta=f"Gần: {_sp_sum['n_too_close']} | Xa: {_sp_sum['n_too_far']}",
+                    delta_color="normal" if _sp_sum["n_ok"] == _sp_sum["n_pairs"] else "inverse",
+                )
+                if _sp_sum["min_dist_m"] is not None:
+                    _mc2.metric(
+                        "Khoảng cách (min–max)",
+                        f"{_sp_sum['min_dist_m']:.0f} – {_sp_sum['max_dist_m']:.0f} m",
+                        delta=f"Yêu cầu: {_sp_res_pd['limit_min_m']:.0f}–{_sp_res_pd['limit_max_m']:.0f} m",
+                        delta_color="off",
+                    )
+                _mc3.caption(f"Tiêu chuẩn: {_sp_res_pd['limit_label']}")
+            except Exception as _sp_e:
+                st.warning(f"Không tải được borehole_spacing: {_sp_e}")
+
+            # ── Đo khoảng cách 1 cặp HK riêng (highlight cam to) ────────────
+            _pair_sel_pd = None
             _bh_names_pd = sorted({b["name"] for b in _bhs_in_zone_pd})
             if len(_bh_names_pd) >= 2:
                 _pp1, _pp2 = st.columns(2)
-                _b1p = _pp1.selectbox("Đo khoảng cách: HK 1",
+                _b1p = _pp1.selectbox("Highlight cặp HK: HK 1",
                                       ["(không chọn)"] + _bh_names_pd, key="_3d_pd_pair1")
                 _b2p = _pp2.selectbox("HK 2",
                                       ["(không chọn)"] + _bh_names_pd, key="_3d_pd_pair2")
@@ -3254,7 +3370,6 @@ if _page == "geology":
                         _dy = _b1["y_coord_m"] - _b2["y_coord_m"]
                         _dist_pd = (_dx*_dx + _dy*_dy) ** 0.5
                         _pair_sel_pd = (_b1p, _b2p, _dist_pd)
-                        st.metric(f"Khoảng cách {_b1p} ↔ {_b2p}", f"{_dist_pd:.1f} m")
 
             if _sel_zones_pd:
                 try:
@@ -3266,18 +3381,49 @@ if _page == "geology":
                         pair_highlight=_pair_sel_pd,
                         z_scale=_z_scale_pd,
                         col_radius=_col_radius_pd,
+                        pair_lines=(_pair_lines_pd if _show_pairs_pd else None),
+                        show_pair_labels=_show_labels_pd,
                     )
                     if _deck is not None:
                         st.pydeck_chart(_deck, use_container_width=True, height=560)
                         st.caption(
                             "Kéo chuột = xoay  •  Shift+kéo = pan  •  Lăn chuột = zoom  •  "
-                            "Hover trên cọc để xem chi tiết lớp. "
-                            f"Trục Z đang phóng đại ×{_z_scale_pd:.1f}."
+                            "Hover trên cọc/đường để xem chi tiết.  "
+                            f"Trục Z phóng đại ×{_z_scale_pd:.1f}.  "
+                            "Màu đường: xanh=Đạt, đỏ=Gần quá, cam=Xa quá."
                         )
                     else:
                         st.info("Không có dữ liệu cho khu vực đã chọn.")
                 except Exception as _e:
                     st.warning(f"Không vẽ được bản đồ pydeck: {_e}")
+
+                # ── Bảng chi tiết khoảng cách ───────────────────────────────
+                if _pair_lines_pd:
+                    with st.expander(
+                        f"Bảng khoảng cách hố khoan ({len(_pair_lines_pd)} cặp)",
+                        expanded=False,
+                    ):
+                        _sp_rows_pd = [{
+                            "Hố khoan 1":      p["bh1"],
+                            "Hố khoan 2":      p["bh2"],
+                            "Khu vực":         p["zone1"],
+                            "Khoảng cách (m)": p["distance_m"],
+                            "Yêu cầu (m)":     f"{p['limit_min_m']:.0f}–{p['limit_max_m']:.0f}",
+                            "Kết quả":         p["status"],
+                        } for p in _pair_lines_pd]
+                        _sp_df_pd = pd.DataFrame(_sp_rows_pd)
+
+                        def _sp_color_pd(val):
+                            if val == "Đạt":
+                                return "background-color:#d4edda; color:#155724"
+                            if val in ("Gần quá", "Xa quá"):
+                                return "background-color:#f8d7da; color:#721c24"
+                            return ""
+
+                        st.dataframe(
+                            _sp_df_pd.style.map(_sp_color_pd, subset=["Kết quả"]),
+                            use_container_width=True, hide_index=True,
+                        )
     elif not _HAS_PLOTLY and _HAS_MPL:
         # Matplotlib 3D fallback (khi không có cả plotly và pydeck)
         _bhs_all_mpl, _ = _load_borehole_3d_data()
