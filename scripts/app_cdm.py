@@ -5287,17 +5287,25 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
         st.caption(_t("word_cap"))
 
         if st.button(_t("create_word"), type="primary"):
-            with st.spinner(_t("creating")):
-                word_bytes = _export_word_bytes(scenarios, params, rec)
-            if word_bytes:
+            # Approach mới: HTML-format Word (không cần python-docx)
+            # — chỉ dùng jinja2 + stdlib, hoạt động trên mọi môi trường
+            try:
+                import sys as _sys_w
+                _sys_w.path.insert(0, str(_ROOT / "scripts"))
+                from word_html_export import build_word_html as _build_w
+                _p_w = dict(params)
+                _p_w["q_static"] = q_static(_get("cdm_loads"))
+                word_bytes = _build_w(scenarios, _p_w, rec)
                 st.download_button(
                     _t("dl_docx"),
                     word_bytes,
-                    file_name=f"CDM-THUYET-MINH-{params['bh_name']}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    file_name=f"CDM-THUYET-MINH-{params['bh_name']}.doc",
+                    mime="application/msword",
                 )
-            else:
-                st.error("Không tạo được file Word. Liên hệ kỹ thuật để kiểm tra.")
+                st.success("Tạo thuyết minh thành công. Mở bằng Microsoft Word — "
+                           "có thể chọn 'Save As' để lưu thành định dạng .docx nếu muốn.")
+            except Exception as _e_w:
+                st.error(f"Không tạo được file Word: {_e_w}")
 
     with c_excel:
         st.markdown("#### Tính toán chi tiết (Excel)")
