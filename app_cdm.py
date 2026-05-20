@@ -6954,7 +6954,41 @@ if _page == "ke_sw":
                 st.session_state["sw_L"]      = float(_apply_Ldes)
                 st.session_state["sw_Z"]      = float(_apply_Z)
                 st.session_state["sw_H1"]     = float(_apply_H1)
+                # Su trung bình lớp bùn (VST) — nếu có
+                try:
+                    _zone_c = _ke_data.get("_meta", {}).get("zone_code") or _bh_pick.get("zone_code") or "KE"
+                    _su_db  = _su_avg_in_range(_zone_c, 0.0, float(_apply_H1))
+                except Exception:
+                    _su_db = None
+                _applied = {
+                    "sw_sel": {"src": _apply_bh, "value": _apply_pile},
+                    "sw_L":   {"src": _apply_bh, "value": float(_apply_Ldes)},
+                    "sw_Z":   {"src": _apply_bh, "value": float(_apply_Z)},
+                    "sw_H1":  {"src": _apply_bh, "value": float(_apply_H1)},
+                }
+                if _su_db is not None:
+                    st.session_state["sw_su"] = float(_su_db)
+                    _applied["sw_su"] = {"src": f"{_apply_bh} (VST)", "value": float(_su_db)}
+                st.session_state["sw_applied_fields"] = _applied
                 st.rerun()
+
+    # ── Helper: tô màu label + caption nguồn cho field áp từ HK ───────────────
+    _sw_applied = st.session_state.get("sw_applied_fields", {}) or {}
+
+    def _lbl(_key: str, _txt: str) -> str:
+        """Label màu xanh đậm nếu field được áp từ HK, ngược lại label thường."""
+        return f":blue[**{_txt}**]" if _key in _sw_applied else _txt
+
+    def _cap(_key: str) -> None:
+        """In caption nguồn nếu field áp từ HK + clear flag nếu user gõ khác."""
+        if _key in _sw_applied:
+            _info = _sw_applied[_key]
+            _cur  = st.session_state.get(_key)
+            if _cur != _info["value"]:
+                # User đã sửa → bỏ flag
+                del st.session_state["sw_applied_fields"][_key]
+            else:
+                st.caption(f":blue[← Số liệu khảo sát: {_info['src']}]")
 
     _col_form, _col_schem = st.columns([3, 2], gap="large")
 
@@ -6967,16 +7001,25 @@ if _page == "ke_sw":
                 _sw_opts_c.index("SW-840") if "SW-840" in _sw_opts_c else 0
             )
             _sw_sel   = st.selectbox(
-                f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_c)} loại)",
+                _lbl("sw_sel", f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_c)} loại)"),
                 _sw_opts_c, index=_sw_default_idx, key="sw_sel",
                 help="Chỉ hiển thị cọc đã được dùng làm 'Cọc kiến nghị' trong Mục B",
             )
-            _L_des    = st.number_input("Chiều dài thiết kế L (m)", 10.0, 35.0, 29.0, 0.5, key="sw_L")
+            _cap("sw_sel")
+            _L_des    = st.number_input(_lbl("sw_L", "Chiều dài thiết kế L (m)"),
+                                        10.0, 35.0, 29.0, 0.5, key="sw_L")
+            _cap("sw_L")
             _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
         with _c2:
-            _Z_nat    = st.number_input("Cao độ mặt đất tự nhiên (m)", -5.0, 3.0, -0.80, 0.05, key="sw_Z")
-            _H_lyr1   = st.number_input("Chiều dày lớp bùn sét H₁ (m)", 5.0, 35.0, 22.0, 0.5, key="sw_H1")
-            _su_avg   = st.number_input("Su trung bình lớp bùn (kN/m²)", 5.0, 50.0, 10.0, 1.0, key="sw_su")
+            _Z_nat    = st.number_input(_lbl("sw_Z", "Cao độ mặt đất tự nhiên (m)"),
+                                        -5.0, 3.0, -0.80, 0.05, key="sw_Z")
+            _cap("sw_Z")
+            _H_lyr1   = st.number_input(_lbl("sw_H1", "Chiều dày lớp bùn sét H₁ (m)"),
+                                        5.0, 35.0, 22.0, 0.5, key="sw_H1")
+            _cap("sw_H1")
+            _su_avg   = st.number_input(_lbl("sw_su", "Su trung bình lớp bùn (kN/m²)"),
+                                        5.0, 50.0, 10.0, 1.0, key="sw_su")
+            _cap("sw_su")
         with _c3:
             _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
             _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
