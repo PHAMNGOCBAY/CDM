@@ -2995,6 +2995,39 @@ st.sidebar.caption(
     f"**qu,tk =** {_qu:.0f} kPa"
 )
 
+# ── Print-friendly CSS (Ctrl+P → Save as PDF) — quy tắc an toàn ─────────────
+# Chỉ ẩn UI chrome + cho phép ngắt trang gọn. KHÔNG force expand expander
+# (gây side-effect trên Cloud); user tự mở expander cần in trước khi Ctrl+P.
+st.markdown("""
+<style>
+@media print {
+  [data-testid="stSidebar"], header, footer,
+  [data-testid="stToolbar"], [data-testid="stDecoration"],
+  [data-testid="stStatusWidget"], .stDeployButton {
+    display: none !important;
+  }
+  .main .block-container {
+    max-width: 100% !important;
+    padding: 0.5rem !important;
+  }
+  div[data-testid="stExpander"],
+  .stPlotlyChart, .stImage, table, .stDataFrame {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  a { text-decoration: none !important; color: inherit !important; }
+  body { font-size: 11pt; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.sidebar.divider()
+st.sidebar.caption(
+    "**In trang / Xuất PDF**  \n"
+    "Nhấn `Ctrl+P` (Windows) hoặc `⌘+P` (Mac) → chọn **Save as PDF**.  \n"
+    "*Mở các expander muốn in trước khi nhấn.*"
+)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 1 – ĐỊA CHẤT
