@@ -8935,10 +8935,33 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _cdm_Lng_val = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
                     _cdm_thk_eff = max(0.0, _cdm_Lc_val - _cdm_Lng_val)
                     _k_cdm_fac = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
+
+                    # Tải đầu cọc: AUTO từ tổng áp lực đất EP (F_total_net SAU CDM)
+                    # — phản ánh đúng tải thực mà cọc chịu. User vẫn có thể cộng thêm
+                    # H_load tay (vd: tải xe trên đỉnh kè) qua widget bên trên.
+                    _F_auto = abs(locals().get("_F_total_net") or 0.0)
+                    _H_total = _F_auto + float(_dpy_H)
+                    # Mô-men tại đỉnh: F_net × (top_elev − z_net) — tay đòn tới đỉnh cọc
+                    try:
+                        _z_net_v = float(_ep_res_cdm.get("z_net", _dpy_top_ke))
+                        _M_auto = _F_auto * (float(_dpy_top_ke) - _z_net_v)
+                    except Exception:
+                        _M_auto = 0.0
+                    _M_total = abs(_M_auto) + float(_dpy_M)
+
+                    if _F_auto > 0.1:
+                        st.caption(
+                            f"**Tải đầu cọc dùng tính Winkler:** "
+                            f"H = {_F_auto:.1f} (auto từ EP) + {float(_dpy_H):.1f} (user) "
+                            f"= **{_H_total:.1f} kN/m** · "
+                            f"M = {abs(_M_auto):.1f} (auto) + {float(_dpy_M):.1f} (user) "
+                            f"= **{_M_total:.1f} kNm/m**"
+                        )
+
                     _res_d1 = _calc_py_winkler(
                         bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
                         pile_name=_dpy_pile, L_m=float(_dpy_L),
-                        H_kNm=float(_dpy_H), M_kNm=float(_dpy_M),
+                        H_kNm=_H_total, M_kNm=_M_total,
                         cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
                         k_cdm_factor=_k_cdm_fac,
                     )
