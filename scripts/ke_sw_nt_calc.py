@@ -258,21 +258,67 @@ def _get_bh_Z_m(bh_name: str, db_path: Path = DB_PATH) -> float | None:
     return row[0] if row else None
 
 
+def _get_D_bottom_soft_by_spt(
+    bh_name: str, db_path: Path = DB_PATH,
+    N_threshold: int = 4, run_length: int = 2,
+) -> tuple[float, str]:
+    """Đáy vùng yếu theo SPT: depth cuối cùng có N<threshold TRƯỚC khi
+    xuất hiện run_length readings liên tiếp có N≥threshold.
+
+    Lý do dùng run_length=2: tránh nhận sai 1 reading soft đơn lẻ ở sâu
+    (vd HK3 có N=1 ở 30m giữa lớp cứng N=10-28) là đáy vùng yếu.
+
+    Threshold N<4 = đất yếu theo TCVN (Terzaghi soft clay)."""
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+    cur.execute(
+        "SELECT s.depth_m, s.N FROM spt_values s "
+        "JOIN boreholes b ON s.borehole_id=b.id "
+        "WHERE b.name=? AND s.N IS NOT NULL ORDER BY s.depth_m",
+        (bh_name,),
+    )
+    rows = cur.fetchall()
+    con.close()
+    if not rows:
+        return 0.0, "missing"
+    last_soft_depth = 0.0
+    consecutive_hard = 0
+    for depth, N in rows:
+        if N < N_threshold:
+            last_soft_depth = depth
+            consecutive_hard = 0
+        else:
+            consecutive_hard += 1
+            if consecutive_hard >= run_length:
+                break  # đã thoát vùng yếu — bỏ qua isolated soft pockets sâu hơn
+    if last_soft_depth > 0:
+        return round(last_soft_depth, 3), "SPT"
+    return 0.0, "missing"
+
+
 def _get_D_bottom_soft(bh_name: str, db_path: Path = DB_PATH) -> tuple[float, str]:
     """
-    Chiều sâu từ cổ hố khoan đến ĐÁY lớp mềm cuối cùng ('1' hoặc 'XMD').
-    Đây là D_bottom_soft dùng trong công thức NT1:
-        L_req = fill_m + D_bottom_soft + min_pen
+    Đáy vùng yếu = MAX(layer-symbol-based, SPT N<4 depth).
+    NT1: L_req = fill_m + D_bottom_soft + min_pen.
 
-    KHÔNG phải tổng chiều dày — phải là depth đến đáy lớp mềm (bao gồm cả
-    lớp F fill nằm phía trên lớp '1' trong hồ sơ địa chất).
-
-    Trả về (D_m, source): source='SQLite' hoặc 'missing'.
+    Logic 2 nguồn:
+    - layer: max(depth_bot) của lớp ∈ SOFT_SYMBOLS ('1', 'XMD')
+    - SPT: max depth có N < 4 (TCVN — đất yếu)
+    Lấy max để bảo thủ. Source = 'layer+SPT' hoặc nguồn duy nhất có.
     """
     layers = _load_layers(bh_name, db_path)
     soft_bottoms = [bot for _, bot, sym in layers if sym in SOFT_SYMBOLS]
-    if soft_bottoms:
-        return round(max(soft_bottoms), 3), "SQLite"
+    d_layer = max(soft_bottoms) if soft_bottoms else 0.0
+    d_spt, spt_src = _get_D_bottom_soft_by_spt(bh_name, db_path)
+
+    if d_layer > 0 and d_spt > 0:
+        d_final = max(d_layer, d_spt)
+        src = f"layer={d_layer:.1f} | SPT={d_spt:.1f} → max"
+        return round(d_final, 3), src
+    if d_layer > 0:
+        return round(d_layer, 3), "layer (no SPT)"
+    if d_spt > 0:
+        return round(d_spt, 3), "SPT (no soft layer marked)"
     return 0.0, "missing"
 
 
