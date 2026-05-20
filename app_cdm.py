@@ -7582,8 +7582,178 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             except Exception as e:
                 return {"error": f"Solver: {e}"}
 
-        # ─── D.1. Lý thuyết & công thức p-y ───────────────────────────────────
-        st.markdown("### D.1. Lý thuyết p-y Winkler")
+        # ═══════════════════════════════════════════════════════════════════════
+        # D.1. Nhập dữ liệu p-y Winkler + sơ đồ trực quan
+        # ═══════════════════════════════════════════════════════════════════════
+        st.markdown("### D.1. Nhập dữ liệu p-y Winkler")
+
+        # ── Áp dữ liệu HK từ Mục B ───────────────────────────────────────────
+        _dpy_bh_list = [b["name"] for b in _bhs_on_alignment] if _bhs_on_alignment else []
+        _dpy_a1, _dpy_a2 = st.columns([2, 3])
+        with _dpy_a1:
+            _dpy_apply_bh = st.selectbox(
+                "Áp dữ liệu HK từ Mục B",
+                ["(không áp)"] + _dpy_bh_list,
+                key="dpy_apply_bh",
+                help="Chọn HK trong Mục B để tự động điền Z, H₁, Su, cọc kiến nghị, L thiết kế",
+            )
+        with _dpy_a2:
+            if _dpy_apply_bh != "(không áp)":
+                _bh_pick_d = next((b for b in _bhs_on_alignment if b["name"] == _dpy_apply_bh), {})
+                _dpy_pile_a = (st.session_state.get("ke_sw_rec_piles", {}).get(_dpy_apply_bh)
+                               or _bh_pick_d.get("recommended_pile") or "SW-840")
+                _dpy_L_a    = (st.session_state.get("ke_sw_L_thiet_ke", {}).get(_dpy_apply_bh)
+                               or _bh_pick_d.get("recommended_L_m") or 29.0)
+                _dpy_Z_a    = _bh_pick_d.get("Z_m") or -0.8
+                _dpy_H1_a   = _bh_pick_d.get("H_layer1_m") or 22.0
+                st.info(
+                    f"**{_dpy_apply_bh}** → Z = {_dpy_Z_a:+.2f}m | H₁ = {_dpy_H1_a:.1f}m | "
+                    f"Cọc = **{_dpy_pile_a}** | L = {_dpy_L_a:.0f}m"
+                )
+                if st.button(f"Áp dữ liệu {_dpy_apply_bh} → form bên dưới", key="btn_dpy_apply"):
+                    st.session_state["dpy_pile"] = _dpy_pile_a
+                    st.session_state["dpy_L"]    = float(_dpy_L_a)
+                    st.session_state["dpy_Z"]    = float(_dpy_Z_a)
+                    st.session_state["dpy_H1"]   = float(_dpy_H1_a)
+                    try:
+                        _z_c = _ke_data.get("_meta", {}).get("zone_code") or _bh_pick_d.get("zone_code") or "KE"
+                        _su_db = _su_avg_in_range(_z_c, 0.0, float(_dpy_H1_a))
+                        if _su_db is not None:
+                            st.session_state["dpy_su"] = float(_su_db)
+                    except Exception:
+                        pass
+                    st.session_state["dpy_applied"] = {
+                        "dpy_pile": _dpy_apply_bh, "dpy_L": _dpy_apply_bh,
+                        "dpy_Z": _dpy_apply_bh, "dpy_H1": _dpy_apply_bh,
+                        "dpy_su": _dpy_apply_bh,
+                    }
+                    st.rerun()
+
+        _dpy_applied = st.session_state.get("dpy_applied", {}) or {}
+
+        def _dlbl(key: str, txt: str) -> str:
+            return f":blue[**{txt}**]" if key in _dpy_applied else txt
+
+        # ── Form 3 cột + schematic bên phải ──────────────────────────────────
+        _col_form_d, _col_schem_d = st.columns([3, 2], gap="large")
+
+        with _col_form_d:
+            _df_c1, _df_c2, _df_c3 = st.columns(3)
+            with _df_c1:
+                _sw_opts_d = [n for n in _sw_names if n in _rec_piles_b] or _sw_names
+                _dpy_pile_idx = (_sw_opts_d.index("SW-840") if "SW-840" in _sw_opts_d else 0)
+                _dpy_pile = st.selectbox(
+                    _dlbl("dpy_pile", f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_d)} loại)"),
+                    _sw_opts_d, index=_dpy_pile_idx, key="dpy_pile",
+                )
+                _dpy_L = st.number_input(_dlbl("dpy_L", "Chiều dài thiết kế L (m)"),
+                                          10.0, 35.0, 29.0, 0.5, key="dpy_L")
+                _dpy_top_ke = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05,
+                                                key="dpy_top_ke")
+            with _df_c2:
+                _dpy_Z = st.number_input(_dlbl("dpy_Z", "Cao độ mặt đất tự nhiên (m)"),
+                                          -5.0, 3.0, -0.80, 0.05, key="dpy_Z")
+                _dpy_H1 = st.number_input(_dlbl("dpy_H1", "Chiều dày lớp bùn sét H₁ (m)"),
+                                            5.0, 35.0, 22.0, 0.5, key="dpy_H1")
+                _dpy_su = st.number_input(_dlbl("dpy_su", "Su trung bình lớp bùn (kN/m²)"),
+                                            5.0, 50.0, 10.0, 1.0, key="dpy_su")
+            with _df_c3:
+                _dpy_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 30.0, 5.0,
+                                          key="dpy_H_load")
+                _dpy_M = st.number_input("Mô-men đầu cọc M (kNm/m)", 0.0, 500.0, 0.0, 10.0,
+                                          key="dpy_M_load")
+                _dpy_cdm_thk = st.number_input("Bề dày CDM tăng cường (m)", 0.0, 10.0, 3.0, 0.5,
+                                                 key="dpy_cdm_thk")
+            _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4 = st.columns(4)
+            _dpy_eps50 = _dpy_w1.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
+                                                 key="dpy_eps50", format="%.3f")
+            _dpy_kf    = _dpy_w2.number_input("Hệ số tăng k_h CDM", 1.0, 10.0, 4.0, 0.5,
+                                                 key="dpy_kf")
+            _dpy_wlvl  = _dpy_w3.number_input("Mực nước (m)", -5.0, 3.0, -1.0, 0.5,
+                                                 key="dpy_wlvl")
+            _dpy_bc    = _dpy_w4.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"],
+                                            key="dpy_bc")
+
+        with _col_schem_d:
+            if _HAS_MPL:
+                _lyr_mid_d  = _dpy_Z - _dpy_H1
+                _pile_tip_d = _dpy_top_ke - _dpy_L
+                _layers_sch_d = [
+                    ("Bùn sét", _dpy_Z,      _lyr_mid_d,  16.0, 0.0),
+                    ("Lớp cứng", _lyr_mid_d, _pile_tip_d, 18.0, 20.0),
+                ]
+                _fig_sch_d = draw_pile_schematic(
+                    L_m=_dpy_L, water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
+                    H_kN=_dpy_H, M_kNm=_dpy_M, layers=_layers_sch_d, bc_type=_dpy_bc,
+                    soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Z,
+                    water_lvl_back=_dpy_wlvl,
+                )
+                if _fig_sch_d:
+                    st.pyplot(_fig_sch_d, use_container_width=True)
+                    plt.close(_fig_sch_d)
+
+        # Nút tính
+        _dpy_btn_c1, _dpy_btn_c2 = st.columns([1, 4])
+        with _dpy_btn_c1:
+            _dpy_run = st.button("Tính p-y Winkler", type="primary", key="btn_dpy_run")
+
+        if _dpy_run:
+            _res_d1 = _calc_py_winkler(
+                bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
+                pile_name=_dpy_pile, L_m=float(_dpy_L),
+                H_kNm=float(_dpy_H), M_kNm=float(_dpy_M),
+                cdm_thk_m=float(_dpy_cdm_thk), eps50=float(_dpy_eps50),
+                k_cdm_factor=float(_dpy_kf),
+            )
+            if "error" in _res_d1:
+                st.error(_res_d1["error"])
+            else:
+                _r1, _r2, _r3, _r4 = st.columns(4)
+                _u_d1   = _res_d1["u_top_mm"]
+                _M_d1   = _res_d1["M_max_kNm"]
+                _Mcr_d1 = _res_d1["Mcr_kNm"]
+                _r1.metric("Chuyển vị đỉnh u (mm)", f"{_u_d1:.2f}",
+                             "Đạt" if abs(_u_d1) < 25 else "Vượt 25mm",
+                             delta_color="normal" if abs(_u_d1) < 25 else "inverse")
+                _r2.metric("Mô-men max (kNm/m)", f"{_M_d1:.1f}",
+                             f"M_cr = {_Mcr_d1:.0f}",
+                             delta_color="normal" if _M_d1 < _Mcr_d1 else "inverse")
+                _r3.metric("EI cọc (kNm²)", f"{_res_d1['EI_kNm2']:.0f}")
+                _r4.metric("D cọc (mm)", f"{_res_d1['D_mm']:.0f}")
+                # Plot u, M, k_h
+                if _HAS_PLOTLY:
+                    from plotly.subplots import make_subplots as _mksub_d1
+                    _fig_d1r = _mksub_d1(rows=1, cols=3, shared_yaxes=True,
+                                          subplot_titles=("Chuyển vị u (mm)",
+                                                          "Mô-men M (kNm/m)",
+                                                          "k_h (kN/m²)"))
+                    _zs_d1 = _res_d1["zs"]
+                    _fig_d1r.add_trace(go.Scatter(x=_res_d1["ux"], y=_zs_d1,
+                                                    mode="lines+markers",
+                                                    line=dict(color="#1565C0", width=2),
+                                                    name="u"), row=1, col=1)
+                    _Ms_d1 = _res_d1["Ms"]
+                    _zM_d1 = [(_zs_d1[i]+_zs_d1[i+1])/2 for i in range(len(_Ms_d1))]
+                    _fig_d1r.add_trace(go.Scatter(x=_Ms_d1, y=_zM_d1, mode="lines",
+                                                    line=dict(color="#E53935"),
+                                                    name="M"), row=1, col=2)
+                    _fig_d1r.add_trace(go.Scatter(x=_res_d1["k_h"], y=_zs_d1,
+                                                    mode="lines+markers",
+                                                    line=dict(color="#2E7D32"),
+                                                    marker=dict(size=4),
+                                                    fill="tozerox",
+                                                    name="k_h"), row=1, col=3)
+                    _fig_d1r.add_hline(y=_dpy_cdm_thk, line_dash="dash",
+                                        line_color="#9C27B0",
+                                        annotation_text=f"Đáy CDM ({_dpy_cdm_thk}m)")
+                    _fig_d1r.update_yaxes(autorange="reversed", title_text="Độ sâu (m)")
+                    _fig_d1r.update_layout(height=420, showlegend=False,
+                                            title="p-y Winkler — chuyển vị, mô-men, k_h theo độ sâu")
+                    st.plotly_chart(_fig_d1r, use_container_width=True)
+
+        st.markdown("---")
+        # ─── Lý thuyết & công thức p-y ───────────────────────────────────────
+        st.markdown("#### Lý thuyết p-y Winkler")
 
         # ── Quy trình thiết kế tích hợp 2 giai đoạn ─────────────────────────
         st.markdown("#### Quy trình thiết kế tích hợp")
