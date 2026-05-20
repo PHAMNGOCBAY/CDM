@@ -1148,6 +1148,7 @@ def _build_borehole_3d_deck(
     col_radius: float = 2.5,
     pair_lines: list[dict] | None = None,
     show_pair_labels: bool = True,
+    show_bh_names: bool = True,
 ):
     """Pydeck 3D map cho hố khoan — native drag/zoom/rotate qua deck.gl.
     z_scale: phóng đại trục Z (vì khoảng cách HK ~100m, độ sâu chỉ ~30m,
@@ -1213,27 +1214,28 @@ def _build_borehole_3d_deck(
         ),
     ]
 
-    # Nhãn tên HK
+    # Nhãn tên HK (toggle được)
     _zone_rgb = {"KE": [229, 57, 53], "BXN": [21, 101, 192], "NHC": [46, 125, 50]}
-    label_data = [
-        {
-            "position": [b["lon"], b["lat"], (b["elevation_m"] + 3) * z_scale],
-            "text":     b["name"].replace("BXN-CV-", "").replace("KE-", ""),
-            "color":    _zone_rgb.get(b["zone"], [50, 50, 50]),
-        }
-        for b in bhs
-    ]
-    layers_deck.append(pdk.Layer(
-        "TextLayer",
-        label_data,
-        get_position="position",
-        get_text="text",
-        get_color="color",
-        get_size=14,
-        size_units="pixels",
-        get_alignment_baseline="'bottom'",
-        pickable=False,
-    ))
+    if show_bh_names:
+        label_data = [
+            {
+                "position": [b["lon"], b["lat"], (b["elevation_m"] + 3) * z_scale],
+                "text":     b["name"].replace("BXN-CV-", "").replace("KE-", ""),
+                "color":    _zone_rgb.get(b["zone"], [50, 50, 50]),
+            }
+            for b in bhs
+        ]
+        layers_deck.append(pdk.Layer(
+            "TextLayer",
+            label_data,
+            get_position="position",
+            get_text="text",
+            get_color="color",
+            get_size=14,
+            size_units="pixels",
+            get_alignment_baseline="'bottom'",
+            pickable=False,
+        ))
 
     # Markers HK (ScatterplotLayer)
     marker_data = [
@@ -3301,7 +3303,11 @@ if _page == "geology":
             )
 
             # ── Toggle overlay & spacing check ──────────────────────────────
-            _tc1, _tc2, _tc3 = st.columns([1.2, 1, 1.5])
+            _tc0, _tc1, _tc2, _tc3 = st.columns([1, 1.2, 1, 1.5])
+            _show_bh_names_pd = _tc0.checkbox(
+                "Hiện tên hố khoan",
+                value=True, key="_3d_pd_bhnames",
+            )
             _show_pairs_pd  = _tc1.checkbox(
                 "Hiện tất cả khoảng cách HK trên 3D",
                 value=True, key="_3d_pd_pairs",
@@ -3383,6 +3389,7 @@ if _page == "geology":
                         col_radius=_col_radius_pd,
                         pair_lines=(_pair_lines_pd if _show_pairs_pd else None),
                         show_pair_labels=_show_labels_pd,
+                        show_bh_names=_show_bh_names_pd,
                     )
                     if _deck is not None:
                         st.pydeck_chart(_deck, use_container_width=True, height=560)
