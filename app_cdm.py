@@ -8219,6 +8219,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     try:
         import sys as _sys_wif
         _sys_wif.path.insert(0, str(_ROOT / "scripts"))
+        # Test import Pynite TRƯỚC khi load wrapper (wall_internal_force chỉ
+        # import Pynite lazy bên trong hàm → cần test thật)
+        from Pynite import FEModel3D as _FEModel3D_test  # noqa: F401
         from wall_internal_force import (
             solve_pynite as _solve_pynite,
             SoilLayer as _WIF_SoilLayer,
