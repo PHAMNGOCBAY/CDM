@@ -990,6 +990,132 @@ def _draw_boreholes_3d(
     return fig
 
 
+def _draw_boreholes_3d_mpl(
+    selected_zones: list[str],
+    show_clay_bottom: bool = False,
+    show_cdm_top: bool = False,
+    cdm_top_z: float = 2.7,
+    focus_bh: str | None = None,
+    pair_highlight: tuple | None = None,
+):
+    """Matplotlib fallback cho bản đồ 3D địa chất (khi không có plotly)."""
+    import matplotlib.pyplot as plt
+    from collections import defaultdict
+    try:
+        from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+    except ImportError:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.text(0.5, 0.5, "Không có mpl_toolkits.mplot3d", ha="center", va="center",
+                transform=ax.transAxes)
+        ax.axis("off")
+        return fig
+
+    bhs, lays = _load_borehole_3d_data()
+    bhs = [b for b in bhs if b["zone"] in selected_zones]
+    if focus_bh:
+        bhs_focus = [b for b in bhs if b["name"] == focus_bh]
+        if bhs_focus:
+            bhs = bhs_focus
+    if not bhs:
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.text(0.5, 0.5, "Không có dữ liệu tọa độ hố khoan", ha="center", va="center",
+                transform=ax.transAxes)
+        ax.axis("off")
+        return fig
+
+    bh_ids = {b["id"] for b in bhs}
+    lays = [l for l in lays if l["borehole_id"] in bh_ids]
+    lay_by_bh: dict[int, list[dict]] = defaultdict(list)
+    for l in lays:
+        lay_by_bh[l["borehole_id"]].append(l)
+
+    fig = plt.figure(figsize=(10, 7))
+    ax = fig.add_subplot(111, projection="3d")
+
+    # Vẽ từng đoạn lớp đất bằng đường thẳng đứng có màu
+    legend_seen: set[str] = set()
+    for bh in bhs:
+        for l in lay_by_bh[bh["id"]]:
+            sym   = l["symbol"]
+            color = _LAYER_COLORS.get(sym, _LAYER_DEFAULT_COLOR)
+            z0    = bh["elevation_m"] - l["depth_top_m"]
+            z1    = bh["elevation_m"] - l["depth_bot_m"]
+            label = f"Lớp {sym}" if sym not in legend_seen else None
+            legend_seen.add(sym)
+            ax.plot(
+                [bh["x_coord_m"], bh["x_coord_m"]],
+                [bh["y_coord_m"], bh["y_coord_m"]],
+                [z0, z1],
+                color=color, lw=5, label=label, solid_capstyle="butt",
+            )
+
+    # Markers + nhãn tên HK
+    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32"}
+    _zone_markers = {"KE": "o", "BXN": "s", "NHC": "D"}
+    for bh in bhs:
+        z_top = bh["elevation_m"] + 3
+        ax.scatter(bh["x_coord_m"], bh["y_coord_m"], z_top,
+                   c=_zone_colors.get(bh["zone"], "#333"),
+                   marker=_zone_markers.get(bh["zone"], "o"),
+                   s=40, edgecolor="#000", lw=0.5)
+        _nm = bh["name"].replace("BXN-CV-", "").replace("KE-", "")
+        ax.text(bh["x_coord_m"], bh["y_coord_m"], z_top + 0.5, _nm,
+                fontsize=8, ha="center", color="#212121")
+
+    # Mặt đáy lớp bùn (vẽ scatter, không vẽ mesh)
+    if show_clay_bottom:
+        _clay = [c for c in _load_clay_bottom_3d() if c["zone"] in selected_zones]
+        if _clay:
+            ax.scatter(
+                [c["x_coord_m"] for c in _clay],
+                [c["y_coord_m"] for c in _clay],
+                [c["clay_bot_elev"] for c in _clay],
+                c="#0D47A1", marker="D", s=50, label="Đáy bùn",
+            )
+
+    # Mặt phẳng đỉnh trụ CDM
+    if show_cdm_top:
+        import numpy as _np
+        all_x_ = [b["x_coord_m"] for b in bhs]
+        all_y_ = [b["y_coord_m"] for b in bhs]
+        pad = 20.0
+        mx, Mx = min(all_x_) - pad, max(all_x_) + pad
+        my, My = min(all_y_) - pad, max(all_y_) + pad
+        ax.plot_surface(
+            _np.array([[mx, Mx], [mx, Mx]]),
+            _np.array([[my, my], [My, My]]),
+            _np.array([[cdm_top_z]*2, [cdm_top_z]*2]),
+            color="#E91E63", alpha=0.25, edgecolor="#C2185B",
+        )
+
+    # Đường kích thước giữa 2 HK
+    if pair_highlight:
+        _b1, _b2, _dist = pair_highlight
+        _bh1 = next((b for b in bhs if b["name"] == _b1), None)
+        _bh2 = next((b for b in bhs if b["name"] == _b2), None)
+        if _bh1 and _bh2:
+            _z = max(_bh1["elevation_m"], _bh2["elevation_m"]) + 4
+            ax.plot(
+                [_bh1["x_coord_m"], _bh2["x_coord_m"]],
+                [_bh1["y_coord_m"], _bh2["y_coord_m"]],
+                [_z, _z],
+                color="#FF6F00", lw=2.5,
+            )
+            _mx = (_bh1["x_coord_m"] + _bh2["x_coord_m"]) / 2
+            _my = (_bh1["y_coord_m"] + _bh2["y_coord_m"]) / 2
+            ax.text(_mx, _my, _z + 1.5, f"{_dist:.1f} m",
+                    fontsize=11, color="#E65100", ha="center", fontweight="bold")
+
+    ax.set_xlabel("X — Easting (m)", fontsize=9)
+    ax.set_ylabel("Y — Northing (m)", fontsize=9)
+    ax.set_zlabel("Cao độ (m)", fontsize=9)
+    ax.tick_params(labelsize=8)
+    ax.legend(loc="upper left", fontsize=7, framealpha=0.85, ncol=2)
+    ax.view_init(elev=20, azim=-60)
+    fig.tight_layout()
+    return fig
+
+
 _VN2000_CM  = 105.75          # kinh tuyến trục TP.HCM: 105°45'E
 _VN2000_FE  = 500_000.0       # False Easting
 _M_PER_DEG  = 110_574.0       # m/độ vĩ tuyến (xích đạo ≈ 110,574 m)
@@ -2842,8 +2968,45 @@ if _page == "geology":
 
     # ── 3D / Map toggle ───────────────────────────────────────────────────────
     st.divider()
-    if not _HAS_PLOTLY:
-        st.caption("Cài `plotly` để xem bản đồ địa chất.")
+    if not _HAS_PLOTLY and _HAS_MPL:
+        # Matplotlib 3D fallback (khi plotly chưa cài trên Cloud)
+        _bhs_all_mpl, _ = _load_borehole_3d_data()
+        _zones_with_coords_mpl = sorted({b["zone"] for b in _bhs_all_mpl})
+        if not _zones_with_coords_mpl:
+            st.info(_t("no_coords_db"))
+        else:
+            st.markdown("#### Bản đồ 3D địa chất (matplotlib fallback)")
+            _mc1, _mc2 = st.columns([3, 2])
+            with _mc1:
+                _sel_zones_mpl = st.multiselect(
+                    _t("zone_lbl"), _zones_with_coords_mpl,
+                    default=_zones_with_coords_mpl, key="_3d_mpl_zones",
+                )
+            with _mc2:
+                _show_clay_mpl = st.checkbox(_t("clay_surf"), value=True, key="_3d_mpl_clay")
+                _show_cdm_mpl  = st.checkbox(_t("cdm_top_show"), value=False, key="_3d_mpl_top")
+            _cdm_z_mpl = float(_get("cdm_CDTK"))
+            if _show_cdm_mpl:
+                _cdm_z_mpl = st.number_input(
+                    _t("elev_lbl"), value=_cdm_z_mpl, step=0.1, key="_3d_mpl_top_z")
+            if _sel_zones_mpl:
+                try:
+                    _fig_3d_mpl = _draw_boreholes_3d_mpl(
+                        _sel_zones_mpl,
+                        show_clay_bottom=_show_clay_mpl,
+                        show_cdm_top=_show_cdm_mpl,
+                        cdm_top_z=_cdm_z_mpl,
+                    )
+                    st.pyplot(_fig_3d_mpl, use_container_width=True)
+                    plt.close(_fig_3d_mpl)
+                    st.caption(
+                        "Không có plotly trên Cloud — đang dùng matplotlib 3D. "
+                        "View tĩnh, không xoay được. Cài plotly để có bản đồ tương tác."
+                    )
+                except Exception as _e:
+                    st.warning(f"Không vẽ được bản đồ 3D: {_e}")
+    elif not _HAS_PLOTLY:
+        st.caption("Cài `plotly` (hoặc matplotlib) để xem bản đồ địa chất.")
     else:
         _bhs_all, _ = _load_borehole_3d_data()
         _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
