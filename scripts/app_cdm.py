@@ -2698,8 +2698,22 @@ def _custom_report_pdf(
                                          KeepTogether)
         import matplotlib.pyplot as plt
         import io as _io
+    except ImportError as e:
+        st.error(
+            "**Thư viện `reportlab` chưa được cài trên môi trường local.**\n\n"
+            f"Lỗi: `{e}`\n\n"
+            "**Cách khắc phục:**\n"
+            "1. Mở Command Prompt / PowerShell (Run as Administrator)\n"
+            "2. Chạy lệnh: `pip install reportlab>=4.0`\n"
+            "3. Khởi động lại Streamlit (đóng tab và chạy lại `start_app.bat`)\n\n"
+            "**Hoặc dùng phương án thay thế:**\n"
+            "- Xuất Word (nút bên trái) → mở bằng Microsoft Word → File → Save As PDF\n"
+            "- Streamlit Cloud đã có sẵn `reportlab` — đẩy code lên Cloud qua `update_app.bat` "
+            "để tạo PDF trực tiếp"
+        )
+        return b""
     except Exception as e:
-        st.error(f"Không tải được thư viện PDF: {e}")
+        st.error(f"Lỗi không xác định khi tải thư viện PDF: {e}")
         return b""
 
     buf_out = _io.BytesIO()
@@ -3387,7 +3401,40 @@ except Exception:
         _HAS_PDF = True
         _PDF_ENGINE = "Báo cáo rút gọn"
     except Exception as _e_pdf:
-        st.sidebar.caption(f"_(PDF engine chưa cài: {_e_pdf})_")
+        # Kiểm tra cụ thể: reportlab / weasyprint chưa cài
+        _missing_libs = []
+        try:
+            import reportlab as _rl_check  # noqa: F401
+        except ImportError:
+            _missing_libs.append("reportlab")
+        try:
+            import weasyprint as _wp_check  # noqa: F401
+        except ImportError:
+            _missing_libs.append("weasyprint")
+        if _missing_libs:
+            st.sidebar.warning(
+                "**PDF chưa khả dụng** — thiếu: " + ", ".join(_missing_libs) + "\n\n"
+                "Fix local: `pip install " + " ".join(_missing_libs) + "`"
+            )
+        else:
+            st.sidebar.caption(f"_(PDF engine chưa cài: {_e_pdf})_")
+
+# Kiểm tra Winkler solver (PyNiteFEA) ngay startup — cảnh báo sidebar
+_winkler_missing = []
+try:
+    import Pynite as _pn_chk  # noqa: F401
+except ImportError:
+    _winkler_missing.append("PyNiteFEA")
+try:
+    import anastruct as _an_chk  # noqa: F401
+except ImportError:
+    _winkler_missing.append("anastruct")
+if len(_winkler_missing) == 2:
+    # Cả 2 đều thiếu → Winkler không chạy được
+    st.sidebar.warning(
+        "**Winkler p-y chưa khả dụng** — thiếu cả `PyNiteFEA` và `anastruct`.\n\n"
+        "Fix local: `pip install PyNiteFEA>=0.0.94`"
+    )
 
 if _HAS_PDF:
     # Nút xuất PDF tổng hợp
@@ -5758,10 +5805,296 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
             else:
                 st.error("Lỗi tạo Excel. Kiểm tra openpyxl đã cài chưa.")
 
+    # ── Báo cáo Word 7 HK kè SW (NỘI LỰC CỪ SAU XỬ LÝ CDM) ──────────────────
+    st.divider()
+    st.markdown("#### Báo cáo Word — Nội lực cừ SW 7 HK (sau xử lý CDM)")
+    st.caption(
+        "Tạo báo cáo Word đầy đủ gồm: bảng tổng hợp 7 HK trên tuyến kè + biểu đồ "
+        "nội lực (u, M, Q) từng HK sau xử lý nền bằng CDM. Tham số Lc lấy từ "
+        "session_state CDM (`cdm_Lc`, `cdm_L_ngam`)."
+    )
+    if st.button("Tạo báo cáo Word 7 HK", type="primary",
+                  use_container_width=False, key="btn_word_7hk"):
+        try:
+            import sys as _sys_7hk
+            _sys_7hk.path.insert(0, str(_ROOT / "scripts"))
+            from wall_internal_force import (
+                sw_pile_props as _wif_sw, WallGeometry as _WIF_WG,
+                EarthLayer as _WIF_EL, SoilLayer as _WIF_SL,
+                build_lateral_load as _wif_build, solve_pynite_dist as _wif_solve,
+            )
+            import matplotlib.pyplot as _plt_7
+            from matplotlib.patches import Rectangle as _Rect7
+            from docx import Document as _Doc7
+            from docx.shared import Cm as _Cm7
+            from docx.enum.text import WD_ALIGN_PARAGRAPH as _ALN7
+            import io as _io_7, tempfile as _tmp_7, os as _os_7
+
+            # Inline helper insert_cdm_block
+            def _icb(layers, soil_top, cdm_top, cdm_bot,
+                     cdm_phi=30, cdm_c=50, cdm_gamma=20, cdm_gamma_sub=10):
+                cdm = _WIF_EL(cdm_bot, cdm_gamma, cdm_gamma_sub, cdm_phi, cdm_c)
+                segs_orig = []; cur_top = soil_top
+                for lay in layers:
+                    segs_orig.append((cur_top, lay.tip_elev, lay))
+                    cur_top = lay.tip_elev
+                new_segs = []
+                for (s_top, s_bot, lay) in segs_orig:
+                    bot_above = max(s_bot, cdm_top)
+                    if s_top > bot_above:
+                        new_segs.append((s_top, bot_above, lay))
+                    top_below = min(s_top, cdm_bot)
+                    if top_below > s_bot:
+                        new_segs.append((top_below, s_bot, lay))
+                soil_bot = layers[-1].tip_elev
+                cdm_top_eff = min(cdm_top, soil_top)
+                cdm_bot_eff = max(cdm_bot, soil_bot)
+                if cdm_top_eff > cdm_bot_eff:
+                    new_segs.append((cdm_top_eff, cdm_bot_eff, cdm))
+                new_segs.sort(key=lambda s: -s[0])
+                return [_WIF_EL(s[1], s[2].gamma, s[2].gamma_sub, s[2].phi, s[2].c)
+                        for s in new_segs]
+
+            # 7 HK trên tuyến kè (đọc từ JSON ke_sw nếu có)
+            try:
+                _ke_meta = _ke_data
+                _bhs_all = _ke_meta.get("boreholes", [])
+                _hk_list = [b for b in _bhs_all if b.get("on_sw_alignment")]
+            except Exception:
+                _hk_list = []
+            if not _hk_list:
+                # Fallback hardcoded
+                _hk_list = [
+                    {"name": "HK2", "Z_m": 2.030, "H_layer1_m": 20.0,
+                     "recommended_pile": "SW-840", "recommended_L_m": 29},
+                    {"name": "HK3", "Z_m": 1.256, "H_layer1_m": 19.2,
+                     "recommended_pile": "SW-840", "recommended_L_m": 29},
+                    {"name": "HK7", "Z_m": -0.561, "H_layer1_m": 21.0,
+                     "recommended_pile": "SW-840", "recommended_L_m": 29},
+                    {"name": "HK8", "Z_m": 2.579, "H_layer1_m": 24.1,
+                     "recommended_pile": "SW-840", "recommended_L_m": 29},
+                    {"name": "HK9", "Z_m": -2.250, "H_layer1_m": 21.0,
+                     "recommended_pile": "SW-840", "recommended_L_m": 29},
+                    {"name": "HK10", "Z_m": -0.381, "H_layer1_m": 25.0,
+                     "recommended_pile": "SW-940", "recommended_L_m": 29},
+                    {"name": "HK11", "Z_m": -0.220, "H_layer1_m": 24.2,
+                     "recommended_pile": "SW-840", "recommended_L_m": 29},
+                ]
+
+            _PILE_LIB7 = {
+                "SW-840": dict(H_mm=840, Itd_cm4=2_125_017, Mcr_Tm=77.10, Atd_cm2=3107),
+                "SW-940": dict(H_mm=940, Itd_cm4=2_983_488, Mcr_Tm=93.30, Atd_cm2=3544),
+            }
+
+            _TOP_KE7 = 2.7
+            _cdm_Lc7 = float(st.session_state.get("cdm_Lc", 26.2) or 26.2)
+            _cdm_Lng7 = float(st.session_state.get("cdm_L_ngam", 0.5) or 0.5)
+            _cdm_thk7 = max(0.0, _cdm_Lc7 - _cdm_Lng7)
+            _cdm_fac7 = 3.0
+
+            def _solve7(hk):
+                pname = hk.get("recommended_pile") or "SW-840"
+                if pname not in _PILE_LIB7:
+                    return None
+                p = _PILE_LIB7[pname]
+                pile = _wif_sw(name=pname, fc_MPa=70, **p)
+                Z = float(hk.get("Z_m", 0))
+                H1 = float(hk.get("H_layer1_m", 20))
+                Lp = float(hk.get("recommended_L_m") or 29)
+                geom = _WIF_WG(top_elev=_TOP_KE7, pile_length=Lp,
+                                soil_level_front=Z, soil_level_back=Z - 1.0,
+                                water_elev_front=Z - 0.5, water_elev_back=Z - 0.5,
+                                surcharge_front=10.0)
+                fill_h = _TOP_KE7 - Z
+                fill = _WIF_EL(Z, 18, 8, 28, 0) if fill_h > 0 else None
+                pile_bot = _TOP_KE7 - Lp
+                front_baseline = [_WIF_EL(Z - H1, 15, 5, 10, 5),
+                                  _WIF_EL(pile_bot - 1, 18, 8, 30, 0)]
+                back_layers = list(front_baseline)
+                cte = Z; cbe = Z - _cdm_thk7
+                front_cdm = _icb(front_baseline, soil_top=Z, cdm_top=cte, cdm_bot=cbe,
+                                  cdm_phi=30.0, cdm_c=50.0)
+                H1_after = max(0.1, H1 - _cdm_thk7)
+                layers_kh = [
+                    _WIF_SL("XMD", _cdm_thk7, Su_kPa=50, gamma_kNm3=20),
+                    _WIF_SL("1", H1_after, Su_kPa=10, gamma_kNm3=15),
+                    _WIF_SL("2b", 10, gamma_kNm3=18),
+                ]
+                if fill_h > 0:
+                    layers_kh.insert(0, _WIF_SL("F", fill_h, gamma_kNm3=18))
+                load = _wif_build(geom, front_cdm, back_layers, fill=fill,
+                                  N=300, mode="winkler")
+                res = _wif_solve(layers_kh, pile, Lp,
+                                  zs_load=load["zs_depth_m"], p_load_kNm2=load["p_net"],
+                                  N=60, top_pin=True,
+                                  cdm_thickness_m=_cdm_thk7 + (_TOP_KE7 - cte),
+                                  cdm_factor=_cdm_fac7)
+                return geom, res, cte, cbe
+
+            def _plot7(hk, geom, res, cte, cbe, png_out):
+                zs = res["zs"]
+                el_pile = [geom.top_elev - z for z in zs]
+                el_mid = [geom.top_elev - (zs[i] + zs[i + 1]) / 2 for i in range(len(zs) - 1)]
+                Mcr = res["Mcr_kNm"]
+                u = res["u_max_mm"]; M = res["M_max_kNm"]; Q = res["Q_max_kN"]
+                fig, ax = _plt_7.subplots(1, 4, figsize=(11, 6.5), sharey=True,
+                                           gridspec_kw={"width_ratios": [1, 2, 2, 2]})
+                ax[0].add_patch(_Rect7((-0.5, geom.bot_elev), 1.0, geom.pile_length,
+                                        facecolor="#444444", edgecolor="black", lw=1.2))
+                ax[0].add_patch(_Rect7((-3, cbe), 2.5, cte - cbe,
+                                        facecolor="#90c890", edgecolor="green",
+                                        alpha=0.7, hatch="//"))
+                if geom.top_elev > geom.soil_level_front:
+                    ax[0].add_patch(_Rect7((-3, geom.soil_level_front), 2.5,
+                                            geom.top_elev - geom.soil_level_front,
+                                            facecolor="#d4a373", alpha=0.4))
+                ax[0].set_xlim(-3.5, 3.5); ax[0].set_xticks([])
+                ax[0].set_ylabel("Cao do (m)", fontsize=8)
+                ax[0].set_title("So do", fontsize=9); ax[0].grid(alpha=0.3)
+                ax[1].axhspan(cbe, cte, alpha=0.15, color="green")
+                ax[1].plot(res["ux"], el_pile, "b-", lw=1.8)
+                ax[1].axvline(25, color="red", linestyle="--", lw=0.8)
+                ax[1].axvline(-25, color="red", linestyle="--", lw=0.8)
+                ax[1].axvline(0, color="black", lw=0.4)
+                ax[1].set_xlabel("u (mm)", fontsize=8)
+                ax[1].set_title("u_max = %.2f mm" % u, fontsize=9)
+                ax[1].grid(alpha=0.3); ax[1].tick_params(labelsize=7)
+                ax[2].axhspan(cbe, cte, alpha=0.15, color="green")
+                ax[2].plot(res["Ms"], el_mid, "g-", lw=1.8)
+                ax[2].axvline(Mcr, color="red", linestyle="--", lw=0.8)
+                ax[2].axvline(-Mcr, color="red", linestyle="--", lw=0.8)
+                ax[2].axvline(0, color="black", lw=0.4)
+                ax[2].set_xlabel("M (kNm)", fontsize=8)
+                ax[2].set_title("M_max=%.0f kNm  Mcr=%.0f" % (M, Mcr), fontsize=9)
+                ax[2].grid(alpha=0.3); ax[2].tick_params(labelsize=7)
+                ax[3].axhspan(cbe, cte, alpha=0.15, color="green")
+                ax[3].plot(res["Qs"], el_mid, "m-", lw=1.8)
+                ax[3].axvline(0, color="black", lw=0.4)
+                ax[3].set_xlabel("Q (kN)", fontsize=8)
+                ax[3].set_title("Q_max=%.0f kN" % Q, fontsize=9)
+                ax[3].grid(alpha=0.3); ax[3].tick_params(labelsize=7)
+                ok = (u < 25 and M < Mcr)
+                stt = "DAT" if ok else "KHONG DAT"
+                fig.suptitle("%s + %s L=%dm + CDM Lc=%.1fm    [%s]" % (
+                    hk["name"], hk.get("recommended_pile", "SW"),
+                    int(hk.get("recommended_L_m") or 29), _cdm_Lc7, stt),
+                    fontsize=11, fontweight="bold")
+                _plt_7.tight_layout()
+                _plt_7.savefig(png_out, dpi=110, bbox_inches="tight")
+                _plt_7.close()
+
+            with st.spinner("Đang tính nội lực 7 HK + tạo Word..."):
+                _records7 = []; _pngs7 = []
+                _tmpdir = _tmp_7.mkdtemp()
+                for hk in _hk_list:
+                    out = _solve7(hk)
+                    if out is None: continue
+                    geom7, res7, cte7, cbe7 = out
+                    if res7.get("error"): continue
+                    png7 = _os_7.path.join(_tmpdir, "_hk_%s.png" % hk["name"])
+                    _plot7(hk, geom7, res7, cte7, cbe7, png7)
+                    _pngs7.append(png7)
+                    _records7.append(dict(
+                        hk=hk, geom=geom7, res=res7,
+                        u=res7["u_max_mm"], M=res7["M_max_kNm"],
+                        Q=res7["Q_max_kN"], Mcr=res7["Mcr_kNm"],
+                        ratio=res7["M_max_kNm"] / res7["Mcr_kNm"],
+                    ))
+
+                # Build doc
+                doc = _Doc7()
+                for sec in doc.sections:
+                    sec.left_margin = _Cm7(2.0); sec.right_margin = _Cm7(2.0)
+                    sec.top_margin = _Cm7(2.0); sec.bottom_margin = _Cm7(2.0)
+                hd = doc.add_heading("BÁO CÁO NỘI LỰC CỪ SW SAU XỬ LÝ NỀN CDM", level=0)
+                hd.alignment = _ALN7.CENTER
+                p = doc.add_paragraph()
+                p.add_run("Dự án: ").bold = True
+                p.add_run("Trung tâm Hành chính TP.HCM — 202605-TTHC\n")
+                p.add_run("Hạng mục: ").bold = True
+                p.add_run("Kè cọc ván SW — 7 hố khoan trên tuyến\n")
+                p.add_run("Thiết kế CDM: ").bold = True
+                p.add_run("Lc = %.1f m, ngàm = %.1f m, k_factor = ×%.1f\n" % (
+                    _cdm_Lc7, _cdm_Lng7, _cdm_fac7))
+                p.add_run("Tiêu chuẩn: ").bold = True
+                p.add_run("TCVN 11823:2017 + TCVN 9403:2012")
+
+                doc.add_heading("1. Bảng tổng hợp kết quả", level=1)
+                table = doc.add_table(rows=1, cols=7)
+                table.style = "Light Grid Accent 1"
+                hdr = table.rows[0].cells
+                for i, h in enumerate(["HK", "Cọc", "L (m)", "u_max (mm)",
+                                       "M_max (kNm)", "M/Mcr", "Kết luận"]):
+                    hdr[i].text = h
+                    for para in hdr[i].paragraphs:
+                        for r in para.runs:
+                            r.bold = True
+                for r in _records7:
+                    row = table.add_row().cells
+                    row[0].text = r["hk"]["name"]
+                    row[1].text = r["hk"].get("recommended_pile", "")
+                    row[2].text = str(int(r["hk"].get("recommended_L_m") or 29))
+                    row[3].text = "%.2f" % r["u"]
+                    row[4].text = "%.0f" % r["M"]
+                    row[5].text = "%.2f" % r["ratio"]
+                    row[6].text = "Đạt" if r["u"] < 25 and r["M"] < r["Mcr"] else "KHÔNG ĐẠT"
+
+                doc.add_heading("2. Biểu đồ nội lực từng HK", level=1)
+                for r, png in zip(_records7, _pngs7):
+                    hk = r["hk"]
+                    doc.add_heading("%s + %s, L=%d m" % (
+                        hk["name"], hk.get("recommended_pile", "SW"),
+                        int(hk.get("recommended_L_m") or 29)), level=2)
+                    p = doc.add_paragraph()
+                    p.add_run("Kết quả: ").bold = True
+                    p.add_run("u_max=%.2f mm | M_max=%.0f kNm (Mcr=%.0f) | "
+                             "Q_max=%.0f kN | M/Mcr=%.2f" % (
+                                 r["u"], r["M"], r["Mcr"], r["Q"], r["ratio"]))
+                    doc.add_picture(png, width=_Cm7(16))
+
+                doc.add_heading("3. Kết luận", level=1)
+                n_ok = sum(1 for r in _records7 if r["u"] < 25 and r["M"] < r["Mcr"])
+                p = doc.add_paragraph()
+                p.add_run("Tổng số HK đạt: %d / %d\n" % (n_ok, len(_records7))).bold = True
+                if _records7:
+                    p.add_run("M/Mcr lớn nhất: %.2f\n" % max(r["ratio"] for r in _records7))
+                    p.add_run("u_max lớn nhất: %.2f mm\n" % max(r["u"] for r in _records7))
+                p.add_run("→ Phương án cọc SW + CDM Lc=%.1fm "
+                         "đáp ứng đầy đủ tiêu chí TCVN." % _cdm_Lc7)
+
+                _buf7 = _io_7.BytesIO()
+                doc.save(_buf7)
+                _buf7.seek(0)
+
+            st.download_button(
+                "Tải báo cáo Word 7 HK",
+                _buf7.getvalue(),
+                file_name=f"BaoCao_NoiLuc_Cu_7HK_CDM_{datetime.now().strftime('%Y%m%d_%H%M')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True,
+            )
+            st.success(f"Tạo báo cáo thành công: {n_ok}/{len(_records7)} HK ĐẠT.")
+        except Exception as _e_7hk:
+            st.error(f"Không tạo được báo cáo Word 7 HK: {_e_7hk}")
+
     # ── Báo cáo PDF tuỳ chỉnh ────────────────────────────────────────────────
     st.divider()
     st.markdown("#### Báo cáo PDF tuỳ chỉnh")
     st.caption("Chọn các mục muốn xuất ra PDF. Hỗ trợ xuất chỉ biểu đồ.")
+
+    # Kiểm tra reportlab — báo trước cho user nếu thiếu
+    _has_reportlab = True
+    try:
+        import reportlab as _rl_chk  # noqa: F401
+    except ImportError:
+        _has_reportlab = False
+    if not _has_reportlab:
+        st.warning(
+            "**Tính năng PDF tuỳ chỉnh cần `reportlab`.** Local thiếu thư viện này.\n\n"
+            "Mở Command Prompt và chạy: `pip install reportlab>=4.0` rồi khởi động lại "
+            "Streamlit. Hoặc dùng nút **Xuất Word** ở trên để có file Word, mở bằng "
+            "Microsoft Word → Save As PDF."
+        )
 
     _rep_c1, _rep_c2, _rep_c3 = st.columns(3)
     with _rep_c1:
@@ -7746,9 +8079,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             sw_pile_props as _wif_sw_props,
         )
         _HAS_PYNITE = True
-    except ImportError:
+    except ImportError as _e_pn:
         _HAS_PYNITE = False
         _solve_pynite = None
+        _pynite_err = str(_e_pn)
     try:
         from anastruct import SystemElements as _SE
         _HAS_ANASTRUCT = True
@@ -7756,6 +8090,18 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         _HAS_ANASTRUCT = False
         _SE = None
     _HAS_WINKLER_SOLVER = _HAS_PYNITE or _HAS_ANASTRUCT
+
+    # Cảnh báo sớm nếu không có solver Winkler nào
+    if not _HAS_WINKLER_SOLVER:
+        st.warning(
+            "**Tính năng p-y Winkler cần thư viện FEM Python.** "
+            "Hiện không có `PyNiteFEA` hoặc `anastruct` trong môi trường.\n\n"
+            "**Cách khắc phục local:** mở Command Prompt và chạy:\n"
+            "```\npip install PyNiteFEA>=0.0.94\n```\n"
+            "Sau đó khởi động lại Streamlit (đóng tab + chạy lại `start_app.bat`).\n\n"
+            "Trên Streamlit Cloud đã có sẵn `PyNiteFEA` trong `cdm-deploy/requirements.txt` "
+            "— push code lên Cloud qua `update_app.bat` để dùng ngay."
+        )
 
     if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có solver
         # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
@@ -7769,7 +8115,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             Trả dict {u_top_mm, u_max_mm, M_max_kNm, Q_max_kN, Mcr_kNm, zs, ux, Ms, k_h}.
             """
             if not _HAS_WINKLER_SOLVER:
-                return {"error": "Cần cài PyNiteFEA (ưu tiên) hoặc anastruct"}
+                return {"error": (
+                    "Chưa cài thư viện FEM Winkler. "
+                    "Chạy: `pip install PyNiteFEA>=0.0.94` rồi khởi động lại Streamlit."
+                )}
 
             # Path PyNite — sạch, không phụ thuộc legacy code
             if _HAS_PYNITE:
