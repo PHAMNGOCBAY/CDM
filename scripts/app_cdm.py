@@ -6129,7 +6129,16 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                 _plt_7.savefig(png_out, dpi=110, bbox_inches="tight")
                 _plt_7.close()
 
-            with st.spinner("Đang tính nội lực 7 HK + tạo Word..."):
+            # Import sw_global_stability nếu có
+            try:
+                from sw_global_stability import (
+                    CDMBlock as _CDMB7, check_all as _sw_chk_all7,
+                )
+                _has_stab = True
+            except ImportError:
+                _has_stab = False
+
+            with st.spinner("Đang tính nội lực + ổn định tổng thể 7 HK + tạo Word..."):
                 _records7 = []; _pngs7 = []
                 _tmpdir = _tmp_7.mkdtemp()
                 for hk in _hk_list:
@@ -6140,11 +6149,42 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                     png7 = _os_7.path.join(_tmpdir, "_hk_%s.png" % hk["name"])
                     _plot7(hk, geom7, res7, cte7, cbe7, png7)
                     _pngs7.append(png7)
+                    # Tính 3 Fs ổn định
+                    _Fs1 = _Fs2 = _Fs3 = None
+                    if _has_stab:
+                        try:
+                            _Z_st = float(hk.get("Z_m", 0))
+                            _H1_st = float(hk.get("H_layer1_m", 20))
+                            _Lp_st = float(hk.get("recommended_L_m") or 29)
+                            _fill_st = _WIF_EL(_Z_st, 18, 8, 28, 0) if _TOP_KE7 > _Z_st else None
+                            _pile_bot_st = _TOP_KE7 - _Lp_st
+                            _front_st = [_WIF_EL(_Z_st - _H1_st, 15, 5, 10, 5),
+                                          _WIF_EL(_pile_bot_st - 1, 18, 8, 30, 0)]
+                            _back_st = list(_front_st)
+                            _cdm_st = _CDMB7(top_elev=_Z_st,
+                                              bot_elev=_Z_st - _cdm_thk7,
+                                              area_ratio_a=0.20, c_col_kPa=75.0,
+                                              phi_col_deg=30.0, gamma_col_kNm3=19.0)
+                            _geom_st = _WIF_WG(
+                                top_elev=_TOP_KE7, pile_length=_Lp_st,
+                                soil_level_front=_Z_st, soil_level_back=_Z_st - 1.0,
+                                water_elev_front=_Z_st - 0.5, water_elev_back=_Z_st - 0.5,
+                                surcharge_front=10.0,
+                            )
+                            _res_st = _sw_chk_all7(_geom_st, _front_st, _back_st,
+                                                    fill=_fill_st, cdm=_cdm_st,
+                                                    method="bishop")
+                            _Fs1 = _res_st.Fs_global_slip
+                            _Fs2 = _res_st.Fs_overturning
+                            _Fs3 = _res_st.Fs_toe_kickout
+                        except Exception:
+                            pass
                     _records7.append(dict(
                         hk=hk, geom=geom7, res=res7,
                         u=res7["u_max_mm"], M=res7["M_max_kNm"],
                         Q=res7["Q_max_kN"], Mcr=res7["Mcr_kNm"],
                         ratio=res7["M_max_kNm"] / res7["Mcr_kNm"],
+                        Fs_slip=_Fs1, Fs_lat=_Fs2, Fs_toe=_Fs3,
                     ))
 
                 # Build doc
@@ -6198,7 +6238,43 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                                  r["u"], r["M"], r["Mcr"], r["Q"], r["ratio"]))
                     doc.add_picture(png, width=_Cm7(16))
 
-                doc.add_heading("3. Kết luận", level=1)
+                # Mục 3: Ổn định tổng thể (nếu có)
+                if _has_stab and any(r.get("Fs_slip") is not None for r in _records7):
+                    doc.add_heading("3. Ổn định tổng thể tường SW + CDM", level=1)
+                    p = doc.add_paragraph()
+                    p.add_run("Tiêu chuẩn: ").bold = True
+                    p.add_run("TCVN 4253 (Fs trượt ≥ 1.30), USACE EM 1110-2-2504 "
+                             "(Fs toe ≥ 1.50), FHWA GEC-13 (Fs lật ≥ 2.00)\n")
+                    p.add_run("Phương pháp: ").bold = True
+                    p.add_run("Bishop Simplified cho cung tròn; cân bằng tĩnh "
+                             "(ΣM quanh chân cừ) cho lật/toe-kick. "
+                             "CDM composite theo TCVN 9403:2012 Phụ lục C.")
+
+                    tab_st = doc.add_table(rows=1, cols=6)
+                    tab_st.style = "Light Grid Accent 1"
+                    hdr_st = tab_st.rows[0].cells
+                    for i, h in enumerate(["HK", "Cọc", "Fs trượt cung",
+                                             "Fs lật", "Fs xoay nhổ", "Kết luận"]):
+                        hdr_st[i].text = h
+                        for para in hdr_st[i].paragraphs:
+                            for r in para.runs:
+                                r.bold = True
+                    for r in _records7:
+                        row = tab_st.add_row().cells
+                        row[0].text = r["hk"]["name"]
+                        row[1].text = r["hk"].get("recommended_pile", "")
+                        row[2].text = "%.2f" % r["Fs_slip"] if r.get("Fs_slip") else "—"
+                        row[3].text = "%.2f" % r["Fs_lat"]  if r.get("Fs_lat")  else "—"
+                        row[4].text = "%.2f" % r["Fs_toe"]  if r.get("Fs_toe")  else "—"
+                        if r.get("Fs_slip") is not None:
+                            ok_st = (r["Fs_slip"] >= 1.30 and
+                                     r["Fs_lat"] >= 2.00 and
+                                     r["Fs_toe"] >= 1.50)
+                            row[5].text = "Đạt" if ok_st else "KHÔNG ĐẠT"
+                        else:
+                            row[5].text = "—"
+
+                doc.add_heading("4. Kết luận", level=1)
                 n_ok = sum(1 for r in _records7 if r["u"] < 25 and r["M"] < r["Mcr"])
                 p = doc.add_paragraph()
                 p.add_run("Tổng số HK đạt: %d / %d\n" % (n_ok, len(_records7))).bold = True
@@ -9275,6 +9351,139 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _plt_w.close(_fig_w)
                 except Exception as _e_mpl:
                     st.warning(f"Không vẽ được biểu đồ matplotlib: {_e_mpl}")
+
+                # ═══════════════════════════════════════════════════════════
+                # E. ỔN ĐỊNH TỔNG THỂ TƯỜNG SW + CDM (3 kiểm tra)
+                # ═══════════════════════════════════════════════════════════
+                st.markdown("---")
+                st.markdown("### E. Ổn định tổng thể tường SW + CDM")
+                st.caption(
+                    "3 kiểm tra theo TCVN 4253 + USACE EM 1110-2-2504 + FHWA GEC-13: "
+                    "(1) Trượt cung tròn qua chân cừ — Bishop/Spencer LE, "
+                    "(2) Lật quanh chân cừ — ΣM, "
+                    "(3) Xoay nhổ chân cừ (toe kick-out) — Free Earth Support. "
+                    "CDM composite theo TCVN 9403:2012 Phụ lục C."
+                )
+                try:
+                    from sw_global_stability import (
+                        CDMBlock as _CDMB, check_all as _sw_check_all,
+                    )
+                    from wall_internal_force import (
+                        WallGeometry as _WG_S, EarthLayer as _EL_S,
+                    )
+
+                    _Z_s = float(_dpy_Z) if "_dpy_Z" in dir() else 0.0
+                    _top_s = float(_dpy_top_ke) if "_dpy_top_ke" in dir() else 2.7
+                    _L_s = float(_dpy_L)
+                    _H1_s = float(_dpy_H1)
+                    _wlvl_s = float(_dpy_wlvl) if "_dpy_wlvl" in dir() else (_Z_s - 0.5)
+                    _wlvl_b_s = float(_dpy_wlvl_b) if "_dpy_wlvl_b" in dir() else _wlvl_s
+
+                    _geom_s = _WG_S(
+                        top_elev=_top_s, pile_length=_L_s,
+                        soil_level_front=_Z_s, soil_level_back=_Z_s - 1.0,
+                        water_elev_front=_wlvl_s, water_elev_back=_wlvl_b_s,
+                        surcharge_front=float(_dpy_q_op) if "_dpy_q_op" in dir() else 10.0,
+                    )
+                    _fill_s = _EL_S(_Z_s, 18, 8, 28, 0) if _top_s > _Z_s else None
+                    _pile_bot_s = _top_s - _L_s
+                    _front_s = [_EL_S(_Z_s - _H1_s, 15, 5, 10, 5),
+                                 _EL_S(_pile_bot_s - 1, 18, 8, 30, 0)]
+                    _back_s = list(_front_s)
+                    if _cdm_thk_eff > 0:
+                        _cdm_s = _CDMB(top_elev=_Z_s, bot_elev=_Z_s - _cdm_thk_eff,
+                                        area_ratio_a=0.20, c_col_kPa=75.0,
+                                        phi_col_deg=30.0, gamma_col_kNm3=19.0)
+                    else:
+                        _cdm_s = None
+
+                    with st.spinner("Đang chạy 3 kiểm tra ổn định tổng thể..."):
+                        _res_s = _sw_check_all(_geom_s, _front_s, _back_s,
+                                                fill=_fill_s, cdm=_cdm_s,
+                                                method="bishop")
+
+                    # 3 metric cards
+                    _se1, _se2, _se3 = st.columns(3)
+                    _se1.metric(
+                        "Fs trượt cung tròn",
+                        f"{_res_s.Fs_global_slip:.2f}",
+                        f"min 1.30 — {'Đạt' if _res_s.Fs_global_slip >= 1.30 else 'KHÔNG ĐẠT'}",
+                        delta_color="normal" if _res_s.Fs_global_slip >= 1.30 else "inverse",
+                    )
+                    _se2.metric(
+                        "Fs lật quanh chân cừ",
+                        f"{_res_s.Fs_overturning:.2f}",
+                        f"min 2.00 — {'Đạt' if _res_s.Fs_overturning >= 2.00 else 'KHÔNG ĐẠT'}",
+                        delta_color="normal" if _res_s.Fs_overturning >= 2.00 else "inverse",
+                    )
+                    _se3.metric(
+                        "Fs xoay nhổ chân cừ",
+                        f"{_res_s.Fs_toe_kickout:.2f}",
+                        f"min 1.50 — {'Đạt' if _res_s.Fs_toe_kickout >= 1.50 else 'KHÔNG ĐẠT'}",
+                        delta_color="normal" if _res_s.Fs_toe_kickout >= 1.50 else "inverse",
+                    )
+
+                    # Chi tiết
+                    with st.expander("Chi tiết tính toán + mặt trượt nguy hiểm"):
+                        st.markdown(f"**Phương pháp:** `{_res_s.slip_method}`")
+                        st.markdown(
+                            f"- Tâm mặt trượt: ({_res_s.slip_xc:+.1f}, {_res_s.slip_yc:+.1f}) m, "
+                            f"R = {_res_s.slip_R:.1f} m\n"
+                            f"- Moment lật (Ma): {_res_s.M_lat_kNm:,.0f} kNm/m\n"
+                            f"- Moment giữ (Mp): {_res_s.M_giu_kNm:,.0f} kNm/m\n"
+                            f"- Ma (Active Front): {_res_s.Ma_kNm:,.0f} kNm/m\n"
+                            f"- Mp (Passive Back): {_res_s.Mp_kNm:,.0f} kNm/m\n"
+                            f"- CDM Lc dùng: {_cdm_Lc_val:.1f} m (composite φ_eq, c_eq, γ_eq theo TCVN 9403)"
+                        )
+                        if _res_s.warnings:
+                            for _w in _res_s.warnings:
+                                st.warning(_w)
+
+                        # Vẽ sơ đồ mặt trượt
+                        try:
+                            import matplotlib.pyplot as _plt_s
+                            from matplotlib.patches import Circle as _Circ_s, Rectangle as _Rect_s
+                            _fig_s, _ax_s = _plt_s.subplots(1, 1, figsize=(10, 7))
+                            # Mặt đất
+                            _ax_s.plot([-40, 0, 40], [_Z_s, _top_s, _Z_s - 1], "k-", lw=1.5)
+                            # Cừ
+                            _ax_s.add_patch(_Rect_s((-0.3, _pile_bot_s), 0.6, _L_s,
+                                                     facecolor="#444444", edgecolor="black"))
+                            # CDM
+                            if _cdm_s:
+                                _ax_s.add_patch(_Rect_s((-8, _cdm_s.bot_elev), 7.7,
+                                                         _cdm_s.thickness,
+                                                         facecolor="#90c890", alpha=0.5,
+                                                         hatch="//", edgecolor="green",
+                                                         label=f"CDM Lc={_cdm_Lc_val:.1f}m"))
+                            # Mặt trượt
+                            _circ = _Circ_s((_res_s.slip_xc, _res_s.slip_yc),
+                                              _res_s.slip_R, fill=False,
+                                              edgecolor="red", linestyle="--", lw=1.8,
+                                              label=f"Cung trượt Fs={_res_s.Fs_global_slip:.2f}")
+                            _ax_s.add_patch(_circ)
+                            _ax_s.plot(_res_s.slip_xc, _res_s.slip_yc, "r+", markersize=10)
+                            _ax_s.set_xlim(-40, 30)
+                            _ax_s.set_ylim(_pile_bot_s - 5, _top_s + 5)
+                            _ax_s.set_aspect("equal")
+                            _ax_s.set_xlabel("x (m)")
+                            _ax_s.set_ylabel("Cao độ (m)")
+                            _ax_s.set_title("Mặt trượt nguy hiểm nhất + sơ đồ cừ SW + CDM")
+                            _ax_s.grid(alpha=0.3)
+                            _ax_s.legend(loc="lower right", fontsize=9)
+                            st.pyplot(_fig_s, use_container_width=True)
+                            _plt_s.close(_fig_s)
+                        except Exception as _e_plot_s:
+                            st.caption(f"_(Không vẽ được sơ đồ mặt trượt: {_e_plot_s})_")
+
+                except ImportError as _e_imp:
+                    st.info(
+                        "Tính năng ổn định tổng thể cần module `sw_global_stability` "
+                        "và `geotech-staff-engineer`. Cài: "
+                        "`pip install geotech-staff-engineer`"
+                    )
+                except Exception as _e_st:
+                    st.warning(f"Không chạy được kiểm tra ổn định tổng thể: {_e_st}")
 
 
     # ── Xuất PDF tab Cọc ván SW ──────────────────────────────────────────────
