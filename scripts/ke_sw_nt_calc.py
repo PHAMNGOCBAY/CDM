@@ -91,12 +91,81 @@ def _alpha_tomlinson(su: float) -> float:
 
 
 # ── γ + σ'v + N₁₆₀ helpers (cho SPT-Meyerhof) ────────────────────────────────
+def _find_nearest_bh_with_data(
+    bh_name: str, symbol: str, field: str,
+    db_path: Path = DB_PATH,
+    depth_top: float | None = None, depth_bot: float | None = None,
+) -> tuple[float, str, float] | tuple[None, None, None]:
+    """Tìm HK gần nhất cùng zone có giá trị `field` cho lớp.
+
+    Phương án match:
+    1. Nếu cung cấp `depth_top`+`depth_bot`: query lab_tests theo depth range
+       (phù hợp khi `layers.symbol` khác `lab_tests.symbol_tcvn` USCS).
+    2. Nếu không: query lab_tests.symbol_tcvn = symbol.
+
+    field: tên cột trong lab_tests (vd 'gamma_kNm3', 'Cu_UU_kPa', 'c_kPa', 'Cc').
+    Trả (value_avg, source_bh_name, distance_m) hoặc (None, None, None)."""
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+    row = cur.execute(
+        "SELECT b.x_coord_m, b.y_coord_m, z.code "
+        "FROM boreholes b JOIN zones z ON b.zone_id=z.id WHERE b.name=?",
+        (bh_name,),
+    ).fetchone()
+    if row is None or row[0] is None:
+        con.close()
+        return None, None, None
+    x0, y0, zone = row
+
+    if depth_top is not None and depth_bot is not None:
+        # Match theo depth range — không phụ thuộc symbol mapping
+        rows = cur.execute(
+            f"""
+            SELECT b.name, b.x_coord_m, b.y_coord_m, AVG(lt.{field}) v
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id=b.id
+            JOIN zones z ON b.zone_id=z.id
+            WHERE z.code=? AND b.name<>?
+              AND lt.{field} IS NOT NULL
+              AND b.x_coord_m IS NOT NULL
+              AND (lt.depth_from_m + lt.depth_to_m)/2.0 BETWEEN ? AND ?
+            GROUP BY b.id
+            """,
+            (zone, bh_name, depth_top, depth_bot),
+        ).fetchall()
+    else:
+        # Match theo symbol TCVN
+        rows = cur.execute(
+            f"""
+            SELECT b.name, b.x_coord_m, b.y_coord_m, AVG(lt.{field}) v
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id=b.id
+            JOIN zones z ON b.zone_id=z.id
+            WHERE z.code=? AND b.name<>?
+              AND lt.symbol_tcvn=?
+              AND lt.{field} IS NOT NULL
+              AND b.x_coord_m IS NOT NULL
+            GROUP BY b.id
+            """,
+            (zone, bh_name, symbol),
+        ).fetchall()
+    con.close()
+    if not rows:
+        return None, None, None
+    candidates = sorted(
+        ((((x - x0) ** 2 + (y - y0) ** 2) ** 0.5, nm, v) for nm, x, y, v in rows)
+    )
+    d, nm, v = candidates[0]
+    return round(float(v), 3), nm, round(d, 1)
+
+
 def _get_gamma_for_layer(
     bh_name: str, depth_top: float, depth_bot: float,
     symbol: str, db_path: Path = DB_PATH,
 ) -> tuple[float, str]:
     """Trung bình γ (kN/m³) từ lab_tests trong [depth_top, depth_bot].
-    Fallback GAMMA_DEFAULT_BY_SYMBOL. source: 'lab' | 'default'."""
+    Priority: (1) HK hiện tại lab → (2) HK gần nhất cùng zone có lab cho symbol →
+    (3) GAMMA_DEFAULT_BY_SYMBOL (warning)."""
     con = sqlite3.connect(str(db_path))
     cur = con.cursor()
     cur.execute(
@@ -111,6 +180,14 @@ def _get_gamma_for_layer(
     con.close()
     if row and row[0] is not None:
         return round(float(row[0]), 2), "lab"
+    # Fallback 1: HK gần nhất cùng zone có γ tại depth range tương ứng
+    v, src_bh, dist = _find_nearest_bh_with_data(
+        bh_name, symbol, "gamma_kNm3", db_path,
+        depth_top=depth_top, depth_bot=depth_bot,
+    )
+    if v is not None:
+        return round(v, 2), f"nearest:{src_bh}({dist:.0f}m)"
+    # Fallback 2: hardcode mặc định
     return GAMMA_DEFAULT_BY_SYMBOL.get(symbol, 18.0), "default"
 
 
@@ -427,7 +504,18 @@ def _get_su_for_layer(
     if lab_vals:
         return round(sum(lab_vals) / len(lab_vals), 1), "lab"
 
-    # ── Ưu tiên 3: mặc định (cảnh báo) ──────────────────────────────────────
+    # ── Ưu tiên 3: HK gần nhất cùng zone có VST/lab tại depth range ─────────
+    # Thử Cu_UU trước, fallback c_kPa; match theo depth range (vì symbol
+    # USCS trong lab_tests khác layer.symbol — CH/CL vs 1/1b/XMD)
+    for fld in ("Cu_UU_kPa", "c_kPa"):
+        v, src_bh, dist = _find_nearest_bh_with_data(
+            bh_name, symbol, fld, db_path,
+            depth_top=depth_top, depth_bot=depth_bot,
+        )
+        if v is not None and v > 0:
+            return round(v, 1), f"nearest:{src_bh}({dist:.0f}m,{fld[:2]})"
+
+    # ── Ưu tiên 4: mặc định hardcode (cảnh báo mạnh) ────────────────────────
     default = SU_BY_SYMBOL.get(symbol)
     if default is not None:
         return default, "default"
@@ -565,10 +653,15 @@ def calc_nt2_layers(
 
         # ── α-method cho sét (logic gốc) ──────────────────────────────────────
         su, source = _get_su_for_layer(bh_name, depth_top, depth_bot, symbol, db_path)
-        if source == "default":
+        if source.startswith("nearest:"):
+            warnings.append(
+                f"Lớp '{symbol}' ({depth_top:.1f}–{depth_bot:.1f} m): HK hiện tại không có VST/lab → "
+                f"lấy su={su:.0f} kPa từ {source.replace('nearest:', '')}"
+            )
+        elif source == "default":
             warnings.append(
                 f"Lớp '{symbol}' ({depth_top:.1f}–{depth_bot:.1f} m): "
-                f"không có VST/lab → dùng su={su:.0f} kPa (giả định theo ký hiệu)"
+                f"không có VST/lab cả khu vực → dùng su={su:.0f} kPa (hardcode theo ký hiệu — CẦN BỔ SUNG THÍ NGHIỆM)"
             )
         elif source == "unknown":
             warnings.append(
