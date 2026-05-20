@@ -3400,41 +3400,14 @@ except Exception:
         )
         _HAS_PDF = True
         _PDF_ENGINE = "Báo cáo rút gọn"
-    except Exception as _e_pdf:
-        # Kiểm tra cụ thể: reportlab / weasyprint chưa cài
-        _missing_libs = []
-        try:
-            import reportlab as _rl_check  # noqa: F401
-        except ImportError:
-            _missing_libs.append("reportlab")
-        try:
-            import weasyprint as _wp_check  # noqa: F401
-        except ImportError:
-            _missing_libs.append("weasyprint")
-        if _missing_libs:
-            st.sidebar.warning(
-                "**PDF chưa khả dụng** — thiếu: " + ", ".join(_missing_libs) + "\n\n"
-                "Fix local: `pip install " + " ".join(_missing_libs) + "`"
-            )
-        else:
-            st.sidebar.caption(f"_(PDF engine chưa cài: {_e_pdf})_")
+    except Exception:
+        # PDF engine không load được (Cloud Python 3.14 thường fail build
+        # weasyprint/reportlab; Windows local thiếu GTK3 runtime).
+        # Không cảnh báo — user vẫn có thể in qua Ctrl+P trên trình duyệt.
+        pass
 
-# Kiểm tra Winkler solver (PyNiteFEA) ngay startup — cảnh báo sidebar
-_winkler_missing = []
-try:
-    import Pynite as _pn_chk  # noqa: F401
-except ImportError:
-    _winkler_missing.append("PyNiteFEA")
-try:
-    import anastruct as _an_chk  # noqa: F401
-except ImportError:
-    _winkler_missing.append("anastruct")
-if len(_winkler_missing) == 2:
-    # Cả 2 đều thiếu → Winkler không chạy được
-    st.sidebar.warning(
-        "**Winkler p-y chưa khả dụng** — thiếu cả `PyNiteFEA` và `anastruct`.\n\n"
-        "Fix local: `pip install PyNiteFEA>=2.0 anastruct>=1.6`"
-    )
+# Winkler p-y: dùng scripts/winkler_np.py (NumPy thuần) — không cần PyNite/anastruct
+# Cảnh báo sidebar cũ đã gỡ vì solver mới luôn sẵn sàng (NumPy có sẵn).
 
 if _HAS_PDF:
     # Nút xuất PDF tổng hợp
@@ -7411,9 +7384,18 @@ if _page == "ke_sw":
         if not _bhs_on_alignment:
             st.info("Chọn ít nhất 1 HK trên tuyến kè để xem bảng tổng hợp.")
 
-        # Nút tự động điền cọc tối ưu + L_max tương ứng
-        _btn_opt = st.button("Dùng cọc tối ưu cho tất cả", key="btn_use_optimal")
-        if _btn_opt:
+        # MẶC ĐỊNH = cọc tối ưu: tự điền cho HK chưa có trong session_state.
+        # User vẫn override được qua dropdown; nút "Đặt lại tối ưu" dưới đây để reset.
+        for _bh in _bhs_on_alignment:
+            _bh_nm = _bh["name"]
+            if _bh_nm not in st.session_state[_rec_key]:
+                _on, _olmax = _optimal_pile(_bh.get("L_req_m") or 0)
+                st.session_state[_rec_key][_bh_nm] = _on
+                st.session_state[_ltk_key][_bh_nm] = _olmax
+
+        # Nút reset thủ công (cho trường hợp user đã sửa, muốn về tối ưu)
+        if st.button("Đặt lại cọc tối ưu cho tất cả", key="btn_use_optimal",
+                     help="Ghi đè lựa chọn hiện tại về cọc tối ưu (nhỏ nhất có L_max ≥ L_req)"):
             for _bh in _bhs_on_alignment:
                 _on, _olmax = _optimal_pile(_bh.get("L_req_m") or 0)
                 st.session_state[_rec_key][_bh["name"]] = _on
@@ -7783,9 +7765,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             use_container_width=True,
                         )
 
-                    # ── Hàng 3: Cột địa chất + VST cùng hàng, cùng size + font ──
-                    # Cả 2 đặt cạnh nhau trong 50% column → dùng figsize=(7,6)
-                    # VST font scale ×2 để match SPT-N (anno 7→14, axis 9→18)
+                    # ── Hàng 3: Cột địa chất + VST cùng hàng, font giảm để không tràn ──
+                    # Cả 2 đặt cạnh nhau trong 50% column → figsize=(7,6).
+                    # Font: soil column 0.75, VST 1.25 — match nhưng không chữ to quá.
                     _col_sc, _col_vst = st.columns(2, gap="medium")
                     with _col_sc:
                         st.markdown(f"**Cột địa chất {_bh_n}**")
@@ -7795,7 +7777,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             if _sc_lay and _HAS_MPL:
                                 _fig_sc = _draw_soil_column_mpl(
                                     _sc_lay, _bh_n, spt=_sc_spt or None,
-                                    figsize=(7, 6),
+                                    figsize=(7, 6), font_scale=0.75,
                                 )
                                 st.pyplot(_fig_sc, use_container_width=True)
                                 plt.close(_fig_sc)
@@ -7818,7 +7800,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             if _vst_match:
                                 _fig_vst = _chart_su_profile_mpl(
                                     _df_vst_ke, _vst_match,
-                                    figsize=(7, 6), font_scale=2.0,
+                                    figsize=(7, 6), font_scale=1.25,
                                 )
                                 st.pyplot(_fig_vst, use_container_width=True)
                                 plt.close(_fig_vst)
@@ -7831,351 +7813,22 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         except Exception as _exc_nt:
             st.error(f"Lỗi khi đọc dữ liệu NT: {_exc_nt}")
 
-    # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
+    # Mục C (Kiểm tra NT1/NT2 tùy chỉnh) đã ẩn — chuyển sang C.3 auto-loop.
+    # Xem git history (commit trước 2026-05-21) nếu cần khôi phục form thủ công.
+
+    # C.2 (SPT-Meyerhof riêng) đã gỡ — đã có trong C.3 (so sánh 4 phương pháp).
+
+    # ── C. So sánh 4 phương pháp NT2 — tự động cho mọi HK ở Mục B ─────────────
     st.divider()
-    st.markdown("### C. Kiểm tra NT1 / NT2 — nhập thông số tùy chỉnh")
+    st.markdown("### C. So sánh 4 phương pháp NT2 — tự động cho mọi HK ở Mục B")
     st.info(
-        "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
-        "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
-        "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
-    )
-
-    # ── Áp dữ liệu HK từ Mục B ─────────────────────────────────────────────────
-    _bh_names_b = [b["name"] for b in _bhs_on_alignment] if _ke_data else []
-    _rec_piles_b = sorted({
-        st.session_state.get("ke_sw_rec_piles", {}).get(_n) or
-        next((b.get("recommended_pile") for b in _bhs_on_alignment if b["name"] == _n), "")
-        for _n in _bh_names_b
-    } - {""})
-    if not _rec_piles_b:
-        _rec_piles_b = _sw_names   # fallback toàn bộ catalog
-    _apply_c1, _apply_c2 = st.columns([2, 3])
-    with _apply_c1:
-        _apply_bh = st.selectbox(
-            "Áp dữ liệu HK từ Mục B",
-            ["(không áp)"] + _bh_names_b,
-            key="sw_apply_bh",
-            help="Chọn HK trong Mục B để tự động điền Z, H₁, su, cọc kiến nghị, L thiết kế",
-        )
-    with _apply_c2:
-        if _apply_bh != "(không áp)":
-            _bh_pick = next((b for b in _bhs_on_alignment if b["name"] == _apply_bh), {})
-            _apply_pile = (st.session_state.get("ke_sw_rec_piles", {}).get(_apply_bh)
-                           or _bh_pick.get("recommended_pile") or "SW-840")
-            _apply_Ldes = (st.session_state.get("ke_sw_L_thiet_ke", {}).get(_apply_bh)
-                           or _bh_pick.get("recommended_L_m") or 29.0)
-            _apply_Z    = _bh_pick.get("Z_m") or -0.8
-            _apply_H1   = _bh_pick.get("H_layer1_m") or 22.0
-            st.info(
-                f"**{_apply_bh}** → Z = {_apply_Z:+.2f}m | H₁ = {_apply_H1:.1f}m | "
-                f"Cọc kiến nghị = **{_apply_pile}** | L = {_apply_Ldes:.0f}m"
-            )
-            if st.button(f"Áp dữ liệu {_apply_bh} → form bên dưới", key="btn_apply_bh"):
-                st.session_state["sw_sel"]    = _apply_pile
-                st.session_state["sw_L"]      = float(_apply_Ldes)
-                st.session_state["sw_Z"]      = float(_apply_Z)
-                st.session_state["sw_H1"]     = float(_apply_H1)
-                # Su trung bình lớp bùn (VST) — nếu có
-                try:
-                    _zone_c = _ke_data.get("_meta", {}).get("zone_code") or _bh_pick.get("zone_code") or "KE"
-                    _su_db  = _su_avg_in_range(_zone_c, 0.0, float(_apply_H1))
-                except Exception:
-                    _su_db = None
-                _applied = {
-                    "sw_sel": {"src": _apply_bh, "value": _apply_pile},
-                    "sw_L":   {"src": _apply_bh, "value": float(_apply_Ldes)},
-                    "sw_Z":   {"src": _apply_bh, "value": float(_apply_Z)},
-                    "sw_H1":  {"src": _apply_bh, "value": float(_apply_H1)},
-                }
-                if _su_db is not None:
-                    st.session_state["sw_su"] = float(_su_db)
-                    _applied["sw_su"] = {"src": f"{_apply_bh} (VST)", "value": float(_su_db)}
-                st.session_state["sw_applied_fields"] = _applied
-                st.rerun()
-
-    # ── Áp dữ liệu từ tab Thiết kế CDM (geology) ──────────────────────────────
-    _geo_zone = st.session_state.get("cdm_zone")
-    _geo_bh   = st.session_state.get("cdm_bh")
-    _geo_elev = st.session_state.get("cdm_elevation")
-    _geo_hcl  = st.session_state.get("cdm_h_clay")
-    _geo_su   = st.session_state.get("cdm_Su")
-    _geo_top  = st.session_state.get("cdm_top_clay")
-    _geo_gam  = st.session_state.get("cdm_gamma")
-    if _geo_bh and _geo_hcl and _geo_su:
-        _gc1, _gc2 = st.columns([2, 3])
-        with _gc1:
-            st.markdown(f"**Tab Thiết kế CDM** — Zone `{_geo_zone}` · HK `{_geo_bh}`")
-        with _gc2:
-            st.info(
-                f"Z = {_geo_elev:+.2f}m | top_clay = {_geo_top:.2f}m | "
-                f"H_clay = {_geo_hcl:.1f}m | Su = {_geo_su:.1f} kPa | γ = {_geo_gam:.1f} kN/m³"
-            )
-        if st.button(f"Áp dữ liệu từ Thiết kế CDM ({_geo_bh}) → form bên dưới",
-                     key="btn_apply_geo"):
-            _src_lbl = f"Thiết kế CDM ({_geo_bh})"
-            _applied_g = {}
-            if _geo_elev is not None:
-                st.session_state["sw_Z"]  = float(_geo_elev)
-                _applied_g["sw_Z"]  = {"src": _src_lbl, "value": float(_geo_elev)}
-            if _geo_hcl is not None:
-                st.session_state["sw_H1"] = float(_geo_hcl)
-                _applied_g["sw_H1"] = {"src": _src_lbl, "value": float(_geo_hcl)}
-            if _geo_su is not None:
-                st.session_state["sw_su"] = float(_geo_su)
-                _applied_g["sw_su"] = {"src": f"{_src_lbl} VST", "value": float(_geo_su)}
-            st.session_state["sw_applied_fields"] = _applied_g
-            st.rerun()
-
-    # ── Helper: tô màu label + caption nguồn cho field áp từ HK ───────────────
-    _sw_applied = st.session_state.get("sw_applied_fields", {}) or {}
-
-    def _lbl(_key: str, _txt: str) -> str:
-        """Label màu xanh đậm nếu field được áp từ HK, ngược lại label thường."""
-        return f":blue[**{_txt}**]" if _key in _sw_applied else _txt
-
-    def _cap(_key: str) -> None:
-        """In caption nguồn nếu field áp từ HK + clear flag nếu user gõ khác."""
-        if _key in _sw_applied:
-            _info = _sw_applied[_key]
-            _cur  = st.session_state.get(_key)
-            if _cur != _info["value"]:
-                # User đã sửa → bỏ flag
-                del st.session_state["sw_applied_fields"][_key]
-            else:
-                st.caption(f":blue[← Số liệu khảo sát: {_info['src']}]")
-
-    _col_form, _col_schem = st.columns([3, 2], gap="large")
-
-    with _col_form:
-        _c1, _c2, _c3 = st.columns(3)
-        with _c1:
-            # Filter cọc theo Mục B (chỉ cọc đã được kiến nghị)
-            _sw_opts_c = [n for n in _sw_names if n in _rec_piles_b] or _sw_names
-            _sw_default_idx = (
-                _sw_opts_c.index("SW-840") if "SW-840" in _sw_opts_c else 0
-            )
-            _sw_sel   = st.selectbox(
-                _lbl("sw_sel", f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_c)} loại)"),
-                _sw_opts_c, index=_sw_default_idx, key="sw_sel",
-                help="Chỉ hiển thị cọc đã được dùng làm 'Cọc kiến nghị' trong Mục B",
-            )
-            _cap("sw_sel")
-            _L_des    = st.number_input(_lbl("sw_L", "Chiều dài thiết kế L (m)"),
-                                        10.0, 35.0, 29.0, 0.5, key="sw_L")
-            _cap("sw_L")
-            _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
-        with _c2:
-            _Z_nat    = st.number_input(_lbl("sw_Z", "Cao độ mặt đất tự nhiên (m)"),
-                                        -5.0, 3.0, -0.80, 0.05, key="sw_Z")
-            _cap("sw_Z")
-            _H_lyr1   = st.number_input(_lbl("sw_H1", "Chiều dày lớp bùn sét H₁ (m)"),
-                                        5.0, 35.0, 22.0, 0.5, key="sw_H1")
-            _cap("sw_H1")
-            _su_avg   = st.number_input(_lbl("sw_su", "Su trung bình lớp bùn (kN/m²)"),
-                                        5.0, 50.0, 10.0, 1.0, key="sw_su")
-            _cap("sw_su")
-        with _c3:
-            _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
-            _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
-            _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
-        _wc1, _wc2 = st.columns(2)
-        _water_lvl_c = _wc1.number_input("Mực nước (m)", -5.0, 3.0, -1.0, 0.5, key="sw_wlvl")
-        _bc_type_c   = _wc2.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"], key="sw_bc")
-
-    with _col_schem:
-        if _HAS_MPL:
-            _lyr_mid = _Z_nat - _H_lyr1
-            _pile_tip = _top_ke - _L_des
-            _layers_sch = [
-                ("Bùn sét", _Z_nat,    _lyr_mid,  16.0, 0.0),
-                ("Lớp cứng", _lyr_mid, _pile_tip,  18.0, 20.0),
-            ]
-            _fig_sch = draw_pile_schematic(
-                L_m=_L_des, water_lvl=_water_lvl_c, top_elev=_top_ke,
-                H_kN=0, M_kNm=0, layers=_layers_sch, bc_type=_bc_type_c,
-                soil_lvl_front=_Z_nat, soil_lvl_back=_Z_nat,
-                water_lvl_back=_water_lvl_c,
-            )
-            if _fig_sch:
-                st.pyplot(_fig_sch, use_container_width=True)
-                plt.close(_fig_sch)
-
-    if st.button("Kiểm tra NT1 / NT2", type="primary", key="sw_check"):
-        _pile = _sw_by_name(_sw_sel)
-        if _pile is None:
-            st.error(f"Không tìm thấy cọc {_sw_sel} trong catalog.")
-        else:
-            _TL_T    = _pile.get("weight_T", 0) or 0
-            _Lstd    = _pile.get("L_std_m", 1) or 1
-            _spc_m   = (_pile.get("width_mm", 996)) / 1000
-            _peri_m  = (_pile.get("perimeter_mm") or 0) / 1000
-            _Ap_m2   = (_pile.get("Atd_cm2", 0) or 0) * 1e-4
-
-            _w_per_pile = _TL_T * 9.81 / _Lstd
-            _W_pile     = _w_per_pile * _L_des
-
-            _L_req_nt1  = _top_ke - _Z_nat + _H_lyr1 + _min_pen
-            _nt1_ok     = _L_des >= _L_req_nt1
-            _nt1_margin = _L_des - _L_req_nt1
-
-            _fill_m    = _top_ke - _Z_nat
-            _L_soil_m  = max(0.0, _L_des - _fill_m)
-            _Rs_kN     = _alpha_sw * _su_avg * _peri_m * _L_soil_m if _peri_m > 0 else 0
-            _Rp_kN     = 9.0 * _su_avg * _Ap_m2
-            _RR_kN     = _phi_stat * (_Rs_kN + _Rp_kN)
-            _nt2_ok    = _RR_kN >= _W_pile
-            _ratio_nt2 = _RR_kN / _W_pile if _W_pile > 0 else 0
-
-            _r1, _r2, _r3, _r4 = st.columns(4)
-            _r1.metric("NT1 — L yêu cầu (m)", f"{_L_req_nt1:.1f}",
-                       f"{'Đạt' if _nt1_ok else 'Không đạt'} (biên {_nt1_margin:+.1f} m)",
-                       delta_color="normal" if _nt1_ok else "inverse")
-            _r2.metric("W cọc (kN)", f"{_W_pile:.1f}",
-                       f"{_TL_T:.2f} T × 9.81 / {_Lstd}m × {_L_des}m")
-            _r3.metric("RR = φ(Rs+Rp) (kN)", f"{_RR_kN:.1f}",
-                       f"Rs={_Rs_kN:.0f}  Rp={_Rp_kN:.0f}",
-                       delta_color="normal" if _nt2_ok else "inverse")
-            _r4.metric("NT2 — Tỷ số RR/W", f"{_ratio_nt2:.2f}",
-                       "Đạt" if _nt2_ok else "Không đạt",
-                       delta_color="normal" if _nt2_ok else "inverse")
-
-            st.dataframe(
-                pd.DataFrame({
-                    "Thông số": [
-                        "Loại cọc", "Chiều dài L (m)", "Spacing (m)", "Chu vi P (m)",
-                        "Diện tích mũi Ap (cm²)", "w (kN/m/cọc)", "W cọc (kN)",
-                        "Phần đất đắp (m)", "Phần trong đất L_soil (m)",
-                        "Rs (kN)", "Rp (kN)", "RR = φ×(Rs+Rp) (kN)", "Kết quả NT2",
-                    ],
-                    "Giá trị": [
-                        _sw_sel, f"{_L_des:.1f}", f"{_spc_m:.3f}",
-                        f"{_peri_m:.4f}" if _peri_m > 0 else "– (chưa có trong catalog)",
-                        f"{_Ap_m2*1e4:.0f}",
-                        f"{_w_per_pile:.2f}", f"{_W_pile:.1f}",
-                        f"{_fill_m:.2f}", f"{_L_soil_m:.2f}",
-                        f"{_Rs_kN:.1f}", f"{_Rp_kN:.1f}", f"{_RR_kN:.1f}",
-                        "Đạt" if _nt2_ok else "Không đạt",
-                    ],
-                }).style.apply(
-                    lambda col: [
-                        "background-color:#d4edda" if "Đạt" in str(v) and "Không" not in str(v)
-                        else "background-color:#f8d7da" if "Không đạt" in str(v)
-                        else "" for v in col
-                    ],
-                    subset=["Giá trị"],
-                ),
-                use_container_width=True, hide_index=True,
-            )
-
-            if _peri_m == 0:
-                st.warning(
-                    f"Cọc {_sw_sel} chưa có chu vi trong catalog (perimeter_mm = null). "
-                    "Rs = 0. Cần bổ sung thông số từ nhà sản xuất để tính NT2 chính xác."
-                )
-            st.caption(
-                "Công thức: Rs = α × Su × P × L_soil  |  "
-                "Rp = 9 × Su × Ap  |  RR = 0,35 × (Rs + Rp)  |  "
-                "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
-            )
-
-    # ── C.2 SPT-Meyerhof cho lớp cát ────────────────────────────────────────────
-    st.divider()
-    st.markdown("### C.2. Kiểm tra SPT-Meyerhof — lớp cát (Điều 7.3.8.6.7)")
-    st.info(
-        "Áp dụng cho cọc trong cát/cát bột.  \n"
-        "qs = 0,0019·N₁₆₀ (cọc chiếm chỗ — SW) hoặc 0,00096·N₁₆₀ (chữ H / ống hở), MPa  \n"
-        "qp = 0,038·N₁₆₀·(Db/D) ≤ λq · MPa  |  λq cát = 3,2·N₁₆₀ MPa  |  φ_stat = 0,30"
-    )
-
-    _spt_c1, _spt_c2, _spt_c3 = st.columns(3)
-    with _spt_c1:
-        _spt_sw    = st.selectbox("Loại cọc SW", _sw_names,
-                                  index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
-                                  key="spt_sw_sel")
-        _spt_L     = st.number_input("L cọc trong cát (m)", 1.0, 30.0, 5.0, 0.5, key="spt_L")
-        _spt_disp  = st.checkbox("Cọc chiếm chỗ (SW = chiếm chỗ)",
-                                 value=True, key="spt_displacing")
-    with _spt_c2:
-        _spt_N160  = st.number_input("N₁₆₀ trung bình lớp cát", 0.0, 100.0, 15.0, 1.0,
-                                     key="spt_N160",
-                                     help="N hiệu chỉnh CN = √(100/σ'v), clamp [0.5, 2.0]")
-        _spt_Db    = st.number_input("Db — mũi cọc trong tầng cát (m)", 0.1, 20.0, 2.0, 0.1,
-                                     key="spt_Db",
-                                     help="Db = chiều sâu mũi cọc DƯỚI đỉnh tầng cát chịu lực")
-        _spt_silt  = st.checkbox("Cát bột (giảm λq từ 3,2 → 1,8·N₁₆₀)",
-                                 value=False, key="spt_silt")
-    with _spt_c3:
-        _spt_phi   = st.number_input("φ_stat SPT", 0.1, 0.5, 0.30, 0.01, key="spt_phi")
-        _spt_W     = st.number_input("W cọc (kN)", 0.0, 500.0, 211.0, 1.0, key="spt_W",
-                                     help="Trọng lượng cọc tự chống nhổ")
-
-    if st.button("Kiểm tra SPT-Meyerhof", type="primary", key="spt_check"):
-        _sp_pile = _sw_by_name(_spt_sw)
-        if _sp_pile is None:
-            st.error(f"Không tìm thấy cọc {_spt_sw}.")
-        else:
-            _sp_P   = (_sp_pile.get("perimeter_mm") or 0) / 1000.0
-            _sp_Ap  = (_sp_pile.get("Atd_cm2", 0) or 0) * 1e-4
-            _sp_D   = (_sp_pile.get("H_mm", 840) or 840) / 1000.0
-
-            # qs (kPa) = (1.9 nếu chiếm chỗ else 0.96) × N160
-            _sp_qs  = (1.9 if _spt_disp else 0.96) * _spt_N160
-            _sp_Rs  = _sp_qs * _sp_P * _spt_L
-            # qp (kPa) = 38 × N160 × Db/D, giới hạn λq
-            _sp_qp_raw = 38.0 * _spt_N160 * (_spt_Db / _sp_D)
-            _sp_lambda_q = (1800.0 if _spt_silt else 3200.0) * _spt_N160
-            _sp_qp  = min(_sp_qp_raw, _sp_lambda_q)
-            _sp_qp_capped = _sp_qp_raw > _sp_lambda_q
-            _sp_Rp  = _sp_qp * _sp_Ap
-            _sp_RR  = _spt_phi * (_sp_Rs + _sp_Rp)
-            _sp_ratio = _sp_RR / _spt_W if _spt_W > 0 else 0
-            _sp_ok  = _sp_RR >= _spt_W
-
-            _sr1, _sr2, _sr3, _sr4 = st.columns(4)
-            _sr1.metric("qs (kPa)", f"{_sp_qs:.1f}",
-                        f"{'chiếm chỗ' if _spt_disp else 'không chiếm chỗ'}")
-            _sr2.metric("qp (kPa)", f"{_sp_qp:.1f}",
-                        f"{'đã cắt λq' if _sp_qp_capped else f'raw={_sp_qp_raw:.0f}'}",
-                        delta_color="off")
-            _sr3.metric("RR = φ(Rs+Rp) (kN)", f"{_sp_RR:.1f}",
-                        f"Rs={_sp_Rs:.0f}  Rp={_sp_Rp:.0f}",
-                        delta_color="normal" if _sp_ok else "inverse")
-            _sr4.metric("Tỷ số RR/W", f"{_sp_ratio:.2f}",
-                        "Đạt" if _sp_ok else "Không đạt",
-                        delta_color="normal" if _sp_ok else "inverse")
-
-            st.dataframe(
-                pd.DataFrame({
-                    "Thông số": [
-                        "Cọc", "Chu vi P (m)", "Bề rộng D (m)", "Diện tích mũi Ap (cm²)",
-                        "N₁₆₀", "L cát (m)", "Db (m)",
-                        "qs (kPa)", "qp_raw (kPa)", "λq giới hạn (kPa)", "qp dùng (kPa)",
-                        "Rs (kN)", "Rp (kN)", "RR = φ(Rs+Rp) (kN)", "W (kN)", "Kết quả",
-                    ],
-                    "Giá trị": [
-                        _spt_sw, f"{_sp_P:.4f}", f"{_sp_D:.3f}", f"{_sp_Ap*1e4:.0f}",
-                        f"{_spt_N160:.1f}", f"{_spt_L:.1f}", f"{_spt_Db:.2f}",
-                        f"{_sp_qs:.2f}", f"{_sp_qp_raw:.1f}", f"{_sp_lambda_q:.0f}",
-                        f"{_sp_qp:.1f}",
-                        f"{_sp_Rs:.1f}", f"{_sp_Rp:.1f}", f"{_sp_RR:.1f}",
-                        f"{_spt_W:.0f}", "Đạt" if _sp_ok else "Không đạt",
-                    ],
-                }),
-                use_container_width=True, hide_index=True,
-            )
-
-    # ── C.3 So sánh 4 phương pháp NT2 ──────────────────────────────────────────
-    st.divider()
-    st.markdown("### C.3. So sánh 4 phương pháp NT2 cho 1 hố khoan")
-    st.info(
-        "So sánh Rs/Rp/RR theo 4 phương pháp TCVN 11823-10:2017 cho cùng 1 HK + 1 cọc:  \n"
+        "Tự động chạy so sánh Rs/Rp/RR theo 4 phương pháp TCVN 11823-10:2017 cho mọi HK + cọc kiến nghị ở Mục B:  \n"
         "**α** (Tomlinson 1980, sét, Điều 7.3.8.6.2, φ=0,35) · "
         "**β** (Esrig & Kirby 1979, sét, Điều 7.3.8.6.3, φ=0,25) · "
         "**λ** (Vijayvergiya & Focht 1972, cọc ống, Điều 7.3.8.6.4, φ=0,40) · "
         "**SPT-Meyerhof** (cát, Điều 7.3.8.6.7, φ=0,30)"
     )
 
-    _cmp_c1, _cmp_c2, _cmp_c3 = st.columns(3)
     try:
         import sys as _sys_cmp
         _sys_cmp.path.insert(0, str(_ROOT / "scripts"))
@@ -8185,103 +7838,166 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             _get_bh_Z_m as _get_bh_z,
         )
         _cat_cmp = _load_cat()
-        _ke_bhs  = ["KE-HK2", "KE-HK3", "KE-HK7", "KE-HK8", "KE-HK9", "KE-HK10", "KE-HK11"]
-        with _cmp_c1:
-            _cmp_bh = st.selectbox("Hố khoan", _ke_bhs, key="cmp_bh")
-        with _cmp_c2:
-            _cmp_pile_name = st.selectbox("Loại cọc",
-                                          list(_cat_cmp.keys()),
-                                          index=list(_cat_cmp.keys()).index("SW-840")
-                                          if "SW-840" in _cat_cmp else 0,
-                                          key="cmp_pile")
-        with _cmp_c3:
-            _cmp_L = st.number_input("L thiết kế (m)", 10.0, 35.0, 29.0, 0.5, key="cmp_L")
+        _ke_bhs_all = {"KE-HK2", "KE-HK3", "KE-HK7", "KE-HK8", "KE-HK9", "KE-HK10", "KE-HK11"}
 
-        if st.button("So sánh 4 phương pháp", type="primary", key="btn_cmp4"):
-            _cmp_z = _get_bh_z(_cmp_bh) or 0.0
-            _cmp_res = _calc_4m(_cmp_bh, _cmp_z, _cmp_pile_name,
-                                _cat_cmp[_cmp_pile_name], _cmp_L)
-            _common = _cmp_res["common"]
+        # HK list = lấy từ Mục B (alignment picks), chỉ giữ HK có data
+        _picks_c = st.session_state.get("ke_sw_alignment_picks", []) or []
+        _bh_c_list = [f"KE-{nm}" for nm in _picks_c if nm.startswith("HK")]
+        _bh_c_list = [nm for nm in _bh_c_list if nm in _ke_bhs_all]
 
-            # Hiển thị thông số chung
-            _ic1, _ic2, _ic3, _ic4 = st.columns(4)
-            _ic1.metric("L cọc trong sét (m)", f"{_common['L_clay_total_m']:.2f}")
-            _ic2.metric("Su TB sét (kPa)", f"{_common['su_avg_clay_kPa']:.1f}")
-            _ic3.metric("σ'v TB sét (kPa)", f"{_common['sigma_avg_clay_kPa']:.0f}")
-            _ic4.metric("W cọc (kN)", f"{_common['W_kN']:.0f}",
-                        f"D={_common['D_m']:.3f}m, P={_common['perimeter_m']:.3f}m")
-
-            # Bảng so sánh 5 phương pháp
-            _cmp_rows = []
+        if not _bh_c_list:
+            st.caption("_(Chưa có HK nào ở Mục B để so sánh — chọn HK ở Mục B trước.)_")
+        else:
             _method_lbl = {
                 "auto":   "Auto (α+SPT)",
-                "alpha":  "α-method",
-                "beta":   "β-method",
-                "lambda": "λ-method",
-                "SPT":    "SPT (all clay)",
+                "alpha":  "α",
+                "beta":   "β",
+                "lambda": "λ",
+                "SPT":    "SPT-Meyerhof",
             }
-            for m in ["auto", "alpha", "beta", "lambda", "SPT"]:
-                x = _cmp_res[m]
-                _cmp_rows.append({
-                    "Phương pháp":  _method_lbl[m],
-                    "φ_stat":       x["phi_stat"],
-                    "Rs (kN)":      x["Rs_kN"],
-                    "Rp (kN)":      x["Rp_kN"],
-                    "RR (kN)":      x["RR_kN"],
-                    "W (kN)":       _common["W_kN"],
-                    "Tỷ số RR/W":   x["ratio"],
-                    "Kết quả":      x["result"],
-                    "tip method":   x.get("tip_method", "—"),
-                })
-            _cmp_df = pd.DataFrame(_cmp_rows)
 
-            def _hl_cmp(val):
-                if val == "Đạt":
-                    return "background-color:#d4edda; color:#155724"
-                if val == "Không đạt":
-                    return "background-color:#f8d7da; color:#721c24"
-                return ""
+            # Loop tính toán cho mọi HK
+            _all_results: list = []   # list of (bh, pile, L, common, dict_per_method)
+            for _bh_c in _bh_c_list:
+                _nm_short = _bh_c.replace("KE-", "")
+                _pile_c   = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_nm_short)
+                _L_c      = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_nm_short)
+                if not _pile_c or not _L_c:
+                    continue
+                if _pile_c not in _cat_cmp:
+                    continue
+                _z_c   = _get_bh_z(_bh_c) or 0.0
+                try:
+                    _res_c = _calc_4m(_bh_c, _z_c, _pile_c,
+                                       _cat_cmp[_pile_c], float(_L_c))
+                except Exception as _e_each:
+                    st.warning(f"{_bh_c}: lỗi tính — {_e_each}")
+                    continue
+                _all_results.append((_bh_c, _pile_c, float(_L_c),
+                                     _res_c["common"], _res_c))
 
-            st.dataframe(
-                _cmp_df.style.map(_hl_cmp, subset=["Kết quả"]),
-                use_container_width=True, hide_index=True,
-                column_config={
-                    "φ_stat":     st.column_config.NumberColumn(format="%.2f"),
-                    "Rs (kN)":    st.column_config.NumberColumn(format="%.0f"),
-                    "Rp (kN)":    st.column_config.NumberColumn(format="%.0f"),
-                    "RR (kN)":    st.column_config.NumberColumn(format="%.0f"),
-                    "W (kN)":     st.column_config.NumberColumn(format="%.0f"),
-                    "Tỷ số RR/W": st.column_config.NumberColumn(format="%.2f"),
-                },
-            )
-            st.caption(
-                f"λ_coef = {_common['lambda_coef']:.3f} (Vijayvergiya & Focht — theo L cọc sét {_common['L_clay_total_m']:.1f}m). "
-                "**Khuyến nghị TCVN**: dùng `auto` (α cho sét, SPT cho cát) — phản ánh đúng từng lớp. "
-                "α/β/λ chỉ áp dụng cho lớp sét; SPT (all clay) là sai phương pháp cho minh hoạ."
-            )
+            if not _all_results:
+                st.warning("Không có HK nào có đủ dữ liệu (cọc kiến nghị + L) để so sánh.")
+            else:
+                # ── Bảng tổng hợp: 1 dòng / HK, 5 cột RR theo phương pháp ─────
+                _sum_rows = []
+                for _bh, _pl, _L, _cm, _res in _all_results:
+                    _row = {
+                        "Hố khoan": _bh,
+                        "Cọc":      _pl,
+                        "L (m)":    _L,
+                        "W (kN)":   _cm["W_kN"],
+                    }
+                    for _m_key, _m_name in _method_lbl.items():
+                        _x = _res[_m_key]
+                        _row[f"RR — {_m_name}"]    = _x["RR_kN"]
+                        _row[f"Ratio — {_m_name}"] = _x["ratio"]
+                    _row["Kết quả (auto)"] = _res["auto"]["result"]
+                    _sum_rows.append(_row)
 
-            if _HAS_PLOTLY:
-                _fig_cmp = go.Figure()
-                _fig_cmp.add_trace(go.Bar(
-                    x=[r["Phương pháp"] for r in _cmp_rows],
-                    y=[r["RR (kN)"] for r in _cmp_rows],
-                    name="RR (kN)",
-                    marker_color=["#1565C0" if r["Kết quả"] == "Đạt" else "#E53935"
-                                   for r in _cmp_rows],
-                    text=[f"{r['Tỷ số RR/W']:.2f}" for r in _cmp_rows],
-                    textposition="outside",
-                ))
-                _fig_cmp.add_hline(
-                    y=_common["W_kN"], line_dash="dash", line_color="#666",
-                    annotation_text=f"W = {_common['W_kN']:.0f} kN",
-                    annotation_position="bottom right",
+                _sum_df = pd.DataFrame(_sum_rows)
+
+                def _hl_kq(val):
+                    if val == "Đạt":
+                        return "background-color:#d4edda; color:#155724"
+                    if val == "Không đạt":
+                        return "background-color:#f8d7da; color:#721c24"
+                    return ""
+
+                _ratio_cols = [f"Ratio — {n}" for n in _method_lbl.values()]
+                _RR_cols    = [f"RR — {n}"    for n in _method_lbl.values()]
+                _col_cfg = {"L (m)":  st.column_config.NumberColumn(format="%.1f"),
+                            "W (kN)": st.column_config.NumberColumn(format="%.0f")}
+                for _c in _RR_cols:
+                    _col_cfg[_c] = st.column_config.NumberColumn(format="%.0f")
+                for _c in _ratio_cols:
+                    _col_cfg[_c] = st.column_config.NumberColumn(format="%.2f")
+
+                st.markdown("**Bảng tổng hợp NT2 — mọi HK ở Mục B**")
+                st.dataframe(
+                    _sum_df.style.map(_hl_kq, subset=["Kết quả (auto)"]),
+                    use_container_width=True, hide_index=True,
+                    column_config=_col_cfg,
                 )
-                _fig_cmp.update_layout(
-                    title=f"So sánh RR theo 4 phương pháp — {_cmp_bh} / {_cmp_pile_name}",
-                    yaxis_title="RR = φ·(Rs+Rp) (kN)",
-                    height=360, margin=dict(t=45, b=40),
-                )
-                st.plotly_chart(_fig_cmp, use_container_width=True)
+
+                # ── Bar chart so sánh RR (group by phương pháp, color by HK) ──
+                if _HAS_PLOTLY:
+                    _fig_all = go.Figure()
+                    for _m_key, _m_name in _method_lbl.items():
+                        _ys = [r[_m_key]["RR_kN"] for *_t, r in _all_results]
+                        _xs = [t[0] for t in _all_results]
+                        _W  = [t[3]["W_kN"] for t in _all_results]
+                        _ok = [r[_m_key]["RR_kN"] >= w for w, (*_t, r) in zip(_W, _all_results)]
+                        _fig_all.add_trace(go.Bar(
+                            x=_xs, y=_ys, name=_m_name,
+                            text=[f"{r[_m_key]['ratio']:.2f}" for *_t, r in _all_results],
+                            textposition="outside", textfont=dict(size=9),
+                        ))
+                    # Đường W (mỗi HK có W khác nhau — vẽ scatter)
+                    _fig_all.add_trace(go.Scatter(
+                        x=[t[0] for t in _all_results],
+                        y=[t[3]["W_kN"] for t in _all_results],
+                        mode="lines+markers", name="W cọc",
+                        line=dict(color="#333", dash="dash", width=2),
+                        marker=dict(size=8, symbol="diamond"),
+                    ))
+                    _fig_all.update_layout(
+                        title="So sánh RR theo 4 phương pháp — tất cả HK",
+                        xaxis_title="Hố khoan",
+                        yaxis_title="RR = φ·(Rs+Rp) (kN)",
+                        barmode="group", height=420,
+                        margin=dict(t=50, b=40),
+                        legend=dict(orientation="h", y=-0.18),
+                    )
+                    st.plotly_chart(_fig_all, use_container_width=True)
+
+                # ── Chi tiết từng HK (expander) ───────────────────────────────
+                st.markdown("**Chi tiết từng hố khoan**")
+                for _bh, _pl, _L, _cm, _res in _all_results:
+                    _auto_ok = _res["auto"]["result"] == "Đạt"
+                    _exp_lbl = (f"{_bh} — {_pl} L={_L:.0f}m — "
+                                 f"Auto: {_res['auto']['result']} "
+                                 f"(RR={_res['auto']['RR_kN']:.0f} kN, "
+                                 f"ratio={_res['auto']['ratio']:.2f})")
+                    with st.expander(_exp_lbl, expanded=not _auto_ok):
+                        _ic1, _ic2, _ic3, _ic4 = st.columns(4)
+                        _ic1.metric("L cọc trong sét (m)", f"{_cm['L_clay_total_m']:.2f}")
+                        _ic2.metric("Su TB sét (kPa)", f"{_cm['su_avg_clay_kPa']:.1f}")
+                        _ic3.metric("σ'v TB sét (kPa)", f"{_cm['sigma_avg_clay_kPa']:.0f}")
+                        _ic4.metric("W cọc (kN)", f"{_cm['W_kN']:.0f}",
+                                    f"D={_cm['D_m']:.3f}m, P={_cm['perimeter_m']:.3f}m")
+
+                        _det_rows = []
+                        for _m_key, _m_name in _method_lbl.items():
+                            _x = _res[_m_key]
+                            _det_rows.append({
+                                "Phương pháp": _m_name,
+                                "φ_stat":      _x["phi_stat"],
+                                "Rs (kN)":     _x["Rs_kN"],
+                                "Rp (kN)":     _x["Rp_kN"],
+                                "RR (kN)":     _x["RR_kN"],
+                                "W (kN)":      _cm["W_kN"],
+                                "Tỷ số RR/W":  _x["ratio"],
+                                "Kết quả":     _x["result"],
+                                "tip method":  _x.get("tip_method", "—"),
+                            })
+                        _det_df = pd.DataFrame(_det_rows)
+                        st.dataframe(
+                            _det_df.style.map(_hl_kq, subset=["Kết quả"]),
+                            use_container_width=True, hide_index=True,
+                            column_config={
+                                "φ_stat":     st.column_config.NumberColumn(format="%.2f"),
+                                "Rs (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                                "Rp (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                                "RR (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                                "W (kN)":     st.column_config.NumberColumn(format="%.0f"),
+                                "Tỷ số RR/W": st.column_config.NumberColumn(format="%.2f"),
+                            },
+                        )
+                        st.caption(
+                            f"λ_coef = {_cm['lambda_coef']:.3f}. "
+                            "Khuyến nghị: dùng `Auto` (α cho sét, SPT cho cát) — phản ánh đúng từng lớp."
+                        )
     except Exception as _e_cmp:
         st.warning(f"Không thực hiện được so sánh 4 phương pháp: {_e_cmp}")
 
@@ -8291,8 +8007,6 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     st.markdown("---")
     st.subheader("Phương pháp giải tích + p-y — Stage 1")
 
-    # Solver Winkler — ưu tiên PyNiteFEA (MIT, pure Python, Cloud-ready),
-    # fallback về anastruct (legacy). Xem scripts/wall_internal_force.py.
     # Solver Winkler thuần NumPy — không phụ thuộc PyNite/anastruct,
     # chạy mọi Python version. Xem scripts/winkler_np.py.
     _numpy_err = ""
@@ -8327,17 +8041,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         def _calc_py_winkler(bh_name: str, pile_name: str, L_m: float,
                              H_kNm: float, M_kNm: float, cdm_thk_m: float,
                              eps50: float, k_cdm_factor: float) -> dict:
-            """Giải Winkler p-y cho 1 cọc.
+            """Giải Winkler p-y cho 1 cọc — NumPy thuần (scripts/winkler_np.py).
 
-            Ưu tiên PyNite (extract Q chính xác, license MIT). Fallback anastruct.
             Trả dict {u_top_mm, u_max_mm, M_max_kNm, Q_max_kN, Mcr_kNm, zs, ux, Ms, k_h}.
             """
             if not _HAS_WINKLER_SOLVER:
-                return {"error": (
-                    "Chưa cài thư viện FEM Winkler. "
-                    "Chạy: `pip install PyNiteFEA>=2.0 anastruct>=1.6` "
-                    "rồi khởi động lại Streamlit."
-                )}
+                return {"error": "scripts/winkler_np.py không load được — kiểm tra NumPy."}
 
             # NumPy Winkler solver — không phụ thuộc PyNite/anastruct
             _pl_obj = _sw_by_name(pile_name)
@@ -8403,869 +8112,1398 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             )
 
         # ═══════════════════════════════════════════════════════════════════════
-        # D.1. Nhập dữ liệu p-y Winkler + sơ đồ trực quan
+        # D.1. Tổng quan p-y Winkler — tự động cho mọi HK ở Mục B
         # ═══════════════════════════════════════════════════════════════════════
-        st.markdown("### D.1. Nhập dữ liệu p-y Winkler")
+        st.markdown("### D.1. Tổng quan p-y Winkler — tự động cho mọi HK ở Mục B")
 
-        # ── Áp dữ liệu HK từ Mục B ───────────────────────────────────────────
-        _dpy_bh_list = [b["name"] for b in _bhs_on_alignment] if _bhs_on_alignment else []
-        _dpy_a1, _dpy_a2 = st.columns([2, 3])
-        with _dpy_a1:
-            _dpy_apply_bh = st.selectbox(
-                "Áp dữ liệu HK từ Mục B",
-                ["(không áp)"] + _dpy_bh_list,
-                key="dpy_apply_bh",
-                help="Chọn HK trong Mục B để tự động điền Z, H₁, Su, cọc kiến nghị, L thiết kế",
-            )
-        with _dpy_a2:
-            if _dpy_apply_bh != "(không áp)":
-                _bh_pick_d = next((b for b in _bhs_on_alignment if b["name"] == _dpy_apply_bh), {})
-                _dpy_pile_a = (st.session_state.get("ke_sw_rec_piles", {}).get(_dpy_apply_bh)
-                               or _bh_pick_d.get("recommended_pile") or "SW-840")
-                _dpy_L_a    = (st.session_state.get("ke_sw_L_thiet_ke", {}).get(_dpy_apply_bh)
-                               or _bh_pick_d.get("recommended_L_m") or 29.0)
-                _dpy_Z_a    = _bh_pick_d.get("Z_m") or -0.8
-                _dpy_H1_a   = _bh_pick_d.get("H_layer1_m") or 22.0
-                st.info(
-                    f"**{_dpy_apply_bh}** → Z = {_dpy_Z_a:+.2f}m | H₁ = {_dpy_H1_a:.1f}m | "
-                    f"Cọc = **{_dpy_pile_a}** | L = {_dpy_L_a:.0f}m"
+        # ── Auto-loop: chạy Winkler cho mọi HK đã pick ở Mục B ────────────────
+        _picks_d = st.session_state.get("ke_sw_alignment_picks", []) or []
+        _hk_d_list = [nm for nm in _picks_d if nm.startswith("HK")]
+        # Lấy params tải chung từ session_state (nếu user đã chỉnh ở form D.1
+        # chi tiết bên dưới) — nếu chưa có thì dùng mặc định
+        _H_auto    = float(st.session_state.get("dpy_H_load", 0.0) or 0.0)
+        _M_auto    = float(st.session_state.get("dpy_M_load", 0.0)  or 0.0)
+        _eps50_a   = float(st.session_state.get("dpy_eps50", 0.02)  or 0.02)
+        _cdm_Lc_a  = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
+        _cdm_Lng_a = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
+        _cdm_thk_a = max(0.0, _cdm_Lc_a - _cdm_Lng_a)
+        _k_cdm_a   = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
+
+        _auto_rows: list = []
+        for _hk_nm in _hk_d_list:
+            _hk_pile = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_hk_nm)
+            _hk_L    = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_hk_nm)
+            if not _hk_pile or not _hk_L:
+                continue
+            try:
+                _r_auto = _calc_py_winkler(
+                    bh_name=f"KE-{_hk_nm}", pile_name=_hk_pile,
+                    L_m=float(_hk_L), H_kNm=_H_auto, M_kNm=_M_auto,
+                    cdm_thk_m=_cdm_thk_a, eps50=_eps50_a,
+                    k_cdm_factor=_k_cdm_a,
                 )
-                if st.button(f"Áp dữ liệu {_dpy_apply_bh} → form bên dưới", key="btn_dpy_apply"):
-                    st.session_state["dpy_pile"] = _dpy_pile_a
-                    st.session_state["dpy_L"]    = float(_dpy_L_a)
-                    st.session_state["dpy_Z"]    = float(_dpy_Z_a)
-                    st.session_state["dpy_H1"]   = float(_dpy_H1_a)
-                    try:
-                        _z_c = _ke_data.get("_meta", {}).get("zone_code") or _bh_pick_d.get("zone_code") or "KE"
-                        _su_db = _su_avg_in_range(_z_c, 0.0, float(_dpy_H1_a))
-                        if _su_db is not None:
-                            st.session_state["dpy_su"] = float(_su_db)
-                    except Exception:
-                        pass
-                    st.session_state["dpy_applied"] = {
-                        "dpy_pile": _dpy_apply_bh, "dpy_L": _dpy_apply_bh,
-                        "dpy_Z": _dpy_apply_bh, "dpy_H1": _dpy_apply_bh,
-                        "dpy_su": _dpy_apply_bh,
-                    }
-                    st.rerun()
+            except Exception as _e_each:
+                st.warning(f"KE-{_hk_nm}: lỗi tính — {_e_each}")
+                continue
+            if "error" in _r_auto:
+                continue
+            _u    = _r_auto["u_top_mm"]
+            _Mmax = _r_auto["M_max_kNm"]
+            _Mcr  = _r_auto["Mcr_kNm"]
+            _ok_u = abs(_u) < 25.0
+            _ok_M = _Mmax < _Mcr if _Mcr > 0 else False
+            _ok   = _ok_u and _ok_M
+            _auto_rows.append({
+                "Hố khoan":  f"KE-{_hk_nm}",
+                "Cọc":       _hk_pile,
+                "L (m)":     float(_hk_L),
+                "u_top (mm)": _u,
+                "M_max (kNm)": _Mmax,
+                "Mcr (kNm)": _Mcr,
+                "M/Mcr":     _Mmax/_Mcr if _Mcr > 0 else 0.0,
+                "Q_max (kN)": _r_auto.get("Q_max_kN", 0.0),
+                "Kết quả":   "Đạt" if _ok else "Không đạt",
+                "_res":      _r_auto,
+            })
 
-        _dpy_applied = st.session_state.get("dpy_applied", {}) or {}
-
-        def _dlbl(key: str, txt: str) -> str:
-            return f":blue[**{txt}**]" if key in _dpy_applied else txt
-
-        # ── Form 3 cột + schematic bên phải ──────────────────────────────────
-        _col_form_d, _col_schem_d = st.columns([3, 2], gap="large")
-
-        with _col_form_d:
-            _df_c1, _df_c2, _df_c3 = st.columns(3)
-            with _df_c1:
-                _sw_opts_d = [n for n in _sw_names if n in _rec_piles_b] or _sw_names
-                _dpy_pile_idx = (_sw_opts_d.index("SW-840") if "SW-840" in _sw_opts_d else 0)
-                _dpy_pile = st.selectbox(
-                    _dlbl("dpy_pile", f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_d)} loại)"),
-                    _sw_opts_d, index=_dpy_pile_idx, key="dpy_pile",
-                )
-                _dpy_L = st.number_input(_dlbl("dpy_L", "Chiều dài thiết kế L (m)"),
-                                          10.0, 35.0, 29.0, 0.5, key="dpy_L")
-                _dpy_top_ke = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05,
-                                                key="dpy_top_ke")
-            with _df_c2:
-                _dpy_Z = st.number_input(_dlbl("dpy_Z", "Cao độ mặt đất tự nhiên (m)"),
-                                          -5.0, 3.0, -0.80, 0.05, key="dpy_Z")
-                _dpy_H1 = st.number_input(_dlbl("dpy_H1", "Chiều dày lớp bùn sét H₁ (m)"),
-                                            5.0, 35.0, 22.0, 0.5, key="dpy_H1")
-                _dpy_su = st.number_input(
-                    _dlbl("dpy_su", "Ctd lớp đất xử lý nền Front (kN/m²)"),
-                    value=0.0, step=1.0, key="dpy_su",
-                    help="Lực dính tương đương của lớp đất Front sau khi xử lý nền (CDM). "
-                         "Chỉ áp dụng cho Front — Back giữ Su tự nhiên."
-                )
-            with _df_c3:
-                _dpy_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 30.0, 5.0,
-                                          key="dpy_H_load")
-                _dpy_M = st.number_input("Mô-men đầu cọc M (kNm/m)", 0.0, 500.0, 0.0, 10.0,
-                                          key="dpy_M_load")
-                _dpy_q_op = st.number_input("Tải trọng khai thác q (kN/m²)", 0.0, 200.0, 20.0, 2.5,
-                                              key="dpy_q_operation",
-                                              help="Tải trọng thường xuyên trên mặt Front (xe, người, công trình). "
-                                                   "Boussinesq công thức (39) TCVN 11823-3 §10.6.2.")
+        if not _auto_rows:
+            st.caption("_(Chưa có HK nào ở Mục B để chạy auto Winkler.)_")
+        else:
             st.caption(
-                "**Quy ước:** **Front (TRÁI)** = phía đất đắp / mặt đường / xe chạy / người đi / "
-                "tải trọng công trình → áp lực + tải trọng đẩy cừ SW về phía Back. "
-                "**Back (PHẢI)** = phía đào / sông / mặt nước hở (chịu áp lực bị động dưới đáy đào). "
-                "Cừ SW làm tâm sơ đồ; mặt đất + lớp đất hai bên thường khác nhau "
-                "(Front có fill cao hơn, Back đào xuống thấp)."
+                f"Đang chạy với: H = {_H_auto:.0f} kN/m · M = {_M_auto:.0f} kNm/m · "
+                f"ε₅₀ = {_eps50_a:.3f} · CDM thk = {_cdm_thk_a:.1f} m × {_k_cdm_a:.1f}. "
+                f"Sửa params ở form chi tiết D.1 bên dưới rồi reload để cập nhật summary."
             )
-            _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4, _dpy_w5 = st.columns(5)
-            _dpy_eps50 = _dpy_w1.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
-                                                 key="dpy_eps50", format="%.3f")
-            _dpy_q_a   = _dpy_w2.number_input("a — khoảng cách tải (m)", 0.0, 20.0, 0.0, 0.5,
-                                                 key="dpy_q_a",
-                                                 help="a=0: tải sát tường; a>0: tải lùi ra xa")
-            _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 50.0, 1.0,
-                                                 key="dpy_q_w",
-                                                 help="w ≥ 100m ≈ tải vô hạn")
-            _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
-                                                 key="dpy_wlvl")
-            _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Fixed", "Free", "Cantilever"],
-                                            key="dpy_bc")
+            _auto_df = pd.DataFrame([{k: v for k, v in r.items() if k != "_res"}
+                                       for r in _auto_rows])
 
-            # ── Hàng nhập đất phía Back (phía đào / sông) ───────────────────
-            st.markdown(
-                "**Đất phía Back (sau cọc — phía đào / sông):** "
-                "*Đáy lớp bùn sét giả định BẰNG cao độ Front (cùng đáy lớp 1 thực tế).*"
-            )
-            _dpy_b1, _dpy_b2, _dpy_b3 = st.columns(3)
-            _dpy_Zb     = _dpy_b1.number_input("Cao độ Ground B (m)", -10.0, 5.0,
-                                                  -2.0, 0.05,
-                                                  key="dpy_Z_back",
-                                                  help="Cao độ đáy đào phía Back (mặc định −2.0m; thấp hơn Front do đã đào)")
-            _dpy_sub    = _dpy_b2.number_input("Su Back (kN/m²)",
-                                                  value=0.0, step=1.0,
-                                                  key="dpy_su_back",
-                                                  help="Sức kháng cắt không thoát nước phía Back (đất tự nhiên, "
-                                                       "chưa xử lý). Kỹ sư nhập theo thí nghiệm.")
-            _dpy_wlvl_b = _dpy_b3.number_input("Mực nước Back (m)", -10.0, 5.0,
-                                                  -2.0, 0.5,
-                                                  key="dpy_wlvl_back",
-                                                  help="Mực nước phía Back (sông/đào). Mặc định −2.0m.")
+            def _hl_d_auto(val):
+                if val == "Đạt":      return "background-color:#d4edda; color:#155724"
+                if val == "Không đạt": return "background-color:#f8d7da; color:#721c24"
+                return ""
 
-            # ── Thông số lớp đất đắp (Fill — chỉ Front) ──────────────────────
-            st.markdown(
-                "**Đất đắp Front (Fill — từ đỉnh kè xuống mặt đất tự nhiên):** "
-                "*Kỹ sư nhập thông số thiết kế cụ thể của dự án.*"
-            )
-            _dpy_f1, _dpy_f2, _dpy_f3, _dpy_f4 = st.columns(4)
-            _dpy_gamma_fill = _dpy_f1.number_input(
-                "γ_fill (kN/m³)", value=0.0, step=0.1,
-                key="dpy_gamma_fill",
-                help="Dung trọng đất đắp ướt — kỹ sư nhập theo thiết kế dự án."
-            )
-            _dpy_phi_fill = _dpy_f2.number_input(
-                "φ_fill (°)", value=0.0, step=0.5,
-                key="dpy_phi_fill",
-                help="Góc ma sát đất đắp — kỹ sư nhập theo thí nghiệm / thiết kế."
-            )
-            _dpy_c_fill = _dpy_f3.number_input(
-                "c_fill (kPa)", value=0.0, step=1.0,
-                key="dpy_c_fill",
-                help="Lực dính đất đắp — kỹ sư nhập theo thí nghiệm."
-            )
-            _dpy_gamma_sub_fill = _dpy_f4.number_input(
-                "γ_sub_fill (kN/m³)", value=0.0, step=0.1,
-                key="dpy_gamma_sub_fill",
-                help="Dung trọng đất đắp bão hoà = γ_sat − γ_w."
+            st.dataframe(
+                _auto_df.style.map(_hl_d_auto, subset=["Kết quả"]),
+                use_container_width=True, hide_index=True,
+                column_config={
+                    "L (m)":        st.column_config.NumberColumn(format="%.1f"),
+                    "u_top (mm)":   st.column_config.NumberColumn(format="%.2f"),
+                    "M_max (kNm)":  st.column_config.NumberColumn(format="%.1f"),
+                    "Mcr (kNm)":    st.column_config.NumberColumn(format="%.0f"),
+                    "M/Mcr":        st.column_config.NumberColumn(format="%.2f"),
+                    "Q_max (kN)":   st.column_config.NumberColumn(format="%.1f"),
+                },
             )
 
-        with _col_schem_d:
-            if _HAS_MPL:
-                _pile_tip_d = _dpy_top_ke - _dpy_L
+            # Bar chart u_top + M/Mcr cho mọi HK
+            if _HAS_PLOTLY:
+                from plotly.subplots import make_subplots as _msub_d1
+                _fig_d1a = _msub_d1(rows=1, cols=2,
+                                     subplot_titles=("Chuyển vị đỉnh u_top (mm)",
+                                                     "Tỷ số M/Mcr"))
+                _xs_d1a = [r["Hố khoan"] for r in _auto_rows]
+                _us_d1a = [r["u_top (mm)"] for r in _auto_rows]
+                _ms_d1a = [r["M/Mcr"]     for r in _auto_rows]
+                _fig_d1a.add_trace(go.Bar(
+                    x=_xs_d1a, y=_us_d1a, name="u_top",
+                    marker_color=["#1565C0" if abs(u) < 25 else "#E53935" for u in _us_d1a],
+                    text=[f"{u:.1f}" for u in _us_d1a], textposition="outside",
+                ), row=1, col=1)
+                _fig_d1a.add_hline(y=25, line_dash="dash", line_color="#666",
+                                    annotation_text="25 mm", row=1, col=1)
+                _fig_d1a.add_hline(y=-25, line_dash="dash", line_color="#666", row=1, col=1)
+                _fig_d1a.add_trace(go.Bar(
+                    x=_xs_d1a, y=_ms_d1a, name="M/Mcr",
+                    marker_color=["#2E7D32" if m < 1 else "#E53935" for m in _ms_d1a],
+                    text=[f"{m:.2f}" for m in _ms_d1a], textposition="outside",
+                ), row=1, col=2)
+                _fig_d1a.add_hline(y=1.0, line_dash="dash", line_color="#666",
+                                    annotation_text="M_cr", row=1, col=2)
+                _fig_d1a.update_layout(height=380, showlegend=False,
+                                        margin=dict(t=50, b=40),
+                                        title="So sánh Winkler — tất cả HK ở Mục B")
+                st.plotly_chart(_fig_d1a, use_container_width=True)
 
-                # ── Lấy TẤT CẢ lớp đất từ SQLite cho HK đang áp ──────────────
-                _all_layers_F: list = []
-                _all_layers_B: list = []
-                _has_real_layers = False
-                if _dpy_apply_bh and _dpy_apply_bh != "(không áp)":
+        # ═══════════════════════════════════════════════════════════════════════
+        # D.1 chi tiết: nhập tay 1 HK để xem biểu đồ u/M/k_h/Boussinesq + EP
+        # ═══════════════════════════════════════════════════════════════════════
+        st.markdown("---")
+        st.markdown("### D.1 (chi tiết). Chạy chi tiết cho 1 HK (tinh chỉnh)")
+        # ═══════════════════════════════════════════════════════════════════════
+        # D.1 (chi tiết) — Auto-loop cho mọi HK ở Mục B (mỗi HK 1 expander)
+        # ═══════════════════════════════════════════════════════════════════════
+        if not _hk_d_list:
+            st.caption("_(Chưa có HK nào ở Mục B để chạy chi tiết.)_")
+        for _hk_iter in _hk_d_list:
+            with st.expander(f"Chi tiết KE-{_hk_iter}", expanded=False):
+
+                # ── Auto-fill HK-specific params từ Mục B (auto-loop, không cần button) ───
+                _bh_pick_d = next((b for b in _bhs_on_alignment if b["name"] == _hk_iter), {}) or {}
+                _dpy_pile_default = (st.session_state.get("ke_sw_rec_piles", {}).get(_hk_iter)
+                                     or _bh_pick_d.get("recommended_pile") or "SW-840")
+                _dpy_L_default    = (st.session_state.get("ke_sw_L_thiet_ke", {}).get(_hk_iter)
+                                     or _bh_pick_d.get("recommended_L_m") or 29.0)
+                _dpy_Z_default    = float(_bh_pick_d.get("Z_m")
+                                          if _bh_pick_d.get("Z_m") is not None else -0.8)
+                _dpy_H1_default   = float(_bh_pick_d.get("H_layer1_m") or 22.0)
+                try:
+                    _zone_c_iter = (_ke_data.get("_meta", {}).get("zone_code")
+                                    or _bh_pick_d.get("zone_code") or "KE")
+                    _su_db_iter  = _su_avg_in_range(_zone_c_iter, 0.0, _dpy_H1_default)
+                    # Ctd Front SAU xử lý CDM — bộ chuẩn dự án 80 kPa (CDM 28d)
+                    _dpy_su_default = float(_su_db_iter) if _su_db_iter is not None else 80.0
+                except Exception:
+                    _dpy_su_default = 80.0
+                _dpy_apply_bh = _hk_iter
+                for _k, _v in [
+                    (f"dpy_pile_{_hk_iter}",    _dpy_pile_default),
+                    (f"dpy_L_{_hk_iter}",       float(_dpy_L_default)),
+                    (f"dpy_Z_{_hk_iter}",       _dpy_Z_default),
+                    (f"dpy_H1_{_hk_iter}",      _dpy_H1_default),
+                    (f"dpy_su_{_hk_iter}",      _dpy_su_default),
+                    (f"dpy_su_back_{_hk_iter}", _dpy_su_default),
+                ]:
+                    if _k not in st.session_state:
+                        st.session_state[_k] = _v
+
+                _dpy_applied = st.session_state.get("dpy_applied", {}) or {}
+
+                def _dlbl(key: str, txt: str) -> str:
+                    return f":blue[**{txt}**]" if key in _dpy_applied else txt
+
+                # ── Form 3 cột + schematic bên phải ──────────────────────────────────
+                _col_form_d, _col_schem_d = st.columns([3, 2], gap="large")
+
+                with _col_form_d:
+                    _df_c1, _df_c2, _df_c3 = st.columns(3)
+                    with _df_c1:
+                        # Lọc cọc theo Mục B (chỉ cọc đã được kiến nghị ở B), fallback toàn catalog
+                        _rec_piles_b = sorted({
+                            p for p in (st.session_state.get("ke_sw_rec_piles", {}) or {}).values() if p
+                        })
+                        _sw_opts_d = [n for n in _sw_names if n in _rec_piles_b] or _sw_names
+                        _dpy_pile_idx = (_sw_opts_d.index("SW-840") if "SW-840" in _sw_opts_d else 0)
+                        _dpy_pile = st.selectbox(
+                            _dlbl("dpy_pile", f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_d)} loại)"),
+                            _sw_opts_d, index=_dpy_pile_idx, key=f"dpy_pile_{_hk_iter}",
+                        )
+                        _dpy_L = st.number_input(_dlbl("dpy_L", "Chiều dài thiết kế L (m)"),
+                                                  10.0, 35.0, 29.0, 0.5, key=f"dpy_L_{_hk_iter}")
+                        _dpy_top_ke = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05,
+                                                        key=f"dpy_top_ke_{_hk_iter}")
+                    with _df_c2:
+                        _dpy_Z = st.number_input(_dlbl("dpy_Z", "Cao độ mặt đất tự nhiên (m)"),
+                                                  -5.0, 3.0, -0.80, 0.05, key=f"dpy_Z_{_hk_iter}")
+                        _dpy_H1 = st.number_input(_dlbl("dpy_H1", "Chiều dày lớp bùn sét H₁ (m)"),
+                                                    5.0, 35.0, 22.0, 0.5, key=f"dpy_H1_{_hk_iter}")
+                        _dpy_su = st.number_input(
+                            _dlbl("dpy_su", "Ctd lớp đất xử lý nền Front (kN/m²)"),
+                            value=80.0, step=1.0, key=f"dpy_su_{_hk_iter}",
+                            help="Lực dính tương đương của lớp đất Front sau khi xử lý nền (CDM). "
+                                 "Mặc định 80 kN/m² — bộ chuẩn dự án (CDM 28 ngày qu ≈ 160 kPa)."
+                        )
+                    with _df_c3:
+                        _dpy_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 0.0, 5.0,
+                                                  key=f"dpy_H_load_{_hk_iter}",
+                                                  help="Tải ngang user cộng thêm tại đỉnh cọc (vd: tải va đập, tải động). "
+                                                       "Mặc định 0 — chỉ chịu áp lực đất + nước + Boussinesq từ q.")
+                        _dpy_M = st.number_input("Mô-men đầu cọc M (kNm/m)", 0.0, 500.0, 0.0, 10.0,
+                                                  key=f"dpy_M_load_{_hk_iter}")
+                        _dpy_q_op = st.number_input("Tải trọng khai thác q (kN/m²)", 0.0, 200.0, 15.0, 2.5,
+                                                      key=f"dpy_q_operation_{_hk_iter}",
+                                                      help="Tải trọng thường xuyên trên mặt Front (xe, người, công trình). "
+                                                           "Mặc định 15 kN/m² — bộ chuẩn dự án kè công viên. "
+                                                           "Boussinesq công thức (39) TCVN 11823-3 §10.6.2.")
+                    st.caption(
+                        "**Quy ước:** **Front (TRÁI)** = phía đất đắp / mặt đường / xe chạy / người đi / "
+                        "tải trọng công trình → áp lực + tải trọng đẩy cừ SW về phía Back. "
+                        "**Back (PHẢI)** = phía đào / sông / mặt nước hở (chịu áp lực bị động dưới đáy đào). "
+                        "Cừ SW làm tâm sơ đồ; mặt đất + lớp đất hai bên thường khác nhau "
+                        "(Front có fill cao hơn, Back đào xuống thấp)."
+                    )
+                    _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4, _dpy_w5 = st.columns(5)
+                    _dpy_eps50 = _dpy_w1.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
+                                                         key=f"dpy_eps50_{_hk_iter}", format="%.3f")
+                    _dpy_q_a   = _dpy_w2.number_input("a — khoảng cách tải (m)", 0.0, 20.0, 0.0, 0.5,
+                                                         key=f"dpy_q_a_{_hk_iter}",
+                                                         help="a=0: tải sát tường; a>0: tải lùi ra xa")
+                    _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 10.0, 1.0,
+                                                         key=f"dpy_q_w_{_hk_iter}",
+                                                         help="Mặc định 10m — bộ chuẩn dự án (làn xe + lề). w ≥ 100m ≈ tải vô hạn.")
+                    _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
+                                                         key=f"dpy_wlvl_{_hk_iter}")
+                    _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"],
+                                                    key=f"dpy_bc_{_hk_iter}")
+
+                    # ── Hàng nhập đất phía Back (phía đào / sông) ───────────────────
+                    st.markdown(
+                        "**Đất phía Back (sau cọc — phía đào / sông):** "
+                        "*Đáy lớp bùn sét giả định BẰNG cao độ Front (cùng đáy lớp 1 thực tế).*"
+                    )
+                    _dpy_b1, _dpy_b2, _dpy_b3 = st.columns(3)
+                    _dpy_Zb     = _dpy_b1.number_input("Cao độ Ground B (m)", -10.0, 5.0,
+                                                          -2.0, 0.05,
+                                                          key=f"dpy_Z_back_{_hk_iter}",
+                                                          help="Cao độ đáy đào phía Back (mặc định −2.0m; thấp hơn Front do đã đào)")
+                    # Su Back mặc định = Su lớp bùn (_dpy_su) — đất Back là cùng lớp 1
+                    # chưa xử lý, nên Su tương đương lớp bùn Front (trước CDM).
+                    _dpy_sub    = _dpy_b2.number_input(
+                        _dlbl("dpy_su_back", "Su Back (kN/m²)"),
+                        value=float(_dpy_su) if _dpy_su > 0 else 0.0, step=1.0,
+                        key=f"dpy_su_back_{_hk_iter}",
+                        help="Sức kháng cắt không thoát nước phía Back (đất tự nhiên, "
+                             "chưa xử lý). Mặc định = Su lớp bùn = giá trị Ctd Front.")
+                    _dpy_wlvl_b = _dpy_b3.number_input("Mực nước Back (m)", -10.0, 5.0,
+                                                          -2.0, 0.5,
+                                                          key=f"dpy_wlvl_back_{_hk_iter}",
+                                                          help="Mực nước phía Back (sông/đào). Mặc định −2.0m.")
+
+                    # ── Thông số lớp đất đắp (Fill — chỉ Front) ──────────────────────
+                    st.markdown(
+                        "**Đất đắp Front (Fill — từ đỉnh kè xuống mặt đất tự nhiên):** "
+                        "*Kỹ sư nhập thông số thiết kế cụ thể của dự án.*"
+                    )
+                    _dpy_f1, _dpy_f2, _dpy_f3, _dpy_f4 = st.columns(4)
+                    _dpy_gamma_fill = _dpy_f1.number_input(
+                        "γ_fill (kN/m³)", value=18.0, step=0.1,
+                        key=f"dpy_gamma_fill_{_hk_iter}",
+                        help="Dung trọng đất đắp ướt. Mặc định 18 kN/m³ — đất đắp chặt vừa (cát san lấp)."
+                    )
+                    _dpy_phi_fill = _dpy_f2.number_input(
+                        "φ_fill (°)", value=25.0, step=0.5,
+                        key=f"dpy_phi_fill_{_hk_iter}",
+                        help="Góc ma sát đất đắp. Mặc định 25° — đất đắp chặt vừa."
+                    )
+                    _dpy_c_fill = _dpy_f3.number_input(
+                        "c_fill (kPa)", value=0.0, step=1.0,
+                        key=f"dpy_c_fill_{_hk_iter}",
+                        help="Lực dính đất đắp. Mặc định 0 kPa — đất rời (cát đắp)."
+                    )
+                    _dpy_gamma_sub_fill = _dpy_f4.number_input(
+                        "γ_sub_fill (kN/m³)", value=8.0, step=0.1,
+                        key=f"dpy_gamma_sub_fill_{_hk_iter}",
+                        help="Dung trọng đất đắp bão hoà − γ_w. Mặc định 8 kN/m³ (γ_sat ≈ 18 → γ' = 8)."
+                    )
+
+                with _col_schem_d:
+                    if _HAS_MPL:
+                        _pile_tip_d = _dpy_top_ke - _dpy_L
+
+                        # ── Lấy TẤT CẢ lớp đất từ SQLite cho HK đang áp ──────────────
+                        _all_layers_F: list = []
+                        _all_layers_B: list = []
+                        _has_real_layers = False
+                        if _dpy_apply_bh and _dpy_apply_bh != "(không áp)":
+                            try:
+                                _con_real = sqlite3.connect(str(_DB))
+                                _cur_real = _con_real.cursor()
+                                _row_bh_r = _cur_real.execute(
+                                    "SELECT id, elevation_m FROM boreholes WHERE name LIKE ? LIMIT 1",
+                                    (f"%{_dpy_apply_bh}%",),
+                                ).fetchone()
+                                if _row_bh_r:
+                                    _bh_id_r, _bh_elev_r = _row_bh_r
+                                    _bh_elev_r = _bh_elev_r or 0.0
+                                    _ly_real = _cur_real.execute(
+                                        "SELECT symbol, description, depth_top_m, depth_bot_m, "
+                                        "thickness_m FROM layers WHERE borehole_id=? "
+                                        "ORDER BY depth_top_m",
+                                        (_bh_id_r,),
+                                    ).fetchall()
+                                    _max_depth_r = float(_bh_elev_r) - _pile_tip_d + 2.0
+                                    for _sym, _desc, _dt, _db, _thk in _ly_real:
+                                        # Sử dụng depth_top/bot nếu có, fallback theo thickness
+                                        if _dt is None or _db is None:
+                                            if _thk is None:
+                                                continue
+                                            _dt = sum(L[2] - L[1] if L[2] is None else 0
+                                                      for L in _ly_real)  # bo qua neu thieu
+                                        # Bo lop o ngoai pham vi
+                                        if _db is None or _db > _max_depth_r:
+                                            if _dt is None or _dt > _max_depth_r:
+                                                continue
+                                            _db = _max_depth_r
+                                        _e_top_r = _bh_elev_r - _dt
+                                        _e_bot_r = _bh_elev_r - _db
+                                        # γ/φ theo symbol thuc te
+                                        _sym_l = (_sym or "").upper()
+                                        if _sym_l == "F":
+                                            _gam_r, _phi_r = 18.0, 28.0
+                                        elif _sym_l in ("1", "XMD"):
+                                            _gam_r, _phi_r = 15.0, 0.0
+                                        elif _sym_l == "3":
+                                            _gam_r, _phi_r = 17.0, 12.0
+                                        elif _sym_l == "4":
+                                            _gam_r, _phi_r = 19.0, 30.0
+                                        elif _sym_l in ("5", "5A", "5B"):
+                                            _gam_r, _phi_r = 19.5, 25.0
+                                        else:
+                                            _gam_r, _phi_r = 18.0, 20.0
+                                        _nm_r = f"L{_sym}: {(_desc or '')[:18]}"
+                                        _all_layers_F.append((_nm_r, _e_top_r, _e_bot_r, _gam_r, _phi_r))
+                                        # Back side: cùng layers, shift theo Z_back nếu khác Z_front
+                                        _shift = float(_dpy_Zb) - float(_bh_elev_r)
+                                        _all_layers_B.append((_nm_r, _e_top_r + _shift,
+                                                                _e_bot_r + _shift, _gam_r, _phi_r))
+                                    _has_real_layers = len(_all_layers_F) > 0
+                                _con_real.close()
+                            except Exception:
+                                pass
+
+                        _layers_F = _all_layers_F
+                        _layers_B = _all_layers_B
+
+                        if _has_real_layers:
+                            _fig_sch_d = draw_pile_schematic(
+                                L_m=_dpy_L + 2.0,
+                                water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
+                                H_kN=_dpy_H, M_kNm=_dpy_M,
+                                layers=_layers_F, bc_type=_dpy_bc,
+                                soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Zb,
+                                water_lvl_back=_dpy_wlvl_b,
+                                back_layers=_layers_B,
+                                gamma_fill=float(_dpy_gamma_fill),
+                                phi_fill=float(_dpy_phi_fill),
+                                c_fill=float(_dpy_c_fill),
+                            )
+                            if _fig_sch_d:
+                                st.pyplot(_fig_sch_d, use_container_width=True)
+                                plt.close(_fig_sch_d)
+                            st.caption(
+                                f"**Front:** Z={_dpy_Z:+.2f}m · MN={_dpy_wlvl:+.2f}m · "
+                                f"Ctd_Front (xử lý nền)={_dpy_su:.0f} kPa  \n"
+                                f"**Back:** Z={_dpy_Zb:+.2f}m · MN={_dpy_wlvl_b:+.2f}m · "
+                                f"Su_Back (tự nhiên)={_dpy_sub:.0f} kPa  \n"
+                                f"**Lớp đất:** {len(_layers_F)} lớp từ HK `{_dpy_apply_bh}` "
+                                f"(bao gồm 2m dưới chân cừ); KHÔNG dùng giá trị giả định."
+                            )
+                        else:
+                            st.warning(
+                                "**Chưa có lớp đất để vẽ.** Cần chọn HK ở \"Áp dữ liệu HK từ Mục B\" "
+                                "ở trên — lớp đất sẽ được lấy trực tiếp từ SQLite, không dùng giá trị giả định."
+                            )
+
+                # ─── Biểu đồ áp lực nước + Boussinesq cạnh nhau ───────────────────────
+                st.markdown("#### Áp lực nước + Tải Boussinesq")
+                _wp_inp1, _wp_inp2, _wp_inp3 = st.columns([2, 2, 3])
+                with _wp_inp1:
+                    _wp_mode = st.selectbox(
+                        "Chế độ áp lực nước",
+                        ["hydrostatic", "seepage"],
+                        format_func=lambda x: "Thủy tĩnh" if x == "hydrostatic" else "Terzaghi (thấm)",
+                        key=f"dpy_wp_mode_{_hk_iter}",
+                    )
+                with _wp_inp2:
+                    _wp_gamma = st.number_input("γ_w (kN/m³)", 9.0, 10.5, 9.81, 0.01,
+                                                  key=f"dpy_wp_gamma_{_hk_iter}")
+                with _wp_inp3:
+                    _wp_dh = float(_dpy_wlvl_b) - float(_dpy_wlvl)
+                    st.metric("Δh = Back − Front", f"{_wp_dh:+.2f}m")
+
+                _wp_col, _bs_col = st.columns([1, 1], gap="medium")
+
+                # ───── BÊN TRÁI: Áp lực nước (thu nhỏ) ─────
+                with _wp_col:
+                    st.markdown("**Áp lực nước — TCVN 11823-3 §10.5.1**")
                     try:
-                        _con_real = sqlite3.connect(str(_DB))
-                        _cur_real = _con_real.cursor()
-                        _row_bh_r = _cur_real.execute(
+                        import sys as _sys_wp
+                        _sys_wp.path.insert(0, str(_ROOT / "scripts"))
+                        from water_pressure import (
+                            WaterGeometry as _WG,
+                            compute_all as _wp_compute,
+                        )
+                        _wp_geom = _WG(
+                            top_elev=float(_dpy_top_ke),
+                            pile_length=float(_dpy_L),
+                            soil_level_front=float(_dpy_Z),
+                            water_elev_front=float(_dpy_wlvl),
+                            water_elev_back=float(_dpy_wlvl_b),
+                            gamma_w=float(_wp_gamma),
+                        )
+                        _wp_res = _wp_compute(_wp_geom, mode=_wp_mode)
+                        if _wp_res.get("fig"):
+                            # Thu nhỏ
+                            _wp_res["fig"].set_size_inches(7, 4.5)
+                            for _ax in _wp_res["fig"].axes:
+                                _ax.tick_params(labelsize=7)
+                                if _ax.get_title():
+                                    _ax.set_title(_ax.get_title(), fontsize=8)
+                            st.pyplot(_wp_res["fig"], use_container_width=True)
+                            plt.close(_wp_res["fig"])
+                        _wm1, _wm2, _wm3 = st.columns(3)
+                        _wm1.metric("F Front", f"{_wp_res['F_front']:.0f}", "kN/m")
+                        _wm2.metric("F Back",  f"{_wp_res['F_back']:.0f}",  "kN/m")
+                        _wm3.metric("F Net",   f"{_wp_res['F_net']:.0f}",   "kN/m")
+                        st.caption(f"Chế độ: {_wp_res['mode']}")
+                    except Exception as _e_wp:
+                        st.warning(f"Không vẽ được áp lực nước: {_e_wp}")
+
+                # ───── BÊN PHẢI: Áp lực ngang do tải Boussinesq ─────
+                with _bs_col:
+                    st.markdown(f"**Áp lực ngang Boussinesq từ tải q = {_dpy_q_op:.0f} kN/m²**")
+                    try:
+                        import sys as _sys_b2
+                        _sys_b2.path.insert(0, str(_ROOT / "scripts"))
+                        from boussinesq_surcharge import (
+                            SurchargeStrip as _Strip2,
+                            BoussiGeometry as _Geom2,
+                            compute_all as _bs_compute,
+                        )
+                        _bs_strip_full = _Strip2(
+                            q=float(_dpy_q_op),
+                            a=float(_dpy_q_a),
+                            w=float(_dpy_q_w),
+                            ref_surface=float(_dpy_Z),
+                            side="Front",
+                            label=f"q = {_dpy_q_op} kN/m²",
+                        )
+                        _bs_geom_full = _Geom2(
+                            top_elev=float(_dpy_top_ke),
+                            pile_length=float(_dpy_L),
+                            soil_level_front=float(_dpy_Z),
+                            soil_level_back=float(_dpy_Zb),
+                        )
+                        _bs_res = _bs_compute(_bs_geom_full, [_bs_strip_full])
+                        if _bs_res.get("fig"):
+                            _bs_res["fig"].set_size_inches(7, 4.5)
+                            for _ax in _bs_res["fig"].axes:
+                                _ax.tick_params(labelsize=7)
+                                if _ax.get_title():
+                                    _ax.set_title(_ax.get_title(), fontsize=8)
+                            st.pyplot(_bs_res["fig"], use_container_width=True)
+                            plt.close(_bs_res["fig"])
+                        _bm1, _bm2, _bm3 = st.columns(3)
+                        _bm1.metric("F Front", f"{_bs_res['F_front']:.0f}", "kN/m")
+                        _bm2.metric("F Back",  f"{_bs_res['F_back']:.0f}",  "kN/m")
+                        _bm3.metric("F Net",   f"{_bs_res['F_net']:.0f}",   "kN/m")
+                        st.caption(f"a={_dpy_q_a}m, w={_dpy_q_w}m · TCVN 11823-3 §10.6.2 Eq.39")
+                    except Exception as _e_bs:
+                        st.warning(f"Không vẽ được Boussinesq: {_e_bs}")
+
+                # ─── Biểu đồ áp lực đất ngang — TCVN 11823-3 §10.5 ────────────────────
+                st.markdown("#### Biểu đồ áp lực đất ngang (Active · Net · Passive) — TCVN 11823-3 §10.5")
+                _ep_c1, _ep_c2, _ep_c3, _ep_c4 = st.columns(4)
+                with _ep_c1:
+                    _ep_ka_method = st.selectbox(
+                        "Phương pháp Ka",
+                        ["rankine", "coulomb"],
+                        format_func=lambda x: "Rankine" if x == "rankine" else "Coulomb (Eq.25)",
+                        key=f"dpy_ep_ka_{_hk_iter}",
+                    )
+                with _ep_c2:
+                    _ep_delta = st.number_input("δ (°) — ma sát tường", 0.0, 30.0, 0.0, 1.0,
+                                                   key=f"dpy_ep_delta_{_hk_iter}",
+                                                   help="δ=0 (Rankine); >0 cho Coulomb. Bảng 20 TCVN")
+                with _ep_c3:
+                    _ep_surcharge = st.number_input("Tải mặt Front q (kN/m²)", 0.0, 200.0,
+                                                      float(_dpy_q_op), 5.0,
+                                                      key=f"dpy_ep_q_{_hk_iter}",
+                                                      help="Mặc định bằng tải khai thác đã nhập")
+                with _ep_c4:
+                    _ep_kp_method = st.selectbox(
+                        "Phương pháp Kp",
+                        ["rankine"],
+                        format_func=lambda x: "Rankine",
+                        key=f"dpy_ep_kp_{_hk_iter}",
+                    )
+
+                if _has_real_layers:
+                    try:
+                        import sys as _sys_ep
+                        _sys_ep.path.insert(0, str(_ROOT / "scripts"))
+                        from earth_pressure import (
+                            EpGeometry as _EpG,
+                            compute_all as _ep_compute,
+                        )
+                        from lateral_earth_pressure import SoilLayer as _SL
+
+                        # ── Lấy thông số đất THẬT từ SQLite lab_tests ────────────────
+                        # Cho mỗi lớp: tính γ, φ, c trung bình từ các mẫu lab trong depth range
+                        _con_lab = sqlite3.connect(str(_DB))
+                        _cur_lab = _con_lab.cursor()
+                        _row_bh_ep = _cur_lab.execute(
                             "SELECT id, elevation_m FROM boreholes WHERE name LIKE ? LIMIT 1",
                             (f"%{_dpy_apply_bh}%",),
                         ).fetchone()
-                        if _row_bh_r:
-                            _bh_id_r, _bh_elev_r = _row_bh_r
-                            _bh_elev_r = _bh_elev_r or 0.0
-                            _ly_real = _cur_real.execute(
-                                "SELECT symbol, description, depth_top_m, depth_bot_m, "
-                                "thickness_m FROM layers WHERE borehole_id=? "
-                                "ORDER BY depth_top_m",
-                                (_bh_id_r,),
-                            ).fetchall()
-                            _max_depth_r = float(_bh_elev_r) - _pile_tip_d + 2.0
-                            for _sym, _desc, _dt, _db, _thk in _ly_real:
-                                # Sử dụng depth_top/bot nếu có, fallback theo thickness
-                                if _dt is None or _db is None:
-                                    if _thk is None:
-                                        continue
-                                    _dt = sum(L[2] - L[1] if L[2] is None else 0
-                                              for L in _ly_real)  # bo qua neu thieu
-                                # Bo lop o ngoai pham vi
-                                if _db is None or _db > _max_depth_r:
-                                    if _dt is None or _dt > _max_depth_r:
-                                        continue
-                                    _db = _max_depth_r
-                                _e_top_r = _bh_elev_r - _dt
-                                _e_bot_r = _bh_elev_r - _db
-                                # γ/φ theo symbol thuc te
-                                _sym_l = (_sym or "").upper()
-                                if _sym_l == "F":
-                                    _gam_r, _phi_r = 18.0, 28.0
-                                elif _sym_l in ("1", "XMD"):
-                                    _gam_r, _phi_r = 15.0, 0.0
-                                elif _sym_l == "3":
-                                    _gam_r, _phi_r = 17.0, 12.0
-                                elif _sym_l == "4":
-                                    _gam_r, _phi_r = 19.0, 30.0
-                                elif _sym_l in ("5", "5A", "5B"):
-                                    _gam_r, _phi_r = 19.5, 25.0
-                                else:
-                                    _gam_r, _phi_r = 18.0, 20.0
-                                _nm_r = f"L{_sym}: {(_desc or '')[:18]}"
-                                _all_layers_F.append((_nm_r, _e_top_r, _e_bot_r, _gam_r, _phi_r))
-                                # Back side: cùng layers, shift theo Z_back nếu khác Z_front
-                                _shift = float(_dpy_Zb) - float(_bh_elev_r)
-                                _all_layers_B.append((_nm_r, _e_top_r + _shift,
-                                                        _e_bot_r + _shift, _gam_r, _phi_r))
-                            _has_real_layers = len(_all_layers_F) > 0
-                        _con_real.close()
-                    except Exception:
-                        pass
+                        _bh_id_ep, _bh_elev_ep = (_row_bh_ep if _row_bh_ep else (None, 0.0))
+                        _bh_elev_ep = _bh_elev_ep or 0.0
 
-                _layers_F = _all_layers_F
-                _layers_B = _all_layers_B
+                        # Lay layers gốc (depth) tu DB
+                        _real_lyrs = _cur_lab.execute(
+                            "SELECT symbol, description, depth_top_m, depth_bot_m FROM layers "
+                            "WHERE borehole_id=? ORDER BY depth_top_m",
+                            (_bh_id_ep,),
+                        ).fetchall() if _bh_id_ep else []
 
-                if _has_real_layers:
-                    _fig_sch_d = draw_pile_schematic(
-                        L_m=_dpy_L + 2.0,
-                        water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
-                        H_kN=_dpy_H, M_kNm=_dpy_M,
-                        layers=_layers_F, bc_type=_dpy_bc,
-                        soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Zb,
-                        water_lvl_back=_dpy_wlvl_b,
-                        back_layers=_layers_B,
-                        gamma_fill=float(_dpy_gamma_fill),
-                        phi_fill=float(_dpy_phi_fill),
-                        c_fill=float(_dpy_c_fill),
-                    )
-                    if _fig_sch_d:
-                        st.pyplot(_fig_sch_d, use_container_width=True)
-                        plt.close(_fig_sch_d)
-                    st.caption(
-                        f"**Front:** Z={_dpy_Z:+.2f}m · MN={_dpy_wlvl:+.2f}m · "
-                        f"Ctd_Front (xử lý nền)={_dpy_su:.0f} kPa  \n"
-                        f"**Back:** Z={_dpy_Zb:+.2f}m · MN={_dpy_wlvl_b:+.2f}m · "
-                        f"Su_Back (tự nhiên)={_dpy_sub:.0f} kPa  \n"
-                        f"**Lớp đất:** {len(_layers_F)} lớp từ HK `{_dpy_apply_bh}` "
-                        f"(bao gồm 2m dưới chân cừ); KHÔNG dùng giá trị giả định."
-                    )
-                else:
-                    st.warning(
-                        "**Chưa có lớp đất để vẽ.** Cần chọn HK ở \"Áp dữ liệu HK từ Mục B\" "
-                        "ở trên — lớp đất sẽ được lấy trực tiếp từ SQLite, không dùng giá trị giả định."
-                    )
+                        _ep_front_layers = []
+                        _ep_back_layers_acc: list = []
+                        _ep_sus_back: list[float] = []
+                        _real_param_rows = []   # cho caption hiển thị nguồn
+                        _ep_soil_types: list[str] = []
+                        _ep_sus: list[float] = []
+                        # Phân loại sét/cát theo symbol TCVN
+                        _CLAY_SYMS = {"1", "XMD", "3", "5", "5A", "5B"}
+                        _SAND_SYMS = {"F", "2A", "2B", "2C", "4", "6", "7"}
+                        for _sym, _desc, _dt, _db in _real_lyrs:
+                            if _dt is None or _db is None:
+                                continue
+                            # Truy van lab_tests trong khoang [_dt, _db]
+                            _row_avg = _cur_lab.execute(
+                                "SELECT AVG(gamma_kNm3), AVG(phi_deg), AVG(c_kPa), "
+                                "AVG(Cu_UU_kPa), COUNT(*) "
+                                "FROM lab_tests WHERE borehole_id=? "
+                                "AND depth_from_m >= ? AND depth_to_m <= ?",
+                                (_bh_id_ep, _dt, _db),
+                            ).fetchone()
+                            _gam_v, _phi_v, _c_v, _cu_v, _n_samp = _row_avg
+                            # Su (Cu_UU) → c cho lớp sét nếu phi=0
+                            if (_phi_v is None or _phi_v < 1.0) and _cu_v is not None:
+                                _c_for_lyr = float(_cu_v)
+                            elif _c_v is not None:
+                                _c_for_lyr = float(_c_v)
+                            else:
+                                _c_for_lyr = 0.0
+                            # Fallback theo symbol nếu thiếu lab
+                            _sym_u = (_sym or "").upper()
+                            if _gam_v is None:
+                                _gam_v = (18.0 if _sym_u == "F"
+                                           else 15.0 if _sym_u in ("1", "XMD")
+                                           else 17.0 if _sym_u == "3"
+                                           else 19.0 if _sym_u == "4" else 18.0)
+                            if _phi_v is None:
+                                _phi_v = (28.0 if _sym_u == "F"
+                                           else 0.0  if _sym_u in ("1", "XMD")
+                                           else 12.0 if _sym_u == "3"
+                                           else 30.0 if _sym_u == "4" else 20.0)
+                            _e_top_ep = _bh_elev_ep - _dt
+                            _e_bot_ep = _bh_elev_ep - _db
+                            if _e_bot_ep < _dpy_top_ke - _dpy_L - 0.01:
+                                _e_bot_ep = _dpy_top_ke - _dpy_L - 0.01
+                            _g_sub_ep = max(float(_gam_v) - 9.81, 8.0)
+                            # Phân loại Sand/Clay theo SYMBOL TCVN (không theo phi)
+                            if _sym_u in _CLAY_SYMS:
+                                _soil_type = "Clay"
+                                _c_use = _c_for_lyr   # mặc định = c lab
+                            elif _sym_u in _SAND_SYMS:
+                                _soil_type = "Sand"
+                                _c_use = 0.0          # cát: cohesionless
+                            else:
+                                _soil_type = "Clay" if _c_for_lyr > 5.0 else "Sand"
+                                _c_use = _c_for_lyr if _soil_type == "Clay" else 0.0
+                            # Front: nếu là lớp BÙN (1/XMD) và user nhập Ctd > 0 → dùng Ctd
+                            _c_use_front = _c_use
+                            if _sym_u in {"1", "XMD"} and float(_dpy_su) > 0:
+                                _c_use_front = float(_dpy_su)
+                            # Back: nếu là Clay và user nhập Su Back > 0 → dùng Su Back
+                            _c_use_back = _c_use
+                            if _sym_u in {"1", "XMD"} and float(_dpy_sub) > 0:
+                                _c_use_back = float(_dpy_sub)
+                            _ep_soil_types.append(_soil_type)
+                            _ep_sus.append(_c_use_front)
+                            _ep_front_layers.append(_SL(
+                                tip_elev=float(_e_bot_ep),
+                                gamma=float(_gam_v),
+                                gamma_sub=float(_g_sub_ep),
+                                phi=float(_phi_v),
+                                c=float(_c_use_front),
+                                delta=float(_ep_delta),
+                            ))
+                            _ep_back_layers_acc.append(_SL(
+                                tip_elev=float(_e_bot_ep),
+                                gamma=float(_gam_v),
+                                gamma_sub=float(_g_sub_ep),
+                                phi=float(_phi_v),
+                                c=float(_c_use_back),
+                                delta=float(_ep_delta),
+                            ))
+                            _ep_sus_back.append(_c_use_back)
+                            # Tính Ka/Kp cho hiển thị
+                            import math as _math_kak
+                            _phi_r = _math_kak.radians(float(_phi_v))
+                            _ka_lyr = _math_kak.tan(_math_kak.radians(45 - float(_phi_v)/2))**2
+                            _kp_lyr = _math_kak.tan(_math_kak.radians(45 + float(_phi_v)/2))**2
+                            _real_param_rows.append({
+                                "Lớp": _sym, "Mô tả": (_desc or "")[:25],
+                                "Loại": _soil_type,
+                                "z (m)": f"{_dt:.1f}–{_db:.1f}",
+                                "γ (kN/m³)": round(float(_gam_v), 1),
+                                "φ (°)": round(float(_phi_v), 1),
+                                "c/cu (kPa)": round(_c_use, 1),
+                                "Ka": round(_ka_lyr, 3),
+                                "Kp": round(_kp_lyr, 3),
+                                "n mẫu": _n_samp or 0,
+                            })
+                        _con_lab.close()
+                        _ep_back_layers = _ep_back_layers_acc   # Back dùng c riêng (Su Back)
 
-        # ─── Biểu đồ áp lực nước + Boussinesq cạnh nhau ───────────────────────
-        st.markdown("#### Áp lực nước + Tải Boussinesq")
-        _wp_inp1, _wp_inp2, _wp_inp3 = st.columns([2, 2, 3])
-        with _wp_inp1:
-            _wp_mode = st.selectbox(
-                "Chế độ áp lực nước",
-                ["hydrostatic", "seepage"],
-                format_func=lambda x: "Thủy tĩnh" if x == "hydrostatic" else "Terzaghi (thấm)",
-                key="dpy_wp_mode",
-            )
-        with _wp_inp2:
-            _wp_gamma = st.number_input("γ_w (kN/m³)", 9.0, 10.5, 9.81, 0.01,
-                                          key="dpy_wp_gamma")
-        with _wp_inp3:
-            _wp_dh = float(_dpy_wlvl_b) - float(_dpy_wlvl)
-            st.metric("Δh = Back − Front", f"{_wp_dh:+.2f}m")
+                        # Fill (đất đắp Front) — DÙNG THÔNG SỐ USER NHẬP
+                        _ep_fill = _SL(
+                            tip_elev=float(_dpy_Z),
+                            gamma=float(_dpy_gamma_fill),
+                            gamma_sub=float(_dpy_gamma_sub_fill),
+                            phi=float(_dpy_phi_fill),
+                            c=float(_dpy_c_fill),
+                            delta=float(_ep_delta),
+                        )
+                        _ep_geom = _EpG(
+                            top_elev=float(_dpy_top_ke),
+                            pile_length=float(_dpy_L),
+                            soil_level_front=float(_dpy_Z),
+                            soil_level_back=float(_dpy_Zb),
+                            water_elev_front=float(_dpy_wlvl),
+                            water_elev_back=float(_dpy_wlvl_b),
+                            surcharge_front=float(_ep_surcharge),
+                        )
+                        # Tính trước xử lý nền (PA1: dùng đầy đủ Front layers)
+                        _ep_res = _ep_compute(
+                            _ep_geom,
+                            front_layers=_ep_front_layers,
+                            back_layers=_ep_back_layers,
+                            fill=_ep_fill,
+                            ka_method=_ep_ka_method,
+                            kp_method=_ep_kp_method,
+                            delta_deg=float(_ep_delta),
+                            front_soil_types=_ep_soil_types,
+                            front_sus=_ep_sus,
+                            back_soil_types=_ep_soil_types,
+                            back_sus=_ep_sus_back,
+                        )
+                        # ── PA2: SAU xử lý nền CDM ───────────────────────────────────
+                        # Front: fill chỉ tác dụng từ top_ke xuống đỉnh đệm XMC (z_mat).
+                        # Dưới z_mat là khối CDM → không có áp lực đất Active trên Front.
+                        _cdm_loads_d = st.session_state.get("cdm_loads", {})
+                        _cdm_CDTK    = st.session_state.get("cdm_CDTK", 0.8)
+                        _cdm_h_mat   = _cdm_loads_d.get("h_mat", 0.4)
+                        _z_mat_top   = float(_cdm_CDTK) + float(_cdm_h_mat)   # đỉnh đệm XMC
 
-        _wp_col, _bs_col = st.columns([1, 1], gap="medium")
-
-        # ───── BÊN TRÁI: Áp lực nước (thu nhỏ) ─────
-        with _wp_col:
-            st.markdown("**Áp lực nước — TCVN 11823-3 §10.5.1**")
-            try:
-                import sys as _sys_wp
-                _sys_wp.path.insert(0, str(_ROOT / "scripts"))
-                from water_pressure import (
-                    WaterGeometry as _WG,
-                    compute_all as _wp_compute,
-                )
-                _wp_geom = _WG(
-                    top_elev=float(_dpy_top_ke),
-                    pile_length=float(_dpy_L),
-                    soil_level_front=float(_dpy_Z),
-                    water_elev_front=float(_dpy_wlvl),
-                    water_elev_back=float(_dpy_wlvl_b),
-                    gamma_w=float(_wp_gamma),
-                )
-                _wp_res = _wp_compute(_wp_geom, mode=_wp_mode)
-                if _wp_res.get("fig"):
-                    # Thu nhỏ
-                    _wp_res["fig"].set_size_inches(7, 4.5)
-                    for _ax in _wp_res["fig"].axes:
-                        _ax.tick_params(labelsize=7)
-                        if _ax.get_title():
-                            _ax.set_title(_ax.get_title(), fontsize=8)
-                    st.pyplot(_wp_res["fig"], use_container_width=True)
-                    plt.close(_wp_res["fig"])
-                _wm1, _wm2, _wm3 = st.columns(3)
-                _wm1.metric("F Front", f"{_wp_res['F_front']:.0f}", "kN/m")
-                _wm2.metric("F Back",  f"{_wp_res['F_back']:.0f}",  "kN/m")
-                _wm3.metric("F Net",   f"{_wp_res['F_net']:.0f}",   "kN/m")
-                st.caption(f"Chế độ: {_wp_res['mode']}")
-            except Exception as _e_wp:
-                st.warning(f"Không vẽ được áp lực nước: {_e_wp}")
-
-        # ───── BÊN PHẢI: Áp lực ngang do tải Boussinesq ─────
-        with _bs_col:
-            st.markdown(f"**Áp lực ngang Boussinesq từ tải q = {_dpy_q_op:.0f} kN/m²**")
-            try:
-                import sys as _sys_b2
-                _sys_b2.path.insert(0, str(_ROOT / "scripts"))
-                from boussinesq_surcharge import (
-                    SurchargeStrip as _Strip2,
-                    BoussiGeometry as _Geom2,
-                    compute_all as _bs_compute,
-                )
-                _bs_strip_full = _Strip2(
-                    q=float(_dpy_q_op),
-                    a=float(_dpy_q_a),
-                    w=float(_dpy_q_w),
-                    ref_surface=float(_dpy_Z),
-                    side="Front",
-                    label=f"q = {_dpy_q_op} kN/m²",
-                )
-                _bs_geom_full = _Geom2(
-                    top_elev=float(_dpy_top_ke),
-                    pile_length=float(_dpy_L),
-                    soil_level_front=float(_dpy_Z),
-                    soil_level_back=float(_dpy_Zb),
-                )
-                _bs_res = _bs_compute(_bs_geom_full, [_bs_strip_full])
-                if _bs_res.get("fig"):
-                    _bs_res["fig"].set_size_inches(7, 4.5)
-                    for _ax in _bs_res["fig"].axes:
-                        _ax.tick_params(labelsize=7)
-                        if _ax.get_title():
-                            _ax.set_title(_ax.get_title(), fontsize=8)
-                    st.pyplot(_bs_res["fig"], use_container_width=True)
-                    plt.close(_bs_res["fig"])
-                _bm1, _bm2, _bm3 = st.columns(3)
-                _bm1.metric("F Front", f"{_bs_res['F_front']:.0f}", "kN/m")
-                _bm2.metric("F Back",  f"{_bs_res['F_back']:.0f}",  "kN/m")
-                _bm3.metric("F Net",   f"{_bs_res['F_net']:.0f}",   "kN/m")
-                st.caption(f"a={_dpy_q_a}m, w={_dpy_q_w}m · TCVN 11823-3 §10.6.2 Eq.39")
-            except Exception as _e_bs:
-                st.warning(f"Không vẽ được Boussinesq: {_e_bs}")
-
-        # ─── Biểu đồ áp lực đất ngang — TCVN 11823-3 §10.5 ────────────────────
-        st.markdown("#### Biểu đồ áp lực đất ngang (Active · Net · Passive) — TCVN 11823-3 §10.5")
-        _ep_c1, _ep_c2, _ep_c3, _ep_c4 = st.columns(4)
-        with _ep_c1:
-            _ep_ka_method = st.selectbox(
-                "Phương pháp Ka",
-                ["rankine", "coulomb"],
-                format_func=lambda x: "Rankine" if x == "rankine" else "Coulomb (Eq.25)",
-                key="dpy_ep_ka",
-            )
-        with _ep_c2:
-            _ep_delta = st.number_input("δ (°) — ma sát tường", 0.0, 30.0, 0.0, 1.0,
-                                           key="dpy_ep_delta",
-                                           help="δ=0 (Rankine); >0 cho Coulomb. Bảng 20 TCVN")
-        with _ep_c3:
-            _ep_surcharge = st.number_input("Tải mặt Front q (kN/m²)", 0.0, 200.0,
-                                              float(_dpy_q_op), 5.0,
-                                              key="dpy_ep_q",
-                                              help="Mặc định bằng tải khai thác đã nhập")
-        with _ep_c4:
-            _ep_kp_method = st.selectbox(
-                "Phương pháp Kp",
-                ["rankine"],
-                format_func=lambda x: "Rankine",
-                key="dpy_ep_kp",
-            )
-
-        if _has_real_layers:
-            try:
-                import sys as _sys_ep
-                _sys_ep.path.insert(0, str(_ROOT / "scripts"))
-                from earth_pressure import (
-                    EpGeometry as _EpG,
-                    compute_all as _ep_compute,
-                )
-                from lateral_earth_pressure import SoilLayer as _SL
-
-                # ── Lấy thông số đất THẬT từ SQLite lab_tests ────────────────
-                # Cho mỗi lớp: tính γ, φ, c trung bình từ các mẫu lab trong depth range
-                _con_lab = sqlite3.connect(str(_DB))
-                _cur_lab = _con_lab.cursor()
-                _row_bh_ep = _cur_lab.execute(
-                    "SELECT id, elevation_m FROM boreholes WHERE name LIKE ? LIMIT 1",
-                    (f"%{_dpy_apply_bh}%",),
-                ).fetchone()
-                _bh_id_ep, _bh_elev_ep = (_row_bh_ep if _row_bh_ep else (None, 0.0))
-                _bh_elev_ep = _bh_elev_ep or 0.0
-
-                # Lay layers gốc (depth) tu DB
-                _real_lyrs = _cur_lab.execute(
-                    "SELECT symbol, description, depth_top_m, depth_bot_m FROM layers "
-                    "WHERE borehole_id=? ORDER BY depth_top_m",
-                    (_bh_id_ep,),
-                ).fetchall() if _bh_id_ep else []
-
-                _ep_front_layers = []
-                _ep_back_layers_acc: list = []
-                _ep_sus_back: list[float] = []
-                _real_param_rows = []   # cho caption hiển thị nguồn
-                _ep_soil_types: list[str] = []
-                _ep_sus: list[float] = []
-                # Phân loại sét/cát theo symbol TCVN
-                _CLAY_SYMS = {"1", "XMD", "3", "5", "5A", "5B"}
-                _SAND_SYMS = {"F", "2A", "2B", "2C", "4", "6", "7"}
-                for _sym, _desc, _dt, _db in _real_lyrs:
-                    if _dt is None or _db is None:
-                        continue
-                    # Truy van lab_tests trong khoang [_dt, _db]
-                    _row_avg = _cur_lab.execute(
-                        "SELECT AVG(gamma_kNm3), AVG(phi_deg), AVG(c_kPa), "
-                        "AVG(Cu_UU_kPa), COUNT(*) "
-                        "FROM lab_tests WHERE borehole_id=? "
-                        "AND depth_from_m >= ? AND depth_to_m <= ?",
-                        (_bh_id_ep, _dt, _db),
-                    ).fetchone()
-                    _gam_v, _phi_v, _c_v, _cu_v, _n_samp = _row_avg
-                    # Su (Cu_UU) → c cho lớp sét nếu phi=0
-                    if (_phi_v is None or _phi_v < 1.0) and _cu_v is not None:
-                        _c_for_lyr = float(_cu_v)
-                    elif _c_v is not None:
-                        _c_for_lyr = float(_c_v)
-                    else:
-                        _c_for_lyr = 0.0
-                    # Fallback theo symbol nếu thiếu lab
-                    _sym_u = (_sym or "").upper()
-                    if _gam_v is None:
-                        _gam_v = (18.0 if _sym_u == "F"
-                                   else 15.0 if _sym_u in ("1", "XMD")
-                                   else 17.0 if _sym_u == "3"
-                                   else 19.0 if _sym_u == "4" else 18.0)
-                    if _phi_v is None:
-                        _phi_v = (28.0 if _sym_u == "F"
-                                   else 0.0  if _sym_u in ("1", "XMD")
-                                   else 12.0 if _sym_u == "3"
-                                   else 30.0 if _sym_u == "4" else 20.0)
-                    _e_top_ep = _bh_elev_ep - _dt
-                    _e_bot_ep = _bh_elev_ep - _db
-                    if _e_bot_ep < _dpy_top_ke - _dpy_L - 0.01:
-                        _e_bot_ep = _dpy_top_ke - _dpy_L - 0.01
-                    _g_sub_ep = max(float(_gam_v) - 9.81, 8.0)
-                    # Phân loại Sand/Clay theo SYMBOL TCVN (không theo phi)
-                    if _sym_u in _CLAY_SYMS:
-                        _soil_type = "Clay"
-                        _c_use = _c_for_lyr   # mặc định = c lab
-                    elif _sym_u in _SAND_SYMS:
-                        _soil_type = "Sand"
-                        _c_use = 0.0          # cát: cohesionless
-                    else:
-                        _soil_type = "Clay" if _c_for_lyr > 5.0 else "Sand"
-                        _c_use = _c_for_lyr if _soil_type == "Clay" else 0.0
-                    # Front: nếu là lớp BÙN (1/XMD) và user nhập Ctd > 0 → dùng Ctd
-                    _c_use_front = _c_use
-                    if _sym_u in {"1", "XMD"} and float(_dpy_su) > 0:
-                        _c_use_front = float(_dpy_su)
-                    # Back: nếu là Clay và user nhập Su Back > 0 → dùng Su Back
-                    _c_use_back = _c_use
-                    if _sym_u in {"1", "XMD"} and float(_dpy_sub) > 0:
-                        _c_use_back = float(_dpy_sub)
-                    _ep_soil_types.append(_soil_type)
-                    _ep_sus.append(_c_use_front)
-                    _ep_front_layers.append(_SL(
-                        tip_elev=float(_e_bot_ep),
-                        gamma=float(_gam_v),
-                        gamma_sub=float(_g_sub_ep),
-                        phi=float(_phi_v),
-                        c=float(_c_use_front),
-                        delta=float(_ep_delta),
-                    ))
-                    _ep_back_layers_acc.append(_SL(
-                        tip_elev=float(_e_bot_ep),
-                        gamma=float(_gam_v),
-                        gamma_sub=float(_g_sub_ep),
-                        phi=float(_phi_v),
-                        c=float(_c_use_back),
-                        delta=float(_ep_delta),
-                    ))
-                    _ep_sus_back.append(_c_use_back)
-                    # Tính Ka/Kp cho hiển thị
-                    import math as _math_kak
-                    _phi_r = _math_kak.radians(float(_phi_v))
-                    _ka_lyr = _math_kak.tan(_math_kak.radians(45 - float(_phi_v)/2))**2
-                    _kp_lyr = _math_kak.tan(_math_kak.radians(45 + float(_phi_v)/2))**2
-                    _real_param_rows.append({
-                        "Lớp": _sym, "Mô tả": (_desc or "")[:25],
-                        "Loại": _soil_type,
-                        "z (m)": f"{_dt:.1f}–{_db:.1f}",
-                        "γ (kN/m³)": round(float(_gam_v), 1),
-                        "φ (°)": round(float(_phi_v), 1),
-                        "c/cu (kPa)": round(_c_use, 1),
-                        "Ka": round(_ka_lyr, 3),
-                        "Kp": round(_kp_lyr, 3),
-                        "n mẫu": _n_samp or 0,
-                    })
-                _con_lab.close()
-                _ep_back_layers = _ep_back_layers_acc   # Back dùng c riêng (Su Back)
-
-                # Fill (đất đắp Front) — DÙNG THÔNG SỐ USER NHẬP
-                _ep_fill = _SL(
-                    tip_elev=float(_dpy_Z),
-                    gamma=float(_dpy_gamma_fill),
-                    gamma_sub=float(_dpy_gamma_sub_fill),
-                    phi=float(_dpy_phi_fill),
-                    c=float(_dpy_c_fill),
-                    delta=float(_ep_delta),
-                )
-                _ep_geom = _EpG(
-                    top_elev=float(_dpy_top_ke),
-                    pile_length=float(_dpy_L),
-                    soil_level_front=float(_dpy_Z),
-                    soil_level_back=float(_dpy_Zb),
-                    water_elev_front=float(_dpy_wlvl),
-                    water_elev_back=float(_dpy_wlvl_b),
-                    surcharge_front=float(_ep_surcharge),
-                )
-                # Tính trước xử lý nền (PA1: dùng đầy đủ Front layers)
-                _ep_res = _ep_compute(
-                    _ep_geom,
-                    front_layers=_ep_front_layers,
-                    back_layers=_ep_back_layers,
-                    fill=_ep_fill,
-                    ka_method=_ep_ka_method,
-                    kp_method=_ep_kp_method,
-                    delta_deg=float(_ep_delta),
-                    front_soil_types=_ep_soil_types,
-                    front_sus=_ep_sus,
-                    back_soil_types=_ep_soil_types,
-                    back_sus=_ep_sus_back,
-                )
-                # ── PA2: SAU xử lý nền CDM ───────────────────────────────────
-                # Front: fill chỉ tác dụng từ top_ke xuống đỉnh đệm XMC (z_mat).
-                # Dưới z_mat là khối CDM → không có áp lực đất Active trên Front.
-                _cdm_loads_d = st.session_state.get("cdm_loads", {})
-                _cdm_CDTK    = st.session_state.get("cdm_CDTK", 0.8)
-                _cdm_h_mat   = _cdm_loads_d.get("h_mat", 0.4)
-                _z_mat_top   = float(_cdm_CDTK) + float(_cdm_h_mat)   # đỉnh đệm XMC
-
-                # Geometry PA2: soil_level_front = z_mat (đỉnh đệm)
-                _ep_geom_cdm = _EpG(
-                    top_elev=float(_dpy_top_ke),
-                    pile_length=float(_dpy_L),
-                    soil_level_front=_z_mat_top,
-                    soil_level_back=float(_dpy_Zb),
-                    water_elev_front=float(_dpy_wlvl),
-                    water_elev_back=float(_dpy_wlvl_b),
-                    surcharge_front=float(_ep_surcharge),
-                )
-                # Fill PA2: dùng cùng thông số fill từ D.1 user nhập
-                _ep_fill_cdm = _SL(
-                    tip_elev=_z_mat_top,    # fill kết thúc tại đỉnh đệm
-                    gamma=float(_dpy_gamma_fill),
-                    gamma_sub=float(_dpy_gamma_sub_fill),
-                    phi=float(_dpy_phi_fill),
-                    c=float(_dpy_c_fill),
-                    delta=float(_ep_delta),
-                )
-                _ep_res_cdm = _ep_compute(
-                    _ep_geom_cdm,
-                    front_layers=[],   # CDM blocks → không lớp tự nhiên Front
-                    back_layers=_ep_back_layers,
-                    fill=_ep_fill_cdm,
-                    ka_method=_ep_ka_method,
-                    kp_method=_ep_kp_method,
-                    delta_deg=float(_ep_delta),
-                    front_soil_types=[],
-                    front_sus=[],
-                    back_soil_types=_ep_soil_types,
-                    back_sus=_ep_sus_back,
-                )
-
-                # Hiển thị 2 biểu đồ PA1 + PA2 cạnh nhau
-                _ep_left, _ep_mid = st.columns(2, gap="medium")
-                with _ep_left:
-                    st.markdown("**(1) SAU khi xử lý nền**")
-                    if _ep_res.get("fig"):
-                        _ep_res["fig"].set_size_inches(8, 4.8)
-                        for _ax in _ep_res["fig"].axes:
-                            _ax.tick_params(labelsize=7)
-                            if _ax.get_title():
-                                _ax.set_title(_ax.get_title(), fontsize=8)
-                        st.pyplot(_ep_res["fig"], use_container_width=True)
-                        plt.close(_ep_res["fig"])
-                    _e1, _e2, _e3 = st.columns(3)
-                    _e1.metric("F Active", f"{_ep_res['F_active']:.0f}", "kN/m")
-                    _e2.metric("F Passive", f"{_ep_res['F_passive']:.0f}", "kN/m")
-                    _e3.metric("F Net", f"{_ep_res['F_net']:.0f}", "kN/m")
-                    st.caption(f"Front: fill + {len(_ep_front_layers)} lớp tự nhiên · "
-                                 f"Back: {len(_ep_back_layers)} lớp")
-
-                with _ep_mid:
-                    st.markdown("**(2) SAU CDM — Front chỉ đất đắp**")
-                    if _ep_res_cdm.get("fig"):
-                        _ep_res_cdm["fig"].set_size_inches(8, 4.8)
-                        for _ax in _ep_res_cdm["fig"].axes:
-                            _ax.tick_params(labelsize=7)
-                            if _ax.get_title():
-                                _ax.set_title(_ax.get_title(), fontsize=8)
-                        st.pyplot(_ep_res_cdm["fig"], use_container_width=True)
-                        plt.close(_ep_res_cdm["fig"])
-                    _c1m, _c2m, _c3m = st.columns(3)
-                    _c1m.metric("F Active (kN/m)", f"{_ep_res_cdm['F_active']:.0f}",
-                                  delta=f"Δ {_ep_res_cdm['F_active']-_ep_res['F_active']:+.0f}",
-                                  delta_color="inverse")
-                    _c2m.metric("F Passive (kN/m)", f"{_ep_res_cdm['F_passive']:.0f}")
-                    _c3m.metric("F Net (kN/m)", f"{_ep_res_cdm['F_net']:.0f}",
-                                  delta=f"Δ {_ep_res_cdm['F_net']-_ep_res['F_net']:+.0f}",
-                                  delta_color="inverse")
-                    st.caption(
-                        f"Front: fill {_dpy_top_ke:+.2f}m → z_mat = {_z_mat_top:+.2f}m "
-                        f"(CDTK={_cdm_CDTK:+.2f}m + h_mat={_cdm_h_mat:.2f}m). Dưới z_mat → 0."
-                    )
-
-
-                # Bảng thông số đất + Ka/Kp tính được
-                if _real_param_rows:
-                    st.markdown("**Thông số đất dùng tính áp lực — từ SQLite lab_tests:**")
-                    st.dataframe(pd.DataFrame(_real_param_rows),
-                                  use_container_width=True, hide_index=True)
-                    st.markdown("**Công thức áp dụng (TCVN 11823-3:2017 §10.5):**")
-                    st.latex(r"\text{Đất sét: } \sigma_h^{active} = K_a \cdot \sigma'_v - 2c\sqrt{K_a}, \quad \sigma_h^{passive} = K_p \cdot \sigma'_v + 2c\sqrt{K_p}")
-                    st.latex(r"\text{Đất cát: } \sigma_h^{active} = K_a \cdot \sigma'_v, \quad \sigma_h^{passive} = K_p \cdot \sigma'_v \quad (c = 0)")
-                    st.latex(r"K_a = \tan^2(45° - \varphi/2), \quad K_p = \tan^2(45° + \varphi/2) \quad \text{(Rankine)}")
-                    st.caption(
-                        f"**Nguồn:** SQLite `lab_tests` của HK `{_dpy_apply_bh}` — "
-                        f"γ, φ, c, Cu_UU trung bình theo `depth_from_m`/`depth_to_m`.  \n"
-                        f"**Phân loại Sand/Clay:** theo SYMBOL TCVN, KHÔNG theo φ "
-                        f"(Clay: 1, XMD, 3, 5, 5A, 5B; Sand: F, 2A-C, 4, 6, 7).  \n"
-                        f"**Sét:** dùng c = c_lab nếu có, ngược lại dùng Cu_UU. "
-                        f"**Cát:** c = 0 (cohesionless).  \n"
-                        f"**Tải mặt** q = {_ep_surcharge:.0f} kN/m² · "
-                        f"Ka {_ep_ka_method} (δ={_ep_delta}°)"
-                    )
-            except Exception as _e_ep:
-                st.warning(f"Không vẽ được biểu đồ áp lực đất: {_e_ep}")
-        else:
-            st.info("Cần áp HK ở trên để có lớp đất tính áp lực đất (Ka/Kp theo từng lớp).")
-
-        # Nút tính
-        _dpy_btn_c1, _dpy_btn_c2 = st.columns([1, 4])
-        with _dpy_btn_c1:
-            _dpy_run = st.button("Tính p-y Winkler", type="primary", key="btn_dpy_run")
-
-        if _dpy_run:
-            # Lấy chiều dài CDM từ tab "Thiết kế CDM" (session_state)
-            # cdm_Lc = chiều dài cọc CDM total; cdm_L_ngam = phần ngàm vào đất tốt
-            # → phần CDM trong soft soil = cdm_Lc − cdm_L_ngam
-            _cdm_Lc_val = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
-            _cdm_Lng_val = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
-            _cdm_thk_eff = max(0.0, _cdm_Lc_val - _cdm_Lng_val)
-            _k_cdm_fac = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
-            _res_d1 = _calc_py_winkler(
-                bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
-                pile_name=_dpy_pile, L_m=float(_dpy_L),
-                H_kNm=float(_dpy_H), M_kNm=float(_dpy_M),
-                cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
-                k_cdm_factor=_k_cdm_fac,
-            )
-            if _cdm_thk_eff > 0:
-                st.caption(
-                    f"CDM gia cố từ tab Thiết kế: Lc={_cdm_Lc_val:.1f}m, "
-                    f"ngàm={_cdm_Lng_val:.1f}m → vùng tăng cường k_h: "
-                    f"{_cdm_thk_eff:.1f}m (factor ×{_k_cdm_fac:.1f})"
-                )
-            # ── Tính tải Boussinesq từ surcharge khai thác ────────────────────
-            try:
-                import sys as _sys_b
-                _sys_b.path.insert(0, str(_ROOT / "scripts"))
-                from boussinesq_surcharge import (
-                    SurchargeStrip as _Strip,
-                    BoussiGeometry as _Geom,
-                    delta_ph_at_elev as _dph_at,
-                )
-                _bs_strip = _Strip(
-                    q=float(_dpy_q_op), a=float(_dpy_q_a), w=float(_dpy_q_w),
-                    ref_surface=float(_dpy_Z), side="Front",
-                    label=f"Tải khai thác q={_dpy_q_op} kN/m²",
-                )
-                # Profile Boussinesq từ mặt đất Front xuống chân cừ
-                import numpy as _np_b
-                _e_top_bs = float(_dpy_Z)
-                _e_tip_bs = float(_dpy_top_ke - _dpy_L)
-                _elevs_bs = _np_b.linspace(_e_top_bs, _e_tip_bs, 40)
-                _dph_bs   = [_dph_at(e, _bs_strip, _e_top_bs) for e in _elevs_bs]
-                _F_bs     = float(_np_b.trapezoid(_dph_bs, -_elevs_bs))
-            except Exception as _eb:
-                _dph_bs = None
-                _F_bs   = 0.0
-
-            if "error" in _res_d1:
-                st.error(_res_d1["error"])
-            else:
-                _r1, _r2, _r3, _r4 = st.columns(4)
-                _u_d1   = _res_d1["u_top_mm"]
-                _M_d1   = _res_d1["M_max_kNm"]
-                _Mcr_d1 = _res_d1["Mcr_kNm"]
-                _r1.metric("Chuyển vị đỉnh u (mm)", f"{_u_d1:.2f}",
-                             "Đạt" if abs(_u_d1) < 25 else "Vượt 25mm",
-                             delta_color="normal" if abs(_u_d1) < 25 else "inverse")
-                _r2.metric("Mô-men max (kNm/m)", f"{_M_d1:.1f}",
-                             f"M_cr = {_Mcr_d1:.0f}",
-                             delta_color="normal" if _M_d1 < _Mcr_d1 else "inverse")
-                _r3.metric("EI cọc (kNm²)", f"{_res_d1['EI_kNm2']:.0f}")
-                _r4.metric("D cọc (mm)", f"{_res_d1['D_mm']:.0f}")
-                # Plot u, M, k_h, Boussinesq
-                if _HAS_PLOTLY:
-                    from plotly.subplots import make_subplots as _mksub_d1
-                    _fig_d1r = _mksub_d1(rows=1, cols=4, shared_yaxes=True,
-                                          subplot_titles=("Chuyển vị u (mm)",
-                                                          "Mô-men M (kNm/m)",
-                                                          "k_h (kN/m²)",
-                                                          "Δp_h Boussinesq (kN/m²)"))
-                    _zs_d1 = _res_d1["zs"]
-                    _fig_d1r.add_trace(go.Scatter(x=_res_d1["ux"], y=_zs_d1,
-                                                    mode="lines+markers",
-                                                    line=dict(color="#1565C0", width=2),
-                                                    name="u"), row=1, col=1)
-                    _Ms_d1 = _res_d1["Ms"]
-                    _zM_d1 = [(_zs_d1[i]+_zs_d1[i+1])/2 for i in range(len(_Ms_d1))]
-                    _fig_d1r.add_trace(go.Scatter(x=_Ms_d1, y=_zM_d1, mode="lines",
-                                                    line=dict(color="#E53935"),
-                                                    name="M"), row=1, col=2)
-                    _fig_d1r.add_trace(go.Scatter(x=_res_d1["k_h"], y=_zs_d1,
-                                                    mode="lines+markers",
-                                                    line=dict(color="#2E7D32"),
-                                                    marker=dict(size=4),
-                                                    fill="tozerox",
-                                                    name="k_h"), row=1, col=3)
-                    # Boussinesq Δp_h
-                    if _dph_bs is not None:
-                        _depth_bs = [_dpy_Z - e for e in _elevs_bs]
-                        _fig_d1r.add_trace(go.Scatter(x=_dph_bs, y=_depth_bs,
-                                                        mode="lines+markers",
-                                                        line=dict(color="#FF6F00", width=2),
-                                                        marker=dict(size=4),
-                                                        fill="tozerox",
-                                                        name="Δp_h"), row=1, col=4)
-                    _fig_d1r.update_yaxes(autorange="reversed", title_text="Độ sâu (m)")
-                    _fig_d1r.update_layout(height=440, showlegend=False,
-                                            title=f"p-y Winkler — u, M, k_h + Boussinesq Δp_h từ tải q={_dpy_q_op} kN/m²")
-                    st.plotly_chart(_fig_d1r, use_container_width=True)
-                    if _F_bs > 0:
-                        st.caption(
-                            f"**Hợp lực Boussinesq:** F = {_F_bs:.1f} kN/m "
-                            f"(tải q = {_dpy_q_op} kN/m², a = {_dpy_q_a} m, w = {_dpy_q_w} m). "
-                            f"TCVN 11823-3 §10.6.2 công thức (39)."
+                        # Geometry PA2: soil_level_front = z_mat (đỉnh đệm)
+                        _ep_geom_cdm = _EpG(
+                            top_elev=float(_dpy_top_ke),
+                            pile_length=float(_dpy_L),
+                            soil_level_front=_z_mat_top,
+                            soil_level_back=float(_dpy_Zb),
+                            water_elev_front=float(_dpy_wlvl),
+                            water_elev_back=float(_dpy_wlvl_b),
+                            surcharge_front=float(_ep_surcharge),
+                        )
+                        # Fill PA2: dùng cùng thông số fill từ D.1 user nhập
+                        _ep_fill_cdm = _SL(
+                            tip_elev=_z_mat_top,    # fill kết thúc tại đỉnh đệm
+                            gamma=float(_dpy_gamma_fill),
+                            gamma_sub=float(_dpy_gamma_sub_fill),
+                            phi=float(_dpy_phi_fill),
+                            c=float(_dpy_c_fill),
+                            delta=float(_ep_delta),
+                        )
+                        _ep_res_cdm = _ep_compute(
+                            _ep_geom_cdm,
+                            front_layers=[],   # CDM blocks → không lớp tự nhiên Front
+                            back_layers=_ep_back_layers,
+                            fill=_ep_fill_cdm,
+                            ka_method=_ep_ka_method,
+                            kp_method=_ep_kp_method,
+                            delta_deg=float(_ep_delta),
+                            front_soil_types=[],
+                            front_sus=[],
+                            back_soil_types=_ep_soil_types,
+                            back_sus=_ep_sus_back,
                         )
 
-                # ── BIỂU ĐỒ NỘI LỰC CỪ SAU XỬ LÝ NỀN BẰNG CDM (matplotlib) ─────
-                try:
-                    import matplotlib.pyplot as _plt_w
-                    from matplotlib.patches import Rectangle as _RectW
-                    st.markdown("##### Nội lực cừ SW sau xử lý nền CDM")
-                    _fig_w, _axw = _plt_w.subplots(
-                        1, 4, figsize=(12, 7), sharey=True,
-                        gridspec_kw={"width_ratios": [1, 2, 2, 2]},
+                        # Hiển thị 2 biểu đồ PA1 + PA2 cạnh nhau
+                        _ep_left, _ep_mid = st.columns(2, gap="medium")
+                        with _ep_left:
+                            st.markdown("**(1) SAU khi xử lý nền**")
+                            if _ep_res.get("fig"):
+                                _ep_res["fig"].set_size_inches(8, 4.8)
+                                for _ax in _ep_res["fig"].axes:
+                                    _ax.tick_params(labelsize=7)
+                                    if _ax.get_title():
+                                        _ax.set_title(_ax.get_title(), fontsize=8)
+                                st.pyplot(_ep_res["fig"], use_container_width=True)
+                                plt.close(_ep_res["fig"])
+                            _e1, _e2, _e3 = st.columns(3)
+                            _e1.metric("F Active", f"{_ep_res['F_active']:.0f}", "kN/m")
+                            _e2.metric("F Passive", f"{_ep_res['F_passive']:.0f}", "kN/m")
+                            _e3.metric("F Net", f"{_ep_res['F_net']:.0f}", "kN/m")
+                            st.caption(f"Front: fill + {len(_ep_front_layers)} lớp tự nhiên · "
+                                         f"Back: {len(_ep_back_layers)} lớp")
+
+                        with _ep_mid:
+                            st.markdown("**(2) Tổng các áp lực — Active + Water + Passive → Net**")
+                            # Đóng figure 3-panel của _ep_res_cdm (không hiển thị)
+                            if _ep_res_cdm.get("fig"):
+                                plt.close(_ep_res_cdm["fig"])
+
+                            # ── Vẽ biểu đồ tổng áp lực (1 panel) ──────────────────────
+                            # Component pressures (lấy từ PA2 = SAU CDM):
+                            #   p_active   = áp lực đất chủ động Front (+ kN/m²)
+                            #   p_passive  = áp lực đất bị động Back   (− kN/m², kháng)
+                            #   p_water_n  = chênh lệch áp lực nước (Front − Back)
+                            #   p_total    = p_active − p_passive + p_water_n
+                            import numpy as _np_ep
+                            _elevs_t   = _ep_res_cdm["elevs"]
+                            _pa_t      = _ep_res_cdm["active_h"]
+                            _pp_t      = _ep_res_cdm["passive_h"]
+
+                            _gw_kNm3 = 9.81
+                            _wf_t = _np_ep.maximum(0.0,
+                                float(_dpy_wlvl) - _elevs_t) * _gw_kNm3   # nước Front
+                            _wb_t = _np_ep.maximum(0.0,
+                                float(_dpy_wlvl_b) - _elevs_t) * _gw_kNm3 # nước Back
+                            _pw_net_t = _wf_t - _wb_t
+                            _p_total_t = _pa_t - _pp_t + _pw_net_t
+
+                            _fig_tot, _ax_tot = plt.subplots(figsize=(8, 4.8))
+                            _ax_tot.plot(_pa_t,     _elevs_t, "-",  color="#C62828",
+                                          lw=1.5, label="Active (Ka)")
+                            _ax_tot.plot(-_pp_t,    _elevs_t, "-",  color="#1565C0",
+                                          lw=1.5, label="Passive (Kp, kháng)")
+                            _ax_tot.plot(_pw_net_t, _elevs_t, "--", color="#0277BD",
+                                          lw=1.2, label="Nước Net (F−B)")
+                            _ax_tot.plot(_p_total_t, _elevs_t, "-", color="#1B5E20",
+                                          lw=2.4, label="TỔNG (Active+Water−Passive)")
+                            # Tô vùng tổng (dương = đẩy ra Back, âm = đẩy ra Front)
+                            _ax_tot.fill_betweenx(_elevs_t, 0, _p_total_t,
+                                                   where=_p_total_t > 0,
+                                                   color="#C62828", alpha=0.15)
+                            _ax_tot.fill_betweenx(_elevs_t, 0, _p_total_t,
+                                                   where=_p_total_t < 0,
+                                                   color="#1565C0", alpha=0.15)
+                            _ax_tot.axvline(0, color="black", lw=0.7)
+                            _ax_tot.axhline(float(_dpy_top_ke), color="#8B4513",
+                                             lw=0.7, ls=":", alpha=0.7)
+                            _ax_tot.axhline(_z_mat_top, color="#666", lw=0.6, ls="--",
+                                             alpha=0.7)
+                            _ax_tot.text(0.02, _z_mat_top,
+                                          f" z_mat = {_z_mat_top:+.2f} m",
+                                          transform=_ax_tot.get_yaxis_transform(),
+                                          fontsize=6, color="#666", va="bottom")
+                            _ax_tot.set_xlabel("Áp lực ngang (kN/m²)", fontsize=8)
+                            _ax_tot.set_ylabel("Cao độ (m)", fontsize=8)
+                            _ax_tot.set_title("Tổng áp lực ngang lên tường (SAU CDM)",
+                                               fontsize=8)
+                            _ax_tot.tick_params(labelsize=7)
+                            _ax_tot.grid(True, ls=":", color="#E0E0E0", lw=0.5)
+                            _ax_tot.legend(fontsize=6, loc="lower right", framealpha=0.85)
+                            st.pyplot(_fig_tot, use_container_width=True)
+                            plt.close(_fig_tot)
+
+                            # Tổng lực hợp lực Net (numpy<2.0 dùng trapz, ≥2.0 dùng trapezoid)
+                            _trap_fn = getattr(_np_ep, "trapezoid", None) or getattr(_np_ep, "trapz")
+                            _F_total_net = float(_trap_fn(_p_total_t, _elevs_t))
+                            _c1m, _c2m, _c3m = st.columns(3)
+                            _c1m.metric("F Active (kN/m)", f"{_ep_res_cdm['F_active']:.0f}",
+                                          delta=f"Δ {_ep_res_cdm['F_active']-_ep_res['F_active']:+.0f}",
+                                          delta_color="inverse")
+                            _c2m.metric("F Passive (kN/m)", f"{_ep_res_cdm['F_passive']:.0f}")
+                            _c3m.metric("F Tổng Net (kN/m)", f"{abs(_F_total_net):.0f}",
+                                          f"{'→ Back' if _F_total_net > 0 else '→ Front'}",
+                                          delta_color="off")
+                            st.caption(
+                                f"Front: fill {_dpy_top_ke:+.2f}m → z_mat = {_z_mat_top:+.2f}m "
+                                f"(CDTK={_cdm_CDTK:+.2f}m + h_mat={_cdm_h_mat:.2f}m). "
+                                f"**Tổng** = Active + Nước_net − Passive (tích phân = lực hợp)."
+                            )
+
+
+                        # Bảng thông số đất + Ka/Kp tính được
+                        if _real_param_rows:
+                            st.markdown("**Thông số đất dùng tính áp lực — từ SQLite lab_tests:**")
+                            st.dataframe(pd.DataFrame(_real_param_rows),
+                                          use_container_width=True, hide_index=True)
+                            st.markdown("**Công thức áp dụng (TCVN 11823-3:2017 §10.5):**")
+                            st.latex(r"\text{Đất sét: } \sigma_h^{active} = K_a \cdot \sigma'_v - 2c\sqrt{K_a}, \quad \sigma_h^{passive} = K_p \cdot \sigma'_v + 2c\sqrt{K_p}")
+                            st.latex(r"\text{Đất cát: } \sigma_h^{active} = K_a \cdot \sigma'_v, \quad \sigma_h^{passive} = K_p \cdot \sigma'_v \quad (c = 0)")
+                            st.latex(r"K_a = \tan^2(45° - \varphi/2), \quad K_p = \tan^2(45° + \varphi/2) \quad \text{(Rankine)}")
+                            st.caption(
+                                f"**Nguồn:** SQLite `lab_tests` của HK `{_dpy_apply_bh}` — "
+                                f"γ, φ, c, Cu_UU trung bình theo `depth_from_m`/`depth_to_m`.  \n"
+                                f"**Phân loại Sand/Clay:** theo SYMBOL TCVN, KHÔNG theo φ "
+                                f"(Clay: 1, XMD, 3, 5, 5A, 5B; Sand: F, 2A-C, 4, 6, 7).  \n"
+                                f"**Sét:** dùng c = c_lab nếu có, ngược lại dùng Cu_UU. "
+                                f"**Cát:** c = 0 (cohesionless).  \n"
+                                f"**Tải mặt** q = {_ep_surcharge:.0f} kN/m² · "
+                                f"Ka {_ep_ka_method} (δ={_ep_delta}°)"
+                            )
+                    except Exception as _e_ep:
+                        st.warning(f"Không vẽ được biểu đồ áp lực đất: {_e_ep}")
+                else:
+                    st.info("Cần áp HK ở trên để có lớp đất tính áp lực đất (Ka/Kp theo từng lớp).")
+
+                # Nút quick-set: CDM ngàm vào lớp đất tốt 1.0 m
+                _btn_cd1, _btn_cd2 = st.columns([2, 5])
+                with _btn_cd1:
+                    if st.button("Đặt CDM ngàm 1.0m vào đất tốt",
+                                  key=f"btn_cdm_ngam_1m_{_hk_iter}",
+                                  help="Tự động set cdm_L_ngam = 1.0m và cdm_Lc = H₁ + 1.0m "
+                                       "(ngàm tối thiểu 1m vào lớp tốt theo TCVN 9403)"):
+                        st.session_state["cdm_L_ngam"] = 1.0
+                        st.session_state["cdm_Lc"] = float(_dpy_H1) + 1.0
+                        st.rerun()
+                with _btn_cd2:
+                    _cdm_Lc_cur = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
+                    _cdm_Lng_cur = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
+                    st.caption(
+                        f"_CDM hiện tại: Lc = {_cdm_Lc_cur:.1f}m "
+                        f"(ngàm {_cdm_Lng_cur:.1f}m vào đất tốt). "
+                        f"Bấm nút trái → Lc = H₁ ({float(_dpy_H1):.1f}) + 1.0 = "
+                        f"{float(_dpy_H1) + 1.0:.1f}m._"
                     )
-                    _zsw = _res_d1["zs"]
-                    _top_w = float(_dpy_top_ke) if "_dpy_top_ke" in dir() else 2.7
-                    _Z_w = float(_dpy_Z) if "_dpy_Z" in dir() else 0.0
-                    _Lw = float(_dpy_L)
-                    _el_pile = [_top_w - z for z in _zsw]
-                    _el_mid = [_top_w - (_zsw[i] + _zsw[i + 1]) / 2 for i in range(len(_zsw) - 1)]
-                    _cdm_top_w = _Z_w
-                    _cdm_bot_w = _Z_w - _cdm_thk_eff if _cdm_thk_eff > 0 else _Z_w
 
-                    # Panel 0: sơ đồ cừ + CDM
-                    _bot_pile_w = _top_w - _Lw
-                    _axw[0].add_patch(_RectW((-0.5, _bot_pile_w), 1.0, _Lw,
-                                              facecolor="#444444", edgecolor="black",
-                                              linewidth=1.2, label="Cừ SW"))
+                # Auto-run (bỏ nút) — mọi expander tự tính khi mở
+                if True:
+                    # Lấy chiều dài CDM từ tab "Thiết kế CDM" (session_state)
+                    # cdm_Lc = chiều dài cọc CDM total; cdm_L_ngam = phần ngàm vào đất tốt
+                    # → phần CDM trong soft soil = cdm_Lc − cdm_L_ngam
+                    _cdm_Lc_val = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
+                    _cdm_Lng_val = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
+                    _cdm_thk_eff = max(0.0, _cdm_Lc_val - _cdm_Lng_val)
+                    _k_cdm_fac = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
+
+                    # Winkler chỉ dùng tải user (H, M). KHÔNG cộng F từ EP làm point
+                    # load — sai vật lý (EP là distributed, không được lump ở đỉnh).
+                    # F per component HIỂN THỊ ở bảng bên dưới để user tham khảo.
+                    _H_total = float(_dpy_H)
+                    _M_total = float(_dpy_M)
+
+                    # Bảng chi tiết F per component (lấy từ EP + Boussinesq)
+                    _F_act_v = float(locals().get("_ep_res_cdm", {}).get("F_active", 0.0) or 0.0)
+                    _F_pas_v = float(locals().get("_ep_res_cdm", {}).get("F_passive", 0.0) or 0.0)
+                    _F_water_v = 0.0
+                    try:
+                        _trap_fn_w = (getattr(_np_ep, "trapezoid", None)
+                                      or getattr(_np_ep, "trapz"))
+                        _F_water_v = abs(float(_trap_fn_w(_pw_net_t, _elevs_t)))
+                    except Exception:
+                        pass
+                    _F_bs_v = float(locals().get("_F_bs", 0.0) or 0.0)
+                    _F_sum_check = _F_act_v - _F_pas_v + _F_water_v + _F_bs_v
+
+                    _ld_rows = [
+                        {"Loại tải": "Áp lực chủ động Active (Front)",
+                         "F (kN/m)": _F_act_v,
+                         "Chiều": "→ Back (đẩy cừ)"},
+                        {"Loại tải": "Áp lực bị động Passive (Back, kháng)",
+                         "F (kN/m)": _F_pas_v,
+                         "Chiều": "← Front (giữ cừ)"},
+                        {"Loại tải": "Chênh lệch nước Front − Back",
+                         "F (kN/m)": _F_water_v,
+                         "Chiều": "→ Back" if (_wlvl_s_v := float(_dpy_wlvl)) > float(_dpy_wlvl_b) else "← Front"},
+                        {"Loại tải": "Boussinesq từ tải khai thác q",
+                         "F (kN/m)": _F_bs_v,
+                         "Chiều": "→ Back"},
+                        {"Loại tải": "TỔNG NET = Active − Passive + Nước + q",
+                         "F (kN/m)": _F_sum_check,
+                         "Chiều": "→ Back" if _F_sum_check > 0 else "← Front"},
+                    ]
+                    st.markdown("**Chi tiết các loại tải trọng tác dụng lên cừ:**")
+                    st.dataframe(
+                        pd.DataFrame(_ld_rows),
+                        use_container_width=True, hide_index=True,
+                        column_config={
+                            "F (kN/m)": st.column_config.NumberColumn(format="%.1f"),
+                        },
+                    )
+                    st.caption(
+                        f"_Winkler dùng tải đầu cọc do user nhập: H = {_H_total:.1f} kN/m, "
+                        f"M = {_M_total:.1f} kNm/m. EP là tải phân bố — chỉ tham khảo, "
+                        f"không lump điểm vào Winkler._"
+                    )
+
+                    _res_d1 = _calc_py_winkler(
+                        bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
+                        pile_name=_dpy_pile, L_m=float(_dpy_L),
+                        H_kNm=_H_total, M_kNm=_M_total,
+                        cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
+                        k_cdm_factor=_k_cdm_fac,
+                    )
                     if _cdm_thk_eff > 0:
-                        _axw[0].add_patch(_RectW((-3, _cdm_bot_w), 2.5, _cdm_thk_eff,
-                                                  facecolor="#90c890", edgecolor="green",
-                                                  alpha=0.7, hatch="//",
-                                                  label=f"CDM Lc={_cdm_Lc_val:.1f}m"))
-                    if _top_w - _Z_w > 0:
-                        _axw[0].add_patch(_RectW((-3, _Z_w), 2.5, _top_w - _Z_w,
-                                                  facecolor="#d4a373", alpha=0.4,
-                                                  label="Đất đắp"))
-                    _axw[0].axhline(_Z_w - 0.5, color="cyan", linestyle="-", lw=1.2, alpha=0.5)
-                    _axw[0].text(2.5, _Z_w - 0.4, "MNN", fontsize=7, color="cyan")
-                    _axw[0].plot([-3, -0.5], [_Z_w, _Z_w], "k-", lw=1.5)
-                    _axw[0].plot([0.5, 3], [_Z_w - 1, _Z_w - 1], "k-", lw=1.5)
-                    _axw[0].text(-2.8, _Z_w + 0.3, "Front (đắp)", fontsize=7, color="brown")
-                    _axw[0].text(0.8, _Z_w - 0.7, "Back (đào)", fontsize=7, color="orange")
-                    _axw[0].set_xlim(-3.5, 3.5)
-                    _axw[0].set_ylabel("Cao độ (m)")
-                    _axw[0].set_title("Sơ đồ cừ + CDM", fontsize=10)
-                    _axw[0].set_xticks([])
-                    _axw[0].grid(alpha=0.3)
-                    _axw[0].legend(fontsize=7, loc="lower left")
+                        st.caption(
+                            f"CDM gia cố từ tab Thiết kế: Lc={_cdm_Lc_val:.1f}m, "
+                            f"ngàm={_cdm_Lng_val:.1f}m → vùng tăng cường k_h: "
+                            f"{_cdm_thk_eff:.1f}m (factor ×{_k_cdm_fac:.1f})"
+                        )
+                    # ── Tính tải Boussinesq từ surcharge khai thác ────────────────────
+                    try:
+                        import sys as _sys_b
+                        _sys_b.path.insert(0, str(_ROOT / "scripts"))
+                        from boussinesq_surcharge import (
+                            SurchargeStrip as _Strip,
+                            BoussiGeometry as _Geom,
+                            delta_ph_at_elev as _dph_at,
+                        )
+                        _bs_strip = _Strip(
+                            q=float(_dpy_q_op), a=float(_dpy_q_a), w=float(_dpy_q_w),
+                            ref_surface=float(_dpy_Z), side="Front",
+                            label=f"Tải khai thác q={_dpy_q_op} kN/m²",
+                        )
+                        # Profile Boussinesq từ mặt đất Front xuống chân cừ
+                        import numpy as _np_b
+                        _e_top_bs = float(_dpy_Z)
+                        _e_tip_bs = float(_dpy_top_ke - _dpy_L)
+                        _elevs_bs = _np_b.linspace(_e_top_bs, _e_tip_bs, 40)
+                        _dph_bs   = [_dph_at(e, _bs_strip, _e_top_bs) for e in _elevs_bs]
+                        _trap_fn_b = getattr(_np_b, "trapezoid", None) or getattr(_np_b, "trapz")
+                        _F_bs     = float(_trap_fn_b(_dph_bs, -_elevs_bs))
+                    except Exception as _eb:
+                        _dph_bs = None
+                        _F_bs   = 0.0
 
-                    # Panel 1: u(z)
-                    if _cdm_thk_eff > 0:
-                        _axw[1].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green",
-                                         label="Vùng CDM")
-                    _axw[1].plot(_res_d1["ux"], _el_pile, "b-", lw=2.0)
-                    _axw[1].axvline(25, color="red", linestyle="--", lw=1.0, label="±25 mm")
-                    _axw[1].axvline(-25, color="red", linestyle="--", lw=1.0)
-                    _axw[1].axvline(0, color="black", lw=0.5)
-                    _axw[1].set_xlabel("u (mm)")
-                    _axw[1].set_title(
-                        f"Chuyển vị u(z)\nu_max = {_res_d1['u_max_mm']:.2f} mm",
-                        fontsize=10)
-                    _axw[1].grid(alpha=0.3)
-                    _axw[1].legend(fontsize=7)
-
-                    # Panel 2: M(z)
-                    if _cdm_thk_eff > 0:
-                        _axw[2].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green")
-                    _axw[2].plot(_res_d1["Ms"], _el_mid, "g-", lw=2.0)
-                    _axw[2].axvline(_res_d1["Mcr_kNm"], color="red", linestyle="--",
-                                     lw=1.0, label=f"Mcr={_res_d1['Mcr_kNm']:.0f}")
-                    _axw[2].axvline(-_res_d1["Mcr_kNm"], color="red", linestyle="--", lw=1.0)
-                    _axw[2].axvline(0, color="black", lw=0.5)
-                    _axw[2].set_xlabel("M (kNm)")
-                    _ratio_w = _res_d1["M_max_kNm"] / _res_d1["Mcr_kNm"] if _res_d1["Mcr_kNm"] else 0
-                    _axw[2].set_title(
-                        f"Moment M(z)\nM_max={_res_d1['M_max_kNm']:.0f}  M/Mcr={_ratio_w:.2f}",
-                        fontsize=10)
-                    _axw[2].grid(alpha=0.3)
-                    _axw[2].legend(fontsize=7)
-
-                    # Panel 3: Q(z)
-                    _Qs_w = _res_d1.get("Qs", [])
-                    if _Qs_w:
-                        if _cdm_thk_eff > 0:
-                            _axw[3].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green")
-                        _axw[3].plot(_Qs_w, _el_mid, "m-", lw=2.0)
-                        _axw[3].axvline(0, color="black", lw=0.5)
-                        _Qmax_w = _res_d1.get("Q_max_kN", max(abs(q) for q in _Qs_w))
-                        _axw[3].set_title(f"Lực cắt Q(z)\nQ_max={_Qmax_w:.0f} kN", fontsize=10)
-                        _axw[3].set_xlabel("Q (kN)")
-                        _axw[3].grid(alpha=0.3)
+                    if "error" in _res_d1:
+                        st.error(_res_d1["error"])
                     else:
-                        _axw[3].set_visible(False)
+                        _r1, _r2, _r3, _r4 = st.columns(4)
+                        _u_d1   = _res_d1["u_top_mm"]
+                        _M_d1   = _res_d1["M_max_kNm"]
+                        _Mcr_d1 = _res_d1["Mcr_kNm"]
+                        _r1.metric("Chuyển vị đỉnh u (mm)", f"{_u_d1:.2f}",
+                                     "Đạt" if abs(_u_d1) < 25 else "Vượt 25mm",
+                                     delta_color="normal" if abs(_u_d1) < 25 else "inverse")
+                        _r2.metric("Mô-men max (kNm/m)", f"{_M_d1:.1f}",
+                                     f"M_cr = {_Mcr_d1:.0f}",
+                                     delta_color="normal" if _M_d1 < _Mcr_d1 else "inverse")
+                        _r3.metric("EI cọc (kNm²)", f"{_res_d1['EI_kNm2']:.0f}")
+                        _r4.metric("D cọc (mm)", f"{_res_d1['D_mm']:.0f}")
+                        # Plot u, M, k_h, Boussinesq
+                        if _HAS_PLOTLY:
+                            from plotly.subplots import make_subplots as _mksub_d1
+                            _fig_d1r = _mksub_d1(rows=1, cols=4, shared_yaxes=True,
+                                                  subplot_titles=("Chuyển vị u (mm)",
+                                                                  "Mô-men M (kNm/m)",
+                                                                  "k_h (kN/m²)",
+                                                                  "Δp_h Boussinesq (kN/m²)"))
+                            _zs_d1 = _res_d1["zs"]
+                            _fig_d1r.add_trace(go.Scatter(x=_res_d1["ux"], y=_zs_d1,
+                                                            mode="lines+markers",
+                                                            line=dict(color="#1565C0", width=2),
+                                                            name="u"), row=1, col=1)
+                            _Ms_d1 = _res_d1["Ms"]
+                            _zM_d1 = [(_zs_d1[i]+_zs_d1[i+1])/2 for i in range(len(_Ms_d1))]
+                            _fig_d1r.add_trace(go.Scatter(x=_Ms_d1, y=_zM_d1, mode="lines",
+                                                            line=dict(color="#E53935"),
+                                                            name="M"), row=1, col=2)
+                            _fig_d1r.add_trace(go.Scatter(x=_res_d1["k_h"], y=_zs_d1,
+                                                            mode="lines+markers",
+                                                            line=dict(color="#2E7D32"),
+                                                            marker=dict(size=4),
+                                                            fill="tozerox",
+                                                            name="k_h"), row=1, col=3)
+                            # Boussinesq Δp_h
+                            if _dph_bs is not None:
+                                _depth_bs = [_dpy_Z - e for e in _elevs_bs]
+                                _fig_d1r.add_trace(go.Scatter(x=_dph_bs, y=_depth_bs,
+                                                                mode="lines+markers",
+                                                                line=dict(color="#FF6F00", width=2),
+                                                                marker=dict(size=4),
+                                                                fill="tozerox",
+                                                                name="Δp_h"), row=1, col=4)
+                            _fig_d1r.update_yaxes(autorange="reversed", title_text="Độ sâu (m)")
+                            _fig_d1r.update_layout(height=440, showlegend=False,
+                                                    title=f"p-y Winkler — u, M, k_h + Boussinesq Δp_h từ tải q={_dpy_q_op} kN/m²")
+                            st.plotly_chart(_fig_d1r, use_container_width=True)
+                            if _F_bs > 0:
+                                st.caption(
+                                    f"**Hợp lực Boussinesq:** F = {_F_bs:.1f} kN/m "
+                                    f"(tải q = {_dpy_q_op} kN/m², a = {_dpy_q_a} m, w = {_dpy_q_w} m). "
+                                    f"TCVN 11823-3 §10.6.2 công thức (39)."
+                                )
 
-                    _status_w = ("ĐẠT" if (_res_d1["u_max_mm"] < 25 and
-                                            _res_d1["M_max_kNm"] < _res_d1["Mcr_kNm"])
-                                  else "KHÔNG ĐẠT")
-                    _fig_w.suptitle(
-                        f"Nội lực cừ {_dpy_pile} L={_Lw:.0f}m sau xử lý CDM "
-                        f"(Lc={_cdm_Lc_val:.1f}m) — {_status_w}",
-                        fontsize=11, fontweight="bold",
-                    )
-                    _plt_w.tight_layout()
-                    st.pyplot(_fig_w, use_container_width=True)
-                    _plt_w.close(_fig_w)
-                except Exception as _e_mpl:
-                    st.warning(f"Không vẽ được biểu đồ matplotlib: {_e_mpl}")
+                        # ── BIỂU ĐỒ NỘI LỰC CỪ SAU XỬ LÝ NỀN BẰNG CDM (matplotlib) ─────
+                        try:
+                            import matplotlib.pyplot as _plt_w
+                            from matplotlib.patches import Rectangle as _RectW
+                            st.markdown("##### Nội lực cừ SW sau xử lý nền CDM")
+                            _fig_w, _axw = _plt_w.subplots(
+                                1, 4, figsize=(12, 7), sharey=True,
+                                gridspec_kw={"width_ratios": [1, 2, 2, 2]},
+                            )
+                            _zsw = _res_d1["zs"]
+                            _top_w = float(_dpy_top_ke) if "_dpy_top_ke" in dir() else 2.7
+                            _Z_w = float(_dpy_Z) if "_dpy_Z" in dir() else 0.0
+                            _Lw = float(_dpy_L)
+                            _el_pile = [_top_w - z for z in _zsw]
+                            _el_mid = [_top_w - (_zsw[i] + _zsw[i + 1]) / 2 for i in range(len(_zsw) - 1)]
+                            _cdm_top_w = _Z_w
+                            _cdm_bot_w = _Z_w - _cdm_thk_eff if _cdm_thk_eff > 0 else _Z_w
 
-                # ═══════════════════════════════════════════════════════════
-                # E. ỔN ĐỊNH TỔNG THỂ TƯỜNG SW + CDM (3 kiểm tra)
-                # ═══════════════════════════════════════════════════════════
+                            # Panel 0: sơ đồ cừ + CDM (kèm dimension labels để kiểm tra)
+                            _bot_pile_w = _top_w - _Lw
+                            _Zb_w = float(_dpy_Zb)
+                            _wlvl_F = float(_dpy_wlvl)
+                            _wlvl_B = float(_dpy_wlvl_b)
+
+                            # Cừ
+                            _axw[0].add_patch(_RectW((-0.5, _bot_pile_w), 1.0, _Lw,
+                                                      facecolor="#444444", edgecolor="black",
+                                                      linewidth=1.2, label=f"Cừ SW L={_Lw:.1f}m"))
+                            # CDM
+                            if _cdm_thk_eff > 0:
+                                _axw[0].add_patch(_RectW((-3, _cdm_bot_w), 2.5, _cdm_thk_eff,
+                                                          facecolor="#90c890", edgecolor="green",
+                                                          alpha=0.7, hatch="//",
+                                                          label="Vùng CDM"))
+                            # Đất đắp Front
+                            if _top_w - _Z_w > 0:
+                                _axw[0].add_patch(_RectW((-3, _Z_w), 2.5, _top_w - _Z_w,
+                                                          facecolor="#d4a373", alpha=0.4,
+                                                          label=f"Đắp {(_top_w - _Z_w):.1f}m"))
+                            # Mặt đất Back (đào sâu hơn)
+                            _axw[0].plot([-3, -0.5], [_Z_w, _Z_w], "k-", lw=1.5)
+                            _axw[0].plot([0.5, 3], [_Zb_w, _Zb_w], "k-", lw=1.5)
+                            # Mực nước
+                            _axw[0].axhline(_wlvl_F, color="cyan", linestyle="-", lw=1.0, alpha=0.5,
+                                             xmin=0, xmax=0.5)
+                            _axw[0].axhline(_wlvl_B, color="cyan", linestyle="-", lw=1.0, alpha=0.5,
+                                             xmin=0.5, xmax=1.0)
+
+                            # ── Dimension labels (annotation cao độ + chiều dài) ──
+                            # Cao độ đỉnh kè
+                            _axw[0].annotate(f"top = {_top_w:+.2f}m",
+                                              xy=(0.5, _top_w), xytext=(2.0, _top_w + 0.5),
+                                              fontsize=7, color="#1565C0", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#1565C0", lw=0.8))
+                            # Cao độ mặt đất Front (Z)
+                            _axw[0].annotate(f"Z = {_Z_w:+.2f}m",
+                                              xy=(-0.5, _Z_w), xytext=(-3.3, _Z_w + 0.3),
+                                              fontsize=7, color="#8B4513", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#8B4513", lw=0.8))
+                            # Cao độ mặt đất Back (Zb)
+                            _axw[0].annotate(f"Zb = {_Zb_w:+.2f}m",
+                                              xy=(0.5, _Zb_w), xytext=(1.8, _Zb_w - 0.6),
+                                              fontsize=7, color="#FF6F00", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#FF6F00", lw=0.8))
+                            # Mực nước Front + Back
+                            _axw[0].text(-3.3, _wlvl_F + 0.1, f"MNN_F = {_wlvl_F:+.2f}",
+                                          fontsize=6, color="cyan")
+                            _axw[0].text(1.8, _wlvl_B + 0.1, f"MNN_B = {_wlvl_B:+.2f}",
+                                          fontsize=6, color="cyan")
+                            # Chân cừ
+                            _axw[0].annotate(f"tip = {_bot_pile_w:+.2f}m",
+                                              xy=(0, _bot_pile_w), xytext=(1.5, _bot_pile_w - 0.5),
+                                              fontsize=7, color="#444", fontweight="bold",
+                                              arrowprops=dict(arrowstyle="->", color="#444", lw=0.8))
+                            # Đáy CDM
+                            if _cdm_thk_eff > 0:
+                                _axw[0].annotate(f"CDM bot = {_cdm_bot_w:+.2f}m",
+                                                  xy=(-2, _cdm_bot_w), xytext=(-3.3, _cdm_bot_w - 0.4),
+                                                  fontsize=7, color="green", fontweight="bold",
+                                                  arrowprops=dict(arrowstyle="->", color="green", lw=0.8))
+
+                            # Đáy lớp bùn sét (Z - H1) — đường nét đứt nâu
+                            _bun_bot_F = _Z_w - float(_dpy_H1)
+                            _bun_bot_B = _Zb_w - float(_dpy_H1)
+                            _axw[0].plot([-3, -0.5], [_bun_bot_F, _bun_bot_F],
+                                          color="#8B4513", linestyle=":", lw=1.0, alpha=0.7)
+                            _axw[0].plot([0.5, 3], [_bun_bot_B, _bun_bot_B],
+                                          color="#8B4513", linestyle=":", lw=1.0, alpha=0.7)
+                            # Annotation cao độ đáy lớp bùn (lấy mức cao hơn để gọn)
+                            _bun_bot_show = max(_bun_bot_F, _bun_bot_B)
+                            _axw[0].annotate(f"Đáy bùn = {_bun_bot_show:+.2f}m\nH₁ = {float(_dpy_H1):.1f}m",
+                                              xy=(0.5, _bun_bot_B),
+                                              xytext=(1.8, _bun_bot_B + 0.4),
+                                              fontsize=6.5, color="#8B4513",
+                                              arrowprops=dict(arrowstyle="->", color="#8B4513", lw=0.8))
+
+                            # Thông số Su Front / Back ở giữa lớp bùn (annotation góc)
+                            _su_mid_F = (_Z_w + _bun_bot_F) / 2.0
+                            _su_mid_B = (_Zb_w + _bun_bot_B) / 2.0
+                            _axw[0].text(-2.95, _su_mid_F,
+                                          f"Lớp 1 (Front)\nCtd = {float(_dpy_su):.0f} kPa",
+                                          fontsize=6, color="#8B4513", style="italic",
+                                          va="center", ha="left",
+                                          bbox=dict(boxstyle="round,pad=0.15",
+                                                    facecolor="#FFF8E1",
+                                                    edgecolor="#8B4513", lw=0.4, alpha=0.85))
+                            _axw[0].text(0.6, _su_mid_B,
+                                          f"Lớp 1 (Back)\nSu = {float(_dpy_sub):.0f} kPa",
+                                          fontsize=6, color="#FF6F00", style="italic",
+                                          va="center", ha="left",
+                                          bbox=dict(boxstyle="round,pad=0.15",
+                                                    facecolor="#FFF3E0",
+                                                    edgecolor="#FF6F00", lw=0.4, alpha=0.85))
+
+                            # Front/Back labels
+                            _axw[0].text(-2.8, _top_w + 0.6, "Front", fontsize=8, color="brown",
+                                          fontweight="bold", style="italic")
+                            _axw[0].text(2.0, _top_w + 0.6, "Back", fontsize=8, color="#FF6F00",
+                                          fontweight="bold", style="italic")
+
+                            _axw[0].set_xlim(-3.5, 3.5)
+                            _axw[0].set_ylabel("Cao độ (m)")
+                            _axw[0].set_title(f"Sơ đồ kích thước hình học\nL cừ = {_Lw:.1f} m",
+                                               fontsize=9)
+                            _axw[0].set_xticks([])
+                            _axw[0].grid(alpha=0.3)
+                            _axw[0].legend(fontsize=6, loc="lower left")
+
+                            # ── Helper: thêm reference lines + cao độ chú thích ───
+                            def _add_elev_refs(_ax):
+                                """Vẽ các đường tham chiếu cao độ giống Panel 0 (sơ đồ kích thước)."""
+                                # Vùng CDM
+                                if _cdm_thk_eff > 0:
+                                    _ax.axhspan(_cdm_bot_w, _cdm_top_w,
+                                                 alpha=0.12, color="green")
+                                # Đỉnh kè
+                                _ax.axhline(_top_w, color="#1565C0", linestyle="-", lw=0.8, alpha=0.6)
+                                # Mặt đất Front (Z)
+                                _ax.axhline(_Z_w, color="#8B4513", linestyle="-", lw=0.7, alpha=0.6)
+                                # Mặt đất Back (Zb)
+                                _ax.axhline(_Zb_w, color="#FF6F00", linestyle="-", lw=0.7, alpha=0.5)
+                                # Đáy lớp bùn (Z - H1)
+                                _ax.axhline(_bun_bot_F, color="#8B4513",
+                                             linestyle=":", lw=0.7, alpha=0.5)
+                                # Mực nước
+                                _ax.axhline(_wlvl_F, color="cyan", linestyle="-", lw=0.6, alpha=0.4)
+                                # Chân cừ
+                                _ax.axhline(_bot_pile_w, color="#444", linestyle="-", lw=0.8, alpha=0.6)
+                                # Đáy CDM
+                                if _cdm_thk_eff > 0:
+                                    _ax.axhline(_cdm_bot_w, color="green",
+                                                 linestyle="--", lw=0.7, alpha=0.5)
+
+                            def _add_elev_labels(_ax, _xlim_max):
+                                """Thêm text cao độ ở mép phải biểu đồ (dùng cho panel đầu các loại)."""
+                                _x_lbl = _xlim_max * 0.98
+                                for _yv, _txt, _col in [
+                                    (_top_w,      f"top={_top_w:+.1f}",     "#1565C0"),
+                                    (_Z_w,        f"Z={_Z_w:+.1f}",         "#8B4513"),
+                                    (_bun_bot_F,  f"đáy bùn={_bun_bot_F:+.1f}", "#8B4513"),
+                                    (_Zb_w,       f"Zb={_Zb_w:+.1f}",       "#FF6F00"),
+                                    (_bot_pile_w, f"tip={_bot_pile_w:+.1f}", "#444"),
+                                ]:
+                                    _ax.text(_x_lbl, _yv, _txt, fontsize=5.5,
+                                             color=_col, ha="right", va="center", alpha=0.8,
+                                             bbox=dict(boxstyle="round,pad=0.1",
+                                                       facecolor="white", edgecolor="none",
+                                                       alpha=0.6))
+
+                            # Panel 1: u(z)
+                            _add_elev_refs(_axw[1])
+                            _axw[1].plot(_res_d1["ux"], _el_pile, "b-", lw=2.0, label="u(z)")
+                            _axw[1].axvline(25, color="red", linestyle="--", lw=1.0, label="±25 mm")
+                            _axw[1].axvline(-25, color="red", linestyle="--", lw=1.0)
+                            _axw[1].axvline(0, color="black", lw=0.5)
+                            _u_xmax = max(30, max(abs(u) for u in _res_d1["ux"]) * 1.1)
+                            _axw[1].set_xlim(-_u_xmax, _u_xmax)
+                            _add_elev_labels(_axw[1], _u_xmax)
+                            _axw[1].set_xlabel("u (mm)")
+                            _axw[1].set_title(
+                                f"Chuyển vị u(z)\nu_max = {_res_d1['u_max_mm']:.2f} mm",
+                                fontsize=10)
+                            _axw[1].grid(alpha=0.3)
+                            _axw[1].legend(fontsize=7, loc="lower left")
+
+                            # Panel 2: M(z)
+                            _add_elev_refs(_axw[2])
+                            _axw[2].plot(_res_d1["Ms"], _el_mid, "g-", lw=2.0, label="M(z)")
+                            _axw[2].axvline(_res_d1["Mcr_kNm"], color="red", linestyle="--",
+                                             lw=1.0, label=f"Mcr={_res_d1['Mcr_kNm']:.0f}")
+                            _axw[2].axvline(-_res_d1["Mcr_kNm"], color="red", linestyle="--", lw=1.0)
+                            _axw[2].axvline(0, color="black", lw=0.5)
+                            _M_xmax = max(_res_d1["Mcr_kNm"] * 1.2,
+                                           max(abs(m) for m in _res_d1["Ms"]) * 1.1, 100.0)
+                            _axw[2].set_xlim(-_M_xmax, _M_xmax)
+                            _add_elev_labels(_axw[2], _M_xmax)
+                            _axw[2].set_xlabel("M (kNm)")
+                            _ratio_w = _res_d1["M_max_kNm"] / _res_d1["Mcr_kNm"] if _res_d1["Mcr_kNm"] else 0
+                            _axw[2].set_title(
+                                f"Moment M(z)\nM_max={_res_d1['M_max_kNm']:.0f}  M/Mcr={_ratio_w:.2f}",
+                                fontsize=10)
+                            _axw[2].grid(alpha=0.3)
+                            _axw[2].legend(fontsize=7, loc="lower left")
+
+                            # Panel 3: Q(z)
+                            _Qs_w = _res_d1.get("Qs", [])
+                            if _Qs_w:
+                                _add_elev_refs(_axw[3])
+                                _axw[3].plot(_Qs_w, _el_mid, "m-", lw=2.0, label="Q(z)")
+                                _axw[3].axvline(0, color="black", lw=0.5)
+                                _Qmax_w = _res_d1.get("Q_max_kN", max(abs(q) for q in _Qs_w))
+                                _Q_xmax = max(_Qmax_w * 1.2, 10.0)
+                                _axw[3].set_xlim(-_Q_xmax, _Q_xmax)
+                                _add_elev_labels(_axw[3], _Q_xmax)
+                                _axw[3].set_title(f"Lực cắt Q(z)\nQ_max={_Qmax_w:.0f} kN", fontsize=10)
+                                _axw[3].set_xlabel("Q (kN)")
+                                _axw[3].grid(alpha=0.3)
+                                _axw[3].legend(fontsize=7, loc="lower left")
+                            else:
+                                _axw[3].set_visible(False)
+
+                            _status_w = ("ĐẠT" if (_res_d1["u_max_mm"] < 25 and
+                                                    _res_d1["M_max_kNm"] < _res_d1["Mcr_kNm"])
+                                          else "KHÔNG ĐẠT")
+                            _fig_w.suptitle(
+                                f"Nội lực cừ {_dpy_pile} L={_Lw:.0f}m sau xử lý CDM "
+                                f"— {_status_w}",
+                                fontsize=11, fontweight="bold",
+                            )
+                            _plt_w.tight_layout()
+                            st.pyplot(_fig_w, use_container_width=True)
+                            _plt_w.close(_fig_w)
+                        except Exception as _e_mpl:
+                            st.warning(f"Không vẽ được biểu đồ matplotlib: {_e_mpl}")
+
+                        # ───────────────────────────────────────────────────────
+                        # Phân tích nội lực theo TỪNG LOẠI TẢI TRỌNG
+                        # (chạy Winkler riêng cho mỗi component → so sánh + tổng)
+                        # ───────────────────────────────────────────────────────
+                        try:
+                            st.markdown("##### Nội lực theo từng loại tải trọng")
+                            st.caption(
+                                "Chạy Winkler riêng cho mỗi thành phần (F áp dụng dạng "
+                                "lực tập trung ở đỉnh + mô-men từ tay đòn tới điểm đặt). "
+                                "Kết quả TỔNG = chồng chất tuyến tính của các thành phần."
+                            )
+
+                            # Helper: chạy Winkler với 1 lực + tay đòn
+                            def _calc_for_load(_F_v: float, _arm_v: float):
+                                if abs(_F_v) < 0.1:
+                                    return None
+                                _M_v = _F_v * _arm_v
+                                return _calc_py_winkler(
+                                    bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
+                                    pile_name=_dpy_pile, L_m=float(_dpy_L),
+                                    H_kNm=float(_F_v), M_kNm=float(_M_v),
+                                    cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
+                                    k_cdm_factor=_k_cdm_fac,
+                                )
+
+                            # Tay đòn từng loại tải (top → điểm đặt resultant)
+                            # z_app ước lượng: Active 1/3 fill từ chân; Passive ở phía dưới đáy đào;
+                            # Water/Surcharge dùng z_net từ EP
+                            _arm_act = (float(_dpy_top_ke) - _Z_w) / 2.0   # mid fill
+                            _arm_pas = float(_dpy_top_ke) - (_Zb_w - 1.0)  # mid passive (gần đáy đào)
+                            try:
+                                _arm_water = float(_dpy_top_ke) - float(_ep_res_cdm.get("z_net", _Z_w))
+                            except Exception:
+                                _arm_water = (float(_dpy_top_ke) - _Z_w) * 0.7
+                            _arm_bs = float(_dpy_top_ke) - _Z_w * 0.5     # Boussinesq lan dần xuống
+
+                            _comp_rows = []
+                            _comp_colors = {
+                                "Active":    "#C62828",
+                                "Passive":   "#1565C0",
+                                "Nước":      "#0277BD",
+                                "Surcharge": "#FF6F00",
+                                "TỔNG":      "#1B5E20",
+                            }
+                            _comp_results = {}
+                            for _name, _F_kn, _arm in [
+                                ("Active",    _F_act_v,    _arm_act),
+                                ("Passive",   -_F_pas_v,   _arm_pas),  # dấu âm: kháng
+                                ("Nước",      _F_water_v,  _arm_water),
+                                ("Surcharge", _F_bs_v,     _arm_bs),
+                            ]:
+                                _r = _calc_for_load(_F_kn, _arm)
+                                if _r is None or "error" in (_r or {}):
+                                    continue
+                                _comp_results[_name] = _r
+                                _comp_rows.append({
+                                    "Tải":         _name,
+                                    "F (kN/m)":    _F_kn,
+                                    "Tay đòn (m)": _arm,
+                                    "u_top (mm)":  _r["u_top_mm"],
+                                    "M_max (kNm)": _r["M_max_kNm"],
+                                    "Q_max (kN)":  _r.get("Q_max_kN", 0.0),
+                                })
+
+                            # TỔNG = chồng chất tuyến tính u/M/Q của các thành phần
+                            if _comp_results:
+                                import numpy as _np_sum
+                                _ux_sum = None; _M_sum = None; _Q_sum = None
+                                _zs_ref = None
+                                for _nm, _r in _comp_results.items():
+                                    _ux = _np_sum.array(_r["ux"])
+                                    _Ms = _np_sum.array(_r["Ms"])
+                                    _Qs = _np_sum.array(_r.get("Qs", [0]*len(_r["Ms"])))
+                                    if _ux_sum is None:
+                                        _ux_sum = _ux.copy()
+                                        _M_sum = _Ms.copy()
+                                        _Q_sum = _Qs.copy()
+                                        _zs_ref = _r["zs"]
+                                    else:
+                                        _ux_sum += _ux
+                                        _M_sum += _Ms
+                                        _Q_sum += _Qs
+                                _comp_results["TỔNG"] = {
+                                    "zs": _zs_ref,
+                                    "ux": _ux_sum.tolist(),
+                                    "Ms": _M_sum.tolist(),
+                                    "Qs": _Q_sum.tolist(),
+                                    "u_top_mm":  float(_ux_sum[0]),
+                                    "u_max_mm":  float(_np_sum.max(_np_sum.abs(_ux_sum))),
+                                    "M_max_kNm": float(_np_sum.max(_np_sum.abs(_M_sum))),
+                                    "Q_max_kN":  float(_np_sum.max(_np_sum.abs(_Q_sum))),
+                                }
+                                _comp_rows.append({
+                                    "Tải":         "TỔNG",
+                                    "F (kN/m)":    sum(r["F (kN/m)"] for r in _comp_rows),
+                                    "Tay đòn (m)": 0.0,
+                                    "u_top (mm)":  _comp_results["TỔNG"]["u_top_mm"],
+                                    "M_max (kNm)": _comp_results["TỔNG"]["M_max_kNm"],
+                                    "Q_max (kN)":  _comp_results["TỔNG"]["Q_max_kN"],
+                                })
+
+                            # Bảng
+                            if _comp_rows:
+                                st.dataframe(
+                                    pd.DataFrame(_comp_rows),
+                                    use_container_width=True, hide_index=True,
+                                    column_config={
+                                        "F (kN/m)":    st.column_config.NumberColumn(format="%.1f"),
+                                        "Tay đòn (m)": st.column_config.NumberColumn(format="%.2f"),
+                                        "u_top (mm)":  st.column_config.NumberColumn(format="%.2f"),
+                                        "M_max (kNm)": st.column_config.NumberColumn(format="%.1f"),
+                                        "Q_max (kN)":  st.column_config.NumberColumn(format="%.1f"),
+                                    },
+                                )
+
+                                # Biểu đồ overlay u(z), M(z), Q(z) cho 5 loại tải
+                                if _HAS_PLOTLY:
+                                    from plotly.subplots import make_subplots as _msub_cmp
+                                    _fig_cmp_lc = _msub_cmp(
+                                        rows=1, cols=3, shared_yaxes=True,
+                                        subplot_titles=("Chuyển vị u (mm)",
+                                                        "Moment M (kNm)",
+                                                        "Lực cắt Q (kN)"),
+                                    )
+                                    for _nm, _r in _comp_results.items():
+                                        _color = _comp_colors.get(_nm, "#666")
+                                        _zs_p = _r["zs"]
+                                        _el_p = [float(_dpy_top_ke) - z for z in _zs_p]
+                                        _el_mid_p = [float(_dpy_top_ke) - (_zs_p[i] + _zs_p[i+1])/2
+                                                      for i in range(len(_zs_p)-1)]
+                                        _lw = 2.5 if _nm == "TỔNG" else 1.3
+                                        _ls = None if _nm == "TỔNG" else "dot"
+                                        _fig_cmp_lc.add_trace(go.Scatter(
+                                            x=_r["ux"], y=_el_p, mode="lines",
+                                            line=dict(color=_color, width=_lw, dash=_ls),
+                                            name=_nm, legendgroup=_nm, showlegend=True,
+                                        ), row=1, col=1)
+                                        _fig_cmp_lc.add_trace(go.Scatter(
+                                            x=_r["Ms"], y=_el_mid_p, mode="lines",
+                                            line=dict(color=_color, width=_lw, dash=_ls),
+                                            name=_nm, legendgroup=_nm, showlegend=False,
+                                        ), row=1, col=2)
+                                        _fig_cmp_lc.add_trace(go.Scatter(
+                                            x=_r.get("Qs", []), y=_el_mid_p, mode="lines",
+                                            line=dict(color=_color, width=_lw, dash=_ls),
+                                            name=_nm, legendgroup=_nm, showlegend=False,
+                                        ), row=1, col=3)
+                                    _fig_cmp_lc.update_yaxes(title_text="Cao độ (m)", row=1, col=1)
+                                    _fig_cmp_lc.update_layout(
+                                        height=480, margin=dict(t=60, b=40),
+                                        legend=dict(orientation="h", y=-0.15),
+                                        title=f"Nội lực theo từng tải — {_dpy_pile} L={_Lw:.0f}m",
+                                    )
+                                    st.plotly_chart(_fig_cmp_lc, use_container_width=True)
+                        except Exception as _e_per_load:
+                            st.caption(f"_(Không vẽ được phân tích per-tải: {_e_per_load})_")
+
+                        # ═══════════════════════════════════════════════════════════
+                        # E. ỔN ĐỊNH TỔNG THỂ TƯỜNG SW + CDM (3 kiểm tra)
+                        # ═══════════════════════════════════════════════════════════
+
                 st.markdown("---")
                 st.markdown("### E. Ổn định tổng thể tường SW + CDM")
                 st.caption(
@@ -9283,28 +9521,59 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         WallGeometry as _WG_S, EarthLayer as _EL_S,
                     )
 
-                    _Z_s = float(_dpy_Z) if "_dpy_Z" in dir() else 0.0
-                    _top_s = float(_dpy_top_ke) if "_dpy_top_ke" in dir() else 2.7
-                    _L_s = float(_dpy_L)
-                    _H1_s = float(_dpy_H1)
-                    _wlvl_s = float(_dpy_wlvl) if "_dpy_wlvl" in dir() else (_Z_s - 0.5)
-                    _wlvl_b_s = float(_dpy_wlvl_b) if "_dpy_wlvl_b" in dir() else _wlvl_s
+                    # Lấy đầy đủ thông số từ widgets D.1 + SQLite (đồng bộ với EP)
+                    _Z_s     = float(_dpy_Z)
+                    _top_s   = float(_dpy_top_ke)
+                    _L_s     = float(_dpy_L)
+                    _H1_s    = float(_dpy_H1)
+                    _wlvl_s  = float(_dpy_wlvl)
+                    _wlvl_b_s = float(_dpy_wlvl_b)
+                    _Zb_s    = float(_dpy_Zb)
+                    _su_F    = float(_dpy_su)        # Ctd lớp 1 đã xử lý
+                    _su_B    = float(_dpy_sub)       # Su Back (đất chưa xử lý)
+                    _q_s     = float(_dpy_q_op)
 
                     _geom_s = _WG_S(
                         top_elev=_top_s, pile_length=_L_s,
-                        soil_level_front=_Z_s, soil_level_back=_Z_s - 1.0,
+                        soil_level_front=_Z_s, soil_level_back=_Zb_s,
                         water_elev_front=_wlvl_s, water_elev_back=_wlvl_b_s,
-                        surcharge_front=float(_dpy_q_op) if "_dpy_q_op" in dir() else 10.0,
+                        surcharge_front=_q_s,
                     )
-                    _fill_s = _EL_S(_Z_s, 18, 8, 28, 0) if _top_s > _Z_s else None
+
+                    # Fill từ widgets (bộ chuẩn dự án γ=18, φ=25, c=0, γ_sub=8)
+                    _fill_s = (_EL_S(_Z_s,
+                                      float(_dpy_gamma_fill),
+                                      float(_dpy_gamma_sub_fill),
+                                      float(_dpy_phi_fill),
+                                      float(_dpy_c_fill))
+                                if _top_s > _Z_s else None)
+
                     _pile_bot_s = _top_s - _L_s
-                    _front_s = [_EL_S(_Z_s - _H1_s, 15, 5, 10, 5),
-                                 _EL_S(_pile_bot_s - 1, 18, 8, 30, 0)]
-                    _back_s = list(_front_s)
+
+                    # Front: lớp 1 sét bùn (Su lab) + lớp 2 cát (giả định φ=30°)
+                    # NOTE: lý tưởng lấy từ SQLite (như EP) nhưng đơn giản hoá
+                    # bằng cách dùng su từ user — đồng bộ với D.1 EP.
+                    _front_s = [
+                        _EL_S(_Z_s - _H1_s, 15.0, 5.0, 0.0, _su_F or 10.0),
+                        _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
+                    ]
+                    # Back: cùng lớp 1 chưa xử lý (Su Back) + lớp 2 cát
+                    _back_s = [
+                        _EL_S(_Zb_s - _H1_s, 15.0, 5.0, 0.0, _su_B or _su_F or 10.0),
+                        _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
+                    ]
+
+                    # CDM từ tab Thiết kế CDM nếu có (TCVN 9403 Phụ lục C)
                     if _cdm_thk_eff > 0:
+                        _cdm_a    = float(st.session_state.get("cdm_a_ratio", 0.20) or 0.20)
+                        _cdm_qu   = float(st.session_state.get("cdm_qu_28", 0.0) or 150.0)
+                        _cdm_phi  = float(st.session_state.get("cdm_phi_col", 30.0) or 30.0)
+                        _cdm_gam  = float(st.session_state.get("cdm_gamma_col", 19.0) or 19.0)
+                        # c_col = qu/2 (Su_undrained = qu/2 cho mẫu CDM 28 ngày)
+                        _cdm_c_col = _cdm_qu / 2.0
                         _cdm_s = _CDMB(top_elev=_Z_s, bot_elev=_Z_s - _cdm_thk_eff,
-                                        area_ratio_a=0.20, c_col_kPa=75.0,
-                                        phi_col_deg=30.0, gamma_col_kNm3=19.0)
+                                        area_ratio_a=_cdm_a, c_col_kPa=_cdm_c_col,
+                                        phi_col_deg=_cdm_phi, gamma_col_kNm3=_cdm_gam)
                     else:
                         _cdm_s = None
 
