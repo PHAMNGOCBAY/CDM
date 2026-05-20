@@ -8048,6 +8048,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 ).fetchall() if _bh_id_ep else []
 
                 _ep_front_layers = []
+                _ep_back_layers_acc: list = []
+                _ep_sus_back: list[float] = []
                 _real_param_rows = []   # cho caption hiển thị nguồn
                 _ep_soil_types: list[str] = []
                 _ep_sus: list[float] = []
@@ -8093,26 +8095,40 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     # Phân loại Sand/Clay theo SYMBOL TCVN (không theo phi)
                     if _sym_u in _CLAY_SYMS:
                         _soil_type = "Clay"
-                        # Clay: dùng c (cu) cho công thức Ka·σ'v - 2c√Ka
-                        _c_use = _c_for_lyr
+                        _c_use = _c_for_lyr   # mặc định = c lab
                     elif _sym_u in _SAND_SYMS:
                         _soil_type = "Sand"
-                        # Sand: bỏ c (cohesionless) → Ka·σ'v
-                        _c_use = 0.0
+                        _c_use = 0.0          # cát: cohesionless
                     else:
-                        # Symbol lạ: dựa theo phi
                         _soil_type = "Clay" if _c_for_lyr > 5.0 else "Sand"
                         _c_use = _c_for_lyr if _soil_type == "Clay" else 0.0
+                    # Front: nếu là lớp BÙN (1/XMD) và user nhập Ctd > 0 → dùng Ctd
+                    _c_use_front = _c_use
+                    if _sym_u in {"1", "XMD"} and float(_dpy_su) > 0:
+                        _c_use_front = float(_dpy_su)
+                    # Back: nếu là Clay và user nhập Su Back > 0 → dùng Su Back
+                    _c_use_back = _c_use
+                    if _sym_u in {"1", "XMD"} and float(_dpy_sub) > 0:
+                        _c_use_back = float(_dpy_sub)
                     _ep_soil_types.append(_soil_type)
-                    _ep_sus.append(_c_use)
+                    _ep_sus.append(_c_use_front)
                     _ep_front_layers.append(_SL(
                         tip_elev=float(_e_bot_ep),
                         gamma=float(_gam_v),
                         gamma_sub=float(_g_sub_ep),
                         phi=float(_phi_v),
-                        c=float(_c_use),
+                        c=float(_c_use_front),
                         delta=float(_ep_delta),
                     ))
+                    _ep_back_layers_acc.append(_SL(
+                        tip_elev=float(_e_bot_ep),
+                        gamma=float(_gam_v),
+                        gamma_sub=float(_g_sub_ep),
+                        phi=float(_phi_v),
+                        c=float(_c_use_back),
+                        delta=float(_ep_delta),
+                    ))
+                    _ep_sus_back.append(_c_use_back)
                     # Tính Ka/Kp cho hiển thị
                     import math as _math_kak
                     _phi_r = _math_kak.radians(float(_phi_v))
@@ -8130,7 +8146,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         "n mẫu": _n_samp or 0,
                     })
                 _con_lab.close()
-                _ep_back_layers = list(_ep_front_layers)   # cùng layers (lớp ngang)
+                _ep_back_layers = _ep_back_layers_acc   # Back dùng c riêng (Su Back)
 
                 # Fill (đất đắp Front) — DÙNG THÔNG SỐ USER NHẬP
                 _ep_fill = _SL(
@@ -8162,7 +8178,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     front_soil_types=_ep_soil_types,
                     front_sus=_ep_sus,
                     back_soil_types=_ep_soil_types,
-                    back_sus=_ep_sus,
+                    back_sus=_ep_sus_back,
                 )
                 # ── PA2: SAU xử lý nền CDM ───────────────────────────────────
                 # Front: fill chỉ tác dụng từ top_ke xuống đỉnh đệm XMC (z_mat).
@@ -8202,7 +8218,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     front_soil_types=[],
                     front_sus=[],
                     back_soil_types=_ep_soil_types,
-                    back_sus=_ep_sus,
+                    back_sus=_ep_sus_back,
                 )
 
                 # Hiển thị 2 biểu đồ PA1 + PA2 cạnh nhau
