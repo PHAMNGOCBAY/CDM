@@ -3105,20 +3105,32 @@ _components_pdf.html("""
 st.sidebar.divider()
 st.sidebar.markdown("### Xuất PDF")
 
-# Import module pdf_export
+# Import PDF module — ưu tiên weasyprint (HTML/CSS/Jinja2), fallback reportlab
+_HAS_PDF = False
+_PDF_ENGINE = "—"
+import sys as _sys_pdf
+_sys_pdf.path.insert(0, str(_ROOT / "scripts"))
 try:
-    import sys as _sys_pdf
-    _sys_pdf.path.insert(0, str(_ROOT / "scripts"))
-    from pdf_export import (
-        build_all_pdf as _pdf_all,
-        build_params_pdf as _pdf_params,
-        build_settlement_pdf as _pdf_settle,
-        build_ke_sw_pdf as _pdf_kesw,
+    from pdf_report import (
+        report_all       as _pdf_all,
+        report_params    as _pdf_params,
+        report_settlement as _pdf_settle,
+        report_ke_sw     as _pdf_kesw,
     )
     _HAS_PDF = True
-except Exception as _e_pdf:
-    _HAS_PDF = False
-    st.sidebar.caption(f"_(reportlab chưa cài: {_e_pdf})_")
+    _PDF_ENGINE = "weasyprint (HTML/CSS)"
+except Exception:
+    try:
+        from pdf_export import (
+            build_all_pdf      as _pdf_all,
+            build_params_pdf   as _pdf_params,
+            build_settlement_pdf as _pdf_settle,
+            build_ke_sw_pdf    as _pdf_kesw,
+        )
+        _HAS_PDF = True
+        _PDF_ENGINE = "reportlab (fallback)"
+    except Exception as _e_pdf:
+        st.sidebar.caption(f"_(PDF engine chưa cài: {_e_pdf})_")
 
 if _HAS_PDF:
     # Nút xuất PDF tổng hợp
@@ -3139,6 +3151,7 @@ if _HAS_PDF:
     except Exception as _e_all:
         st.sidebar.warning(f"Không tạo PDF tổng hợp: {_e_all}")
 st.sidebar.caption(
+    f"_Engine: {_PDF_ENGINE}_  \n"
     "_Hoặc nhấn `Ctrl+P` → Save as PDF (in nguyên trang web)._"
 )
 
