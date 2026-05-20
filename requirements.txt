@@ -15,10 +15,9 @@ ezdxf>=1.4
 unidecode>=1.4
 shapely>=2.1
 sqlalchemy>=2.0
-geopandas>=1.0
 geojson>=3.2
 scipy>=1.13
 anastruct>=1.6
-PyNiteFEA>=0.0.94   # Solver Winkler chính (§20)
-openseespy>=3.7
-gmsh>=4.13
+PyNiteFEA>=2.0      # Solver Winkler chính (§20) — Cloud
+geotech-staff-engineer>=4.6   # slope_stability — 3 kiểm tra ổn định tổng thể
+# openseespy/gmsh/geopandas: chỉ local (cần binary C++/GDAL) — KHÔNG đưa lên Cloud
