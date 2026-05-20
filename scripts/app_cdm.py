@@ -3419,22 +3419,8 @@ except Exception:
         else:
             st.sidebar.caption(f"_(PDF engine chưa cài: {_e_pdf})_")
 
-# Kiểm tra Winkler solver (PyNiteFEA) ngay startup — cảnh báo sidebar
-_winkler_missing = []
-try:
-    import Pynite as _pn_chk  # noqa: F401
-except ImportError:
-    _winkler_missing.append("PyNiteFEA")
-try:
-    import anastruct as _an_chk  # noqa: F401
-except ImportError:
-    _winkler_missing.append("anastruct")
-if len(_winkler_missing) == 2:
-    # Cả 2 đều thiếu → Winkler không chạy được
-    st.sidebar.warning(
-        "**Winkler p-y chưa khả dụng** — thiếu cả `PyNiteFEA` và `anastruct`.\n\n"
-        "Fix local: `pip install PyNiteFEA>=2.0 anastruct>=1.6`"
-    )
+# Winkler p-y: dùng scripts/winkler_np.py (NumPy thuần) — không cần PyNite/anastruct
+# Cảnh báo sidebar cũ đã gỡ vì solver mới luôn sẵn sàng (NumPy có sẵn).
 
 if _HAS_PDF:
     # Nút xuất PDF tổng hợp
@@ -8291,8 +8277,6 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     st.markdown("---")
     st.subheader("Phương pháp giải tích + p-y — Stage 1")
 
-    # Solver Winkler — ưu tiên PyNiteFEA (MIT, pure Python, Cloud-ready),
-    # fallback về anastruct (legacy). Xem scripts/wall_internal_force.py.
     # Solver Winkler thuần NumPy — không phụ thuộc PyNite/anastruct,
     # chạy mọi Python version. Xem scripts/winkler_np.py.
     _numpy_err = ""
@@ -8327,17 +8311,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         def _calc_py_winkler(bh_name: str, pile_name: str, L_m: float,
                              H_kNm: float, M_kNm: float, cdm_thk_m: float,
                              eps50: float, k_cdm_factor: float) -> dict:
-            """Giải Winkler p-y cho 1 cọc.
+            """Giải Winkler p-y cho 1 cọc — NumPy thuần (scripts/winkler_np.py).
 
-            Ưu tiên PyNite (extract Q chính xác, license MIT). Fallback anastruct.
             Trả dict {u_top_mm, u_max_mm, M_max_kNm, Q_max_kN, Mcr_kNm, zs, ux, Ms, k_h}.
             """
             if not _HAS_WINKLER_SOLVER:
-                return {"error": (
-                    "Chưa cài thư viện FEM Winkler. "
-                    "Chạy: `pip install PyNiteFEA>=2.0 anastruct>=1.6` "
-                    "rồi khởi động lại Streamlit."
-                )}
+                return {"error": "scripts/winkler_np.py không load được — kiểm tra NumPy."}
 
             # NumPy Winkler solver — không phụ thuộc PyNite/anastruct
             _pl_obj = _sw_by_name(pile_name)
