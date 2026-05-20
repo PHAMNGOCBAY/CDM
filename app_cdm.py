@@ -3062,6 +3062,33 @@ st.markdown("""
 }
 @page { size: A4; margin: 12mm 10mm; }
 </style>
+
+<script>
+// Auto-mở tất cả <details> (expander) trước khi in, đóng lại sau khi in xong
+(function() {
+  const openAllDetails = () => {
+    document.querySelectorAll('details').forEach(d => {
+      d.setAttribute('data-was-open', d.open ? '1' : '0');
+      d.open = true;
+    });
+  };
+  const restoreDetails = () => {
+    document.querySelectorAll('details').forEach(d => {
+      if (d.getAttribute('data-was-open') === '0') d.open = false;
+      d.removeAttribute('data-was-open');
+    });
+  };
+  window.addEventListener('beforeprint', openAllDetails);
+  window.addEventListener('afterprint', restoreDetails);
+  // Matchmedia fallback cho 1 số browser
+  if (window.matchMedia) {
+    const mql = window.matchMedia('print');
+    mql.addEventListener && mql.addEventListener('change', e => {
+      if (e.matches) openAllDetails(); else restoreDetails();
+    });
+  }
+})();
+</script>
 """, unsafe_allow_html=True)
 
 st.sidebar.divider()
