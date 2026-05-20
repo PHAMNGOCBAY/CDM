@@ -7799,51 +7799,64 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         "ở trên — lớp đất sẽ được lấy trực tiếp từ SQLite, không dùng giá trị giả định."
                     )
 
-        # ─── Biểu đồ áp lực nước — TCVN 11823-3 §10.5.1 (collapsed) ───────────
-        with st.expander("Biểu đồ áp lực nước (Front · Back · Net) — TCVN 11823-3 §10.5.1",
-                          expanded=False):
-            _wp_c1, _wp_c2, _wp_c3 = st.columns([2, 2, 3])
-            with _wp_c1:
-                _wp_mode = st.selectbox(
-                    "Chế độ tính",
-                    ["hydrostatic", "seepage"],
-                    format_func=lambda x: "Thủy tĩnh" if x == "hydrostatic" else "Terzaghi (thấm)",
-                    key="dpy_wp_mode",
-                )
-            with _wp_c2:
-                _wp_gamma = st.number_input("γ_w (kN/m³)", 9.0, 10.5, 9.81, 0.01,
-                                              key="dpy_wp_gamma")
-            with _wp_c3:
-                _wp_dh = float(_dpy_wlvl_b) - float(_dpy_wlvl)
-                st.metric("Δh = MN Back − Front (m)", f"{_wp_dh:+.2f}")
+        # ─── Biểu đồ áp lực nước — TCVN 11823-3 §10.5.1 ───────────────────────
+        st.markdown("#### Biểu đồ áp lực nước (Front · Back · Net) — TCVN 11823-3 §10.5.1")
+        _wp_c1, _wp_c2, _wp_c3 = st.columns([2, 2, 3])
+        with _wp_c1:
+            _wp_mode = st.selectbox(
+                "Chế độ tính",
+                ["hydrostatic", "seepage"],
+                format_func=lambda x: "Thủy tĩnh (Hydrostatic)" if x == "hydrostatic"
+                                       else "Hiệu chỉnh thấm (Terzaghi)",
+                key="dpy_wp_mode",
+                help="Thủy tĩnh: không thấm hoặc MN Front=Back. "
+                     "Terzaghi: nước chảy quanh chân cừ khi MN Back > Front.",
+            )
+        with _wp_c2:
+            _wp_gamma = st.number_input("γ_w (kN/m³)", 9.0, 10.5, 9.81, 0.01,
+                                          key="dpy_wp_gamma",
+                                          help="9.81 chuẩn; 10.0 nếu spec dự án yêu cầu")
+        with _wp_c3:
+            _wp_dh = float(_dpy_wlvl_b) - float(_dpy_wlvl)
+            st.metric("Δh = MN Back − Front (m)", f"{_wp_dh:+.2f}",
+                        ("Có dòng thấm" if _wp_dh > 0.01
+                         else "Không thấm" if abs(_wp_dh) < 0.01
+                         else "Front > Back (ngược chiều)"))
 
-            try:
-                import sys as _sys_wp
-                _sys_wp.path.insert(0, str(_ROOT / "scripts"))
-                from water_pressure import (
-                    WaterGeometry as _WG,
-                    compute_all as _wp_compute,
-                )
-                _wp_geom = _WG(
-                    top_elev=float(_dpy_top_ke),
-                    pile_length=float(_dpy_L),
-                    soil_level_front=float(_dpy_Z),
-                    water_elev_front=float(_dpy_wlvl),
-                    water_elev_back=float(_dpy_wlvl_b),
-                    gamma_w=float(_wp_gamma),
-                )
-                _wp_res = _wp_compute(_wp_geom, mode=_wp_mode)
-                if _wp_res.get("fig"):
-                    # Thu gọn figure: giảm chiều cao
-                    _wp_res["fig"].set_size_inches(9, 4.2)
-                    st.pyplot(_wp_res["fig"], use_container_width=True)
-                    plt.close(_wp_res["fig"])
-                _wp_m1, _wp_m2, _wp_m3 = st.columns(3)
-                _wp_m1.metric("F Front (kN/m)", f"{_wp_res['F_front']:.1f}")
-                _wp_m2.metric("F Back (kN/m)",  f"{_wp_res['F_back']:.1f}")
-                _wp_m3.metric("F Net (kN/m)",   f"{_wp_res['F_net']:.1f}")
-            except Exception as _e_wp:
-                st.warning(f"Không vẽ được biểu đồ áp lực nước: {_e_wp}")
+        try:
+            import sys as _sys_wp
+            _sys_wp.path.insert(0, str(_ROOT / "scripts"))
+            from water_pressure import (
+                WaterGeometry as _WG,
+                compute_all as _wp_compute,
+            )
+            _wp_geom = _WG(
+                top_elev=float(_dpy_top_ke),
+                pile_length=float(_dpy_L),
+                soil_level_front=float(_dpy_Z),
+                water_elev_front=float(_dpy_wlvl),
+                water_elev_back=float(_dpy_wlvl_b),
+                gamma_w=float(_wp_gamma),
+            )
+            _wp_res = _wp_compute(_wp_geom, mode=_wp_mode)
+            if _wp_res.get("fig"):
+                st.pyplot(_wp_res["fig"], use_container_width=True)
+                plt.close(_wp_res["fig"])
+            _wp_m1, _wp_m2, _wp_m3 = st.columns(3)
+            _wp_m1.metric("F Front (kN/m)", f"{_wp_res['F_front']:.1f}",
+                            f"tại z = {_wp_res['z_front']:+.2f}m")
+            _wp_m2.metric("F Back (kN/m)", f"{_wp_res['F_back']:.1f}",
+                            f"tại z = {_wp_res['z_back']:+.2f}m")
+            _wp_m3.metric("F Net (kN/m)", f"{_wp_res['F_net']:.1f}",
+                            f"tại z = {_wp_res['z_net']:+.2f}m (Net = Back − Front)")
+            st.caption(
+                f"**Chế độ:** {_wp_res['mode']}. "
+                f"**Net dương** = áp lực thực hướng về Front. "
+                f"Đỉnh cừ = {_dpy_top_ke:+.2f}m · Mũi cừ = {_dpy_top_ke - _dpy_L:+.2f}m · "
+                f"Mặt đào Front = {_dpy_Z:+.2f}m."
+            )
+        except Exception as _e_wp:
+            st.warning(f"Không vẽ được biểu đồ áp lực nước: {_e_wp}")
 
         # ─── Biểu đồ áp lực đất ngang — TCVN 11823-3 §10.5 ────────────────────
         st.markdown("#### Biểu đồ áp lực đất ngang (Active · Net · Passive) — TCVN 11823-3 §10.5")
@@ -7882,39 +7895,93 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 )
                 from lateral_earth_pressure import SoilLayer as _SL
 
-                # Chuyển layers SQLite → SoilLayer (tip_elev = đáy lớp)
-                # gamma_sub = gamma − 9.81 (đất bão hoà)
+                # ── Lấy thông số đất THẬT từ SQLite lab_tests ────────────────
+                # Cho mỗi lớp: tính γ, φ, c trung bình từ các mẫu lab trong depth range
+                _con_lab = sqlite3.connect(str(_DB))
+                _cur_lab = _con_lab.cursor()
+                _row_bh_ep = _cur_lab.execute(
+                    "SELECT id, elevation_m FROM boreholes WHERE name LIKE ? LIMIT 1",
+                    (f"%{_dpy_apply_bh}%",),
+                ).fetchone()
+                _bh_id_ep, _bh_elev_ep = (_row_bh_ep if _row_bh_ep else (None, 0.0))
+                _bh_elev_ep = _bh_elev_ep or 0.0
+
+                # Lay layers gốc (depth) tu DB
+                _real_lyrs = _cur_lab.execute(
+                    "SELECT symbol, description, depth_top_m, depth_bot_m FROM layers "
+                    "WHERE borehole_id=? ORDER BY depth_top_m",
+                    (_bh_id_ep,),
+                ).fetchall() if _bh_id_ep else []
+
                 _ep_front_layers = []
-                _ep_back_layers  = []
-                for _nm, _e_top_lf, _e_bot_lf, _gam_lf, _phi_lf in _layers_F:
-                    if _e_bot_lf >= _dpy_top_ke - _dpy_L - 0.01:
-                        _g_sub = max(_gam_lf - 9.81, 8.0)
-                        _ep_front_layers.append(_SL(
-                            tip_elev=float(_e_bot_lf),
-                            gamma=float(_gam_lf),
-                            gamma_sub=float(_g_sub),
-                            phi=float(_phi_lf),
-                            c=0.0,
-                            delta=float(_ep_delta),
-                        ))
-                for _nm, _e_top_lb, _e_bot_lb, _gam_lb, _phi_lb in _layers_B:
-                    if _e_bot_lb >= _dpy_top_ke - _dpy_L - 0.01:
-                        _g_sub = max(_gam_lb - 9.81, 8.0)
-                        _ep_back_layers.append(_SL(
-                            tip_elev=float(_e_bot_lb),
-                            gamma=float(_gam_lb),
-                            gamma_sub=float(_g_sub),
-                            phi=float(_phi_lb),
-                            c=0.0,
-                            delta=float(_ep_delta),
-                        ))
-                # Fill (đất đắp Front)
-                _ep_fill = _SL(
-                    tip_elev=float(_dpy_Z),
-                    gamma=18.0, gamma_sub=10.0,
-                    phi=28.0, c=5.0,
-                    delta=float(_ep_delta),
-                )
+                _real_param_rows = []   # cho caption hiển thị nguồn
+                for _sym, _desc, _dt, _db in _real_lyrs:
+                    if _dt is None or _db is None:
+                        continue
+                    # Truy van lab_tests trong khoang [_dt, _db]
+                    _row_avg = _cur_lab.execute(
+                        "SELECT AVG(gamma_kNm3), AVG(phi_deg), AVG(c_kPa), "
+                        "AVG(Cu_UU_kPa), COUNT(*) "
+                        "FROM lab_tests WHERE borehole_id=? "
+                        "AND depth_from_m >= ? AND depth_to_m <= ?",
+                        (_bh_id_ep, _dt, _db),
+                    ).fetchone()
+                    _gam_v, _phi_v, _c_v, _cu_v, _n_samp = _row_avg
+                    # Su (Cu_UU) → c cho lớp sét nếu phi=0
+                    if (_phi_v is None or _phi_v < 1.0) and _cu_v is not None:
+                        _c_for_lyr = float(_cu_v)
+                    elif _c_v is not None:
+                        _c_for_lyr = float(_c_v)
+                    else:
+                        _c_for_lyr = 0.0
+                    # Fallback theo symbol nếu thiếu lab
+                    _sym_u = (_sym or "").upper()
+                    if _gam_v is None:
+                        _gam_v = (18.0 if _sym_u == "F"
+                                   else 15.0 if _sym_u in ("1", "XMD")
+                                   else 17.0 if _sym_u == "3"
+                                   else 19.0 if _sym_u == "4" else 18.0)
+                    if _phi_v is None:
+                        _phi_v = (28.0 if _sym_u == "F"
+                                   else 0.0  if _sym_u in ("1", "XMD")
+                                   else 12.0 if _sym_u == "3"
+                                   else 30.0 if _sym_u == "4" else 20.0)
+                    _e_top_ep = _bh_elev_ep - _dt
+                    _e_bot_ep = _bh_elev_ep - _db
+                    if _e_bot_ep < _dpy_top_ke - _dpy_L - 0.01:
+                        _e_bot_ep = _dpy_top_ke - _dpy_L - 0.01
+                    _g_sub_ep = max(float(_gam_v) - 9.81, 8.0)
+                    _ep_front_layers.append(_SL(
+                        tip_elev=float(_e_bot_ep),
+                        gamma=float(_gam_v),
+                        gamma_sub=float(_g_sub_ep),
+                        phi=float(_phi_v),
+                        c=float(_c_for_lyr),
+                        delta=float(_ep_delta),
+                    ))
+                    _real_param_rows.append({
+                        "Lớp": _sym, "Mô tả": (_desc or "")[:30],
+                        "z (m)": f"{_dt:.1f}–{_db:.1f}",
+                        "γ (kN/m³)": round(float(_gam_v), 1),
+                        "φ (°)": round(float(_phi_v), 1),
+                        "c/cu (kPa)": round(_c_for_lyr, 1),
+                        "n mẫu": _n_samp or 0,
+                    })
+                _con_lab.close()
+                _ep_back_layers = list(_ep_front_layers)   # cùng layers (lớp ngang)
+
+                # Fill thực: nếu HK có lớp F (đất đắp) thì dùng thông số đó, không thì NULL
+                _fill_real = next((L for L in _ep_front_layers
+                                    if L.tip_elev >= _dpy_Z - 0.5), None)
+                if _fill_real:
+                    _ep_fill = _SL(
+                        tip_elev=float(_dpy_Z),
+                        gamma=_fill_real.gamma, gamma_sub=_fill_real.gamma_sub,
+                        phi=_fill_real.phi, c=_fill_real.c,
+                        delta=float(_ep_delta),
+                    )
+                else:
+                    _ep_fill = None   # không có fill → bỏ qua
                 _ep_geom = _EpG(
                     top_elev=float(_dpy_top_ke),
                     pile_length=float(_dpy_L),
@@ -7942,12 +8009,18 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 f"tại z = {_ep_res['z_passive']:+.2f}m")
                 _ep_m3.metric("F Net (kN/m)", f"{_ep_res['F_net']:.1f}",
                                 f"tại z = {_ep_res['z_net']:+.2f}m (Active − Passive)")
-                st.caption(
-                    f"**Active (Front, TRÁI):** Ka·σ'v − 2c√Ka — bao gồm fill γ=18 φ=28° c=5kPa  \n"
-                    f"**Passive (Back, PHẢI):** Kp·σ'v + 2c√Kp  \n"
-                    f"**Net dương** → Active > Passive (vùng nguy hiểm, đẩy cừ về Back). "
-                    f"Tải mặt q = {_ep_surcharge:.0f} kN/m² · Ka {_ep_ka_method} (δ={_ep_delta}°)"
-                )
+
+                # Bảng thông số đất từ lab_tests (transparency)
+                if _real_param_rows:
+                    st.markdown("**Thông số đất dùng tính áp lực — trung bình mẫu lab trong từng lớp:**")
+                    st.dataframe(pd.DataFrame(_real_param_rows),
+                                  use_container_width=True, hide_index=True)
+                    st.caption(
+                        f"Nguồn: SQLite `lab_tests` của HK `{_dpy_apply_bh}` "
+                        f"(γ, φ, c trung bình theo `depth_from_m`/`depth_to_m`). "
+                        f"Nếu φ=0 → dùng `Cu_UU` làm c. Thiếu mẫu → fallback theo TCVN symbol. "
+                        f"Tải mặt q = {_ep_surcharge:.0f} kN/m² · Ka {_ep_ka_method} (δ={_ep_delta}°)"
+                    )
             except Exception as _e_ep:
                 st.warning(f"Không vẽ được biểu đồ áp lực đất: {_e_ep}")
         else:
