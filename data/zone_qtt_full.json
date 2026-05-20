@@ -1,0 +1,1247 @@
+{
+  "_meta": {
+    "generated": "2026-05-20",
+    "source_dxf": "G:\\My Drive\\202605-TRUNG TAM HCM\\DIA CHAT\\7. QUANG TRUONG TRUNG TAM\\QTTT-7HK_TruHienTruong.dxf",
+    "zone_code": "QTT",
+    "n_boreholes": 5,
+    "depth_note": "Layer depths NULL — DXF chỉ có vị trí label, không có boundary chính xác. Sample depths tính từ MTEXT y-position (offset từ page anchor).",
+    "spt_convention": "5 cột mỗi depth: N1/N2/N3/N4/N5; N total = N2+N3 (chuẩn ASTM)"
+  },
+  "boreholes": {
+    "ND-02": {
+      "name": "ND-02",
+      "x_anchor": 28934.32,
+      "elevation_m": 1.7,
+      "depth_m": 31.0,
+      "x_coord_m": 605239.025,
+      "y_coord_m": 1191680.407,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Đất đắp - Đá san lấp lẫn sét"
+        },
+        {
+          "symbol": "1",
+          "description": "Bùn sét yếu màu xám xanh, trạng thái chảy"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        },
+        {
+          "symbol": "4",
+          "description": "Cát màu xám trắng kết cấu chặt vừa"
+        }
+      ],
+      "lab_samples": [
+        {
+          "sample_id": "U1",
+          "depth_m": 3.62
+        },
+        {
+          "sample_id": "U2",
+          "depth_m": 5.62
+        },
+        {
+          "sample_id": "U3",
+          "depth_m": 7.62
+        },
+        {
+          "sample_id": "U4",
+          "depth_m": 9.62
+        },
+        {
+          "sample_id": "U5",
+          "depth_m": 11.62
+        },
+        {
+          "sample_id": "U6",
+          "depth_m": 13.62
+        },
+        {
+          "sample_id": "U7",
+          "depth_m": 15.62
+        },
+        {
+          "sample_id": "U8",
+          "depth_m": 17.62
+        },
+        {
+          "sample_id": "U9",
+          "depth_m": 19.62
+        },
+        {
+          "sample_id": "U10",
+          "depth_m": 34.62
+        },
+        {
+          "sample_id": "U11",
+          "depth_m": 36.62
+        },
+        {
+          "sample_id": "U12",
+          "depth_m": 38.62
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 4.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 6.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 8.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 10.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 12.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 14.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 16.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 18.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 33.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 35.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 37.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 39.4,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N4": 5,
+          "N5": 5,
+          "N": 5
+        },
+        {
+          "depth_m": 41.4,
+          "N1": 5,
+          "N2": 8,
+          "N3": 12,
+          "N4": 20,
+          "N5": 20,
+          "N": 20
+        },
+        {
+          "depth_m": 43.4,
+          "N1": 5,
+          "N2": 8,
+          "N3": 11,
+          "N4": 19,
+          "N5": 19,
+          "N": 19
+        },
+        {
+          "depth_m": 44.4,
+          "N1": 3,
+          "N2": 3,
+          "N3": 9,
+          "N4": 12,
+          "N5": 12,
+          "N": 12
+        }
+      ]
+    },
+    "ND-03": {
+      "name": "ND-03",
+      "x_anchor": 29285.32,
+      "elevation_m": 1.89,
+      "depth_m": 36.0,
+      "x_coord_m": 605340.447,
+      "y_coord_m": 1191670.883,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Đất đắp - Đá san lấp lẫn sét"
+        },
+        {
+          "symbol": "1",
+          "description": "Bùn sét yếu màu xám xanh, trạng thái chảy"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        }
+      ],
+      "lab_samples": [
+        {
+          "sample_id": "U1",
+          "depth_m": 3.62
+        },
+        {
+          "sample_id": "U2",
+          "depth_m": 5.62
+        },
+        {
+          "sample_id": "U3",
+          "depth_m": 7.62
+        },
+        {
+          "sample_id": "U4",
+          "depth_m": 9.62
+        },
+        {
+          "sample_id": "U5",
+          "depth_m": 11.62
+        },
+        {
+          "sample_id": "U6",
+          "depth_m": 13.62
+        },
+        {
+          "sample_id": "U7",
+          "depth_m": 15.62
+        },
+        {
+          "sample_id": "U8",
+          "depth_m": 17.62
+        },
+        {
+          "sample_id": "U9",
+          "depth_m": 19.62
+        },
+        {
+          "sample_id": "U10",
+          "depth_m": 34.62
+        },
+        {
+          "sample_id": "U11",
+          "depth_m": 36.62
+        },
+        {
+          "sample_id": "U12",
+          "depth_m": 38.62
+        },
+        {
+          "sample_id": "U13",
+          "depth_m": 40.62
+        },
+        {
+          "sample_id": "U14",
+          "depth_m": 42.62
+        },
+        {
+          "sample_id": "U15",
+          "depth_m": 44.62
+        },
+        {
+          "sample_id": "U16",
+          "depth_m": 46.62
+        },
+        {
+          "sample_id": "U17",
+          "depth_m": 48.62
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 2.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 4.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 6.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 8.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 10.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 12.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 14.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 16.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 18.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 33.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 35.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 37.4,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N4": 4,
+          "N5": 4,
+          "N": 4
+        },
+        {
+          "depth_m": 39.4,
+          "N1": 2,
+          "N2": 2,
+          "N3": 2,
+          "N4": 4,
+          "N5": 4,
+          "N": 4
+        },
+        {
+          "depth_m": 41.4,
+          "N1": 2,
+          "N2": 2,
+          "N3": 4,
+          "N4": 6,
+          "N5": 6,
+          "N": 6
+        },
+        {
+          "depth_m": 43.4,
+          "N1": 2,
+          "N2": 3,
+          "N3": 3,
+          "N4": 6,
+          "N5": 6,
+          "N": 6
+        },
+        {
+          "depth_m": 45.4,
+          "N1": 4,
+          "N2": 5,
+          "N3": 9,
+          "N4": 14,
+          "N5": 14,
+          "N": 14
+        },
+        {
+          "depth_m": 47.4,
+          "N1": 8,
+          "N2": 10,
+          "N3": 14,
+          "N4": 24,
+          "N5": 24,
+          "N": 24
+        },
+        {
+          "depth_m": 49.4,
+          "N1": 10,
+          "N2": 15,
+          "N3": 17,
+          "N4": 32,
+          "N5": 32,
+          "N": 32
+        }
+      ]
+    },
+    "ND-05": {
+      "name": "ND-05",
+      "x_anchor": 29625.32,
+      "elevation_m": 3.2,
+      "depth_m": 36.0,
+      "x_coord_m": 605445.999,
+      "y_coord_m": 1191736.974,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Đất đắp - Đá san lấp lẫn sét"
+        },
+        {
+          "symbol": "1",
+          "description": "Bùn sét yếu màu xám xanh, trạng thái chảy"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        },
+        {
+          "symbol": "4",
+          "description": "Cát kết cấu chặt vừa"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        }
+      ],
+      "lab_samples": [
+        {
+          "sample_id": "U1",
+          "depth_m": 3.62
+        },
+        {
+          "sample_id": "U2",
+          "depth_m": 5.62
+        },
+        {
+          "sample_id": "U3",
+          "depth_m": 7.62
+        },
+        {
+          "sample_id": "U4",
+          "depth_m": 9.62
+        },
+        {
+          "sample_id": "U5",
+          "depth_m": 11.62
+        },
+        {
+          "sample_id": "U6",
+          "depth_m": 13.62
+        },
+        {
+          "sample_id": "U7",
+          "depth_m": 15.62
+        },
+        {
+          "sample_id": "U8",
+          "depth_m": 17.62
+        },
+        {
+          "sample_id": "U9",
+          "depth_m": 19.62
+        },
+        {
+          "sample_id": "U10",
+          "depth_m": 34.62
+        },
+        {
+          "sample_id": "U11",
+          "depth_m": 36.62
+        },
+        {
+          "sample_id": "U12",
+          "depth_m": 38.62
+        },
+        {
+          "sample_id": "U13",
+          "depth_m": 40.62
+        },
+        {
+          "sample_id": "U14",
+          "depth_m": 42.62
+        },
+        {
+          "sample_id": "U15",
+          "depth_m": 44.62
+        },
+        {
+          "sample_id": "U16",
+          "depth_m": 46.62
+        },
+        {
+          "sample_id": "U17",
+          "depth_m": 48.62
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 4.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 6.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 8.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 10.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 12.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 14.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 16.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 18.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 33.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 35.4,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N4": 2,
+          "N5": 2,
+          "N": 2
+        },
+        {
+          "depth_m": 37.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 39.4,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N4": 2,
+          "N5": 2,
+          "N": 2
+        },
+        {
+          "depth_m": 41.4,
+          "N1": 1,
+          "N2": 1,
+          "N3": 1,
+          "N4": 2,
+          "N5": 2,
+          "N": 2
+        },
+        {
+          "depth_m": 43.4,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N4": 5,
+          "N5": 5,
+          "N": 5
+        },
+        {
+          "depth_m": 45.4,
+          "N1": 2,
+          "N2": 3,
+          "N3": 4,
+          "N4": 7,
+          "N5": 7,
+          "N": 7
+        },
+        {
+          "depth_m": 47.4,
+          "N1": 2,
+          "N2": 4,
+          "N3": 7,
+          "N4": 11,
+          "N5": 11,
+          "N": 11
+        },
+        {
+          "depth_m": 49.4,
+          "N1": 8,
+          "N2": 10,
+          "N3": 18,
+          "N4": 28,
+          "N5": 28,
+          "N": 28
+        }
+      ]
+    },
+    "ND-06": {
+      "name": "ND-06",
+      "x_anchor": 29948.32,
+      "elevation_m": 4.24,
+      "depth_m": 36.0,
+      "x_coord_m": 605349.439,
+      "y_coord_m": 1191761.037,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Đất đắp - Đá san lấp lẫn sét"
+        },
+        {
+          "symbol": "1",
+          "description": "Bùn sét yếu màu xám xanh, trạng thái chảy"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        }
+      ],
+      "lab_samples": [
+        {
+          "sample_id": "U1",
+          "depth_m": 3.62
+        },
+        {
+          "sample_id": "U2",
+          "depth_m": 5.62
+        },
+        {
+          "sample_id": "U3",
+          "depth_m": 7.62
+        },
+        {
+          "sample_id": "U4",
+          "depth_m": 9.62
+        },
+        {
+          "sample_id": "U5",
+          "depth_m": 11.62
+        },
+        {
+          "sample_id": "U6",
+          "depth_m": 13.62
+        },
+        {
+          "sample_id": "U7",
+          "depth_m": 15.62
+        },
+        {
+          "sample_id": "U8",
+          "depth_m": 17.62
+        },
+        {
+          "sample_id": "U9",
+          "depth_m": 19.62
+        },
+        {
+          "sample_id": "U10",
+          "depth_m": 34.62
+        },
+        {
+          "sample_id": "U11",
+          "depth_m": 36.62
+        },
+        {
+          "sample_id": "U12",
+          "depth_m": 38.62
+        },
+        {
+          "sample_id": "U13",
+          "depth_m": 40.62
+        },
+        {
+          "sample_id": "U14",
+          "depth_m": 42.62
+        },
+        {
+          "sample_id": "U15",
+          "depth_m": 44.62
+        },
+        {
+          "sample_id": "U16",
+          "depth_m": 46.62
+        },
+        {
+          "sample_id": "U17",
+          "depth_m": 48.62
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 4.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 6.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 8.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 10.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 12.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 14.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 16.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 18.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 33.4,
+          "N1": 3,
+          "N2": 3,
+          "N3": 3,
+          "N4": 6,
+          "N5": 6,
+          "N": 6
+        },
+        {
+          "depth_m": 35.4,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N4": 5,
+          "N5": 5,
+          "N": 5
+        },
+        {
+          "depth_m": 37.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 1,
+          "N4": 1,
+          "N5": 0,
+          "N": 1
+        },
+        {
+          "depth_m": 39.4,
+          "N1": 2,
+          "N2": 2,
+          "N3": 2,
+          "N4": 4,
+          "N5": 4,
+          "N": 4
+        },
+        {
+          "depth_m": 41.4,
+          "N1": 0,
+          "N2": 1,
+          "N3": 1,
+          "N4": 2,
+          "N5": 2,
+          "N": 2
+        },
+        {
+          "depth_m": 43.4,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N4": 4,
+          "N5": 4,
+          "N": 4
+        },
+        {
+          "depth_m": 45.4,
+          "N1": 3,
+          "N2": 4,
+          "N3": 5,
+          "N4": 9,
+          "N5": 9,
+          "N": 9
+        },
+        {
+          "depth_m": 47.4,
+          "N1": 4,
+          "N2": 5,
+          "N3": 6,
+          "N4": 11,
+          "N5": 11,
+          "N": 11
+        },
+        {
+          "depth_m": 49.4,
+          "N1": 4,
+          "N2": 7,
+          "N3": 9,
+          "N4": 16,
+          "N5": 16,
+          "N": 16
+        }
+      ]
+    },
+    "ND-07": {
+      "name": "ND-07",
+      "x_anchor": 30282.82,
+      "elevation_m": 3.47,
+      "depth_m": 36.0,
+      "x_coord_m": 605252.887,
+      "y_coord_m": 1191785.152,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Đất đắp - Đá san lấp lẫn sét"
+        },
+        {
+          "symbol": "1",
+          "description": "Bùn sét yếu màu xám xanh, trạng thái chảy"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+        }
+      ],
+      "lab_samples": [
+        {
+          "sample_id": "U1",
+          "depth_m": 3.62
+        },
+        {
+          "sample_id": "U2",
+          "depth_m": 5.62
+        },
+        {
+          "sample_id": "U3",
+          "depth_m": 7.62
+        },
+        {
+          "sample_id": "U4",
+          "depth_m": 9.62
+        },
+        {
+          "sample_id": "U5",
+          "depth_m": 11.62
+        },
+        {
+          "sample_id": "U6",
+          "depth_m": 13.62
+        },
+        {
+          "sample_id": "U7",
+          "depth_m": 15.62
+        },
+        {
+          "sample_id": "U8",
+          "depth_m": 17.62
+        },
+        {
+          "sample_id": "U9",
+          "depth_m": 19.62
+        },
+        {
+          "sample_id": "U10",
+          "depth_m": 34.62
+        },
+        {
+          "sample_id": "U11",
+          "depth_m": 36.62
+        },
+        {
+          "sample_id": "U12",
+          "depth_m": 38.62
+        },
+        {
+          "sample_id": "U13",
+          "depth_m": 40.62
+        },
+        {
+          "sample_id": "U14",
+          "depth_m": 42.62
+        },
+        {
+          "sample_id": "U15",
+          "depth_m": 44.62
+        },
+        {
+          "sample_id": "U16",
+          "depth_m": 46.62
+        },
+        {
+          "sample_id": "U17",
+          "depth_m": 48.62
+        }
+      ],
+      "spt": [
+        {
+          "depth_m": 4.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 6.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 8.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 10.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 12.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 14.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 16.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 18.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 33.4,
+          "N1": 1,
+          "N2": 2,
+          "N3": 2,
+          "N4": 4,
+          "N5": 4,
+          "N": 4
+        },
+        {
+          "depth_m": 35.4,
+          "N1": 0,
+          "N2": 0,
+          "N3": 0,
+          "N4": 0,
+          "N5": 0,
+          "N": 0
+        },
+        {
+          "depth_m": 37.4,
+          "N1": 1,
+          "N2": 2,
+          "N3": 3,
+          "N4": 5,
+          "N5": 5,
+          "N": 5
+        },
+        {
+          "depth_m": 39.4,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N4": 5,
+          "N5": 5,
+          "N": 5
+        },
+        {
+          "depth_m": 41.4,
+          "N1": 2,
+          "N2": 2,
+          "N3": 4,
+          "N4": 6,
+          "N5": 6,
+          "N": 6
+        },
+        {
+          "depth_m": 43.4,
+          "N1": 2,
+          "N2": 2,
+          "N3": 3,
+          "N4": 5,
+          "N5": 5,
+          "N": 5
+        },
+        {
+          "depth_m": 45.4,
+          "N1": 2,
+          "N2": 3,
+          "N3": 4,
+          "N4": 7,
+          "N5": 7,
+          "N": 7
+        },
+        {
+          "depth_m": 47.4,
+          "N1": 3,
+          "N2": 5,
+          "N3": 8,
+          "N4": 13,
+          "N5": 13,
+          "N": 13
+        },
+        {
+          "depth_m": 49.4,
+          "N1": 5,
+          "N2": 7,
+          "N3": 9,
+          "N4": 16,
+          "N5": 16,
+          "N": 16
+        }
+      ]
+    }
+  }
+}
