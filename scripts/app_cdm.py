@@ -8002,10 +8002,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                   -2.0, 0.05,
                                                   key="dpy_Z_back",
                                                   help="Cao độ đáy đào phía Back (mặc định −2.0m; thấp hơn Front do đã đào)")
-            _dpy_sub    = _dpy_b2.number_input("Su Back (kN/m²)", 5.0, 100.0,
-                                                  float(_dpy_su), 1.0,
+            _dpy_sub    = _dpy_b2.number_input("Su Back (kN/m²)",
+                                                  value=0.0, step=1.0,
                                                   key="dpy_su_back",
-                                                  help="Sức kháng cắt phía Back có thể khác Front")
+                                                  help="Sức kháng cắt không thoát nước phía Back (đất tự nhiên, "
+                                                       "chưa xử lý). Kỹ sư nhập theo thí nghiệm.")
             _dpy_wlvl_b = _dpy_b3.number_input("Mực nước Back (m)", -10.0, 5.0,
                                                   -2.0, 0.5,
                                                   key="dpy_wlvl_back",
