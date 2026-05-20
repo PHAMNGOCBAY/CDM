@@ -1905,9 +1905,15 @@ def _draw_soil_column_mpl(
             mid = (y0 + y1) / 2
             sym_lbl = sym if sym else f"L{layers.index(lay)+1}"
             desc = (lay.get("description") or "")[:18]
-            lbl = f"{sym_lbl}\n{desc}" if (y1-y0) >= 2.5 and desc else sym_lbl
-            ax_col.text(0.5, mid, lbl, fontsize=_fs_sym, color=_tc(color),
+            # Ký hiệu lớn — _fs_sym, mô tả nhỏ ~= _fs_lbl (font chung)
+            _fs_desc = max(int(_fs_lbl * 0.95), 7)
+            ax_col.text(0.5, mid - (0.25 if (y1 - y0) >= 2.5 and desc else 0),
+                        sym_lbl, fontsize=_fs_sym, color=_tc(color),
                         ha="center", va="center", fontweight="bold")
+            if (y1 - y0) >= 2.5 and desc:
+                ax_col.text(0.5, mid + (y1 - y0) * 0.08,
+                            desc, fontsize=_fs_desc, color=_tc(color),
+                            ha="center", va="center", fontweight="normal")
     ax_col.text(1.04, y_bot, f"{y_bot:.1f}", fontsize=_fs_lbl, color="#555", va="center")
     ax_col.set_xlim(-0.05, 1.5)
     ax_col.set_ylim(y_bot + 1, -0.5)
