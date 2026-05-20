@@ -7799,64 +7799,102 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         "ở trên — lớp đất sẽ được lấy trực tiếp từ SQLite, không dùng giá trị giả định."
                     )
 
-        # ─── Biểu đồ áp lực nước — TCVN 11823-3 §10.5.1 ───────────────────────
-        st.markdown("#### Biểu đồ áp lực nước (Front · Back · Net) — TCVN 11823-3 §10.5.1")
-        _wp_c1, _wp_c2, _wp_c3 = st.columns([2, 2, 3])
-        with _wp_c1:
+        # ─── Biểu đồ áp lực nước + Boussinesq cạnh nhau ───────────────────────
+        st.markdown("#### Áp lực nước + Tải Boussinesq")
+        _wp_inp1, _wp_inp2, _wp_inp3 = st.columns([2, 2, 3])
+        with _wp_inp1:
             _wp_mode = st.selectbox(
-                "Chế độ tính",
+                "Chế độ áp lực nước",
                 ["hydrostatic", "seepage"],
-                format_func=lambda x: "Thủy tĩnh (Hydrostatic)" if x == "hydrostatic"
-                                       else "Hiệu chỉnh thấm (Terzaghi)",
+                format_func=lambda x: "Thủy tĩnh" if x == "hydrostatic" else "Terzaghi (thấm)",
                 key="dpy_wp_mode",
-                help="Thủy tĩnh: không thấm hoặc MN Front=Back. "
-                     "Terzaghi: nước chảy quanh chân cừ khi MN Back > Front.",
             )
-        with _wp_c2:
+        with _wp_inp2:
             _wp_gamma = st.number_input("γ_w (kN/m³)", 9.0, 10.5, 9.81, 0.01,
-                                          key="dpy_wp_gamma",
-                                          help="9.81 chuẩn; 10.0 nếu spec dự án yêu cầu")
-        with _wp_c3:
+                                          key="dpy_wp_gamma")
+        with _wp_inp3:
             _wp_dh = float(_dpy_wlvl_b) - float(_dpy_wlvl)
-            st.metric("Δh = MN Back − Front (m)", f"{_wp_dh:+.2f}",
-                        ("Có dòng thấm" if _wp_dh > 0.01
-                         else "Không thấm" if abs(_wp_dh) < 0.01
-                         else "Front > Back (ngược chiều)"))
+            st.metric("Δh = Back − Front", f"{_wp_dh:+.2f}m")
 
-        try:
-            import sys as _sys_wp
-            _sys_wp.path.insert(0, str(_ROOT / "scripts"))
-            from water_pressure import (
-                WaterGeometry as _WG,
-                compute_all as _wp_compute,
-            )
-            _wp_geom = _WG(
-                top_elev=float(_dpy_top_ke),
-                pile_length=float(_dpy_L),
-                soil_level_front=float(_dpy_Z),
-                water_elev_front=float(_dpy_wlvl),
-                water_elev_back=float(_dpy_wlvl_b),
-                gamma_w=float(_wp_gamma),
-            )
-            _wp_res = _wp_compute(_wp_geom, mode=_wp_mode)
-            if _wp_res.get("fig"):
-                st.pyplot(_wp_res["fig"], use_container_width=True)
-                plt.close(_wp_res["fig"])
-            _wp_m1, _wp_m2, _wp_m3 = st.columns(3)
-            _wp_m1.metric("F Front (kN/m)", f"{_wp_res['F_front']:.1f}",
-                            f"tại z = {_wp_res['z_front']:+.2f}m")
-            _wp_m2.metric("F Back (kN/m)", f"{_wp_res['F_back']:.1f}",
-                            f"tại z = {_wp_res['z_back']:+.2f}m")
-            _wp_m3.metric("F Net (kN/m)", f"{_wp_res['F_net']:.1f}",
-                            f"tại z = {_wp_res['z_net']:+.2f}m (Net = Back − Front)")
-            st.caption(
-                f"**Chế độ:** {_wp_res['mode']}. "
-                f"**Net dương** = áp lực thực hướng về Front. "
-                f"Đỉnh cừ = {_dpy_top_ke:+.2f}m · Mũi cừ = {_dpy_top_ke - _dpy_L:+.2f}m · "
-                f"Mặt đào Front = {_dpy_Z:+.2f}m."
-            )
-        except Exception as _e_wp:
-            st.warning(f"Không vẽ được biểu đồ áp lực nước: {_e_wp}")
+        _wp_col, _bs_col = st.columns([1, 1], gap="medium")
+
+        # ───── BÊN TRÁI: Áp lực nước (thu nhỏ) ─────
+        with _wp_col:
+            st.markdown("**Áp lực nước — TCVN 11823-3 §10.5.1**")
+            try:
+                import sys as _sys_wp
+                _sys_wp.path.insert(0, str(_ROOT / "scripts"))
+                from water_pressure import (
+                    WaterGeometry as _WG,
+                    compute_all as _wp_compute,
+                )
+                _wp_geom = _WG(
+                    top_elev=float(_dpy_top_ke),
+                    pile_length=float(_dpy_L),
+                    soil_level_front=float(_dpy_Z),
+                    water_elev_front=float(_dpy_wlvl),
+                    water_elev_back=float(_dpy_wlvl_b),
+                    gamma_w=float(_wp_gamma),
+                )
+                _wp_res = _wp_compute(_wp_geom, mode=_wp_mode)
+                if _wp_res.get("fig"):
+                    # Thu nhỏ
+                    _wp_res["fig"].set_size_inches(7, 4.5)
+                    for _ax in _wp_res["fig"].axes:
+                        _ax.tick_params(labelsize=7)
+                        if _ax.get_title():
+                            _ax.set_title(_ax.get_title(), fontsize=8)
+                    st.pyplot(_wp_res["fig"], use_container_width=True)
+                    plt.close(_wp_res["fig"])
+                _wm1, _wm2, _wm3 = st.columns(3)
+                _wm1.metric("F Front", f"{_wp_res['F_front']:.0f}", "kN/m")
+                _wm2.metric("F Back",  f"{_wp_res['F_back']:.0f}",  "kN/m")
+                _wm3.metric("F Net",   f"{_wp_res['F_net']:.0f}",   "kN/m")
+                st.caption(f"Chế độ: {_wp_res['mode']}")
+            except Exception as _e_wp:
+                st.warning(f"Không vẽ được áp lực nước: {_e_wp}")
+
+        # ───── BÊN PHẢI: Áp lực ngang do tải Boussinesq ─────
+        with _bs_col:
+            st.markdown(f"**Áp lực ngang Boussinesq từ tải q = {_dpy_q_op:.0f} kN/m²**")
+            try:
+                import sys as _sys_b2
+                _sys_b2.path.insert(0, str(_ROOT / "scripts"))
+                from boussinesq_surcharge import (
+                    SurchargeStrip as _Strip2,
+                    BoussiGeometry as _Geom2,
+                    compute_all as _bs_compute,
+                )
+                _bs_strip_full = _Strip2(
+                    q=float(_dpy_q_op),
+                    a=float(_dpy_q_a),
+                    w=float(_dpy_q_w),
+                    ref_surface=float(_dpy_Z),
+                    side="Front",
+                    label=f"q = {_dpy_q_op} kN/m²",
+                )
+                _bs_geom_full = _Geom2(
+                    top_elev=float(_dpy_top_ke),
+                    pile_length=float(_dpy_L),
+                    soil_level_front=float(_dpy_Z),
+                    soil_level_back=float(_dpy_Zb),
+                )
+                _bs_res = _bs_compute(_bs_geom_full, [_bs_strip_full])
+                if _bs_res.get("fig"):
+                    _bs_res["fig"].set_size_inches(7, 4.5)
+                    for _ax in _bs_res["fig"].axes:
+                        _ax.tick_params(labelsize=7)
+                        if _ax.get_title():
+                            _ax.set_title(_ax.get_title(), fontsize=8)
+                    st.pyplot(_bs_res["fig"], use_container_width=True)
+                    plt.close(_bs_res["fig"])
+                _bm1, _bm2, _bm3 = st.columns(3)
+                _bm1.metric("F Front", f"{_bs_res['F_front']:.0f}", "kN/m")
+                _bm2.metric("F Back",  f"{_bs_res['F_back']:.0f}",  "kN/m")
+                _bm3.metric("F Net",   f"{_bs_res['F_net']:.0f}",   "kN/m")
+                st.caption(f"a={_dpy_q_a}m, w={_dpy_q_w}m · TCVN 11823-3 §10.6.2 Eq.39")
+            except Exception as _e_bs:
+                st.warning(f"Không vẽ được Boussinesq: {_e_bs}")
 
         # ─── Biểu đồ áp lực đất ngang — TCVN 11823-3 §10.5 ────────────────────
         st.markdown("#### Biểu đồ áp lực đất ngang (Active · Net · Passive) — TCVN 11823-3 §10.5")
