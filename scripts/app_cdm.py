@@ -4666,6 +4666,63 @@ elif _page == "compare":
         )
         st.plotly_chart(_fig_ct, use_container_width=True)
 
+        # ── BIỂU ĐỒ MỚI 1: Pcol vs Qa — kiểm tra SCT ───────────────────────────
+        _fig_sct = go.Figure()
+        _fig_sct.add_trace(go.Bar(
+            name="Pcol (kN)", x=_x_sp,
+            y=[s["Pcol (kN)"] for s in scenarios],
+            marker_color=["#ED7D31" if i == rec_idx else "#4472C4"
+                          for i in range(len(scenarios))],
+            text=[f"{s['Pcol (kN)']:.1f}" for s in scenarios],
+            textposition="outside",
+        ))
+        _fig_sct.add_trace(go.Scatter(
+            name="Qa (kN)", x=_x_sp,
+            y=[s["Qa (kN)"] for s in scenarios],
+            mode="lines+markers+text",
+            text=[f"{s['Qa (kN)']:.0f}" for s in scenarios],
+            textposition="top center",
+            line=dict(color="#E53935", width=2.5, dash="dash"),
+            marker=dict(size=10, color="#E53935", symbol="diamond"),
+        ))
+        _fig_sct.update_layout(
+            title="Sức chịu tải: P_col vs Q_a — vùng dưới Qa = Đạt SCT",
+            yaxis_title="kN", height=340, margin=dict(t=45, b=20),
+            legend=dict(orientation="h", y=1.05),
+        )
+        st.plotly_chart(_fig_sct, use_container_width=True)
+
+        # ── BIỂU ĐỒ MỚI 2: Radar so sánh đa chỉ tiêu (normalized) ──────────────
+        _metrics = {
+            "S₁ (cm)":     [s["S₁ (cm)"]   for s in scenarios],
+            "a (%)":       [s["a (%)"]     for s in scenarios],
+            "Pcol (kN)":   [s["Pcol (kN)"] for s in scenarios],
+            "Etb (kPa)":   [s["Etb (kN/m²)"] for s in scenarios],
+            "τse (kPa)":   [pr["tse_kPa"]   for pr in _punch],
+        }
+        _fig_rad = go.Figure()
+        for i, s in enumerate(scenarios):
+            _vals_norm = []
+            for k, vlist in _metrics.items():
+                _vmax = max(vlist) if max(vlist) > 0 else 1
+                _vals_norm.append(vlist[i] / _vmax * 100)
+            _vals_norm.append(_vals_norm[0])  # đóng vòng
+            _fig_rad.add_trace(go.Scatterpolar(
+                r=_vals_norm,
+                theta=list(_metrics.keys()) + [list(_metrics.keys())[0]],
+                fill="toself",
+                name=f"e={s['e (m)']}m",
+                opacity=0.55 if i != rec_idx else 0.85,
+                line=dict(width=2.5 if i == rec_idx else 1.5,
+                          color="#ED7D31" if i == rec_idx else None),
+            ))
+        _fig_rad.update_layout(
+            title="So sánh đa chỉ tiêu (% so với max mỗi chỉ tiêu) — cam = PA kiến nghị",
+            polar=dict(radialaxis=dict(visible=True, range=[0, 105])),
+            height=420, margin=dict(t=45, b=20),
+        )
+        st.plotly_chart(_fig_rad, use_container_width=True)
+
     # ── Phân tích tham số ─────────────────────────────────────────────────────
     st.divider()
     st.markdown(f"### {_t('param_sens')}")
@@ -4853,6 +4910,56 @@ elif _page == "compare":
                 legend=dict(orientation="h"),
             )
             st.plotly_chart(_fig_hm, use_container_width=True)
+
+    # ── BIỂU ĐỒ TỔNG HỢP: Sensitivity S₁ theo qu/D/h_mat (normalized) ──────────
+    if _HAS_PLOTLY:
+        _fig_sens = go.Figure()
+        # Normalize: lấy S1 ở giá trị "current" làm baseline 100%
+        _S1_baseline_qu = next((r["S₁ (cm)"] for r in _qu_rows if r["qu (kPa)"] == int(qu)),
+                               _qu_rows[len(_qu_rows)//2]["S₁ (cm)"])
+        _S1_baseline_D  = next((r["S₁ (cm)"] for r in _D_rows if abs(r["D (m)"] - D) < 0.01),
+                               _D_rows[len(_D_rows)//2]["S₁ (cm)"])
+        _S1_baseline_hm = next((r["ΔS₁ (cm)"] for r in _hm_rows if abs(r["h_mat (m)"] - _hmat_cur) < 0.01),
+                               _hm_rows[len(_hm_rows)//2]["ΔS₁ (cm)"])
+
+        _fig_sens.add_trace(go.Scatter(
+            name=f"qu (baseline={int(qu)} kPa)",
+            x=[r["qu (kPa)"]/qu*100 for r in _qu_rows],
+            y=[r["S₁ (cm)"]/_S1_baseline_qu*100 for r in _qu_rows],
+            mode="lines+markers", line=dict(color="#1565C0", width=2.5),
+            marker=dict(size=8),
+        ))
+        _fig_sens.add_trace(go.Scatter(
+            name=f"D (baseline={D} m)",
+            x=[r["D (m)"]/D*100 for r in _D_rows],
+            y=[r["S₁ (cm)"]/_S1_baseline_D*100 for r in _D_rows],
+            mode="lines+markers", line=dict(color="#2E7D32", width=2.5),
+            marker=dict(size=8),
+        ))
+        _fig_sens.add_trace(go.Scatter(
+            name=f"h_mat (baseline={_hmat_cur} m)",
+            x=[r["h_mat (m)"]/_hmat_cur*100 if _hmat_cur > 0 else 100 for r in _hm_rows],
+            y=[r["ΔS₁ (cm)"]/_S1_baseline_hm*100 if _S1_baseline_hm > 0 else 0
+               for r in _hm_rows],
+            mode="lines+markers", line=dict(color="#E53935", width=2.5),
+            marker=dict(size=8),
+        ))
+        _fig_sens.add_hline(y=100, line_dash="dot", line_color="#999",
+                            annotation_text="Baseline 100%")
+        _fig_sens.add_vline(x=100, line_dash="dot", line_color="#999")
+        _fig_sens.update_layout(
+            title="Độ nhạy của S₁ theo qu / D / h_mat (chuẩn hoá % so với baseline PA kiến nghị)",
+            xaxis_title="Tham số / Baseline (%)",
+            yaxis_title="S₁ / S₁_baseline (%)",
+            height=400, margin=dict(t=50, b=40),
+            legend=dict(orientation="h", y=-0.15),
+        )
+        st.plotly_chart(_fig_sens, use_container_width=True)
+        st.caption(
+            "Đường dốc đứng = tham số nhạy (thay đổi nhỏ → S₁ thay đổi lớn). "
+            "Đường thoải = tham số ít ảnh hưởng. "
+            "Giao điểm tại (100%, 100%) = trạng thái PA kiến nghị hiện tại."
+        )
 
     # ── Kết quả chi tiết PA kiến nghị ─────────────────────────────────────────
     st.divider()
