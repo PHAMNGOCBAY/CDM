@@ -4766,6 +4766,90 @@ if _page == "settlement":
     if _HAS_SC:
         st.subheader("Dự báo độ lún – So sánh phương án xử lý (TCCS 41:2022)")
 
+        # ── Lý thuyết tính lún (đặt trên cùng — xem trước khi chạy tính toán) ──
+        with st.expander("Lý thuyết tính lún cố kết — TCCS 41:2022 + TCVN 9403:2012",
+                          expanded=False):
+            st.markdown("""
+**1. Lún cố kết sơ cấp — Phụ lục A, TCCS 41:2022**
+
+Mỗi lớp đất yếu i được tính theo trạng thái cố kết:
+
+| Trạng thái | Điều kiện | Công thức Si |
+|---|---|---|
+| Quá cố kết (OC) | σ'vf ≤ PC | Si = Hi × Cs/(1+e0) × log(σ'vf/σ'v0) |
+| Cắt qua PC | σ'v0 < PC < σ'vf | Si = Hi × [Cs/(1+e0)·log(PC/σ'v0) + Cc/(1+e0)·log(σ'vf/PC)] |
+| Bình thường cố kết (NC) | σ'v0 ≥ PC | Si = Hi × Cc/(1+e0) × log(σ'vf/σ'v0) |
+
+- σ'v0 = ứng suất hữu hiệu ban đầu (kPa)
+- σ'vf = σ'v0 + Δσ (ứng suất sau khi đắp)
+- PC = áp lực tiền cố kết (từ thí nghiệm nén cố kết)
+- Cc = chỉ số nén, Cs = chỉ số nở lại, e0 = hệ số rỗng tự nhiên
+- Hi = chiều dày lớp đại diện (boundary trung điểm các mẫu)
+
+S_total = Σ Si trên toàn bộ chiều dày lớp đất yếu.
+
+---
+
+**2. Lún CDM — TCVN 9403:2012, Phụ lục C (đàn hồi khối gia cố)**
+
+CDM thay thế đất yếu bằng nền hỗn hợp. Lún tính theo:
+
+```
+S = S1 + S2
+S1 = q × H_soft / (a×Ec + (1-a)×Es)   [đàn hồi tức thời, trong khối gia cố]
+S2 = lún cố kết bên dưới mũi cột       [= 0 nếu CDM cắm đến lớp cứng]
+```
+
+Trong đó:
+- a = π·D²/(4·e²)·k (diện tích thay thế; k=1 cho lưới vuông, 2/√3 cho tam giác)
+- Ec = 75·Cc_col = 75·(field_lab_ratio · qu_lab/2)  — TCVN 9403 B.5.1
+- Es = 250·Cu — tương quan Mesri (Cu = Su sét bão hoà)
+- E_tổng hợp = a·Ec + (1-a)·Es
+
+---
+
+**3. Độ cố kết theo thời gian — Điều 9.3-9.4, TCCS 41:2022**
+
+```
+U(t) = lún đã xảy ra / lún tổng = S(t) / S_total
+ΔS = S_total × (1 - U(t_tc))   [lún còn lại sau thi công]
+```
+
+| Phương án | Độ cố kết U(t) | Ghi chú |
+|---|---|---|
+| Không xử lý | Chỉ Uv (Terzaghi đứng) | Cv, Hdr; chậm |
+| Bấc thấm | U = 1 - (1-Uv)·(1-Uh) | Uh tăng theo n=re/rw |
+| Giếng cát | Tương tự bấc thấm | Diameter lớn hơn, hiệu quả nhanh hơn |
+| CDM | S1 đàn hồi tức thời → ΔS ≈ 0 | Lún xảy ra ngay khi đắp |
+
+TCCS 41:2022 yêu cầu **ΔS ≤ 30 cm** sau khi làm xong mặt đường (đường cấp I đoạn thông thường).
+
+---
+
+**4. Surcharge (gia tải tạm)**
+
+Tăng tải gia tải > tải thiết kế trong giai đoạn cố kết → tăng tốc U(t) →
+sau khi dỡ surcharge, lún còn lại ΔS giảm. **Không** thay đổi S_total dưới tải thiết kế.
+
+---
+
+**5. Đơn vị**
+
+| Đại lượng | Đơn vị |
+|---|---|
+| Cc, Cs, e0 | — (vô thứ nguyên) |
+| σ'v, PC, q | kPa |
+| Hi, H_fill, depth | m |
+| Cv | cm²/s |
+| Lún Si, S_total, ΔS | cm |
+| Ec, Es | kPa |
+| t (thời gian) | tháng |
+
+**Tài liệu nguồn**:
+[38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md) — TCCS 41:2022
+[39-tcvn9403-tru-dat-xi-mang.md](39-tcvn9403-tru-dat-xi-mang.md) — TCVN 9403:2012
+""")
+
         # ── PHẦN 1: So sánh phương án ────────────────────────────────────────
         if True:
             _sc1, _sc2, _sc3 = st.columns([1, 1, 2])
