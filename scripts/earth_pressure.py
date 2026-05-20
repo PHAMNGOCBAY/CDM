@@ -370,7 +370,7 @@ def plot_earth_pressure_diagram(
                      else ("Clay" if lay.phi < 2.0 and lay.c > 0 else "Sand"))
             su_v  = (front_sus[i] if front_sus and i < len(front_sus) else 0.0)
             if stype.lower() == "clay":
-                lbl = f"Clay\nSu={su_v:.0f} kPa"
+                lbl = f"Clay\nCtd={su_v:.0f} kPa"
                 box_col = "#d6eaf8"
             else:
                 lbl = f"Sand\nφ={lay.phi:.0f}°"
@@ -471,10 +471,12 @@ def _add_fill_indicator(ax: plt.Axes, geom: EpGeometry,
     if fill is None or geom.fill_thickness <= 0:
         return
     ax.axhspan(geom.soil_level_front, geom.top_elev,
-               color="sandybrown", alpha=0.15, hatch="\\\\", zorder=0)
+               color="sandybrown", alpha=0.18, hatch="\\\\", zorder=0)
     mid = (geom.soil_level_front + geom.top_elev) / 2
-    ax.text(0, mid, "Fill\n(dat dap)", fontsize=6, color="#8B4513",
-            ha="center", va="center", style="italic")
+    ax.text(0, mid,
+            f"Đất đắp Front (Fill)\nγ={fill.gamma:.1f} kN/m³\nφ={fill.phi:.1f}° c={fill.c:.1f} kPa",
+            fontsize=6, color="#8B4513",
+            ha="center", va="center", style="italic", linespacing=1.3)
 
 
 def _annotate_resultant(ax: plt.Axes, F: float, z: float,
