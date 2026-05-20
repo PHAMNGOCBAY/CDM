@@ -4091,6 +4091,117 @@ elif _page == "params":
         with st.expander(_t("theory_exp"), expanded=False):
             st.markdown(_theory_text)
 
+    # ── Áp địa chất từ HK (SQLite + nearest fallback) ────────────────────────
+    with st.container(border=True):
+        st.markdown("**Áp địa chất từ hố khoan** — đọc trực tiếp từ SQLite, "
+                    "thiếu thì lấy HK gần nhất")
+        _ap_c1, _ap_c2, _ap_c3 = st.columns([1, 2, 1])
+        with _ap_c1:
+            _ap_zone = st.radio(
+                "Zone", list(_ZONE_NAMES.keys()),
+                format_func=lambda z: _ZONE_NAMES[z],
+                index=list(_ZONE_NAMES.keys()).index(_get("cdm_zone")),
+                key="_p_ap_zone", horizontal=False,
+            )
+        with _ap_c2:
+            _ap_bhs   = [b["name"] for b in _load_boreholes_by_zone(_ap_zone)]
+            _cur_bh   = _get("cdm_bh") if _get("cdm_bh") in _ap_bhs else (_ap_bhs[0] if _ap_bhs else "")
+            _ap_bh    = st.selectbox(
+                "Hố khoan áp",
+                _ap_bhs, index=_ap_bhs.index(_cur_bh) if _cur_bh in _ap_bhs else 0,
+                key="_p_ap_bh",
+            )
+        with _ap_c3:
+            st.markdown("&nbsp;", unsafe_allow_html=True)
+            _btn_ap = st.button("Áp địa chất", type="primary",
+                                 key="_p_btn_ap_geo", use_container_width=True)
+
+        if _btn_ap and _ap_bh:
+            # ── Helper: nearest BH có γ avg ──────────────────────────────────
+            def _gamma_nearest(bh_target, db_path):
+                import sqlite3 as _sq, math as _math
+                con = _sq.connect(str(db_path))
+                row = con.execute(
+                    "SELECT b.x_coord_m, b.y_coord_m, z.code FROM boreholes b "
+                    "JOIN zones z ON b.zone_id=z.id WHERE b.name=?", (bh_target,)
+                ).fetchone()
+                if not row or row[0] is None:
+                    con.close(); return None, None, None
+                x0, y0, zone = row
+                rows = con.execute("""
+                    SELECT b.name, b.x_coord_m, b.y_coord_m, AVG(lt.gamma_kNm3)
+                    FROM lab_tests lt JOIN boreholes b ON lt.borehole_id=b.id
+                    JOIN zones z ON b.zone_id=z.id
+                    WHERE z.code=? AND b.name<>? AND lt.gamma_kNm3 IS NOT NULL
+                      AND b.x_coord_m IS NOT NULL GROUP BY b.id
+                """, (zone, bh_target)).fetchall()
+                con.close()
+                if not rows: return None, None, None
+                cand = sorted(((((x-x0)**2+(y-y0)**2)**0.5, nm, v) for nm,x,y,v in rows))
+                d, nm, v = cand[0]; return round(float(v),2), nm, round(d,1)
+
+            def _su_nearest(zone_code, depth_top, depth_bot, ref_bh):
+                """Tìm zone khác có VST trong depth range gần BH ref."""
+                # Cách đơn giản: chỉ dùng VST của zone hiện tại (tránh xa zone)
+                v = _su_avg_in_range(zone_code, depth_top, depth_bot)
+                return v, ref_bh, 0.0  # cùng zone tổng hợp → no dist concept
+
+            _src_log = []   # list các (field, source_msg)
+            # 1. top_clay (cao độ đỉnh lớp bùn = elev - depth của lớp 1 đầu tiên)
+            _cp = _clay_params(_ap_bh, _ap_zone)
+            if _cp:
+                _layers = _load_layers(_ap_bh)
+                _clay_syms = _CLAY_SYMBOLS.get(_ap_zone, ["1", "2"])
+                _first_clay = next((l for l in _layers if l["symbol"] in _clay_syms), None)
+                if _first_clay:
+                    _depth_top = _first_clay["depth_top_m"]
+                    _top_clay_v = round(_cp["elevation_m"] - _depth_top, 2)
+                    st.session_state["cdm_top_clay"] = _top_clay_v
+                    _src_log.append(("Cao độ đỉnh lớp bùn",
+                                     f"từ {_ap_bh} (depth_top={_depth_top:.2f}m, elev={_cp['elevation_m']:.2f}m)"))
+
+                # 2. h_clay
+                st.session_state["cdm_h_clay"] = _cp["h_clay"]
+                st.session_state["cdm_Lc"]    = round(_cp["h_clay"] + 1.5, 1)
+                _src_log.append(("Bề dày lớp bùn", f"từ {_ap_bh} h_clay={_cp['h_clay']}m"))
+            else:
+                # Fallback: chưa có layer cho HK này — báo lỗi
+                _src_log.append(("Lớp bùn", "HK không có dữ liệu lớp"))
+
+            # 3. Su trung bình (VST trong depth range lớp bùn)
+            _depth_bot_clay = _cp.get("depth_clay_bot", 30) if _cp else 30
+            _su = _su_avg_in_range(_ap_zone, 0, _depth_bot_clay)
+            if _su:
+                st.session_state["cdm_Su"] = _su
+                _src_log.append(("Su trung bình", f"VST zone {_ap_zone} trong 0–{_depth_bot_clay:.1f}m"))
+            else:
+                _src_log.append(("Su trung bình", "không có VST — giữ giá trị cũ"))
+
+            # 4. γ trung bình
+            _g = _gamma_avg(_ap_bh)
+            if _g and _g != 15.0:
+                st.session_state["cdm_gamma"] = _g
+                _src_log.append(("γ tự nhiên", f"lab_tests {_ap_bh}"))
+            else:
+                # Nearest fallback
+                _g_n, _g_bh, _g_dist = _gamma_nearest(_ap_bh, _DB)
+                if _g_n:
+                    st.session_state["cdm_gamma"] = _g_n
+                    _src_log.append(("γ tự nhiên",
+                                     f"**HK gần nhất {_g_bh} (cách {_g_dist:.0f} m)** — γ={_g_n} kN/m³"))
+                else:
+                    _src_log.append(("γ tự nhiên", "không có γ — giữ giá trị mặc định 15.0"))
+
+            # Set cdm_bh + zone luôn
+            st.session_state["cdm_bh"]   = _ap_bh
+            st.session_state["cdm_zone"] = _ap_zone
+
+            # Báo cáo nguồn
+            st.success(f"Đã áp địa chất từ **{_ap_bh}**")
+            for _fname, _src in _src_log:
+                st.caption(f"• **{_fname}** ← {_src}")
+            st.rerun()
+
     # Layout: thông số nhập full-width, hình minh họa bên dưới
     _col_inp = st.container()
 
