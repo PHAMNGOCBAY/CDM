@@ -308,7 +308,7 @@ _L: dict[str, tuple[str, str]] = {
     "p_geology":    ("Địa chất",                    "Geology"),
     "p_sample_check":("Kiểm tra mẫu TN",            "Sample Check"),
     "p_tkcs_cdm":   ("TKCS CDM",                    "CDM Prelim Design"),
-    "p_params":     ("Thông số",                    "Parameters"),
+    "p_params":     ("Thiết kế CDM",                "CDM Design"),
     "p_compare":    ("Kết quả CDM",                 "CDM Results"),
     "p_settlement": ("Dự báo độ lún",               "Settlement Prediction"),
     "p_export":     ("Xuất kết quả",                "Export Results"),
@@ -353,7 +353,7 @@ _L: dict[str, tuple[str, str]] = {
     "no_coords_db": ("Chưa có tọa độ hố khoan trong CSDL (x_coord_m / y_coord_m = NULL).",
                      "No borehole coordinates in database (x_coord_m / y_coord_m = NULL)."),
     # Page 2 – Parameters
-    "p2_sub":       ("Thông số CDM",                "CDM Parameters"),
+    "p2_sub":       ("Thiết kế CDM",                "CDM Design"),
     "cdm_geom":     ("Hình học trụ CDM",            "CDM Pile Geometry"),
     "D_lbl":        ("Đường kính D (m)",             "Diameter D (m)"),
     "Lc_lbl":       ("Chiều dài Lc (m)",             "Length Lc (m)"),
