@@ -7582,6 +7582,163 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
         # ─── D.1. Lý thuyết & công thức p-y ───────────────────────────────────
         st.markdown("### D.1. Lý thuyết p-y Winkler")
+
+        # ── Quy trình thiết kế tích hợp 2 giai đoạn ─────────────────────────
+        st.markdown("#### Quy trình thiết kế tích hợp")
+        if _HAS_PLOTLY:
+            _fig_flow = go.Figure()
+            # Stage 1 box
+            _fig_flow.add_shape(type="rect", x0=0.05, y0=0.55, x1=0.95, y1=0.95,
+                                 line=dict(color="#1565C0", width=2),
+                                 fillcolor="#E3F2FD")
+            _fig_flow.add_annotation(
+                x=0.5, y=0.90, showarrow=False, xref="x", yref="y",
+                text="<b>Giai đoạn 1 — Thiết kế sơ bộ (Phương pháp giải tích)</b>",
+                font=dict(size=14, color="#0D47A1"),
+            )
+            _fig_flow.add_annotation(
+                x=0.5, y=0.74, showarrow=False, xref="x", yref="y", align="left",
+                text=(
+                    "<b>1. groundhog</b> — Chia lớp đất tại MNN, tính ứng suất hiệu dụng σ'v<br>"
+                    "<b>2. geotech-staff-engineer</b> — Áp lực đất phi tuyến giới hạn sau tường CDM<br>"
+                    "<b>3. anastruct</b> — Giải dầm Winkler với k_h tăng cường tại vùng CDM<br>"
+                    "<b>4. d-geolib (D-SheetPiling)</b> — Chạy song song hàng ngàn kịch bản<br>"
+                    "&nbsp;&nbsp;&nbsp;&nbsp;tìm chiều sâu cắm tường tối ưu"
+                ),
+                font=dict(size=11, color="#0D47A1"),
+            )
+            # Arrow
+            _fig_flow.add_annotation(
+                x=0.5, y=0.50, ax=0.5, ay=0.55, xref="x", yref="y", axref="x", ayref="y",
+                showarrow=True, arrowhead=3, arrowsize=2, arrowwidth=3, arrowcolor="#666",
+            )
+            _fig_flow.add_annotation(
+                x=0.56, y=0.525, showarrow=False, xref="x", yref="y",
+                text="Verify / Refine", font=dict(size=10, color="#666"),
+            )
+            # Stage 2 box
+            _fig_flow.add_shape(type="rect", x0=0.05, y0=0.05, x1=0.95, y1=0.45,
+                                 line=dict(color="#C62828", width=2, dash="dash"),
+                                 fillcolor="#FFEBEE")
+            _fig_flow.add_annotation(
+                x=0.5, y=0.40, showarrow=False, xref="x", yref="y",
+                text="<b>Giai đoạn 2 — Mô phỏng chi tiết (FEM 2D)</b> <i>— đang phát triển</i>",
+                font=dict(size=14, color="#B71C1C"),
+            )
+            _fig_flow.add_annotation(
+                x=0.5, y=0.21, showarrow=False, xref="x", yref="y", align="left",
+                text=(
+                    "<b>1. OpenSeesPy / PLAXIS 2D / RS2</b> — Lưới phần tử biến dạng phẳng<br>"
+                    "<b>2.</b> Mô tả chính xác khối CDM phi tuyến + thân tường<br>"
+                    "<b>3. BeamContact2D</b> — Mô phỏng trượt và tách biên tường-đất<br>"
+                    "<b>4. 9_4_QuadUP</b> — Bài toán liên hợp pha rắn-lỏng (thấm động)<br>"
+                    "<b>5.</b> Kiểm chứng ứng suất, mô-men, chuyển vị thực tế dọc thân tường"
+                ),
+                font=dict(size=11, color="#B71C1C"),
+            )
+            _fig_flow.update_xaxes(visible=False, range=[0, 1])
+            _fig_flow.update_yaxes(visible=False, range=[0, 1])
+            _fig_flow.update_layout(
+                height=520, margin=dict(t=10, b=10, l=10, r=10),
+                plot_bgcolor="white", paper_bgcolor="white",
+                showlegend=False,
+            )
+            st.plotly_chart(_fig_flow, use_container_width=True)
+
+        # ── Sơ đồ mô hình Winkler (matplotlib — kỹ thuật) ───────────────────
+        st.markdown("#### Mô hình Winkler: cọc + lò xo p-y theo độ sâu")
+        if _HAS_MPL:
+            import numpy as _np_d1
+            _fig_w, _ax_w = plt.subplots(figsize=(9, 6))
+            _L_demo  = 24.0
+            _D_demo  = 0.84
+            _cdm_demo = 3.0
+            # Vẽ cọc (chữ nhật đứng)
+            _ax_w.add_patch(plt.Rectangle((-_D_demo/2, -_L_demo), _D_demo, _L_demo,
+                                            facecolor="#666", edgecolor="black", linewidth=1.5,
+                                            label="Cọc SW (BTCT DUL)"))
+            # Vẽ tải đầu cọc (mũi tên ngang H)
+            _ax_w.annotate("", xy=(2.0, 0), xytext=(0.5, 0),
+                            arrowprops=dict(arrowstyle="->", color="red", lw=2.5))
+            _ax_w.text(2.2, 0.1, "H (tải ngang)", color="red", fontsize=11, fontweight="bold")
+            # Vẽ mô-men đầu cọc (vòng cung)
+            _ax_w.text(-2.5, 0.1, "M", color="purple", fontsize=12, fontweight="bold")
+            # Vẽ các lớp đất (background tô màu)
+            _layers_demo = [
+                (0,           -_cdm_demo,    "#FFD54F", f"CDM tăng cường\n(k_h × 4)"),
+                (-_cdm_demo,  -25.0,         "#A1887F", "Lớp 1 — Bùn sét yếu\n(Matlock 1970)"),
+                (-25.0,       -27.2,         "#8D6E63", "Lớp 3 — Sét pha"),
+                (-27.2,       -_L_demo,      "#D7CCC8", "Lớp 4 — Cát\n(API RP2GEO)"),
+            ]
+            _xmin, _xmax = -8, 8
+            for _yt, _yb, _col, _lbl in _layers_demo:
+                _ax_w.add_patch(plt.Rectangle((_xmin, _yb), _xmax - _xmin, _yt - _yb,
+                                                facecolor=_col, alpha=0.35, edgecolor="none"))
+                _ax_w.text(_xmax - 0.3, (_yt + _yb)/2, _lbl, ha="right", va="center",
+                            fontsize=9, color="#333")
+            # Vẽ lò xo (zigzag) tại mỗi 2m bên trái cọc
+            for _z in _np_d1.arange(-2, -_L_demo - 0.1, -2):
+                _x_spring_l = -_D_demo/2 - 0.5
+                _x_zigzag   = _np_d1.array([0, -0.3, 0.3, -0.3, 0.3, -0.3, 0]) + _x_spring_l - 1.0
+                _y_zigzag   = _np_d1.linspace(_z - 0.2, _z + 0.2, 7)
+                _ax_w.plot(_x_zigzag, _y_zigzag, "-", color="#1565C0", lw=1.2)
+                _ax_w.plot([-_D_demo/2, _x_spring_l - 1.0], [_z, _z], "-", color="#1565C0", lw=1)
+                # Lò xo bên phải
+                _x_spring_r = _D_demo/2 + 1.5
+                _x_zigzag_r = _np_d1.array([0, -0.3, 0.3, -0.3, 0.3, -0.3, 0]) + _x_spring_r
+                _ax_w.plot(_x_zigzag_r, _y_zigzag, "-", color="#1565C0", lw=1.2)
+                _ax_w.plot([_D_demo/2, _x_spring_r], [_z, _z], "-", color="#1565C0", lw=1)
+            # Mặt đất
+            _ax_w.axhline(0, color="black", lw=1.5)
+            _ax_w.text(_xmax - 0.3, 0.3, "Mặt đất", ha="right", fontsize=10, fontweight="bold")
+            # Mũi cọc
+            _ax_w.plot([0], [-_L_demo], "v", color="black", markersize=12)
+            _ax_w.text(0.5, -_L_demo + 0.2, f"L = {_L_demo}m", fontsize=10)
+            # Vùng CDM nhãn
+            _ax_w.annotate("", xy=(-7.5, -_cdm_demo), xytext=(-7.5, 0),
+                            arrowprops=dict(arrowstyle="<->", color="#FF6F00", lw=2))
+            _ax_w.text(-7.7, -_cdm_demo/2, f"CDM\n{_cdm_demo}m", ha="right", va="center",
+                        color="#FF6F00", fontweight="bold", fontsize=10)
+            # Mực nước ngầm
+            _ax_w.axhline(-1.0, color="#1565C0", lw=1.2, linestyle="--")
+            _ax_w.text(_xmin + 0.3, -1.0 + 0.15, "MNN", color="#1565C0", fontsize=9)
+            # Title + labels
+            _ax_w.set_xlim(_xmin, _xmax)
+            _ax_w.set_ylim(-_L_demo - 1, 1.5)
+            _ax_w.set_xlabel("x (m) — Front (trái) ← Cọc → Back (phải)")
+            _ax_w.set_ylabel("Cao độ (m)")
+            _ax_w.set_title("Mô hình p-y Winkler: cọc trên nền đàn hồi phi tuyến + lò xo CDM tăng cường",
+                              fontsize=11, fontweight="bold")
+            _ax_w.set_aspect("equal", adjustable="datalim")
+            _ax_w.grid(alpha=0.3)
+            st.pyplot(_fig_w, use_container_width=True)
+            plt.close(_fig_w)
+
+        # ── Đường cong p-y ──────────────────────────────────────────────────
+        st.markdown("#### Đường cong p-y mẫu (Matlock 1970 cho sét yếu)")
+        if _HAS_PLOTLY:
+            import numpy as _np_py
+            _y50 = 0.042   # ε50=0.02, D=0.84m
+            _y_norm = _np_py.linspace(0, 16, 100)
+            _p_norm = _np_py.where(_y_norm <= 8, 0.5 * _y_norm**(1/3), 1.0)
+            _fig_py = go.Figure()
+            _fig_py.add_trace(go.Scatter(
+                x=_y_norm, y=_p_norm, mode="lines",
+                line=dict(color="#1565C0", width=3),
+                name="p/p_u theo Matlock",
+            ))
+            _fig_py.add_hline(y=1.0, line_dash="dash", line_color="red",
+                               annotation_text="p_u (giới hạn)")
+            _fig_py.add_vline(x=8, line_dash="dot", line_color="gray",
+                               annotation_text="y = 8·y₅₀")
+            _fig_py.update_layout(
+                title="Đường cong p-y chuẩn hoá — Matlock (1970) cho sét yếu",
+                xaxis_title="y/y₅₀ (chuyển vị chuẩn hoá)",
+                yaxis_title="p/p_u (phản lực chuẩn hoá)",
+                height=320, margin=dict(t=50, b=40),
+            )
+            st.plotly_chart(_fig_py, use_container_width=True)
+
         with st.expander("Cơ sở lý thuyết — Matlock (1970) + API RP2GEO + lò xo CDM",
                           expanded=False):
             st.markdown("**Mô hình Winkler:** cọc = dầm trên nền đàn hồi, đất = lò xo độc lập.")
