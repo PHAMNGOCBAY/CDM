@@ -289,6 +289,7 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 | **Matplotlib** | ≥ 3.8 | **Biểu đồ đơn giản / fallback** | ★★ simple & fast | Sơ đồ CDM, soil column, mặt cắt. Fallback khi không có Plotly |
 | **Pandas** | ≥ 2.0 | **Xử lý dữ liệu + Bảng** | ★★★ easy data | `read_csv/read_excel`, `DataFrame.to_html()` cho table render |
 | **SymPy** | ≥ 1.14 | **Công thức symbolic** | ★★★ math symbolic | Derive công thức parametric ($\sigma = f(\epsilon)$), latex output |
+| **LaTeX (MathJax/KaTeX)** | — (built-in) | **Render công thức** | ★★★ standard | `$$...$$` trong `st.markdown` (web) + WeasyPrint MathML (PDF); chuẩn hoá tất cả công thức |
 | **ReportLab** | ≥ 4.0 | **PDF full control (fallback)** | ★★★ full control | `scripts/pdf_export.py` — fallback khi WeasyPrint thiếu native libs (Windows local) |
 | **Kaleido** | ≥ 1.0 | Plotly fig → PNG | — | `fig.to_image(format="png")` để embed vào PDF |
 | **Jinja2** | ≥ 3.1 | HTML template | — | `_REPORT_TEMPLATE` trong `pdf_report.py` |
@@ -305,7 +306,29 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 
 4. **Bảng** → **Pandas DataFrame** → render qua `st.dataframe()` trên web, `df.to_html()` trong PDF. KHÔNG xây bảng thủ công bằng list-of-lists.
 
-5. **Công thức** → trên app dùng LaTeX MathJax (`$$...$$` trong `st.markdown`) như tab Thông số. Cho symbolic derivation (vd parametric) → **SymPy** với `sp.latex(expr)`.
+5. **Công thức — BẮT BUỘC dùng LaTeX MathJax** (chuẩn render thống nhất toàn dự án):
+
+   | Tình huống | Cú pháp | Ví dụ |
+   |---|---|---|
+   | Inline trong câu văn | `$...$` | `Hệ số $C_c = 0.45$` |
+   | Display block (1 dòng) | `$$...$$` | `$$E_c = 75 \cdot C_c$$` |
+   | Display block (Streamlit) | `st.latex(r"...")` | `st.latex(r"S = \frac{q H}{E}")` |
+   | Có giá trị động | f-string + `st.latex(rf"...")` | `st.latex(rf"q = {q:.1f} \text{{ kPa}}")` |
+   | Symbolic derivation | `sympy.latex(expr)` → embed `$$...$$` | `f"$${sp.latex(expr)}$$"` |
+   | Trong WeasyPrint PDF | LaTeX → MathML qua `latex2mathml` | (tự động trong `pdf_report.py`) |
+
+   **Quy ước ký hiệu**:
+   - Subscript: `\sigma'_{vf}`, `H_{\text{soft}}`, `E_{\text{composite}}` (text mode khi nhiều chữ)
+   - Phân số: `\frac{tử}{mẫu}` hoặc `\dfrac{}{}`(display lớn)
+   - Tích phân/Σ: `\sum_{i=1}^{n}`, `\int_{0}^{H}`
+   - Phẩy (effective stress): `\sigma'_v` (apostrophe sau ký tự)
+   - Đơn vị: `\text{kPa}` (text mode trong math) — KHÔNG ghi đơn vị thô `kPa`
+   - Tham chiếu: `\cdot` (nhân), `\leq`/`\geq` (≤/≥), `\Delta` (Δ)
+
+   **Pitfalls cần tránh**:
+   - **F-string + LaTeX brace conflict**: `\dfrac{X}{Y}` xung đột với f-string interpolation. Fix: tách `st.markdown(r"""...""")` cho LaTeX tĩnh + `st.markdown(f"...")` cho số.
+   - KHÔNG dùng ASCII math (`Si = Hi × Cc/(1+e0) × log(σvf/σv0)`) — chỉ LaTeX.
+   - KHÔNG render công thức bằng Matplotlib `usetex` (chậm + cần TeX runtime). Để LaTeX cho Streamlit/WeasyPrint xử lý.
 
 6. **Pipeline báo cáo PDF chuẩn**: `pandas` (input) → `numpy + sympy` (calc) → `plotly + matplotlib` (figs, → PNG qua kaleido) → `pandas.to_html + CSS` (tables) → `Jinja2` template → `WeasyPrint` HTML→PDF.
 
