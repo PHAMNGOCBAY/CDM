@@ -2996,139 +2996,11 @@ st.sidebar.caption(
 )
 
 
-# ── Nút in trang / xuất PDF + print-friendly CSS ────────────────────────────
-st.markdown("""
-<style>
-@media print {
-  [data-testid="stSidebar"], header, footer,
-  [data-testid="stToolbar"], [data-testid="stDecoration"],
-  [data-testid="stStatusWidget"], .stDeployButton {
-    display: none !important;
-  }
-  .main .block-container {
-    max-width: 100% !important;
-    padding: 0.5rem !important;
-  }
-  details[data-testid="stExpander"] > div { display: block !important; }
-  details[data-testid="stExpander"] summary { display: none !important; }
-  div[data-testid="stExpander"] { break-inside: avoid; }
-  .stPlotlyChart, .stImage, table { break-inside: avoid; page-break-inside: avoid; }
-  a { text-decoration: none !important; color: inherit !important; }
-  body { font-size: 11pt; }
-}
-.no-print { }
-</style>
-""", unsafe_allow_html=True)
-
-st.sidebar.divider()
-st.sidebar.markdown("### In trang / Xuất PDF")
-st.sidebar.info(
-    "Nhấn **Ctrl+P** (Windows) hoặc **⌘+P** (Mac) → "
-    "chọn **Save as PDF** trong dialog Print.\n\n"
-    "**Trước khi in:** mở các expander muốn in để nội dung hiển thị đầy đủ."
-)
-
-
-# ── Hệ thống "Lý thuyết & tiêu chuẩn" trên đầu mỗi tab ──────────────────────
-_PAGE_DOCS: dict[str, list[tuple[str, str]]] = {
-    "geology": [
-        ("Tổng quan địa chất 202605-TTHC", "34-geology-overview-202605-TTHC.md"),
-        ("Profile đất khu KE", "15-soil-profile-202605-TTHC.md"),
-        ("Profile khu BXN", "32-geology-bxn-202605-TTHC.md"),
-        ("Profile khu NHC", "33-geology-nhc-202605-TTHC.md"),
-        ("Import địa tầng DXF", "36-borehole-strat-import.md"),
-        ("Import SPT KE", "45-ke-spt-import.md"),
-        ("Verify lab tests KE", "46-ke-lab-verification.md"),
-    ],
-    "sample_check": [
-        ("Mapping tên hố khoan KE", "40-ke-borehole-name-mapping.md"),
-    ],
-    "params": [
-        ("Lý thuyết CDM", "35-ly-thuyet-cdm.md"),
-        ("TCVN 9403:2012 — Cọc đất xi măng", "39-tcvn9403-tru-dat-xi-mang.md"),
-        ("Mô hình Hardening Soil", "13-hardening-soil-model.md"),
-        ("Catalog Plate properties", "10-plate-properties.md"),
-    ],
-    "compare": [
-        ("TCCS 41:2022 — Nền đường đắp trên đất yếu", "38-tccs41-nen-duong-dat-yeu.md"),
-        ("TCVN 9403:2012 — Cọc đất xi măng", "39-tcvn9403-tru-dat-xi-mang.md"),
-        ("Chống chọc thủng đệm xi măng CDM", "41-cdm-choc-thung-dem-ximang.md"),
-    ],
-    "settlement": [
-        ("TCCS 41:2022 — Lý thuyết lún cố kết", "38-tccs41-nen-duong-dat-yeu.md"),
-    ],
-    "ke_sw": [
-        ("Cọc đóng TCVN 11823-10:2017", "18-driven-pile-TCVN11823.md"),
-        ("Thiết kế kè SW dự án TTHC", "16-ke-sw-202605-TTHC.md"),
-        ("Catalog cọc SW BETON 6", "11-sw-pile-database.md"),
-        ("Chi tiết NT1/NT2 + 4 phương pháp", "42-ke-sw-nt1-nt2-chi-tiet.md"),
-        ("Plan mở rộng NT method", "43-ke-sw-nt-method-extension-plan.md"),
-        ("Áp lực đất Coulomb-Rankine", "21-lateral-earth-pressure-TCVN11823.md"),
-        ("Sơ đồ áp lực đất", "23-earth-pressure-diagram.md"),
-    ],
-    "export": [],
-    "cdm_bvt": [
-        ("Lý thuyết CDM", "35-ly-thuyet-cdm.md"),
-        ("TCVN 9403:2012", "39-tcvn9403-tru-dat-xi-mang.md"),
-    ],
-    "sw_bvt": [
-        ("Cọc đóng TCVN 11823-10:2017", "18-driven-pile-TCVN11823.md"),
-        ("Catalog cọc SW BETON 6", "11-sw-pile-database.md"),
-    ],
-}
-
-
-@st.cache_data(ttl=600, show_spinner=False)
-def _read_md(filename: str) -> str | None:
-    p = _ROOT / filename
-    if not p.exists():
-        return None
-    try:
-        return p.read_text(encoding="utf-8")
-    except Exception:
-        return None
-
-
-def _show_theory(page_key: str) -> None:
-    """Hiển thị các file lý thuyết — dropdown chọn tài liệu, render trong 1 expander."""
-    docs = _PAGE_DOCS.get(page_key, [])
-    if not docs:
-        return
-    with st.expander(f"Lý thuyết & Tiêu chuẩn ({len(docs)} tài liệu)", expanded=False):
-        st.caption(
-            "Chọn tài liệu muốn xem. Trước khi in PDF: mở expander này → chọn tài liệu → "
-            "nội dung sẽ in cùng với kết quả tính toán bên dưới."
-        )
-        _opts = {f"{i+1}. {t[0]}": t[1] for i, t in enumerate(docs)}
-        _opts_with_all = {"— Hiện tất cả —": None, **_opts}
-        _pick = st.selectbox(
-            "Tài liệu", list(_opts_with_all.keys()),
-            key=f"_theory_pick_{page_key}",
-        )
-        if _pick == "— Hiện tất cả —":
-            for title, fname in docs:
-                content = _read_md(fname)
-                st.markdown(f"---\n#### {title}  \n_Nguồn: `{fname}`_")
-                if content:
-                    st.markdown(content)
-                else:
-                    st.caption(f"_(không tìm thấy `{fname}`)_")
-        else:
-            fname = _opts_with_all[_pick]
-            content = _read_md(fname)
-            st.caption(f"Nguồn: `{fname}`")
-            if content:
-                st.markdown(content)
-            else:
-                st.caption("_(không tìm thấy file)_")
-
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 1 – ĐỊA CHẤT
 # ═══════════════════════════════════════════════════════════════════════════════
 if _page == "geology":
     st.subheader(_t("p1_sub"))
-    _show_theory("geology")
 
     col_sel, col_prof = st.columns([1, 4])
 
@@ -3810,7 +3682,6 @@ if _page == "geology":
 # PAGE – KIỂM TRA MẪU THÍ NGHIỆM
 # ═══════════════════════════════════════════════════════════════════════════════
 elif _page == "sample_check":
-    _show_theory("sample_check")
     import sys as _sys2
     _sys2.path.insert(0, str(_ROOT / "scripts"))
 
@@ -4014,7 +3885,6 @@ elif _page == "sample_check":
 # ═══════════════════════════════════════════════════════════════════════════════
 elif _page == "params":
     st.subheader(_t("p2_sub"))
-    _show_theory("params")
 
     # Layout: thông số nhập full-width, hình minh họa bên dưới
     _col_inp = st.container()
@@ -4254,7 +4124,6 @@ elif _page == "params":
 # ═══════════════════════════════════════════════════════════════════════════════
 elif _page == "compare":
     st.subheader(_t("p3_sub"))
-    _show_theory("compare")
 
     # Input khoảng cách + thông số đệm xi măng
     with st.expander(_t("setup_exp"), expanded=True):
@@ -4759,7 +4628,6 @@ elif _page == "compare":
 # ═══════════════════════════════════════════════════════════════════════════════
 elif _page == "export":
     st.subheader(_t("p5_sub"))
-    _show_theory("export")
 
     D   = _get("cdm_D")
     Lc  = _get("cdm_Lc")
@@ -4883,7 +4751,6 @@ elif _page == "export":
 # PAGE 6 – LÚN NỀN (TCCS 41:2022)
 # ═══════════════════════════════════════════════════════════════════════════════
 if _page == "settlement":
-    _show_theory("settlement")
     import sys as _sys
     _sys.path.insert(0, str(_ROOT / "scripts"))
     try:
@@ -5379,7 +5246,6 @@ TCCS 41:2022 yêu cầu ΔS ≤ {_cmp['residual_limit_cm']:.0f} cm
 # PAGE KE_SW – CỌC VÁN THÉP DỰ ỨNG LỰC SW (KÈ CÔNG VIÊN)
 # ═══════════════════════════════════════════════════════════════════════════════
 if _page == "ke_sw":
-    _show_theory("ke_sw")
     import math as _math
 
     _SW_JSON  = _ROOT / "data" / "sw_pile_catalog.json"
@@ -6142,11 +6008,9 @@ if _page == "ke_sw":
 # ── Placeholder: TKBVTC CDM ──────────────────────────────────────────────────
 if _page == "cdm_bvt":
     st.markdown("## TKBVTC CDM")
-    _show_theory("cdm_bvt")
     st.info("Trang đang phát triển — thiết kế bản vẽ thi công CDM.")
 
 # ── Placeholder: TKBVTC Cọc SW ───────────────────────────────────────────────
 if _page == "sw_bvt":
     st.markdown("## TKBVTC Cọc SW")
-    _show_theory("sw_bvt")
     st.info("Trang đang phát triển — thiết kế bản vẽ thi công cọc ván SW.")
