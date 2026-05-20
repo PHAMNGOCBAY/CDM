@@ -1404,16 +1404,18 @@ def _draw_soil_column_mpl(
 
     has_spt = bool(spt)
     if not layers:
-        fig, ax = plt.subplots(figsize=(4, 6))
+        fig, ax = plt.subplots(figsize=(4, 7))
         ax.text(0.5, 0.5, f"Không có địa tầng\n{bh_name}", ha="center", va="center",
                 transform=ax.transAxes, fontsize=10, color="#666")
         ax.axis("off")
         return fig
 
+    # VST figsize=(7,6) trong cột rộng 2/3 → displayed_h ≈ 0.571·W
+    # Cột địa chất ở cột hẹp 1/3 cần aspect cao hơn để bù → h/w ≈ 12/7
     y_bot = layers[-1]["depth_bot_m"]
     if has_spt:
         fig, (ax_col, ax_spt) = plt.subplots(
-            1, 2, figsize=(7, 7), sharey=True,
+            1, 2, figsize=(7, 12), sharey=True,
             gridspec_kw={"width_ratios": [0.4, 0.6], "wspace": 0.05},
         )
     else:
@@ -2014,7 +2016,7 @@ def _draw_soil_column(
             shapes=shapes,
             annotations=annotations,
             title=dict(text=f"Cột ĐC: {bh_name}", font=dict(size=10, color="#1F4E79"), x=0.5),
-            height=550,
+            height=500,
             margin=dict(l=10, r=20, t=55, b=20),
             plot_bgcolor="white",
             paper_bgcolor="#FAFAFA",
