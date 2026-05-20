@@ -4297,6 +4297,122 @@ elif _page == "sample_check":
         else:
             st.info("Nhập số cột CDM > 0 để kiểm tra yêu cầu mẫu theo Bảng B.1.")
 
+    # ── C. Kết quả thí nghiệm CDM 7 ngày — từ SQLite cdm_tests ──────────────
+    st.divider()
+    st.markdown("## C. Kết quả thí nghiệm CDM 7 ngày")
+    st.caption(
+        "Dữ liệu từ bảng `cdm_tests` trong SQLite: qu (cường độ chịu nén nở hông) "
+        "và E50 (mô đun ở 50% cường độ phá hủy) tại tuổi mẫu 7 ngày. "
+        "Mục đích: chọn tổ hợp xi măng + tỷ lệ W/C + hàm lượng đạt yêu cầu thiết kế."
+    )
+    try:
+        _con_cdm = sqlite3.connect(str(_DB))
+        _df_cdm7 = pd.read_sql_query(
+            """SELECT b.name AS "Hố khoan", z.code AS "Khu vực",
+                      ct.group_id AS "Nhóm", ct.test_id AS "Mã mẫu",
+                      ct.cement_type AS "Loại xi măng",
+                      ct.WC_ratio AS "W/C",
+                      ct.dosage_kgm3 AS "Hàm lượng (kg/m³)",
+                      ct.qu_R7_kPa AS "qu R7 (kPa)",
+                      ct.E50_R7_MPa AS "E50 R7 (MPa)"
+               FROM cdm_tests ct
+               JOIN boreholes b ON ct.borehole_id = b.id
+               JOIN zones z ON b.zone_id = z.id
+               ORDER BY z.code, ct.group_id, ct.test_id""",
+            _con_cdm,
+        )
+        _con_cdm.close()
+
+        if _df_cdm7.empty:
+            st.warning("Chưa có dữ liệu CDM trong SQLite. Cần import từ thí nghiệm thực tế.")
+        else:
+            # Metric tổng quan
+            _qu_min = _df_cdm7["qu R7 (kPa)"].min()
+            _qu_max = _df_cdm7["qu R7 (kPa)"].max()
+            _qu_avg = _df_cdm7["qu R7 (kPa)"].mean()
+            _m1, _m2, _m3, _m4 = st.columns(4)
+            _m1.metric("Tổng số mẫu", len(_df_cdm7))
+            _m2.metric("qu R7 trung bình", f"{_qu_avg:.0f} kPa")
+            _m3.metric("qu R7 min", f"{_qu_min:.0f} kPa")
+            _m4.metric("qu R7 max", f"{_qu_max:.0f} kPa")
+
+            # User nhập yêu cầu thiết kế để đánh giá
+            _qu_req_c1, _qu_req_c2 = st.columns([1, 3])
+            with _qu_req_c1:
+                _qu_design_req = st.number_input(
+                    "qu yêu cầu (kPa)", value=0.0, step=50.0,
+                    key="cdm_qu_design_req",
+                    help="Cường độ qu thiết kế yêu cầu — kỹ sư nhập theo dự án (vd: 500 kPa cho kè dân dụng)."
+                )
+            with _qu_req_c2:
+                if _qu_design_req > 0:
+                    _n_ok  = (_df_cdm7["qu R7 (kPa)"] >= _qu_design_req).sum()
+                    _n_tot = len(_df_cdm7)
+                    _pct   = 100 * _n_ok / _n_tot
+                    st.metric(f"Mẫu đạt qu ≥ {_qu_design_req:.0f} kPa",
+                                f"{_n_ok}/{_n_tot}", f"{_pct:.0f}%")
+
+            # Bảng chi tiết, tô màu theo qu yêu cầu
+            def _hl_qu(val):
+                if isinstance(val, (int, float)) and _qu_design_req > 0:
+                    if val >= _qu_design_req:
+                        return "background-color:#d4edda; color:#155724"
+                    return "background-color:#f8d7da; color:#721c24"
+                return ""
+            st.markdown("**Bảng chi tiết kết quả thí nghiệm:**")
+            st.dataframe(
+                _df_cdm7.style.map(_hl_qu, subset=["qu R7 (kPa)"]),
+                use_container_width=True, hide_index=True,
+                column_config={
+                    "qu R7 (kPa)":  st.column_config.NumberColumn(format="%.1f"),
+                    "E50 R7 (MPa)": st.column_config.NumberColumn(format="%.1f"),
+                    "W/C":           st.column_config.NumberColumn(format="%.2f"),
+                    "Hàm lượng (kg/m³)": st.column_config.NumberColumn(format="%.0f"),
+                },
+            )
+
+            # Biểu đồ Plotly: qu vs dosage, group by cement + W/C
+            if _HAS_PLOTLY:
+                _df_cdm7["Combo"] = (_df_cdm7["Loại xi măng"] + " · W/C=" +
+                                       _df_cdm7["W/C"].astype(str))
+                _fig_cdm = go.Figure()
+                _colors_combo = ["#1565C0", "#2E7D32", "#E65100", "#C62828"]
+                for _i_c, _combo in enumerate(_df_cdm7["Combo"].unique()):
+                    _sub = _df_cdm7[_df_cdm7["Combo"] == _combo].sort_values("Hàm lượng (kg/m³)")
+                    _fig_cdm.add_trace(go.Scatter(
+                        x=_sub["Hàm lượng (kg/m³)"],
+                        y=_sub["qu R7 (kPa)"],
+                        mode="lines+markers",
+                        line=dict(color=_colors_combo[_i_c % 4], width=2.5),
+                        marker=dict(size=10),
+                        name=_combo,
+                        text=[f"{q:.0f} kPa" for q in _sub["qu R7 (kPa)"]],
+                        textposition="top center",
+                    ))
+                if _qu_design_req > 0:
+                    _fig_cdm.add_hline(y=_qu_design_req, line_dash="dash",
+                                         line_color="red",
+                                         annotation_text=f"qu yêu cầu = {_qu_design_req:.0f} kPa")
+                _fig_cdm.update_layout(
+                    title="qu R7 theo hàm lượng xi măng — phân nhóm theo loại + W/C",
+                    xaxis_title="Hàm lượng xi măng (kg/m³)",
+                    yaxis_title="qu R7 (kPa) — cường độ chịu nén nở hông 7 ngày",
+                    height=400, margin=dict(t=50, b=40),
+                    legend=dict(orientation="h", y=1.10),
+                )
+                st.plotly_chart(_fig_cdm, use_container_width=True)
+
+            # Tổ hợp tốt nhất (qu cao nhất)
+            _best = _df_cdm7.loc[_df_cdm7["qu R7 (kPa)"].idxmax()]
+            st.success(
+                f"**Tổ hợp đạt qu cao nhất:** {_best['Loại xi măng']} · "
+                f"W/C = {_best['W/C']:.2f} · Hàm lượng = {_best['Hàm lượng (kg/m³)']:.0f} kg/m³ "
+                f"→ qu = **{_best['qu R7 (kPa)']:.1f} kPa**, "
+                f"E50 = {_best['E50 R7 (MPa)']:.1f} MPa (mẫu {_best['Mã mẫu']}, HK {_best['Hố khoan']})"
+            )
+    except Exception as _e_cdm:
+        st.warning(f"Không tải được dữ liệu CDM: {_e_cdm}")
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 2 – THÔNG SỐ
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -8397,6 +8513,110 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             f"(tải q = {_dpy_q_op} kN/m², a = {_dpy_q_a} m, w = {_dpy_q_w} m). "
                             f"TCVN 11823-3 §10.6.2 công thức (39)."
                         )
+
+                # ── BIỂU ĐỒ NỘI LỰC CỪ SAU XỬ LÝ NỀN BẰNG CDM (matplotlib) ─────
+                try:
+                    import matplotlib.pyplot as _plt_w
+                    from matplotlib.patches import Rectangle as _RectW
+                    st.markdown("##### Nội lực cừ SW sau xử lý nền CDM")
+                    _fig_w, _axw = _plt_w.subplots(
+                        1, 4, figsize=(12, 7), sharey=True,
+                        gridspec_kw={"width_ratios": [1, 2, 2, 2]},
+                    )
+                    _zsw = _res_d1["zs"]
+                    _top_w = float(_dpy_top_ke) if "_dpy_top_ke" in dir() else 2.7
+                    _Z_w = float(_dpy_Z) if "_dpy_Z" in dir() else 0.0
+                    _Lw = float(_dpy_L)
+                    _el_pile = [_top_w - z for z in _zsw]
+                    _el_mid = [_top_w - (_zsw[i] + _zsw[i + 1]) / 2 for i in range(len(_zsw) - 1)]
+                    _cdm_top_w = _Z_w
+                    _cdm_bot_w = _Z_w - _cdm_thk_eff if _cdm_thk_eff > 0 else _Z_w
+
+                    # Panel 0: sơ đồ cừ + CDM
+                    _bot_pile_w = _top_w - _Lw
+                    _axw[0].add_patch(_RectW((-0.5, _bot_pile_w), 1.0, _Lw,
+                                              facecolor="#444444", edgecolor="black",
+                                              linewidth=1.2, label="Cừ SW"))
+                    if _cdm_thk_eff > 0:
+                        _axw[0].add_patch(_RectW((-3, _cdm_bot_w), 2.5, _cdm_thk_eff,
+                                                  facecolor="#90c890", edgecolor="green",
+                                                  alpha=0.7, hatch="//",
+                                                  label=f"CDM Lc={_cdm_Lc_val:.1f}m"))
+                    if _top_w - _Z_w > 0:
+                        _axw[0].add_patch(_RectW((-3, _Z_w), 2.5, _top_w - _Z_w,
+                                                  facecolor="#d4a373", alpha=0.4,
+                                                  label="Đất đắp"))
+                    _axw[0].axhline(_Z_w - 0.5, color="cyan", linestyle="-", lw=1.2, alpha=0.5)
+                    _axw[0].text(2.5, _Z_w - 0.4, "MNN", fontsize=7, color="cyan")
+                    _axw[0].plot([-3, -0.5], [_Z_w, _Z_w], "k-", lw=1.5)
+                    _axw[0].plot([0.5, 3], [_Z_w - 1, _Z_w - 1], "k-", lw=1.5)
+                    _axw[0].text(-2.8, _Z_w + 0.3, "Front (đắp)", fontsize=7, color="brown")
+                    _axw[0].text(0.8, _Z_w - 0.7, "Back (đào)", fontsize=7, color="orange")
+                    _axw[0].set_xlim(-3.5, 3.5)
+                    _axw[0].set_ylabel("Cao độ (m)")
+                    _axw[0].set_title("Sơ đồ cừ + CDM", fontsize=10)
+                    _axw[0].set_xticks([])
+                    _axw[0].grid(alpha=0.3)
+                    _axw[0].legend(fontsize=7, loc="lower left")
+
+                    # Panel 1: u(z)
+                    if _cdm_thk_eff > 0:
+                        _axw[1].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green",
+                                         label="Vùng CDM")
+                    _axw[1].plot(_res_d1["ux"], _el_pile, "b-", lw=2.0)
+                    _axw[1].axvline(25, color="red", linestyle="--", lw=1.0, label="±25 mm")
+                    _axw[1].axvline(-25, color="red", linestyle="--", lw=1.0)
+                    _axw[1].axvline(0, color="black", lw=0.5)
+                    _axw[1].set_xlabel("u (mm)")
+                    _axw[1].set_title(
+                        f"Chuyển vị u(z)\nu_max = {_res_d1['u_max_mm']:.2f} mm",
+                        fontsize=10)
+                    _axw[1].grid(alpha=0.3)
+                    _axw[1].legend(fontsize=7)
+
+                    # Panel 2: M(z)
+                    if _cdm_thk_eff > 0:
+                        _axw[2].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green")
+                    _axw[2].plot(_res_d1["Ms"], _el_mid, "g-", lw=2.0)
+                    _axw[2].axvline(_res_d1["Mcr_kNm"], color="red", linestyle="--",
+                                     lw=1.0, label=f"Mcr={_res_d1['Mcr_kNm']:.0f}")
+                    _axw[2].axvline(-_res_d1["Mcr_kNm"], color="red", linestyle="--", lw=1.0)
+                    _axw[2].axvline(0, color="black", lw=0.5)
+                    _axw[2].set_xlabel("M (kNm)")
+                    _ratio_w = _res_d1["M_max_kNm"] / _res_d1["Mcr_kNm"] if _res_d1["Mcr_kNm"] else 0
+                    _axw[2].set_title(
+                        f"Moment M(z)\nM_max={_res_d1['M_max_kNm']:.0f}  M/Mcr={_ratio_w:.2f}",
+                        fontsize=10)
+                    _axw[2].grid(alpha=0.3)
+                    _axw[2].legend(fontsize=7)
+
+                    # Panel 3: Q(z)
+                    _Qs_w = _res_d1.get("Qs", [])
+                    if _Qs_w:
+                        if _cdm_thk_eff > 0:
+                            _axw[3].axhspan(_cdm_bot_w, _cdm_top_w, alpha=0.15, color="green")
+                        _axw[3].plot(_Qs_w, _el_mid, "m-", lw=2.0)
+                        _axw[3].axvline(0, color="black", lw=0.5)
+                        _Qmax_w = _res_d1.get("Q_max_kN", max(abs(q) for q in _Qs_w))
+                        _axw[3].set_title(f"Lực cắt Q(z)\nQ_max={_Qmax_w:.0f} kN", fontsize=10)
+                        _axw[3].set_xlabel("Q (kN)")
+                        _axw[3].grid(alpha=0.3)
+                    else:
+                        _axw[3].set_visible(False)
+
+                    _status_w = ("ĐẠT" if (_res_d1["u_max_mm"] < 25 and
+                                            _res_d1["M_max_kNm"] < _res_d1["Mcr_kNm"])
+                                  else "KHÔNG ĐẠT")
+                    _fig_w.suptitle(
+                        f"Nội lực cừ {_dpy_pile} L={_Lw:.0f}m sau xử lý CDM "
+                        f"(Lc={_cdm_Lc_val:.1f}m) — {_status_w}",
+                        fontsize=11, fontweight="bold",
+                    )
+                    _plt_w.tight_layout()
+                    st.pyplot(_fig_w, use_container_width=True)
+                    _plt_w.close(_fig_w)
+                except Exception as _e_mpl:
+                    st.warning(f"Không vẽ được biểu đồ matplotlib: {_e_mpl}")
 
 
     # ── Xuất PDF tab Cọc ván SW ──────────────────────────────────────────────
