@@ -1782,10 +1782,18 @@ def _linreg(xs: list, ys: list) -> tuple[float, float]:
 def _chart_su_profile_mpl(
     df_vst: pd.DataFrame,
     selected_locs: list[str] | None = None,
+    figsize: tuple = (7, 6),
+    font_scale: float = 1.0,
 ):
-    """Matplotlib fallback cho biểu đồ Su–VST khi không có plotly."""
+    """Matplotlib fallback cho biểu đồ Su–VST khi không có plotly.
+    `font_scale`: ×1 mặc định; ×2 khi đặt cạnh soil column trong cột hẹp."""
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(7, 6))
+    fig, ax = plt.subplots(figsize=figsize)
+    _fs_anno = int(7 * font_scale)
+    _fs_axis = int(9 * font_scale)
+    _fs_title = int(10 * font_scale)
+    _fs_tick = int(8 * font_scale)
+    _fs_leg  = int(8 * font_scale)
     if df_vst.empty:
         ax.text(0.5, 0.5, "Không có dữ liệu VST", ha="center", va="center", transform=ax.transAxes)
         return fig
@@ -1806,7 +1814,7 @@ def _chart_su_profile_mpl(
         ax.plot(sus, y_plot, "-o", color=color, lw=1.5, ms=5, label=loc)
         for x, y in zip(sus, y_plot):
             ax.annotate(f"{x:.1f}", (x, y), xytext=(4, 0), textcoords="offset points",
-                        fontsize=7, color=color, va="center")
+                        fontsize=_fs_anno, color=color, va="center")
         if len(depths) >= 2:
             a, b = _linreg(depths, sus)
             d_ext = (max(depths) - min(depths)) * 0.1
@@ -1815,17 +1823,17 @@ def _chart_su_profile_mpl(
                     "--", color=color, lw=1.0, alpha=0.7)
             sign = "+" if b >= 0 else "−"
             eq = f"Su={a:+.2f}z{sign}{abs(b):.2f}".replace("+-", "−")
-            ax.text(a*dd[-1] + b, -dd[-1], eq, fontsize=7, color=color,
+            ax.text(a*dd[-1] + b, -dd[-1], eq, fontsize=_fs_anno, color=color,
                     bbox=dict(facecolor="white", alpha=0.75, edgecolor=color, lw=0.5, pad=1))
 
-    ax.set_xlabel("Su (kPa)", fontsize=9)
-    ax.set_ylabel("Cao độ (m)", fontsize=9)
+    ax.set_xlabel("Su (kPa)", fontsize=_fs_axis)
+    ax.set_ylabel("Cao độ (m)", fontsize=_fs_axis)
     title = "Biểu đồ Su – Cắt cánh (VST)"
     title += f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ"
-    ax.set_title(title, fontsize=10)
+    ax.set_title(title, fontsize=_fs_title)
     ax.grid(True, ls=":", color="#CCC", lw=0.5)
-    ax.legend(loc="lower right", fontsize=8, framealpha=0.85)
-    ax.tick_params(labelsize=8)
+    ax.legend(loc="lower right", fontsize=_fs_leg, framealpha=0.85)
+    ax.tick_params(labelsize=_fs_tick)
     fig.tight_layout()
     return fig
 
@@ -1833,8 +1841,13 @@ def _chart_su_profile_mpl(
 def _draw_soil_column_mpl(
     layers: list[dict], bh_name: str = "",
     spt: list[dict] | None = None,
+    figsize: tuple | None = None,
+    font_scale: float = 1.0,
 ):
-    """Matplotlib fallback cho cột địa chất + SPT."""
+    """Matplotlib fallback cho cột địa chất + SPT.
+    `figsize=None`: dùng default (7,12) khi có SPT ở cột hẹp.
+    `figsize=(W,H)`: override (vd (7,6) khi đặt cạnh VST cùng hàng).
+    `font_scale`: ×1 mặc định cột hẹp; ×0.65 khi đặt cạnh VST trong cột rộng."""
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 
@@ -1862,21 +1875,24 @@ def _draw_soil_column_mpl(
 
     # VST figsize=(7,6) trong cột rộng 2/3 → displayed_h ≈ 0.571·W
     # Cột địa chất ở cột hẹp 1/3 cần aspect cao hơn để bù → h/w ≈ 12/7
+    # Override figsize khi đặt cạnh VST trong cùng row width
     y_bot = layers[-1]["depth_bot_m"]
     if has_spt:
+        _figsize = figsize if figsize else (7, 12)
         fig, (ax_col, ax_spt) = plt.subplots(
-            1, 2, figsize=(7, 12), sharey=True,
+            1, 2, figsize=_figsize, sharey=True,
             gridspec_kw={"width_ratios": [0.4, 0.6], "wspace": 0.05},
         )
     else:
-        fig, ax_col = plt.subplots(figsize=(4, 7))
+        _figsize = figsize if figsize else (4, 7)
+        fig, ax_col = plt.subplots(figsize=_figsize)
         ax_spt = None
 
-    _fs_lbl  = 14 if has_spt else 8
-    _fs_sym  = 16 if has_spt else 9
-    _fs_axis = 16 if has_spt else 9
-    _fs_tick = 14 if has_spt else 8
-    _fs_ttl  = 18 if has_spt else 10
+    _fs_lbl  = int((14 if has_spt else 8) * font_scale)
+    _fs_sym  = int((16 if has_spt else 9) * font_scale)
+    _fs_axis = int((16 if has_spt else 9) * font_scale)
+    _fs_tick = int((14 if has_spt else 8) * font_scale)
+    _fs_ttl  = int((18 if has_spt else 10) * font_scale)
     for lay in layers:
         y0, y1 = lay["depth_top_m"], lay["depth_bot_m"]
         sym   = (lay.get("symbol") or "").strip()
@@ -1909,17 +1925,20 @@ def _draw_soil_column_mpl(
         N_vals = [min(s["N"] or 0, 60) for s in spt]
         colors = [_spt_color(n) for n in N_vals]
         ax_spt.barh(depths, N_vals, height=0.6, color=colors, edgecolor="#444", lw=0.5)
+        _fs_N = int(14 * font_scale)
+        _fs_xlbl = int(16 * font_scale)
+        _fs_tit = int(18 * font_scale)
         for d, n in zip(depths, N_vals):
-            ax_spt.text(n + 1, d, str(n), fontsize=14, va="center")
+            ax_spt.text(n + 1, d, str(n), fontsize=_fs_N, va="center")
         ax_spt.plot(N_vals, depths, ":", color="#333", lw=1)
         ax_spt.axvline(4, ls="--", color="#E53935", lw=1, alpha=0.6)
-        ax_spt.text(4.2, -0.2, "N=4", fontsize=14, color="#E53935")
+        ax_spt.text(4.2, -0.2, "N=4", fontsize=_fs_N, color="#E53935")
         ax_spt.set_xlim(0, _x_max)
-        ax_spt.set_xlabel("N (blows/30cm)", fontsize=16)
-        ax_spt.tick_params(labelsize=14)
+        ax_spt.set_xlabel("N (blows/30cm)", fontsize=_fs_xlbl)
+        ax_spt.tick_params(labelsize=_fs_N)
         ax_spt.grid(True, axis="x", ls=":", color="#EEE", lw=0.5)
-        ax_spt.set_title("SPT – N", fontsize=18, color="#1F4E79")
-        fig.suptitle(f"Cột ĐC: {bh_name}", fontsize=18, color="#1F4E79", y=0.995)
+        ax_spt.set_title("SPT – N", fontsize=_fs_tit, color="#1F4E79")
+        fig.suptitle(f"Cột ĐC: {bh_name}", fontsize=_fs_tit, color="#1F4E79", y=0.995)
 
     fig.tight_layout()
     return fig
@@ -6064,7 +6083,9 @@ if _page == "ke_sw":
                             use_container_width=True,
                         )
 
-                    # ── Hàng 3: Cột địa chất + VST cùng hàng ────────────────────
+                    # ── Hàng 3: Cột địa chất + VST cùng hàng, cùng size + font ──
+                    # Cả 2 đặt cạnh nhau trong 50% column → dùng figsize=(7,6)
+                    # VST font scale ×2 để match SPT-N (anno 7→14, axis 9→18)
                     _col_sc, _col_vst = st.columns(2, gap="medium")
                     with _col_sc:
                         st.markdown(f"**Cột địa chất {_bh_n}**")
@@ -6072,8 +6093,10 @@ if _page == "ke_sw":
                             _sc_lay = _load_layers(_bh_n)
                             _sc_spt = _load_spt(_bh_n)
                             if _sc_lay and _HAS_MPL:
-                                _fig_sc = _draw_soil_column_mpl(_sc_lay, _bh_n,
-                                                                spt=_sc_spt or None)
+                                _fig_sc = _draw_soil_column_mpl(
+                                    _sc_lay, _bh_n, spt=_sc_spt or None,
+                                    figsize=(7, 6),
+                                )
                                 st.pyplot(_fig_sc, use_container_width=True)
                                 plt.close(_fig_sc)
                             else:
@@ -6082,7 +6105,6 @@ if _page == "ke_sw":
                             st.caption(f"_(không vẽ được: {_e_sc})_")
 
                     with _col_vst:
-                        # VST tham khảo: ưu tiên HK gốc (nearest source), fallback HK hiện tại
                         _vst_target_bh = _vst_ref_bh or _bh_n
                         st.markdown(
                             f"**VST {_vst_target_bh}**"
@@ -6094,7 +6116,10 @@ if _page == "ke_sw":
                             _vst_match = [l for l in _df_vst_ke["loc_name"].unique()
                                           if _bh_short in l or l in _vst_target_bh]
                             if _vst_match:
-                                _fig_vst = _chart_su_profile_mpl(_df_vst_ke, _vst_match)
+                                _fig_vst = _chart_su_profile_mpl(
+                                    _df_vst_ke, _vst_match,
+                                    figsize=(7, 6), font_scale=2.0,
+                                )
                                 st.pyplot(_fig_vst, use_container_width=True)
                                 plt.close(_fig_vst)
                             else:
