@@ -1443,7 +1443,7 @@ def _draw_cdm_section(
     fig, ax = plt.subplots(figsize=(5, 8))
     fig.patch.set_facecolor("#FAFAFA")
     ax.set_facecolor("white")
-    ax.set_xlim(0, W * 1.2)
+    ax.set_xlim(-W * 0.35, W * 1.2)
     ax.set_ylim(z_base, z_road + 2.5)
     ax.set_ylabel("Cao độ (m)", fontsize=9)
     ax.set_xticks([])
@@ -1564,6 +1564,27 @@ def _draw_cdm_section(
     ax.text(cx, q_top + 0.2, f"q = {q_traffic:.0f} kN/m²",
             ha="center", va="bottom", fontsize=10,
             color="#B71C1C", fontweight="bold", zorder=6)
+
+    # Chiều cao đắp H (từ mặt đất tự nhiên đến đỉnh mặt đường)
+    _H_total = z_road - _clay_top_eff
+    if _H_total > 0.1:
+        _dim_xH = -W * 0.18
+        ax.annotate("", xy=(_dim_xH, _clay_top_eff), xytext=(_dim_xH, z_road),
+                    arrowprops=dict(arrowstyle="<->", color="#1565C0", lw=1.5), zorder=5)
+        ax.text(_dim_xH - W * 0.03, (_clay_top_eff + z_road) / 2,
+                f"H\n={_H_total:.1f}m",
+                ha="right", va="center", fontsize=8.5, color="#1565C0",
+                fontweight="bold", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#1565C0",
+                          alpha=0.9, lw=0.8))
+        if top_clay is None or abs(top_clay - CDTK) <= 0.05:
+            ax.plot([-W * 0.3, W * 0.3], [_clay_top_eff, _clay_top_eff],
+                    color="#795548", lw=1.0, ls="--", zorder=4, alpha=0.75)
+            ax.text(W * 0.02, _clay_top_eff + 0.08,
+                    f"Mặt đất TN = {_clay_top_eff:+.2f} m",
+                    ha="left", va="bottom", fontsize=7.5, color="#795548", zorder=5,
+                    bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="#795548",
+                              alpha=0.85, lw=0.6))
 
     plt.tight_layout(pad=0.5)
     return fig
@@ -3051,8 +3072,8 @@ elif _page == "sample_check":
 elif _page == "params":
     st.subheader(_t("p2_sub"))
 
-    # Layout: thông số bên trái, hình minh họa bên phải
-    _col_inp, _col_sec = st.columns([3, 2], gap="medium")
+    # Layout: thông số nhập full-width, hình minh họa bên dưới
+    _col_inp = st.container()
 
     with _col_inp:
         c1, c2, c3, c4 = st.columns(4)
@@ -3132,7 +3153,9 @@ elif _page == "params":
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
 
-    # ── Hình minh họa bên phải: mặt cắt (trên) + lưới (dưới) ────────────────
+    # ── Hình minh họa bên dưới: mặt cắt (trái) + lưới mặt bằng (phải) ────────
+    _col_sec, _col_grd = st.columns(2, gap="medium")
+
     with _col_sec:
         _ld_s = _get("cdm_loads")
         _fig_sec = _draw_cdm_section(
@@ -3147,6 +3170,7 @@ elif _page == "params":
         st.pyplot(_fig_sec, use_container_width=True)
         _fig_sec.clf()
 
+    with _col_grd:
         _sps_now   = _get("cdm_spacings")
         _rec_now   = min(_get("cdm_rec_idx"), len(_sps_now) - 1) if _sps_now else 0
         _e_ref_now = _sps_now[_rec_now] if _sps_now else 1.6
