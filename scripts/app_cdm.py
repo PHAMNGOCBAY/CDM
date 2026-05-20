@@ -9117,7 +9117,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 _axw[0].add_patch(_RectW((-3, _cdm_bot_w), 2.5, _cdm_thk_eff,
                                                           facecolor="#90c890", edgecolor="green",
                                                           alpha=0.7, hatch="//",
-                                                          label=f"CDM Lc={_cdm_Lc_val:.1f}m"))
+                                                          label="Vùng CDM"))
                             # Đất đắp Front
                             if _top_w - _Z_w > 0:
                                 _axw[0].add_patch(_RectW((-3, _Z_w), 2.5, _top_w - _Z_w,
@@ -9173,7 +9173,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
                             _axw[0].set_xlim(-3.5, 3.5)
                             _axw[0].set_ylabel("Cao độ (m)")
-                            _axw[0].set_title(f"Sơ đồ kích thước hình học\nL={_Lw:.1f}m, Lc={_cdm_Lc_val:.1f}m",
+                            _axw[0].set_title(f"Sơ đồ kích thước hình học\nL cừ = {_Lw:.1f} m",
                                                fontsize=9)
                             _axw[0].set_xticks([])
                             _axw[0].grid(alpha=0.3)
@@ -9229,7 +9229,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                           else "KHÔNG ĐẠT")
                             _fig_w.suptitle(
                                 f"Nội lực cừ {_dpy_pile} L={_Lw:.0f}m sau xử lý CDM "
-                                f"(Lc={_cdm_Lc_val:.1f}m) — {_status_w}",
+                                f"— {_status_w}",
                                 fontsize=11, fontweight="bold",
                             )
                             _plt_w.tight_layout()
