@@ -7861,57 +7861,38 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     st.error(f"Lỗi giải Winkler: {_e_solve}")
 
     # ═══════════════════════════════════════════════════════════════════════════
-    # E. Phương pháp FEM 2D
+    # E. Phương pháp FEM 2D — ĐANG PHÁT TRIỂN
     # ═══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown("### E. Phương pháp FEM 2D")
-    st.info(
-        "**Stage 2 — FEM 2D:** mô phỏng chi tiết với OpenSeesPy / PLAXIS 2D. "
-        "Khai báo BeamContact2D mô phỏng trượt tường-đất; phần tử 9_4_QuadUP cho bài toán liên hợp rắn-lỏng."
+    st.subheader("Phương pháp FEM 2D — Stage 2  *(đang phát triển)*")
+    st.warning(
+        "**Mục E đang trong giai đoạn phát triển — chưa khả dụng để sử dụng.**\n\n"
+        "Khi hoàn thành, mục E sẽ mô phỏng chi tiết tường chắn + CDM bằng FEM 2D "
+        "với OpenSeesPy hoặc PLAXIS 2D. Hiện tại vui lòng dùng **Mục D (p-y Winkler)** "
+        "cho thiết kế sơ bộ — kết quả Stage 1 thường đủ dùng cho đa số trường hợp."
     )
 
-    try:
-        import openseespy.opensees as _ops
-        _HAS_OPS = True
-    except ImportError:
-        _HAS_OPS = False
-
-    if not _HAS_OPS:
-        st.warning(
-            "**OpenSeesPy chưa khả dụng trên Streamlit Cloud** (cần binary C++). "
-            "Stage 2 FEM chỉ chạy được khi clone repo về máy local + cài `openseespy gmsh fenics-basix`.\n\n"
-            "Trên local: file `scripts/sw_fem_opensees.py` (sẽ tạo) sẽ build mô hình 2D với:\n"
-            "- Phần tử: `9_4_QuadUP` (đất bão hoà), `dispBeamColumn` (cọc)\n"
-            "- Tiếp xúc: `BeamContact2D` (μ=0.4, tan φ)\n"
-            "- Vật liệu: PressureDependMultiYield (cát), PressureIndependMultiYield (sét), Concrete02 (cọc BTCT)\n"
-            "- Phases: K0 init → excavation → loading → consolidation\n"
-        )
+    with st.expander("Roadmap & yêu cầu kỹ thuật cho Mục E"):
         st.markdown(
-            "**Pipeline tham khảo:**\n"
-            "1. `gmsh.py` → tạo mesh tam giác/tứ giác từ hình học (CDM + tường + đất)\n"
-            "2. `pygmsh` → wrapper Python tiện hơn cho gmsh\n"
-            "3. `meshio` → convert mesh sang `.tcl` (OpenSees) hoặc `.geo` (PLAXIS)\n"
-            "4. `openseespy` → định nghĩa nodes/elements/materials, solve\n"
-            "5. `pyvista` → render kết quả 3D (stress contour, displacement field)\n"
-            "6. `plxscripting` → automation PLAXIS 2D (chỉ Windows + license)\n"
+            "**Mục tiêu:** mô phỏng phi tuyến tường chắn + CDM với:\n"
+            "- Phần tử `9_4_QuadUP` (đất bão hoà liên hợp rắn-lỏng)\n"
+            "- Phần tử `dispBeamColumn` (cọc BTCT DUL)\n"
+            "- Tiếp xúc `BeamContact2D` (μ = tan φ, mô phỏng trượt tường-đất)\n"
+            "- Vật liệu: `PressureDependMultiYield` (cát), `PressureIndependMultiYield` (sét), "
+            "`Concrete02` (cọc)\n"
+            "- Pha: K0 init → đào → tải ngang → cố kết\n\n"
+            "**Pipeline triển khai (6 bước):**\n"
+            "1. `gmsh` → mesh tam giác/tứ giác (CDM + tường + đất)\n"
+            "2. `pygmsh` → wrapper Python\n"
+            "3. `meshio` → convert sang `.tcl` (OpenSees) / `.geo` (PLAXIS)\n"
+            "4. `openseespy` → solve\n"
+            "5. `pyvista` → render kết quả\n"
+            "6. `plxscripting` → tích hợp PLAXIS (Windows + license)\n\n"
+            "**Hạn chế hiện tại:**\n"
+            "- Streamlit Cloud không hỗ trợ binary C++ (gmsh, vtk, openseespy)\n"
+            "- Cần module `scripts/sw_fem_opensees.py` (chưa viết)\n"
+            "- Cần hiệu chỉnh mô hình + benchmark với PLAXIS thực tế trước khi public"
         )
-    else:
-        st.success(f"OpenSeesPy đang chạy local (version: {_ops.version() if hasattr(_ops, 'version') else '3.x'})")
-        _ec1, _ec2 = st.columns(2)
-        with _ec1:
-            _e_pile = st.selectbox("Cọc FEM", _sw_names,
-                                    index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
-                                    key="e_pile_fem")
-            _e_L    = st.number_input("L FEM (m)", 10.0, 35.0, 24.0, 0.5, key="e_L_fem")
-            _e_H    = st.number_input("Tải ngang H (kN/m)", 0.0, 200.0, 30.0, 5.0, key="e_H_fem")
-        with _ec2:
-            _e_mesh_h = st.number_input("Mesh size đất (m)", 0.2, 2.0, 0.5, 0.1, key="e_mesh")
-            _e_phases = st.multiselect("Pha tính toán",
-                                       ["K0 init", "Đào", "Tải ngang", "Cố kết"],
-                                       default=["K0 init", "Tải ngang"], key="e_phases")
-        if st.button("Chạy FEM OpenSeesPy (đơn giản)", type="primary", key="btn_e_fem"):
-            st.info("Đang xây dựng module sw_fem_opensees.py — tạm dùng kết quả Stage 1 ở mục D.")
-            # TODO: gọi scripts/sw_fem_opensees.py khi đã viết
 
     # ── Xuất PDF tab Cọc ván SW ──────────────────────────────────────────────
     if _HAS_PDF:
