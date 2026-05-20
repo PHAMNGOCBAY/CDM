@@ -7682,41 +7682,92 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                             key="dpy_bc")
 
             # ── Hàng nhập đất phía Back (phía đào / sông) ───────────────────
-            st.markdown("**Đất phía Back (sau cọc — phía đào / sông):**")
-            _dpy_b1, _dpy_b2, _dpy_b3, _dpy_b4 = st.columns(4)
+            st.markdown(
+                "**Đất phía Back (sau cọc — phía đào / sông):** "
+                "*Đáy lớp bùn sét giả định BẰNG cao độ Front (cùng đáy lớp 1 thực tế).*"
+            )
+            _dpy_b1, _dpy_b2, _dpy_b3 = st.columns(3)
             _dpy_Zb     = _dpy_b1.number_input("Cao độ Ground B (m)", -10.0, 5.0,
                                                   -2.0, 0.05,
                                                   key="dpy_Z_back",
                                                   help="Cao độ đáy đào phía Back (mặc định −2.0m; thấp hơn Front do đã đào)")
-            _dpy_H1b    = _dpy_b2.number_input("H₁ Back (m)", 1.0, 35.0, float(_dpy_H1), 0.5,
-                                                  key="dpy_H1_back",
-                                                  help="Bề dày lớp bùn sét phía Back")
-            _dpy_sub    = _dpy_b3.number_input("Su Back (kN/m²)", 5.0, 100.0,
+            _dpy_sub    = _dpy_b2.number_input("Su Back (kN/m²)", 5.0, 100.0,
                                                   float(_dpy_su), 1.0,
                                                   key="dpy_su_back",
                                                   help="Sức kháng cắt phía Back có thể khác Front")
-            _dpy_wlvl_b = _dpy_b4.number_input("Mực nước Back (m)", -10.0, 5.0,
+            _dpy_wlvl_b = _dpy_b3.number_input("Mực nước Back (m)", -10.0, 5.0,
                                                   float(_dpy_wlvl), 0.5,
                                                   key="dpy_wlvl_back",
                                                   help="Mực nước phía Back (sông/đào — thường thấp)")
 
         with _col_schem_d:
             if _HAS_MPL:
-                # Layers Front (trái)
-                _lyr_mid_F  = _dpy_Z - _dpy_H1
                 _pile_tip_d = _dpy_top_ke - _dpy_L
+                # Đáy lớp bùn sét — DÙNG CHUNG cả 2 phía (giả định cùng đáy lớp 1)
+                _clay_bot_elev = _dpy_Z - _dpy_H1
                 _layers_F = [
-                    ("Bùn sét F",  _dpy_Z,    _lyr_mid_F,  16.0, 0.0),
-                    ("Lớp cứng F", _lyr_mid_F, _pile_tip_d, 18.0, 20.0),
+                    ("Bùn sét",  _dpy_Z,        _clay_bot_elev, 16.0, 0.0),
+                    ("Lớp cứng", _clay_bot_elev, _pile_tip_d,   18.0, 20.0),
                 ]
-                # Layers Back (phải)
-                _lyr_mid_B  = _dpy_Zb - _dpy_H1b
                 _layers_B = [
-                    ("Bùn sét B",  _dpy_Zb,    _lyr_mid_B,  16.0, 0.0),
-                    ("Lớp cứng B", _lyr_mid_B, _pile_tip_d, 18.0, 20.0),
+                    ("Bùn sét",  _dpy_Zb,       _clay_bot_elev, 16.0, 0.0),
+                    ("Lớp cứng", _clay_bot_elev, _pile_tip_d,   18.0, 20.0),
                 ]
+
+                # ── 2m lớp đất dưới chân cừ — query SQLite từ HK gần nhất ──
+                _below_layers_F: list = []
+                _below_layers_B: list = []
+                if _dpy_apply_bh and _dpy_apply_bh != "(không áp)":
+                    try:
+                        # Lấy elevation của HK đang áp + layers từ DB
+                        _con_below = sqlite3.connect(str(_DB))
+                        _cur_below = _con_below.cursor()
+                        _row_bh = _cur_below.execute(
+                            "SELECT id, elevation_m FROM boreholes WHERE name LIKE ? LIMIT 1",
+                            (f"%{_dpy_apply_bh}%",),
+                        ).fetchone()
+                        if _row_bh:
+                            _bh_id_bel, _bh_elev_bel = _row_bh
+                            _bh_elev_bel = _bh_elev_bel or 0.0
+                            _ly_below = _cur_below.execute(
+                                "SELECT symbol, description, depth_top_m, depth_bot_m "
+                                "FROM layers WHERE borehole_id=? ORDER BY depth_top_m",
+                                (_bh_id_bel,),
+                            ).fetchall()
+                            # Pile tip depth from BH surface
+                            _tip_depth = float(_bh_elev_bel) - _pile_tip_d
+                            _max_depth = _tip_depth + 2.0   # 2m dưới chân cừ
+                            for _sym, _desc, _dt, _db in _ly_below:
+                                if _dt is None or _db is None:
+                                    continue
+                                # Chỉ lấy layers giao [pile_tip_depth, pile_tip_depth + 2m]
+                                if _db < _tip_depth or _dt > _max_depth:
+                                    continue
+                                # Convert depth → elev
+                                _e_top = _bh_elev_bel - max(_dt, _tip_depth)
+                                _e_bot = _bh_elev_bel - min(_db, _max_depth)
+                                _gam_b = 18.5 if _sym in ("4", "F") else 19.0
+                                _phi_b = 28.0 if _sym in ("4", "F") else 22.0
+                                _nm_b  = f"L{_sym}: {(_desc or '')[:18]}"
+                                _below_layers_F.append((_nm_b, _e_top, _e_bot, _gam_b, _phi_b))
+                                _below_layers_B.append((_nm_b, _e_top, _e_bot, _gam_b, _phi_b))
+                        _con_below.close()
+                    except Exception:
+                        pass
+
+                # Nếu không có dữ liệu SQLite → giả định 2m lớp cát chặt
+                if not _below_layers_F:
+                    _below_layers_F.append(("Cát chặt (gd)", _pile_tip_d,
+                                              _pile_tip_d - 2.0, 19.0, 30.0))
+                    _below_layers_B.append(("Cát chặt (gd)", _pile_tip_d,
+                                              _pile_tip_d - 2.0, 19.0, 30.0))
+
+                _layers_F.extend(_below_layers_F)
+                _layers_B.extend(_below_layers_B)
+
                 _fig_sch_d = draw_pile_schematic(
-                    L_m=_dpy_L, water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
+                    L_m=_dpy_L + 2.0,   # vẽ thêm 2m bên dưới chân cừ
+                    water_lvl=_dpy_wlvl, top_elev=_dpy_top_ke,
                     H_kN=_dpy_H, M_kNm=_dpy_M,
                     layers=_layers_F, bc_type=_dpy_bc,
                     soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Zb,
@@ -7726,9 +7777,16 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 if _fig_sch_d:
                     st.pyplot(_fig_sch_d, use_container_width=True)
                     plt.close(_fig_sch_d)
+                # H1_back auto = Zb - clay_bot_elev (cùng đáy lớp bùn)
+                _H1b_auto = _dpy_Zb - _clay_bot_elev
+                _dpy_H1b  = _H1b_auto   # dùng cho tính toán p-y nếu cần
+                _below_src = (f"từ HK {_dpy_apply_bh}" if _below_layers_F
+                               and _dpy_apply_bh != "(không áp)" else "giả định")
                 st.caption(
-                    f"Front: Z={_dpy_Z:+.2f}m, MN={_dpy_wlvl:+.2f}m, Su={_dpy_su:.0f} kPa  | "
-                    f"Back: Z={_dpy_Zb:+.2f}m, MN={_dpy_wlvl_b:+.2f}m, Su={_dpy_sub:.0f} kPa"
+                    f"**Front:** Z={_dpy_Z:+.2f}m · MN={_dpy_wlvl:+.2f}m · Su={_dpy_su:.0f} kPa · H₁={_dpy_H1:.1f}m  \n"
+                    f"**Back:** Z={_dpy_Zb:+.2f}m · MN={_dpy_wlvl_b:+.2f}m · Su={_dpy_sub:.0f} kPa · "
+                    f"H₁ auto = {_H1b_auto:.1f}m (đáy chung {_clay_bot_elev:+.2f}m)  \n"
+                    f"**Dưới chân cừ 2m:** {len(_below_layers_F)} lớp ({_below_src})"
                 )
 
         # Nút tính
