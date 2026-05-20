@@ -3400,24 +3400,11 @@ except Exception:
         )
         _HAS_PDF = True
         _PDF_ENGINE = "Báo cáo rút gọn"
-    except Exception as _e_pdf:
-        # Kiểm tra cụ thể: reportlab / weasyprint chưa cài
-        _missing_libs = []
-        try:
-            import reportlab as _rl_check  # noqa: F401
-        except ImportError:
-            _missing_libs.append("reportlab")
-        try:
-            import weasyprint as _wp_check  # noqa: F401
-        except ImportError:
-            _missing_libs.append("weasyprint")
-        if _missing_libs:
-            st.sidebar.warning(
-                "**PDF chưa khả dụng** — thiếu: " + ", ".join(_missing_libs) + "\n\n"
-                "Fix local: `pip install " + " ".join(_missing_libs) + "`"
-            )
-        else:
-            st.sidebar.caption(f"_(PDF engine chưa cài: {_e_pdf})_")
+    except Exception:
+        # PDF engine không load được (Cloud Python 3.14 thường fail build
+        # weasyprint/reportlab; Windows local thiếu GTK3 runtime).
+        # Không cảnh báo — user vẫn có thể in qua Ctrl+P trên trình duyệt.
+        pass
 
 # Winkler p-y: dùng scripts/winkler_np.py (NumPy thuần) — không cần PyNite/anastruct
 # Cảnh báo sidebar cũ đã gỡ vì solver mới luôn sẵn sàng (NumPy có sẵn).
