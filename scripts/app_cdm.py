@@ -4943,85 +4943,109 @@ if _page == "settlement":
         # ── Lý thuyết tính lún (đặt trên cùng — xem trước khi chạy tính toán) ──
         with st.expander("Lý thuyết tính lún cố kết — TCCS 41:2022 + TCVN 9403:2012",
                           expanded=False):
-            st.markdown("""
-**1. Lún cố kết sơ cấp — Phụ lục A, TCCS 41:2022**
+            st.markdown(r"""
+## 1. Lún cố kết sơ cấp — Phụ lục A, TCCS 41:2022
 
-Mỗi lớp đất yếu i được tính theo trạng thái cố kết:
+Mỗi lớp đất yếu $i$ tính theo trạng thái cố kết. Đặt $\sigma'_{v0}$ là ứng suất hữu hiệu ban đầu,
+$\sigma'_{vf} = \sigma'_{v0} + \Delta\sigma$ là ứng suất sau khi đắp, $P_C$ là áp lực tiền cố kết.
 
-| Trạng thái | Điều kiện | Công thức Si |
-|---|---|---|
-| Quá cố kết (OC) | σ'vf ≤ PC | Si = Hi × Cs/(1+e0) × log(σ'vf/σ'v0) |
-| Cắt qua PC | σ'v0 < PC < σ'vf | Si = Hi × [Cs/(1+e0)·log(PC/σ'v0) + Cc/(1+e0)·log(σ'vf/PC)] |
-| Bình thường cố kết (NC) | σ'v0 ≥ PC | Si = Hi × Cc/(1+e0) × log(σ'vf/σ'v0) |
+### 1.1 Đất quá cố kết (OC) — $\sigma'_{vf} \leq P_C$
 
-- σ'v0 = ứng suất hữu hiệu ban đầu (kPa)
-- σ'vf = σ'v0 + Δσ (ứng suất sau khi đắp)
-- PC = áp lực tiền cố kết (từ thí nghiệm nén cố kết)
-- Cc = chỉ số nén, Cs = chỉ số nở lại, e0 = hệ số rỗng tự nhiên
-- Hi = chiều dày lớp đại diện (boundary trung điểm các mẫu)
+$$S_i = H_i \cdot \frac{C_s}{1 + e_0} \cdot \log \frac{\sigma'_{vf}}{\sigma'_{v0}}$$
 
-S_total = Σ Si trên toàn bộ chiều dày lớp đất yếu.
+### 1.2 Cắt qua $P_C$ — $\sigma'_{v0} < P_C < \sigma'_{vf}$
 
----
+$$S_i = H_i \left[ \frac{C_s}{1 + e_0} \log \frac{P_C}{\sigma'_{v0}}
+                  + \frac{C_c}{1 + e_0} \log \frac{\sigma'_{vf}}{P_C} \right]$$
 
-**2. Lún CDM — TCVN 9403:2012, Phụ lục C (đàn hồi khối gia cố)**
+### 1.3 Đất bình thường cố kết (NC) — $\sigma'_{v0} \geq P_C$
 
-CDM thay thế đất yếu bằng nền hỗn hợp. Lún tính theo:
+$$S_i = H_i \cdot \frac{C_c}{1 + e_0} \cdot \log \frac{\sigma'_{vf}}{\sigma'_{v0}}$$
 
-```
-S = S1 + S2
-S1 = q × H_soft / (a×Ec + (1-a)×Es)   [đàn hồi tức thời, trong khối gia cố]
-S2 = lún cố kết bên dưới mũi cột       [= 0 nếu CDM cắm đến lớp cứng]
-```
+### 1.4 Tổng lún
+
+$$S_{\text{total}} = \sum_{i=1}^{n} S_i$$
 
 Trong đó:
-- a = π·D²/(4·e²)·k (diện tích thay thế; k=1 cho lưới vuông, 2/√3 cho tam giác)
-- Ec = 75·Cc_col = 75·(field_lab_ratio · qu_lab/2)  — TCVN 9403 B.5.1
-- Es = 250·Cu — tương quan Mesri (Cu = Su sét bão hoà)
-- E_tổng hợp = a·Ec + (1-a)·Es
+- $C_c$: chỉ số nén; $C_s$: chỉ số nở lại; $e_0$: hệ số rỗng tự nhiên
+- $H_i$: chiều dày lớp đại diện (boundary trung điểm các mẫu)
 
 ---
 
-**3. Độ cố kết theo thời gian — Điều 9.3-9.4, TCCS 41:2022**
+## 2. Lún CDM — TCVN 9403:2012, Phụ lục C
 
-```
-U(t) = lún đã xảy ra / lún tổng = S(t) / S_total
-ΔS = S_total × (1 - U(t_tc))   [lún còn lại sau thi công]
-```
+CDM thay thế đất yếu bằng nền hỗn hợp (composite). Lún tổng:
 
-| Phương án | Độ cố kết U(t) | Ghi chú |
+$$S = S_1 + S_2$$
+
+### 2.1 Lún đàn hồi tức thời trong khối gia cố
+
+$$S_1 = \frac{q \cdot H_{\text{soft}}}{a \cdot E_c + (1 - a) \cdot E_s}$$
+
+### 2.2 Lún cố kết bên dưới mũi cột
+
+$$S_2 = 0 \quad (\text{nếu CDM cắm đến lớp cứng})$$
+
+### 2.3 Mô-đun thành phần
+
+$$E_c = 75 \cdot C_{c,\text{col}} = 75 \cdot \left( \text{ratio}_{lab \to field} \cdot \frac{q_{u,lab}}{2} \right)
+\quad \text{(TCVN 9403 B.5.1)}$$
+
+$$E_s = 250 \cdot C_u \quad \text{(tương quan Mesri)}$$
+
+$$E_{\text{composite}} = a \cdot E_c + (1 - a) \cdot E_s$$
+
+### 2.4 Tỷ lệ diện tích thay thế $a$
+
+$$a_{\text{vuông}} = \frac{\pi D^2}{4 e^2} \qquad
+a_{\text{tam giác}} = \frac{\pi D^2}{2\sqrt{3}\, e^2}$$
+
+---
+
+## 3. Độ cố kết theo thời gian — Điều 9.3–9.4 TCCS 41:2022
+
+### 3.1 Độ cố kết và lún còn lại
+
+$$U(t) = \frac{S(t)}{S_{\text{total}}} \qquad
+\Delta S = S_{\text{total}} \cdot \bigl(1 - U(t_{tc})\bigr)$$
+
+### 3.2 Theo phương án xử lý
+
+| Phương án | $U(t)$ | Ghi chú |
 |---|---|---|
-| Không xử lý | Chỉ Uv (Terzaghi đứng) | Cv, Hdr; chậm |
-| Bấc thấm | U = 1 - (1-Uv)·(1-Uh) | Uh tăng theo n=re/rw |
-| Giếng cát | Tương tự bấc thấm | Diameter lớn hơn, hiệu quả nhanh hơn |
-| CDM | S1 đàn hồi tức thời → ΔS ≈ 0 | Lún xảy ra ngay khi đắp |
+| Không xử lý | $U_v$ (Terzaghi đứng) — phụ thuộc $C_v$, $H_{dr}$ | Chậm nhất |
+| Bấc thấm | $U = 1 - (1 - U_v)(1 - U_h)$ | $U_h$ tăng theo $n = r_e/r_w$ |
+| Giếng cát | Tương tự bấc thấm | Đường kính giếng lớn hơn |
+| CDM | $S_1$ đàn hồi tức thời → $\Delta S \approx 0$ | Lún xảy ra ngay khi đắp |
 
-TCCS 41:2022 yêu cầu **ΔS ≤ 30 cm** sau khi làm xong mặt đường (đường cấp I đoạn thông thường).
+### 3.3 Yêu cầu thiết kế
 
----
-
-**4. Surcharge (gia tải tạm)**
-
-Tăng tải gia tải > tải thiết kế trong giai đoạn cố kết → tăng tốc U(t) →
-sau khi dỡ surcharge, lún còn lại ΔS giảm. **Không** thay đổi S_total dưới tải thiết kế.
+$$\Delta S \leq 30 \text{ cm} \quad \text{(TCCS 41:2022 — đường cấp I đoạn thông thường)}$$
 
 ---
 
-**5. Đơn vị**
+## 4. Surcharge (gia tải tạm)
 
-| Đại lượng | Đơn vị |
-|---|---|
-| Cc, Cs, e0 | — (vô thứ nguyên) |
-| σ'v, PC, q | kPa |
-| Hi, H_fill, depth | m |
-| Cv | cm²/s |
-| Lún Si, S_total, ΔS | cm |
-| Ec, Es | kPa |
-| t (thời gian) | tháng |
+Tăng tải gia tải $> $ tải thiết kế trong giai đoạn cố kết → tăng tốc $U(t)$ →
+sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổi $S_{\text{total}}$ dưới tải thiết kế.
 
-**Tài liệu nguồn**:
-[38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md) — TCCS 41:2022
-[39-tcvn9403-tru-dat-xi-mang.md](39-tcvn9403-tru-dat-xi-mang.md) — TCVN 9403:2012
+---
+
+## 5. Bảng đơn vị
+
+| Đại lượng | Ký hiệu | Đơn vị |
+|---|:---:|:---:|
+| Chỉ số nén / nở lại | $C_c$, $C_s$ | — |
+| Hệ số rỗng | $e_0$ | — |
+| Ứng suất hữu hiệu | $\sigma'_v$, $P_C$ | kPa |
+| Tải trọng | $q$ | kPa |
+| Chiều dày, chiều sâu | $H_i$, $H_{\text{soft}}$ | m |
+| Hệ số cố kết | $C_v$ | cm²/s |
+| Lún | $S_i$, $S_{\text{total}}$, $\Delta S$ | cm |
+| Mô-đun đàn hồi | $E_c$, $E_s$, $E_{\text{composite}}$ | kPa |
+| Thời gian | $t$ | tháng |
+
+**Tài liệu nguồn:** TCCS 41:2022 (Phụ lục A, Điều 9.3–9.4), TCVN 9403:2012 (Phụ lục C, Mục B.5.1).
 """)
 
         # ── PHẦN 1: So sánh phương án ────────────────────────────────────────
