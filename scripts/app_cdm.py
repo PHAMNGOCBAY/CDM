@@ -1218,6 +1218,8 @@ _DEFAULTS = {
     "cdm_gamma": 15.0,
     "cdm_elevation": 0.0,
     "cdm_D": 0.8,
+    "cdm_e": 1.6,
+    "cdm_L_ngam": 0.5,
     "cdm_Lc": 26.2,
     "cdm_CDTK": 0.8,
     "cdm_qu": 800.0,
@@ -2302,7 +2304,7 @@ def _export_word_bytes(
 # PROJECT SAVE / LOAD
 # ═══════════════════════════════════════════════════════════════════════════════
 _SAVE_KEYS = ["cdm_zone","cdm_bh","cdm_top_clay","cdm_h_clay","cdm_Su","cdm_gamma","cdm_elevation",
-              "cdm_D","cdm_Lc","cdm_CDTK","cdm_qu","cdm_FS_lab","cdm_arrangement",
+              "cdm_D","cdm_e","cdm_L_ngam","cdm_Lc","cdm_CDTK","cdm_qu","cdm_FS_lab","cdm_arrangement",
               "cdm_cement_type","cdm_dosage","cdm_WC","cdm_spacings","cdm_rec_idx","cdm_loads",
               "cdm_quckse","cdm_Fs_mat","cdm_theta","cdm_qa_mat"]
 
@@ -3084,9 +3086,19 @@ elif _page == "params":
 
         with c1:
             st.markdown(f"**{_t('cdm_geom')}**")
-            D    = st.number_input(_t("D_lbl"), 0.5, 1.2, _get("cdm_D"), 0.05)
-            Lc   = st.number_input(_t("Lc_lbl"), 5.0, 60.0, _get("cdm_Lc"), 0.5)
-            CDTK = st.number_input(_t("CDTK_lbl"), -5.0, 10.0, _get("cdm_CDTK"), 0.1)
+            D      = st.number_input(_t("D_lbl"), 0.5, 1.2, _get("cdm_D"), 0.05)
+            e      = st.number_input("Khoảng cách e (m)", 0.8, 4.0, _get("cdm_e"), 0.1)
+            CDTK   = st.number_input(_t("CDTK_lbl"), -5.0, 10.0, _get("cdm_CDTK"), 0.1)
+            L_ngam = st.number_input("Ngàm vào đất tốt (m)", 0.0, 5.0, _get("cdm_L_ngam"), 0.1,
+                                     help="Chiều dài cọc CDM ngàm vào lớp đất tốt bên dưới lớp bùn")
+            _top_clay_c1 = _get("cdm_top_clay")
+            _h_clay_c1   = _get("cdm_h_clay")
+            _gap_c1      = CDTK - _top_clay_c1          # khoảng từ đỉnh bùn lên đỉnh cọc
+            Lc           = round(_gap_c1 + _h_clay_c1 + L_ngam, 1)
+            st.info(
+                f"Lc = {_gap_c1:.1f} + {_h_clay_c1:.1f} + {L_ngam:.1f} = **{Lc:.1f} m**\n\n"
+                f"*(đỉnh bùn→cọc) + h_bùn + ngàm*"
+            )
             _ld0 = _get("cdm_loads")
             _He_v  = _ld0.get("h_fill", 1.5)
             _Hse_v = _ld0.get("h_mat",  0.4)
@@ -3094,8 +3106,8 @@ elif _page == "params":
             arr  = st.radio(_t("arr_lbl"), ["triangle", "square"],
                             format_func=lambda x: _t("arr_tri") if x == "triangle" else _t("arr_sq"),
                             index=["triangle", "square"].index(_get("cdm_arrangement")))
-            st.session_state.update({"cdm_D": D, "cdm_Lc": Lc,
-                                      "cdm_CDTK": CDTK, "cdm_arrangement": arr})
+            st.session_state.update({"cdm_D": D, "cdm_e": e, "cdm_L_ngam": L_ngam,
+                                      "cdm_Lc": Lc, "cdm_CDTK": CDTK, "cdm_arrangement": arr})
 
         with c2:
             st.markdown(f"**{_t('material')}**")
@@ -3228,7 +3240,7 @@ elif _page == "params":
     with _col_grd:
         _sps_now   = _get("cdm_spacings")
         _rec_now   = min(_get("cdm_rec_idx"), len(_sps_now) - 1) if _sps_now else 0
-        _e_ref_now = _sps_now[_rec_now] if _sps_now else 1.6
+        _e_ref_now = _sps_now[_rec_now] if _sps_now else _get("cdm_e")
         _fig_grd = _draw_cdm_grid(_get("cdm_D"), _get("cdm_arrangement"), _e_ref_now)
         st.pyplot(_fig_grd, use_container_width=True)
         _fig_grd.clf()
