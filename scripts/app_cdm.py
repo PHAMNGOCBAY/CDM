@@ -7492,20 +7492,221 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     # D. Phương pháp giải tích + p-y (Winkler beam)
     # ═══════════════════════════════════════════════════════════════════════════
     st.markdown("---")
-    st.markdown("### D. Phương pháp giải tích + p-y")
-    st.info(
-        "**Stage 1 — Giải tích:** mô hình cọc làm dầm trên nền đàn hồi (Winkler) với "
-        "lò xo phi tuyến p-y theo TCVN/API. Lớp CDM tăng cường k_h tăng 3-5 lần."
-    )
+    st.subheader("Phương pháp giải tích + p-y — Stage 1")
 
     try:
         from anastruct import SystemElements as _SE
         _HAS_ANASTRUCT = True
     except ImportError:
         _HAS_ANASTRUCT = False
-        st.warning("Cần cài thư viện `anastruct` (Winkler beam). Đã có trên cloud.")
+        st.warning("Cần cài thư viện `anastruct` (Winkler beam). Cloud cần rebuild.")
 
     if _HAS_ANASTRUCT:
+        # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
+        @st.cache_data(show_spinner=False)
+        def _calc_py_winkler(bh_name: str, pile_name: str, L_m: float,
+                             H_kNm: float, M_kNm: float, cdm_thk_m: float,
+                             eps50: float, k_cdm_factor: float) -> dict:
+            """Giải Winkler p-y cho 1 cọc. Trả dict {u_top, M_max, Q_max, zs, ux, Ms, k_h}."""
+            import numpy as _np
+            _pl = _sw_by_name(pile_name)
+            if not _pl:
+                return {"error": f"Không có cọc {pile_name}"}
+            D_p = _pl["H_mm"] / 1000.0
+            I_p = (_pl.get("Itd_cm4") or 0) * 1e-8
+            EI  = 31.6e6 * I_p
+            if EI <= 0:
+                return {"error": "EI cọc = 0"}
+            # Layers từ DB
+            _ly = _load_layers(bh_name.replace("KE-", ""))
+            if not _ly:
+                _ly = [{"symbol": "1", "thickness_m": L_m + 5.0,
+                        "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
+            # Discretize
+            N = max(20, int(L_m * 2))
+            dz = L_m / (N - 1)
+            zs = _np.linspace(0, L_m, N)
+            k_h = _np.zeros(N)
+            for i, z in enumerate(zs):
+                su_z, gam_z, is_clay = 11.0, 15.0, True
+                dep = 0.0
+                for lr in _ly:
+                    h = lr.get("thickness_m") or 0
+                    if dep + h >= z:
+                        su_z  = lr.get("Su_kPa") or 11.0
+                        gam_z = lr.get("gamma_kNm3") or 15.0
+                        sym   = (lr.get("symbol") or "1").lower()
+                        is_clay = sym in {"1", "xmd", "3", "5"}
+                        break
+                    dep += h
+                if is_clay:
+                    Np  = min(3 + gam_z * z / max(su_z, 1), 9.0)
+                    pu  = Np * su_z * D_p
+                    y50 = 2.5 * eps50 * D_p
+                    kz  = pu / y50 if y50 > 0 else 1000.0
+                else:
+                    kz  = 10_000 * z
+                if z < cdm_thk_m:
+                    kz *= k_cdm_factor
+                k_h[i] = kz
+            # Solve Winkler
+            ss = _SE(EA=1e9, EI=EI)
+            for i in range(N - 1):
+                ss.add_element(location=[[0, -zs[i]], [0, -zs[i+1]]], EI=EI)
+            for i in range(1, N + 1):
+                ss.add_support_spring(node_id=i, translation=1, k=k_h[i-1] * dz)
+            ss.point_load(node_id=1, Fx=H_kNm)
+            if M_kNm > 0:
+                ss.moment_load(node_id=1, Ty=M_kNm)
+            try:
+                ss.solve()
+                disp = ss.get_node_displacements()
+                ux   = [d["ux"] * 1000 for d in disp]
+                er   = ss.get_element_results(verbose=False)
+                Ms   = [e["Mmax"] for e in er]
+                Qs   = [e.get("wmax", 0) or e.get("qmax", 0) for e in er]
+                return {
+                    "u_top_mm": ux[0],
+                    "u_max_mm": max(abs(u) for u in ux),
+                    "M_max_kNm": max(abs(m) for m in Ms) if Ms else 0.0,
+                    "Mcr_kNm":   (_pl.get("Mcr_Tm", 0) or 0) * 9.81,
+                    "EI_kNm2":   EI,
+                    "D_mm":      D_p * 1000,
+                    "zs":        zs.tolist(),
+                    "ux":        ux,
+                    "Ms":        Ms,
+                    "k_h":       k_h.tolist(),
+                }
+            except Exception as e:
+                return {"error": f"Solver: {e}"}
+
+        # ─── D.1. Lý thuyết & công thức p-y ───────────────────────────────────
+        st.markdown("### D.1. Lý thuyết p-y Winkler")
+        with st.expander("Cơ sở lý thuyết — Matlock (1970) + API RP2GEO + lò xo CDM",
+                          expanded=False):
+            st.markdown("**Mô hình Winkler:** cọc = dầm trên nền đàn hồi, đất = lò xo độc lập.")
+            st.latex(r"EI \dfrac{d^4 y}{dz^4} + k_h(z) \cdot y = 0")
+            st.markdown("**Sét yếu (Matlock 1970):**")
+            st.latex(r"p_u = N_p \cdot s_u \cdot D, \quad N_p = \min\left(3 + \dfrac{\gamma z}{s_u}, \; 9\right)")
+            st.latex(r"y_{50} = 2{,}5 \cdot \varepsilon_{50} \cdot D, \quad k_h = \dfrac{p_u}{y_{50}}")
+            st.markdown(r"**Cát (API RP2GEO):** $k_h = k \cdot z$, $k$ ≈ 5-25 MN/m³ tùy độ chặt.")
+            st.markdown(r"**Vùng CDM:** $k_h^{CDM} = f_{CDM} \cdot k_h$, mặc định $f_{CDM}=4$.")
+            st.markdown(r"**Kiểm tra:** $u_{top} \leq 25$ mm (TCVN); $M_{max} \leq M_{cr}$ (cọc).")
+
+        # ─── D.2. Bảng p-y cho tất cả HK trên tuyến ───────────────────────────
+        st.markdown("### D.2. Kết quả p-y Winkler — tất cả HK trên tuyến kè")
+        _d_glob_c1, _d_glob_c2, _d_glob_c3, _d_glob_c4 = st.columns(4)
+        with _d_glob_c1:
+            _d_H_g    = st.number_input("H đầu cọc (kN/m)", 0.0, 200.0, 30.0, 5.0,
+                                         key="d_H_global")
+        with _d_glob_c2:
+            _d_M_g    = st.number_input("M đầu cọc (kNm/m)", 0.0, 500.0, 0.0, 10.0,
+                                         key="d_M_global")
+        with _d_glob_c3:
+            _d_cdm_g  = st.number_input("Bề dày CDM (m)", 0.0, 10.0, 3.0, 0.5,
+                                         key="d_cdm_global")
+        with _d_glob_c4:
+            _d_kf_g   = st.number_input("Hệ số tăng k_h CDM", 1.0, 10.0, 4.0, 0.5,
+                                         key="d_kf_global")
+        _d_eps_g = st.slider("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
+                              key="d_eps_global", format="%.3f")
+
+        if _bhs_on_alignment:
+            _py_rows = []
+            for _bh_d in _bhs_on_alignment:
+                _bh_n = _bh_d["name"]
+                # pile & L: lấy từ "Cọc kiến nghị" / "L thiết kế" user chọn ở Mục B
+                _pile_n = (st.session_state.get(_rec_key, {}).get(_bh_n)
+                           or _bh_d.get("recommended_pile") or "SW-840")
+                _L_n = (st.session_state.get(_ltk_key, {}).get(_bh_n)
+                        or _bh_d.get("recommended_L_m") or 24.0)
+                _res = _calc_py_winkler(
+                    bh_name=f"KE-{_bh_n}", pile_name=_pile_n, L_m=float(_L_n),
+                    H_kNm=float(_d_H_g), M_kNm=float(_d_M_g),
+                    cdm_thk_m=float(_d_cdm_g), eps50=float(_d_eps_g),
+                    k_cdm_factor=float(_d_kf_g),
+                )
+                if "error" in _res:
+                    _py_rows.append({
+                        "Hố khoan": _bh_n, "Cọc": _pile_n, "L (m)": _L_n,
+                        "u đỉnh (mm)": "—", "M max (kNm/m)": "—",
+                        "M_cr (kNm/m)": "—", "Đạt u": "—", "Đạt M": "—",
+                        "Ghi chú": _res["error"],
+                    })
+                else:
+                    _u   = _res["u_top_mm"]
+                    _M   = _res["M_max_kNm"]
+                    _Mcr = _res["Mcr_kNm"]
+                    _py_rows.append({
+                        "Hố khoan":      _bh_n,
+                        "Cọc":           _pile_n,
+                        "L (m)":         _L_n,
+                        "u đỉnh (mm)":   round(_u, 2),
+                        "M max (kNm/m)": round(_M, 1),
+                        "M_cr (kNm/m)":  round(_Mcr, 1),
+                        "Đạt u":         "Đạt" if abs(_u) < 25 else "Không đạt",
+                        "Đạt M":         "Đạt" if abs(_M) < _Mcr else "Không đạt",
+                        "Ghi chú":       "",
+                    })
+            _df_py = pd.DataFrame(_py_rows)
+
+            def _hl_py(val):
+                if val == "Đạt":
+                    return "background-color:#d4edda; color:#155724"
+                if val == "Không đạt":
+                    return "background-color:#f8d7da; color:#721c24"
+                return ""
+            st.dataframe(
+                _df_py.style.map(_hl_py, subset=["Đạt u", "Đạt M"]),
+                use_container_width=True, hide_index=True,
+            )
+
+            # Biểu đồ so sánh u_top + M_max theo HK
+            if _HAS_PLOTLY:
+                from plotly.subplots import make_subplots as _mksub
+                _fig_d2 = _mksub(rows=1, cols=2,
+                                  subplot_titles=("Chuyển vị đỉnh u (mm)",
+                                                  "Mô-men max M (kNm/m)"))
+                _names_d2 = [r["Hố khoan"] for r in _py_rows
+                              if isinstance(r["u đỉnh (mm)"], (int, float))]
+                _u_d2     = [r["u đỉnh (mm)"] for r in _py_rows
+                              if isinstance(r["u đỉnh (mm)"], (int, float))]
+                _M_d2     = [r["M max (kNm/m)"] for r in _py_rows
+                              if isinstance(r["M max (kNm/m)"], (int, float))]
+                _Mcr_d2   = [r["M_cr (kNm/m)"] for r in _py_rows
+                              if isinstance(r["M_cr (kNm/m)"], (int, float))]
+                _fig_d2.add_trace(go.Bar(
+                    x=_names_d2, y=_u_d2,
+                    marker_color=["#2E7D32" if abs(u) < 25 else "#C62828" for u in _u_d2],
+                    text=[f"{u:.1f}" for u in _u_d2], textposition="outside",
+                    name="u đỉnh",
+                ), row=1, col=1)
+                _fig_d2.add_hline(y=25, line_dash="dash", line_color="#E53935",
+                                   annotation_text="Giới hạn 25mm", row=1, col=1)
+                _fig_d2.add_trace(go.Bar(
+                    x=_names_d2, y=_M_d2,
+                    marker_color=["#2E7D32" if abs(_M_d2[i]) < _Mcr_d2[i] else "#C62828"
+                                   for i in range(len(_M_d2))],
+                    text=[f"{m:.0f}" for m in _M_d2], textposition="outside",
+                    name="M max", showlegend=False,
+                ), row=1, col=2)
+                _fig_d2.add_trace(go.Scatter(
+                    x=_names_d2, y=_Mcr_d2,
+                    mode="lines+markers", line=dict(color="#9C27B0", dash="dash"),
+                    name="M_cr (cọc)",
+                ), row=1, col=2)
+                _fig_d2.update_layout(height=380, showlegend=True,
+                                       title="p-y Winkler — so sánh u và M theo HK")
+                st.plotly_chart(_fig_d2, use_container_width=True)
+        else:
+            st.info("Chọn HK ở Mục B để xem bảng p-y.")
+
+        # ─── D.3. Phân tích chi tiết 1 HK ────────────────────────────────────
+        st.markdown("### D.3. Phân tích chi tiết 1 hố khoan")
+        st.info(
+            "Chọn 1 HK + cọc + tải → vẽ biểu đồ chuyển vị, mô-men và k_h theo độ sâu. "
+            "Đường ngang tím đánh dấu đáy vùng CDM tăng cường."
+        )
         _d_c1, _d_c2, _d_c3 = st.columns(3)
         with _d_c1:
             _d_bh = st.selectbox("Hố khoan",
