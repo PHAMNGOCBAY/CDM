@@ -8926,12 +8926,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 else:
                     st.info("Cần áp HK ở trên để có lớp đất tính áp lực đất (Ka/Kp theo từng lớp).")
 
-                # Nút tính
-                _dpy_btn_c1, _dpy_btn_c2 = st.columns([1, 4])
-                with _dpy_btn_c1:
-                    _dpy_run = st.button("Tính p-y Winkler", type="primary", key=f"btn_dpy_run_{_hk_iter}")
-
-                if _dpy_run:
+                # Auto-run (bỏ nút) — mọi expander tự tính khi mở
+                if True:
                     # Lấy chiều dài CDM từ tab "Thiết kế CDM" (session_state)
                     # cdm_Lc = chiều dài cọc CDM total; cdm_L_ngam = phần ngàm vào đất tốt
                     # → phần CDM trong soft soil = cdm_Lc − cdm_L_ngam
