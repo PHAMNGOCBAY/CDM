@@ -87,7 +87,8 @@ def load_excel() -> list[dict]:
 
 
 def load_sqlite() -> dict[tuple, dict]:
-    """Index by (bh_name, sample_id)."""
+    """Index by (bh_name, depth_from_int) — depth là unique trong 1 HK.
+    Sample name có thể bị duplicate (UD19→UD19A/B) nên không dùng làm key."""
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     rows = con.execute("""
@@ -104,7 +105,7 @@ def load_sqlite() -> dict[tuple, dict]:
         ORDER BY b.name, lt.depth_from_m
     """).fetchall()
     con.close()
-    return {(r["bh"], r["sample_id"]): dict(r) for r in rows}
+    return {(r["bh"], round(r["depth_from_m"], 1)): dict(r) for r in rows}
 
 
 def _close(a, b, tol=TOL_RELATIVE) -> bool:
@@ -130,7 +131,7 @@ def compare() -> None:
     only_sql = set(sql.keys())
 
     for x in xls:
-        key = (f"KE-{x['bh_xls']}", x["sample"])
+        key = (f"KE-{x['bh_xls']}", round(x["depth_from"], 1))
         if key not in sql:
             only_xls.append((key, x["depth_from"], x["depth_to"]))
             continue
