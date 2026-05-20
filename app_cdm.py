@@ -3136,6 +3136,8 @@ elif _page == "params":
             _top_clay_now = _get("cdm_top_clay")
             _H = ld["z_tk"] - _top_clay_now
             st.info(f"H = {ld['z_tk']:+.2f} − {_top_clay_now:+.2f} = **{_H:.2f} m**")
+            if _H < 0:
+                st.error("Cao độ TK thấp hơn đỉnh bùn → H < 0")
             _hdr_style = "font-size:12px; font-weight:600; color:#444; margin-bottom:2px"
             _cl, _ch, _cg = st.columns([1.5, 1, 1])
             _ch.markdown(f"<div style='{_hdr_style}'>h (m)</div>", unsafe_allow_html=True)
@@ -3155,9 +3157,46 @@ elif _page == "params":
             _cl.markdown(_t("mat"))
             ld["h_mat"] = _ch.number_input("h_mat", 0.0, 2.0, ld.get("h_mat", 0.4), 0.1, key="h_mat", label_visibility="collapsed")
             ld["g_mat"] = _cg.number_input("g_mat", 10.0, 26.0, ld.get("g_mat", 22.5), 0.5, key="g_mat", label_visibility="collapsed")
+            _z_road_calc = _get("cdm_CDTK") + ld["h_mat"] + ld["h_fill"] + ld["h_road"]
+            _dz = ld["z_tk"] - _z_road_calc
+            if abs(_dz) > 0.05:
+                st.warning(
+                    f"Cao độ TK nhập ({ld['z_tk']:+.2f} m) lệch so với hình học "
+                    f"CDTK+Hse+He+h_đường = **{_z_road_calc:+.2f} m** (Δ={_dz:+.2f} m). "
+                    f"Nhấn nút bên dưới để đồng bộ."
+                )
+                if st.button("Đồng bộ cao độ TK = hình học", key="sync_ztk"):
+                    ld["z_tk"] = round(_z_road_calc, 2)
+                    st.session_state["cdm_loads"] = ld
+                    st.rerun()
             q_tot = q_total(ld)
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
+
+    # ── Kiểm tra ràng buộc số liệu ──────────────────────────────────────────────
+    _vc_top  = _get("cdm_top_clay")
+    _vc_CDTK = _get("cdm_CDTK")
+    _vc_Lc   = _get("cdm_Lc")
+    _vc_hc   = _get("cdm_h_clay")
+    _vc_zpb  = _vc_CDTK - _vc_Lc          # đáy cọc
+    _vc_zcb  = _vc_top  - _vc_hc          # đáy bùn
+    _vc_emb  = _vc_zcb  - _vc_zpb         # ngàm vào đất tốt
+
+    if _vc_top > _vc_CDTK + 0.05:
+        st.error(
+            f"Đỉnh lớp bùn ({_vc_top:+.2f} m) cao hơn đỉnh cọc CDM ({_vc_CDTK:+.2f} m). "
+            "Hình vẽ sẽ sai — giảm 'Cao độ đỉnh lớp bùn' hoặc tăng 'Cao độ đỉnh cọc CDM'."
+        )
+    if _vc_emb <= 0:
+        st.error(
+            f"Mũi cọc ({_vc_zpb:+.2f} m) chưa qua đáy bùn ({_vc_zcb:+.2f} m). "
+            f"Cần Lc > {_vc_CDTK - _vc_zcb:.1f} m để cọc ngàm vào đất tốt."
+        )
+    elif _vc_emb < 0.5:
+        st.warning(
+            f"Ngàm cọc vào đất tốt chỉ {_vc_emb:.2f} m — khuyến nghị ≥ 0.5 m "
+            f"(Lc hiện = {_vc_Lc:.1f} m, cần ≥ {_vc_Lc + (0.5 - _vc_emb):.1f} m)."
+        )
 
     # ── Hình minh họa bên dưới: mặt cắt (trái) + lưới mặt bằng (phải) ────────
     _col_sec, _col_grd = st.columns(2, gap="medium")
