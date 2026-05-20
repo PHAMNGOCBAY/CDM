@@ -1241,7 +1241,7 @@ _DEFAULTS = {
     "lang": "VN",
     "cdm_loads": {
         "q_traffic": 20.0,
-        "h_dap":  2.7,
+        "z_tk":   3.5,
         "h_road": 0.8,   "g_road": 24.0,
         "h_fill": 1.5,   "g_fill": 18.0,
         "h_mat":  0.4,   "g_mat":  22.5,
@@ -3123,13 +3123,14 @@ elif _page == "params":
             ld = _get("cdm_loads").copy()
             ld["q_traffic"] = st.number_input(_t("q_traf"), 0.0, 200.0,
                                               ld.get("q_traffic", 20.0), 5.0)
-            _h_dap_auto = ld.get("h_mat", 0.4) + ld.get("h_fill", 1.5) + ld.get("h_road", 0.8)
-            ld["h_dap"] = st.number_input(
-                "Chiều cao đắp H (m)",
-                0.0, 15.0, ld.get("h_dap", round(_h_dap_auto, 1)), 0.1,
-                help="Từ mặt đất tự nhiên đến cao độ thiết kế",
+            ld["z_tk"] = st.number_input(
+                "Cao độ thiết kế (m)",
+                -5.0, 20.0, ld.get("z_tk", 3.5), 0.1,
+                help="Cao độ đỉnh mặt đường thiết kế",
             )
-            st.caption(f"Gợi ý: h_đệm + h_cát + h_đường = {_h_dap_auto:.2f} m")
+            _top_clay_now = _get("cdm_top_clay")
+            _H = ld["z_tk"] - _top_clay_now
+            st.info(f"H = {ld['z_tk']:+.2f} − {_top_clay_now:+.2f} = **{_H:.2f} m**")
             _hdr_style = "font-size:12px; font-weight:600; color:#444; margin-bottom:2px"
             _cl, _ch, _cg = st.columns([1.5, 1, 1])
             _ch.markdown(f"<div style='{_hdr_style}'>h (m)</div>", unsafe_allow_html=True)
