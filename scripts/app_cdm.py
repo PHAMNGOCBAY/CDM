@@ -7397,9 +7397,18 @@ if _page == "ke_sw":
         if not _bhs_on_alignment:
             st.info("Chọn ít nhất 1 HK trên tuyến kè để xem bảng tổng hợp.")
 
-        # Nút tự động điền cọc tối ưu + L_max tương ứng
-        _btn_opt = st.button("Dùng cọc tối ưu cho tất cả", key="btn_use_optimal")
-        if _btn_opt:
+        # MẶC ĐỊNH = cọc tối ưu: tự điền cho HK chưa có trong session_state.
+        # User vẫn override được qua dropdown; nút "Đặt lại tối ưu" dưới đây để reset.
+        for _bh in _bhs_on_alignment:
+            _bh_nm = _bh["name"]
+            if _bh_nm not in st.session_state[_rec_key]:
+                _on, _olmax = _optimal_pile(_bh.get("L_req_m") or 0)
+                st.session_state[_rec_key][_bh_nm] = _on
+                st.session_state[_ltk_key][_bh_nm] = _olmax
+
+        # Nút reset thủ công (cho trường hợp user đã sửa, muốn về tối ưu)
+        if st.button("Đặt lại cọc tối ưu cho tất cả", key="btn_use_optimal",
+                     help="Ghi đè lựa chọn hiện tại về cọc tối ưu (nhỏ nhất có L_max ≥ L_req)"):
             for _bh in _bhs_on_alignment:
                 _on, _olmax = _optimal_pile(_bh.get("L_req_m") or 0)
                 st.session_state[_rec_key][_bh["name"]] = _on
