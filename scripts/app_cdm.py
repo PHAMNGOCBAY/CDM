@@ -8471,24 +8471,24 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             )
             _dpy_f1, _dpy_f2, _dpy_f3, _dpy_f4 = st.columns(4)
             _dpy_gamma_fill = _dpy_f1.number_input(
-                "γ_fill (kN/m³)", value=0.0, step=0.1,
+                "γ_fill (kN/m³)", value=18.0, step=0.1,
                 key="dpy_gamma_fill",
-                help="Dung trọng đất đắp ướt — kỹ sư nhập theo thiết kế dự án."
+                help="Dung trọng đất đắp ướt. Mặc định 18 kN/m³ — đất đắp chặt vừa (cát san lấp)."
             )
             _dpy_phi_fill = _dpy_f2.number_input(
-                "φ_fill (°)", value=0.0, step=0.5,
+                "φ_fill (°)", value=25.0, step=0.5,
                 key="dpy_phi_fill",
-                help="Góc ma sát đất đắp — kỹ sư nhập theo thí nghiệm / thiết kế."
+                help="Góc ma sát đất đắp. Mặc định 25° — đất đắp chặt vừa."
             )
             _dpy_c_fill = _dpy_f3.number_input(
                 "c_fill (kPa)", value=0.0, step=1.0,
                 key="dpy_c_fill",
-                help="Lực dính đất đắp — kỹ sư nhập theo thí nghiệm."
+                help="Lực dính đất đắp. Mặc định 0 kPa — đất rời (cát đắp)."
             )
             _dpy_gamma_sub_fill = _dpy_f4.number_input(
-                "γ_sub_fill (kN/m³)", value=0.0, step=0.1,
+                "γ_sub_fill (kN/m³)", value=8.0, step=0.1,
                 key="dpy_gamma_sub_fill",
-                help="Dung trọng đất đắp bão hoà = γ_sat − γ_w."
+                help="Dung trọng đất đắp bão hoà − γ_w. Mặc định 8 kN/m³ (γ_sat ≈ 18 → γ' = 8)."
             )
 
         with _col_schem_d:
