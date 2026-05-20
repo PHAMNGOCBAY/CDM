@@ -5884,6 +5884,127 @@ if _page == "ke_sw":
                 use_container_width=True, hide_index=True,
             )
 
+    # ── C.3 So sánh 4 phương pháp NT2 ──────────────────────────────────────────
+    st.divider()
+    st.markdown("### C.3. So sánh 4 phương pháp NT2 cho 1 hố khoan")
+    st.info(
+        "So sánh Rs/Rp/RR theo 4 phương pháp TCVN 11823-10:2017 cho cùng 1 HK + 1 cọc:  \n"
+        "**α** (Tomlinson 1980, sét, Điều 7.3.8.6.2, φ=0,35) · "
+        "**β** (Esrig & Kirby 1979, sét, Điều 7.3.8.6.3, φ=0,25) · "
+        "**λ** (Vijayvergiya & Focht 1972, cọc ống, Điều 7.3.8.6.4, φ=0,40) · "
+        "**SPT-Meyerhof** (cát, Điều 7.3.8.6.7, φ=0,30)"
+    )
+
+    _cmp_c1, _cmp_c2, _cmp_c3 = st.columns(3)
+    try:
+        import sys as _sys_cmp
+        _sys_cmp.path.insert(0, str(_ROOT / "scripts"))
+        from ke_sw_nt_calc import (
+            calc_nt2_all_methods as _calc_4m,
+            _load_catalog as _load_cat,
+            _get_bh_Z_m as _get_bh_z,
+        )
+        _cat_cmp = _load_cat()
+        _ke_bhs  = ["KE-HK2", "KE-HK3", "KE-HK7", "KE-HK8", "KE-HK9", "KE-HK10", "KE-HK11"]
+        with _cmp_c1:
+            _cmp_bh = st.selectbox("Hố khoan", _ke_bhs, key="cmp_bh")
+        with _cmp_c2:
+            _cmp_pile_name = st.selectbox("Loại cọc",
+                                          list(_cat_cmp.keys()),
+                                          index=list(_cat_cmp.keys()).index("SW-840")
+                                          if "SW-840" in _cat_cmp else 0,
+                                          key="cmp_pile")
+        with _cmp_c3:
+            _cmp_L = st.number_input("L thiết kế (m)", 10.0, 35.0, 29.0, 0.5, key="cmp_L")
+
+        if st.button("So sánh 4 phương pháp", type="primary", key="btn_cmp4"):
+            _cmp_z = _get_bh_z(_cmp_bh) or 0.0
+            _cmp_res = _calc_4m(_cmp_bh, _cmp_z, _cmp_pile_name,
+                                _cat_cmp[_cmp_pile_name], _cmp_L)
+            _common = _cmp_res["common"]
+
+            # Hiển thị thông số chung
+            _ic1, _ic2, _ic3, _ic4 = st.columns(4)
+            _ic1.metric("L cọc trong sét (m)", f"{_common['L_clay_total_m']:.2f}")
+            _ic2.metric("Su TB sét (kPa)", f"{_common['su_avg_clay_kPa']:.1f}")
+            _ic3.metric("σ'v TB sét (kPa)", f"{_common['sigma_avg_clay_kPa']:.0f}")
+            _ic4.metric("W cọc (kN)", f"{_common['W_kN']:.0f}",
+                        f"D={_common['D_m']:.3f}m, P={_common['perimeter_m']:.3f}m")
+
+            # Bảng so sánh 5 phương pháp
+            _cmp_rows = []
+            _method_lbl = {
+                "auto":   "Auto (α+SPT)",
+                "alpha":  "α-method",
+                "beta":   "β-method",
+                "lambda": "λ-method",
+                "SPT":    "SPT (all clay)",
+            }
+            for m in ["auto", "alpha", "beta", "lambda", "SPT"]:
+                x = _cmp_res[m]
+                _cmp_rows.append({
+                    "Phương pháp":  _method_lbl[m],
+                    "φ_stat":       x["phi_stat"],
+                    "Rs (kN)":      x["Rs_kN"],
+                    "Rp (kN)":      x["Rp_kN"],
+                    "RR (kN)":      x["RR_kN"],
+                    "W (kN)":       _common["W_kN"],
+                    "Tỷ số RR/W":   x["ratio"],
+                    "Kết quả":      x["result"],
+                    "tip method":   x.get("tip_method", "—"),
+                })
+            _cmp_df = pd.DataFrame(_cmp_rows)
+
+            def _hl_cmp(val):
+                if val == "Đạt":
+                    return "background-color:#d4edda; color:#155724"
+                if val == "Không đạt":
+                    return "background-color:#f8d7da; color:#721c24"
+                return ""
+
+            st.dataframe(
+                _cmp_df.style.map(_hl_cmp, subset=["Kết quả"]),
+                use_container_width=True, hide_index=True,
+                column_config={
+                    "φ_stat":     st.column_config.NumberColumn(format="%.2f"),
+                    "Rs (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                    "Rp (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                    "RR (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                    "W (kN)":     st.column_config.NumberColumn(format="%.0f"),
+                    "Tỷ số RR/W": st.column_config.NumberColumn(format="%.2f"),
+                },
+            )
+            st.caption(
+                f"λ_coef = {_common['lambda_coef']:.3f} (Vijayvergiya & Focht — theo L cọc sét {_common['L_clay_total_m']:.1f}m). "
+                "**Khuyến nghị TCVN**: dùng `auto` (α cho sét, SPT cho cát) — phản ánh đúng từng lớp. "
+                "α/β/λ chỉ áp dụng cho lớp sét; SPT (all clay) là sai phương pháp cho minh hoạ."
+            )
+
+            if _HAS_PLOTLY:
+                _fig_cmp = go.Figure()
+                _fig_cmp.add_trace(go.Bar(
+                    x=[r["Phương pháp"] for r in _cmp_rows],
+                    y=[r["RR (kN)"] for r in _cmp_rows],
+                    name="RR (kN)",
+                    marker_color=["#1565C0" if r["Kết quả"] == "Đạt" else "#E53935"
+                                   for r in _cmp_rows],
+                    text=[f"{r['Tỷ số RR/W']:.2f}" for r in _cmp_rows],
+                    textposition="outside",
+                ))
+                _fig_cmp.add_hline(
+                    y=_common["W_kN"], line_dash="dash", line_color="#666",
+                    annotation_text=f"W = {_common['W_kN']:.0f} kN",
+                    annotation_position="bottom right",
+                )
+                _fig_cmp.update_layout(
+                    title=f"So sánh RR theo 4 phương pháp — {_cmp_bh} / {_cmp_pile_name}",
+                    yaxis_title="RR = φ·(Rs+Rp) (kN)",
+                    height=360, margin=dict(t=45, b=40),
+                )
+                st.plotly_chart(_fig_cmp, use_container_width=True)
+    except Exception as _e_cmp:
+        st.warning(f"Không thực hiện được so sánh 4 phương pháp: {_e_cmp}")
+
 # ── Placeholder: TKBVTC CDM ──────────────────────────────────────────────────
 if _page == "cdm_bvt":
     st.markdown("## TKBVTC CDM")

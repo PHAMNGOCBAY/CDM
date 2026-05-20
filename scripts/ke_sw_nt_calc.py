@@ -179,6 +179,57 @@ def _get_N160_for_layer(
     return round(sum(N160_vals) / len(N160_vals), 1), "SPT"
 
 
+# ── β-method (Esrig & Kirby 1979) — TCVN 11823-10 Điều 7.3.8.6.3 ─────────────
+# Bảng tra β theo OCR (Esrig & Kirby 1979, Hình 19)
+_BETA_PTS: list[tuple[float, float]] = [
+    (1.0,  0.27),   # NC clay
+    (2.0,  0.40),
+    (4.0,  0.60),
+    (8.0,  0.85),
+    (16.0, 1.15),
+]
+
+def _beta_esrig_kirby(OCR: float) -> float:
+    """Hệ số β theo OCR — Esrig & Kirby (1979), nội suy tuyến tính."""
+    if OCR <= _BETA_PTS[0][0]:
+        return _BETA_PTS[0][1]
+    if OCR >= _BETA_PTS[-1][0]:
+        return _BETA_PTS[-1][1]
+    for i in range(len(_BETA_PTS) - 1):
+        o0, b0 = _BETA_PTS[i]
+        o1, b1 = _BETA_PTS[i + 1]
+        if o0 <= OCR <= o1:
+            return round(b0 + (OCR - o0) / (o1 - o0) * (b1 - b0), 4)
+    return 0.27
+
+
+# ── λ-method (Vijayvergiya & Focht 1972) — TCVN 11823-10 Điều 7.3.8.6.4 ──────
+# Bảng tra λ theo chiều sâu cọc ngàm trong sét L (m), Hình 20
+_LAMBDA_PTS: list[tuple[float, float]] = [
+    (0.0,   0.50),
+    (3.0,   0.36),
+    (10.0,  0.27),
+    (15.0,  0.22),
+    (20.0,  0.17),
+    (30.0,  0.14),
+    (50.0,  0.12),
+    (60.0,  0.12),
+]
+
+def _lambda_vijayvergiya_focht(L_clay_m: float) -> float:
+    """Hệ số λ theo chiều dài cọc trong sét — Vijayvergiya & Focht (1972)."""
+    if L_clay_m <= _LAMBDA_PTS[0][0]:
+        return _LAMBDA_PTS[0][1]
+    if L_clay_m >= _LAMBDA_PTS[-1][0]:
+        return _LAMBDA_PTS[-1][1]
+    for i in range(len(_LAMBDA_PTS) - 1):
+        l0, v0 = _LAMBDA_PTS[i]
+        l1, v1 = _LAMBDA_PTS[i + 1]
+        if l0 <= L_clay_m <= l1:
+            return round(v0 + (L_clay_m - l0) / (l1 - l0) * (v1 - v0), 4)
+    return 0.12
+
+
 # ── Công thức SPT-Meyerhof (TCVN 11823-10:2017 Điều 7.3.8.6.7) ───────────────
 def _qs_spt_kPa(N160: float | None, displacing: bool = True) -> float:
     """qs (kPa) cho cát — Pt.69/70. qs[MPa] = 0.0019·N160 (chiếm chỗ) hoặc 0.00096 (không)."""
@@ -609,6 +660,168 @@ def calc_nt2_layers(
         "ratio":         ratio,
         "result":        "Đạt" if ratio >= 1.0 else "Không đạt",
         "warnings":      warnings,
+    }
+
+
+# ── So sánh 4 phương pháp NT2 ───────────────────────────────────────────────
+def calc_nt2_all_methods(
+    bh_name: str, Z_m: float, pile_name: str, pile: dict, L_design_m: float,
+    tip_elev: float = TIP_ELEV_M, top_ke: float = TOP_KE_M,
+    db_path: Path = DB_PATH, water_table_elev: float = WATER_TABLE_DEFAULT,
+) -> dict:
+    """So sánh sức kháng NT2 theo 4 phương pháp TCVN 11823-10:2017.
+
+    Trả về dict:
+    {
+      'auto':   {Rs, Rp, RR, ratio, phi}  -- hỗn hợp α(sét) + SPT(cát), φ động
+      'alpha':  {...}  -- toàn bộ lớp dùng α-method (sét, Điều 7.3.8.6.2, φ=0.35)
+      'beta':   {...}  -- β-method (Esrig & Kirby, Điều 7.3.8.6.3, φ=0.25)
+      'lambda': {...}  -- λ-method (Vijayvergiya & Focht, Điều 7.3.8.6.4, φ=0.40)
+      'SPT':    {...}  -- SPT-Meyerhof cho mọi lớp (Điều 7.3.8.6.7, φ=0.30)
+      'common': {pile_name, L_design_m, W_kN, ...}
+    }
+    """
+    perimeter_m = pile["perimeter_mm"] / 1000.0
+    Ap_m2       = pile["Atd_cm2"] * 1e-4
+    D_m         = pile["H_mm"] / 1000.0
+    w_per_m     = pile["weight_T"] * 9.81 / pile["L_std_m"]
+    W_kN        = round(w_per_m * L_design_m, 1)
+    tip_depth   = round(Z_m - tip_elev, 3)
+    fill_m      = round(max(0.0, top_ke - Z_m), 3)
+
+    layers_raw = _load_layers(bh_name, db_path)
+
+    # Pre-collect per-layer data (su, σ'v, N160, gamma, depth range)
+    layer_data: list[dict] = []
+    L_clay_total = 0.0
+    sum_sigma_x_L = 0.0
+    sum_su_x_L_clay = 0.0
+    for dt, db_, sym in layers_raw:
+        eff_top = max(dt, 0.0)
+        eff_bot = min(db_, tip_depth)
+        if eff_bot <= eff_top:
+            continue
+        L_lyr = eff_bot - eff_top
+        mid   = (dt + db_) / 2.0
+        sigma_v = _sigma_v_eff_at_depth(bh_name, mid, db_path, water_table_elev)
+        gamma_v, _ = _get_gamma_for_layer(bh_name, dt, db_, sym, db_path)
+        is_sand = sym in SAND_SYMBOLS
+
+        if is_sand:
+            su = 0.0; OCR = 1.0; PC = 0.0
+            N160, _ = _get_N160_for_layer(bh_name, dt, db_, db_path, water_table_elev)
+        else:
+            su, _ = _get_su_for_layer(bh_name, dt, db_, sym, db_path)
+            # PC từ lab_tests trung bình trong lớp
+            con = sqlite3.connect(str(db_path))
+            cur = con.cursor()
+            row = cur.execute(
+                "SELECT AVG(lt.PC_kPa) FROM lab_tests lt "
+                "JOIN boreholes b ON lt.borehole_id=b.id "
+                "WHERE b.name=? AND lt.PC_kPa IS NOT NULL "
+                "  AND (lt.depth_from_m+lt.depth_to_m)/2 BETWEEN ? AND ?",
+                (bh_name, dt, db_),
+            ).fetchone()
+            con.close()
+            PC  = row[0] if row and row[0] else 0.0
+            OCR = max(1.0, PC / sigma_v) if sigma_v > 0 else 1.0
+            N160 = None
+            L_clay_total += L_lyr
+            sum_su_x_L_clay += su * L_lyr
+            sum_sigma_x_L += sigma_v * L_lyr
+
+        layer_data.append({
+            "symbol": sym, "L": L_lyr, "is_sand": is_sand,
+            "su": su, "sigma_v": sigma_v, "OCR": OCR, "PC": PC,
+            "N160": N160, "gamma": gamma_v, "mid": mid,
+            "is_tip": dt <= tip_depth <= db_,
+        })
+
+    # Su, σ'v trung bình của phần sét (cho λ-method)
+    su_avg_clay    = sum_su_x_L_clay / L_clay_total if L_clay_total > 0 else 0.0
+    sigma_avg_clay = sum_sigma_x_L / L_clay_total if L_clay_total > 0 else 0.0
+    lambda_coef    = _lambda_vijayvergiya_focht(L_clay_total)
+
+    def _calc_method(method: str) -> dict:
+        """Tính Rs/Rp/RR cho 1 method (áp dụng cho tất cả lớp sét; sand giữ nguyên SPT)."""
+        Rs_total = 0.0
+        tip_qp_kPa = 0.0
+        tip_method_used = "—"
+        per_layer = []
+        for L in layer_data:
+            if L["is_sand"]:
+                qs = _qs_spt_kPa(L["N160"], displacing=SW_IS_DISPLACING)
+                Rs_lyr = qs * perimeter_m * L["L"]
+                Rs_total += Rs_lyr
+                if L["is_tip"]:
+                    if L["N160"] and L["N160"] > 0:
+                        tip_qp_kPa = _qp_spt_kPa(L["N160"], 1.0, D_m, "sand")  # Db ~ approximation
+                    tip_method_used = "SPT"
+                per_layer.append({"sym": L["symbol"], "L": round(L["L"],2),
+                                  "qs": round(qs,1), "Rs": round(Rs_lyr,1), "m": "SPT"})
+                continue
+            # Sét — theo method được chọn
+            su = L["su"]; sig = L["sigma_v"]; OCR = L["OCR"]
+            if method == "alpha":
+                alpha = _alpha_tomlinson(su) if su > 0 else 0.0
+                qs = alpha * su
+            elif method == "beta":
+                beta = _beta_esrig_kirby(OCR)
+                qs = beta * sig
+            elif method == "lambda":
+                qs = lambda_coef * (sigma_avg_clay + 2.0 * su_avg_clay)
+            else:  # SPT applied to clay (non-standard but for completeness)
+                qs = 0.0
+            Rs_lyr = qs * perimeter_m * L["L"]
+            Rs_total += Rs_lyr
+            if L["is_tip"]:
+                tip_qp_kPa = 9.0 * su   # qp sét = 9·Su
+                tip_method_used = method
+            per_layer.append({"sym": L["symbol"], "L": round(L["L"],2),
+                              "qs": round(qs,1), "Rs": round(Rs_lyr,1), "m": method})
+
+        Rp = tip_qp_kPa * Ap_m2
+        phi = PHI_BY_METHOD.get(method, 0.35)
+        RR = phi * (Rs_total + Rp)
+        return {
+            "method":    method,
+            "phi_stat":  phi,
+            "Rs_kN":     round(Rs_total, 1),
+            "Rp_kN":     round(Rp, 1),
+            "RR_kN":     round(RR, 1),
+            "ratio":     round(RR / W_kN, 2) if W_kN > 0 else 0,
+            "result":    "Đạt" if RR >= W_kN else "Không đạt",
+            "tip_method": tip_method_used,
+            "layers":    per_layer,
+        }
+
+    # AUTO = current calc_nt2_layers (mix α + SPT, φ động)
+    auto = calc_nt2_layers(bh_name, Z_m, pile_name, pile, L_design_m,
+                           tip_elev, top_ke, None, db_path, water_table_elev)
+
+    return {
+        "common": {
+            "bh_name":    bh_name,
+            "pile_name":  pile_name,
+            "L_design_m": L_design_m,
+            "W_kN":       W_kN,
+            "perimeter_m": round(perimeter_m, 4),
+            "D_m":        round(D_m, 3),
+            "Ap_m2":      round(Ap_m2, 5),
+            "tip_depth_m": tip_depth,
+            "L_clay_total_m": round(L_clay_total, 2),
+            "su_avg_clay_kPa":  round(su_avg_clay, 1),
+            "sigma_avg_clay_kPa": round(sigma_avg_clay, 1),
+            "lambda_coef": lambda_coef,
+        },
+        "auto":   {"Rs_kN": auto["Rs_kN"], "Rp_kN": auto["Rp_kN"],
+                   "RR_kN": auto["RR_kN"], "ratio": auto["ratio"],
+                   "phi_stat": auto["phi_stat"], "result": auto["result"],
+                   "method": "auto (α + SPT)", "tip_method": auto["tip_method"]},
+        "alpha":  _calc_method("alpha"),
+        "beta":   _calc_method("beta"),
+        "lambda": _calc_method("lambda"),
+        "SPT":    _calc_method("SPT"),
     }
 
 
