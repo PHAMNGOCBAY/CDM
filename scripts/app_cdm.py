@@ -9181,28 +9181,59 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         WallGeometry as _WG_S, EarthLayer as _EL_S,
                     )
 
-                    _Z_s = float(_dpy_Z) if "_dpy_Z" in dir() else 0.0
-                    _top_s = float(_dpy_top_ke) if "_dpy_top_ke" in dir() else 2.7
-                    _L_s = float(_dpy_L)
-                    _H1_s = float(_dpy_H1)
-                    _wlvl_s = float(_dpy_wlvl) if "_dpy_wlvl" in dir() else (_Z_s - 0.5)
-                    _wlvl_b_s = float(_dpy_wlvl_b) if "_dpy_wlvl_b" in dir() else _wlvl_s
+                    # Lấy đầy đủ thông số từ widgets D.1 + SQLite (đồng bộ với EP)
+                    _Z_s     = float(_dpy_Z)
+                    _top_s   = float(_dpy_top_ke)
+                    _L_s     = float(_dpy_L)
+                    _H1_s    = float(_dpy_H1)
+                    _wlvl_s  = float(_dpy_wlvl)
+                    _wlvl_b_s = float(_dpy_wlvl_b)
+                    _Zb_s    = float(_dpy_Zb)
+                    _su_F    = float(_dpy_su)        # Ctd lớp 1 đã xử lý
+                    _su_B    = float(_dpy_sub)       # Su Back (đất chưa xử lý)
+                    _q_s     = float(_dpy_q_op)
 
                     _geom_s = _WG_S(
                         top_elev=_top_s, pile_length=_L_s,
-                        soil_level_front=_Z_s, soil_level_back=_Z_s - 1.0,
+                        soil_level_front=_Z_s, soil_level_back=_Zb_s,
                         water_elev_front=_wlvl_s, water_elev_back=_wlvl_b_s,
-                        surcharge_front=float(_dpy_q_op) if "_dpy_q_op" in dir() else 10.0,
+                        surcharge_front=_q_s,
                     )
-                    _fill_s = _EL_S(_Z_s, 18, 8, 28, 0) if _top_s > _Z_s else None
+
+                    # Fill từ widgets (bộ chuẩn dự án γ=18, φ=25, c=0, γ_sub=8)
+                    _fill_s = (_EL_S(_Z_s,
+                                      float(_dpy_gamma_fill),
+                                      float(_dpy_gamma_sub_fill),
+                                      float(_dpy_phi_fill),
+                                      float(_dpy_c_fill))
+                                if _top_s > _Z_s else None)
+
                     _pile_bot_s = _top_s - _L_s
-                    _front_s = [_EL_S(_Z_s - _H1_s, 15, 5, 10, 5),
-                                 _EL_S(_pile_bot_s - 1, 18, 8, 30, 0)]
-                    _back_s = list(_front_s)
+
+                    # Front: lớp 1 sét bùn (Su lab) + lớp 2 cát (giả định φ=30°)
+                    # NOTE: lý tưởng lấy từ SQLite (như EP) nhưng đơn giản hoá
+                    # bằng cách dùng su từ user — đồng bộ với D.1 EP.
+                    _front_s = [
+                        _EL_S(_Z_s - _H1_s, 15.0, 5.0, 0.0, _su_F or 10.0),
+                        _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
+                    ]
+                    # Back: cùng lớp 1 chưa xử lý (Su Back) + lớp 2 cát
+                    _back_s = [
+                        _EL_S(_Zb_s - _H1_s, 15.0, 5.0, 0.0, _su_B or _su_F or 10.0),
+                        _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
+                    ]
+
+                    # CDM từ tab Thiết kế CDM nếu có (TCVN 9403 Phụ lục C)
                     if _cdm_thk_eff > 0:
+                        _cdm_a    = float(st.session_state.get("cdm_a_ratio", 0.20) or 0.20)
+                        _cdm_qu   = float(st.session_state.get("cdm_qu_28", 0.0) or 150.0)
+                        _cdm_phi  = float(st.session_state.get("cdm_phi_col", 30.0) or 30.0)
+                        _cdm_gam  = float(st.session_state.get("cdm_gamma_col", 19.0) or 19.0)
+                        # c_col = qu/2 (Su_undrained = qu/2 cho mẫu CDM 28 ngày)
+                        _cdm_c_col = _cdm_qu / 2.0
                         _cdm_s = _CDMB(top_elev=_Z_s, bot_elev=_Z_s - _cdm_thk_eff,
-                                        area_ratio_a=0.20, c_col_kPa=75.0,
-                                        phi_col_deg=30.0, gamma_col_kNm3=19.0)
+                                        area_ratio_a=_cdm_a, c_col_kPa=_cdm_c_col,
+                                        phi_col_deg=_cdm_phi, gamma_col_kNm3=_cdm_gam)
                     else:
                         _cdm_s = None
 
