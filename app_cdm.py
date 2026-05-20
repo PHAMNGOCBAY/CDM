@@ -5989,6 +5989,53 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                     )
                     st.plotly_chart(_fig_stk, use_container_width=True)
 
+                elif _HAS_MPL:
+                    _fig_mp, _axs_mp = plt.subplots(2, 2, figsize=(11, 7))
+                    _xlb = list(range(len(_sc_rows)))
+                    _xl  = [r["Phương án"][:14] for r in _sc_rows]
+                    _S_tot   = [r["Lún tổng (cm)"]    for r in _sc_rows]
+                    _S_resi  = [r["Lún còn lại (cm)"] for r in _sc_rows]
+                    _U_tc    = [r["U tại TC (%)"]     for r in _sc_rows]
+                    _t90_num = [(float(r["t90% (tháng)"]) if r["t90% (tháng)"] != ">240" else 240)
+                                for r in _sc_rows]
+                    _col = ["#2E7D32" if r["Đánh giá"] == "Đạt" else "#C62828" for r in _sc_rows]
+                    _w = 0.4
+                    _axs_mp[0,0].bar([i-_w/2 for i in _xlb], _S_tot, _w, label="Lún tổng", color="#4472C4")
+                    _axs_mp[0,0].bar([i+_w/2 for i in _xlb], _S_resi, _w, label="Lún còn lại", color="#ED7D31")
+                    _axs_mp[0,0].set_title("Lún tổng vs Lún còn lại (cm)"); _axs_mp[0,0].legend()
+                    _axs_mp[0,1].bar(_xlb, _U_tc, color=_col); _axs_mp[0,1].axhline(90, ls="--", color="#888")
+                    _axs_mp[0,1].set_title("U(t) tại TC (%)"); _axs_mp[0,1].set_ylim(0,110)
+                    _axs_mp[1,0].bar(_xlb, _t90_num, color="#9C27B0"); _axs_mp[1,0].axhline(float(_sl_tc), ls="--", color="#1565C0")
+                    _axs_mp[1,0].set_title("t₉₀ (tháng)")
+                    _axs_mp[1,1].bar(_xlb, _S_resi, color=_col); _axs_mp[1,1].axhline(float(_sl_lim), ls="--", color="#E53935")
+                    _axs_mp[1,1].set_title("Lún còn lại vs Giới hạn (cm)")
+                    for _a in _axs_mp.flat:
+                        _a.set_xticks(_xlb); _a.set_xticklabels(_xl, rotation=20, ha="right", fontsize=8)
+                        _a.grid(alpha=0.3)
+                    _fig_mp.suptitle("Bảng tổng hợp so sánh phương án xử lý đất yếu", fontsize=12, fontweight="bold")
+                    _fig_mp.tight_layout()
+                    st.pyplot(_fig_mp, use_container_width=True)
+
+                # ── Nút xuất PDF cho bảng so sánh + biểu đồ ──────────────────
+                if _HAS_PDF:
+                    _col_pdf1, _col_pdf2 = st.columns([1, 3])
+                    with _col_pdf1:
+                        try:
+                            _pdf_compare = _pdf_settle(
+                                dict(st.session_state),
+                                _cmp,
+                            )
+                            st.download_button(
+                                "Tải PDF bảng so sánh + biểu đồ",
+                                data=_pdf_compare,
+                                file_name=f"SoSanhPhuongAn_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True,
+                                key="sl_pdf_compare",
+                            )
+                        except Exception as _ep:
+                            st.caption(f"_(Không tạo PDF: {_ep})_")
+
                 # Biểu đồ S(t)
                 if _HAS_PLOTLY:
                     _colors_sl = {
