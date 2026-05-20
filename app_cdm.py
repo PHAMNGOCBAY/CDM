@@ -7494,20 +7494,80 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     st.markdown("---")
     st.subheader("Phương pháp giải tích + p-y — Stage 1")
 
+    # Solver Winkler — ưu tiên PyNiteFEA (MIT, pure Python, Cloud-ready),
+    # fallback về anastruct (legacy). Xem scripts/wall_internal_force.py.
+    try:
+        import sys as _sys_wif
+        _sys_wif.path.insert(0, str(_ROOT / "scripts"))
+        from wall_internal_force import (
+            solve_pynite as _solve_pynite,
+            SoilLayer as _WIF_SoilLayer,
+            sw_pile_props as _wif_sw_props,
+        )
+        _HAS_PYNITE = True
+    except ImportError:
+        _HAS_PYNITE = False
+        _solve_pynite = None
     try:
         from anastruct import SystemElements as _SE
         _HAS_ANASTRUCT = True
     except ImportError:
         _HAS_ANASTRUCT = False
         _SE = None
+    _HAS_WINKLER_SOLVER = _HAS_PYNITE or _HAS_ANASTRUCT
 
-    if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có anastruct
+    if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có solver
         # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
         @st.cache_data(show_spinner=False)
         def _calc_py_winkler(bh_name: str, pile_name: str, L_m: float,
                              H_kNm: float, M_kNm: float, cdm_thk_m: float,
                              eps50: float, k_cdm_factor: float) -> dict:
-            """Giải Winkler p-y cho 1 cọc. Trả dict {u_top, M_max, Q_max, zs, ux, Ms, k_h}."""
+            """Giải Winkler p-y cho 1 cọc.
+
+            Ưu tiên PyNite (extract Q chính xác, license MIT). Fallback anastruct.
+            Trả dict {u_top_mm, u_max_mm, M_max_kNm, Q_max_kN, Mcr_kNm, zs, ux, Ms, k_h}.
+            """
+            if not _HAS_WINKLER_SOLVER:
+                return {"error": "Cần cài PyNiteFEA (ưu tiên) hoặc anastruct"}
+
+            # Path PyNite — sạch, không phụ thuộc legacy code
+            if _HAS_PYNITE:
+                _pl_obj = _sw_by_name(pile_name)
+                if not _pl_obj:
+                    return {"error": f"Không có cọc {pile_name}"}
+                _pile_pn = _wif_sw_props(
+                    H_mm=float(_pl_obj["H_mm"]),
+                    Itd_cm4=float(_pl_obj.get("Itd_cm4") or 0),
+                    Mcr_Tm=float(_pl_obj.get("Mcr_Tm") or 0),
+                    Atd_cm2=float(_pl_obj.get("Atd_cm2") or 0),
+                    fc_MPa=70.0, name=pile_name,
+                )
+                # Layers từ DB (cùng logic legacy)
+                _ly_raw = _load_layers(bh_name.replace("KE-", ""))
+                if not _ly_raw:
+                    _ly_raw = [{"symbol": "1", "thickness_m": L_m + 5.0,
+                                "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
+                _ly_pn = [
+                    _WIF_SoilLayer(
+                        symbol=str(_lr.get("symbol") or "1"),
+                        thickness_m=float(_lr.get("thickness_m") or 0),
+                        Su_kPa=float(_lr.get("Su_kPa") or 11.0),
+                        gamma_kNm3=float(_lr.get("gamma_kNm3") or 15.0),
+                    ) for _lr in _ly_raw
+                ]
+                _res_pn = _solve_pynite(
+                    layers=_ly_pn, pile=_pile_pn, L_m=float(L_m),
+                    H_kNm=float(H_kNm), M_kNm=float(M_kNm),
+                    N=max(20, int(L_m * 2)),
+                    eps50=float(eps50),
+                    k_sand_kNm3=10_000.0,
+                    cdm_thickness_m=float(cdm_thk_m),
+                    cdm_factor=float(k_cdm_factor),
+                )
+                if not _res_pn.get("error"):
+                    return _res_pn   # đã có u_top_mm, M_max_kNm, ...
+
+            # Fallback anastruct legacy
             if not _HAS_ANASTRUCT:
                 return {"error": "anastruct chưa cài"}
             import numpy as _np
@@ -8162,50 +8222,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _gam_col_pa3 = 19.0     # γ CDM cement-soil (tham khảo TCVN 9403)
                 _gam_td_pa3  = _cdm_a_pa3 * _gam_col_pa3 + (1 - _cdm_a_pa3) * _cdm_gam_t
 
-                # Thay lớp bùn (Clay symbols 1, XMD) trong front_layers bằng layer composite
-                _ep_front_layers_pa3 = []
-                _ep_soil_types_pa3   = []
-                _ep_sus_pa3          = []
-                for _i_l, _l in enumerate(_ep_front_layers):
-                    _sym_pa3 = (_real_param_rows[_i_l]["Lớp"] if _i_l < len(_real_param_rows)
-                                  else "").upper()
-                    if _sym_pa3 in {"1", "XMD"}:
-                        # Thay = layer composite
-                        _ep_front_layers_pa3.append(_SL(
-                            tip_elev=_l.tip_elev,
-                            gamma=float(_gam_td_pa3),
-                            gamma_sub=max(float(_gam_td_pa3) - 9.81, 8.0),
-                            phi=0.0,   # composite vẫn cohesive
-                            c=float(_c_td_pa3),
-                            delta=float(_ep_delta),
-                        ))
-                        _ep_soil_types_pa3.append("Clay")
-                        _ep_sus_pa3.append(float(_c_td_pa3))
-                    else:
-                        _ep_front_layers_pa3.append(_l)
-                        _ep_soil_types_pa3.append(
-                            _ep_soil_types[_i_l] if _i_l < len(_ep_soil_types) else "Sand"
-                        )
-                        _ep_sus_pa3.append(
-                            _ep_sus[_i_l] if _i_l < len(_ep_sus) else 0.0
-                        )
-
-                _ep_res_pa3 = _ep_compute(
-                    _ep_geom,
-                    front_layers=_ep_front_layers_pa3,
-                    back_layers=_ep_back_layers,
-                    fill=_ep_fill,
-                    ka_method=_ep_ka_method,
-                    kp_method=_ep_kp_method,
-                    delta_deg=float(_ep_delta),
-                    front_soil_types=_ep_soil_types_pa3,
-                    front_sus=_ep_sus_pa3,
-                    back_soil_types=_ep_soil_types,
-                    back_sus=_ep_sus,
-                )
-
-                # Hiển thị 3 biểu đồ cạnh nhau (thu nhỏ)
-                _ep_left, _ep_mid, _ep_right = st.columns(3, gap="small")
+                # Hiển thị 2 biểu đồ PA1 + PA2 cạnh nhau
+                _ep_left, _ep_mid = st.columns(2, gap="medium")
                 with _ep_left:
                     st.markdown("**(1) TRƯỚC xử lý nền — nguyên trạng**")
                     if _ep_res.get("fig"):
@@ -8226,7 +8244,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 with _ep_mid:
                     st.markdown("**(2) SAU CDM — Front chỉ đất đắp**")
                     if _ep_res_cdm.get("fig"):
-                        _ep_res_cdm["fig"].set_size_inches(7, 4.5)
+                        _ep_res_cdm["fig"].set_size_inches(8, 4.8)
                         for _ax in _ep_res_cdm["fig"].axes:
                             _ax.tick_params(labelsize=7)
                             if _ax.get_title():
@@ -8242,34 +8260,97 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                   f"Δ {_ep_res_cdm['F_net']-_ep_res['F_net']:+.0f}",
                                   delta_color="inverse")
                     st.caption(
-                        f"Front: fill {_dpy_top_ke:+.2f}m → z_mat = {_z_mat_top:+.2f}m  \n"
-                        f"(CDTK={_cdm_CDTK:+.2f}m + h_mat={_cdm_h_mat:.2f}m). "
-                        f"Dưới z_mat → 0."
+                        f"Front: fill {_dpy_top_ke:+.2f}m → z_mat = {_z_mat_top:+.2f}m "
+                        f"(CDTK={_cdm_CDTK:+.2f}m + h_mat={_cdm_h_mat:.2f}m). Dưới z_mat → 0."
                     )
 
-                with _ep_right:
-                    st.markdown("**(3) PA3 — Lớp bùn = đất nền tương đương**")
-                    if _ep_res_pa3.get("fig"):
-                        _ep_res_pa3["fig"].set_size_inches(7, 4.5)
-                        for _ax in _ep_res_pa3["fig"].axes:
-                            _ax.tick_params(labelsize=7)
-                            if _ax.get_title():
-                                _ax.set_title(_ax.get_title(), fontsize=8)
-                        st.pyplot(_ep_res_pa3["fig"], use_container_width=True)
-                        plt.close(_ep_res_pa3["fig"])
-                    _p1m, _p2m, _p3m = st.columns(3)
-                    _p1m.metric("F Active", f"{_ep_res_pa3['F_active']:.0f}", "kN/m",
-                                  f"Δ {_ep_res_pa3['F_active']-_ep_res['F_active']:+.0f}",
-                                  delta_color="inverse")
-                    _p2m.metric("F Passive", f"{_ep_res_pa3['F_passive']:.0f}", "kN/m")
-                    _p3m.metric("F Net", f"{_ep_res_pa3['F_net']:.0f}", "kN/m",
-                                  f"Δ {_ep_res_pa3['F_net']-_ep_res['F_net']:+.0f}",
-                                  delta_color="inverse")
-                    st.caption(
-                        f"a = {_cdm_a_pa3:.4f} ({_cdm_a_pa3*100:.1f}%) — D={_cdm_D:.2f}m, e={_cdm_e:.2f}m, {_cdm_arr}  \n"
-                        f"**C_td** = a·qu/2 + (1−a)·Su = **{_c_td_pa3:.1f} kPa**  \n"
-                        f"**γ_td** = a·γ_col + (1−a)·γ_soil = **{_gam_td_pa3:.1f} kN/m³**"
+                # ═══════════════════════════════════════════════════════════════
+                # PA3 — Lớp bùn thay = đất nền tương đương (CDM + sét)
+                # User nhập Ctd; gợi ý lấy từ công thức tab Thiết kế CDM
+                # ═══════════════════════════════════════════════════════════════
+                st.markdown("---")
+                st.markdown("### Phương án 3 — Thay lớp bùn bằng đất nền tương đương")
+                _pa3_in1, _pa3_in2 = st.columns([3, 2])
+                with _pa3_in1:
+                    _dpy_ctd = st.number_input(
+                        "Ctd — Lực dính tương đương lớp bùn sau xử lý (kN/m²)",
+                        value=0.0, step=1.0,
+                        key="dpy_ctd_pa3",
+                        help=(f"Gợi ý từ tab Thiết kế CDM: "
+                              f"C_td = a·qu/2 + (1−a)·Su = {_cdm_a_pa3:.3f}·{_cdm_qu/2:.0f} "
+                              f"+ {1-_cdm_a_pa3:.3f}·{_cdm_Su_t:.1f} = "
+                              f"**{_c_td_pa3:.1f} kPa** "
+                              f"(D={_cdm_D:.2f}m, e={_cdm_e:.2f}m, {_cdm_arr})")
                     )
+                with _pa3_in2:
+                    if st.button(f"Áp gợi ý {_c_td_pa3:.1f} kPa", key="btn_apply_ctd"):
+                        st.session_state["dpy_ctd_pa3"] = float(round(_c_td_pa3, 1))
+                        st.rerun()
+
+                # Tính PA3 dùng Ctd USER nhập (thay vì auto-computed)
+                _C_td_use = float(_dpy_ctd) if _dpy_ctd > 0 else 0.0
+                _ep_front_layers_pa3 = []
+                _ep_soil_types_pa3   = []
+                _ep_sus_pa3          = []
+                for _i_l, _l in enumerate(_ep_front_layers):
+                    _sym_pa3 = (_real_param_rows[_i_l]["Lớp"] if _i_l < len(_real_param_rows)
+                                  else "").upper()
+                    if _sym_pa3 in {"1", "XMD"}:
+                        _ep_front_layers_pa3.append(_SL(
+                            tip_elev=_l.tip_elev,
+                            gamma=float(_gam_td_pa3),
+                            gamma_sub=max(float(_gam_td_pa3) - 9.81, 8.0),
+                            phi=0.0,
+                            c=_C_td_use,
+                            delta=float(_ep_delta),
+                        ))
+                        _ep_soil_types_pa3.append("Clay")
+                        _ep_sus_pa3.append(_C_td_use)
+                    else:
+                        _ep_front_layers_pa3.append(_l)
+                        _ep_soil_types_pa3.append(
+                            _ep_soil_types[_i_l] if _i_l < len(_ep_soil_types) else "Sand"
+                        )
+                        _ep_sus_pa3.append(
+                            _ep_sus[_i_l] if _i_l < len(_ep_sus) else 0.0
+                        )
+                _ep_res_pa3 = _ep_compute(
+                    _ep_geom,
+                    front_layers=_ep_front_layers_pa3,
+                    back_layers=_ep_back_layers,
+                    fill=_ep_fill,
+                    ka_method=_ep_ka_method,
+                    kp_method=_ep_kp_method,
+                    delta_deg=float(_ep_delta),
+                    front_soil_types=_ep_soil_types_pa3,
+                    front_sus=_ep_sus_pa3,
+                    back_soil_types=_ep_soil_types,
+                    back_sus=_ep_sus,
+                )
+
+                # Biểu đồ PA3 (full width)
+                if _ep_res_pa3.get("fig"):
+                    _ep_res_pa3["fig"].set_size_inches(11, 5.0)
+                    for _ax in _ep_res_pa3["fig"].axes:
+                        _ax.tick_params(labelsize=8)
+                        if _ax.get_title():
+                            _ax.set_title(_ax.get_title(), fontsize=9)
+                    st.pyplot(_ep_res_pa3["fig"], use_container_width=True)
+                    plt.close(_ep_res_pa3["fig"])
+                _p1m, _p2m, _p3m = st.columns(3)
+                _p1m.metric("F Active PA3", f"{_ep_res_pa3['F_active']:.0f}", "kN/m",
+                              f"Δ {_ep_res_pa3['F_active']-_ep_res['F_active']:+.0f} vs PA1",
+                              delta_color="inverse")
+                _p2m.metric("F Passive PA3", f"{_ep_res_pa3['F_passive']:.0f}", "kN/m")
+                _p3m.metric("F Net PA3", f"{_ep_res_pa3['F_net']:.0f}", "kN/m",
+                              f"Δ {_ep_res_pa3['F_net']-_ep_res['F_net']:+.0f} vs PA1",
+                              delta_color="inverse")
+                st.caption(
+                    f"**Lớp bùn (1, XMD)** thay = layer composite: Ctd = **{_C_td_use:.1f} kPa** "
+                    f"(user nhập); γ_td = {_gam_td_pa3:.1f} kN/m³ (auto từ tab Thiết kế CDM với "
+                    f"a = {_cdm_a_pa3*100:.1f}%, γ_col = 19.0 kN/m³, γ_soil = {_cdm_gam_t:.1f} kN/m³). "
+                    f"Các lớp khác giữ nguyên."
+                )
 
                 # Bảng thông số đất + Ka/Kp tính được
                 if _real_param_rows:
