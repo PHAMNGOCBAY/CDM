@@ -268,7 +268,7 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 | Zone | Tên BH trong DXF | Regex | SPT blow counts | N_value |
 |------|-----------------|-------|-----------------|---------|
 | NHC | `BH-03`, `BH-05`... | `^BH-\d+$` | 3 cột (N1,N2,N3) sorted+dedup | N2+N3 |
-| KE | `HK1`..`HK12` | `^HK\d+$` | **4 cột**: N_prep(skip),N1,N2,N3 ordered by x | N2+N3 |
+| KE | `HK1`..`HK12` | `^HK\d+$` | **4 cột**: N_prep(skip),N1,N2,N3 ordered by x | **N1+N2** (user 2026-05-20) |
 
 **KE DXF đặc điểm:**
 - Scale: 10 DXF/m (y giảm khi depth tăng), nhiều trang xếp dọc với page gap ~117 DXF
@@ -276,7 +276,62 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 - Layer depths: float ở x_col−35..x_col−5 (giá trị = độ sâu thực, không cần filter depth_y)
 - Descriptions: match MTEXT qua SPT-based depth_map (xử lý multi-page bằng scale≈10 filter)
 
-**File tham chiếu:** [37-ke-borehole-spt-import.md](37-ke-borehole-spt-import.md)
+**File tham chiếu:** [37-ke-borehole-spt-import.md](37-ke-borehole-spt-import.md) + [45-ke-spt-import.md](45-ke-spt-import.md)
+
+**KE SPT (cập nhật 2026-05-20):** dùng file `KE-1. TRỤ_260512 CVTT-TTHC. Tru DC.dxf` (file mới, không phải `BOKE-1...` cũ). Import qua `scripts/import_ke_spt.py`, lưu vào `spt_values`. Convention N: user yêu cầu `N = N1 + N2` (sum cột 2+3, KHÁC chuẩn ASTM N=N2+N3). JSON lưu cả 2 (`N` user + `N_astm` chuẩn). Có 248 readings cho 12 HK.
+
+### 14. Stack Thư viện — Quy tắc Áp dụng cho Mỗi Loại Việc
+
+| Thư viện | Phiên bản | Dùng cho | Đánh giá | Phạm vi áp dụng |
+|---|---|---|---|---|
+| **WeasyPrint** | ≥ 68.0 | **PDF từ HTML/CSS** | ★★★ PDF quality | `scripts/pdf_report.py` — primary engine cho PDF báo cáo (HTML/CSS/Jinja2 pipeline) |
+| **Plotly** | ≥ 6.0 | **Biểu đồ tương tác** | ★★★ professional charts | Biểu đồ trên web (drag/zoom/hover). Static PNG → embed PDF qua `kaleido` |
+| **Matplotlib** | ≥ 3.8 | **Biểu đồ đơn giản / fallback** | ★★ simple & fast | Sơ đồ CDM, soil column, mặt cắt. Fallback khi không có Plotly |
+| **Pandas** | ≥ 2.0 | **Xử lý dữ liệu + Bảng** | ★★★ easy data | `read_csv/read_excel`, `DataFrame.to_html()` cho table render |
+| **SymPy** | ≥ 1.14 | **Công thức symbolic** | ★★★ math symbolic | Derive công thức parametric ($\sigma = f(\epsilon)$), latex output |
+| **ReportLab** | ≥ 4.0 | **PDF full control (fallback)** | ★★★ full control | `scripts/pdf_export.py` — fallback khi WeasyPrint thiếu native libs (Windows local) |
+| **Kaleido** | ≥ 1.0 | Plotly fig → PNG | — | `fig.to_image(format="png")` để embed vào PDF |
+| **Jinja2** | ≥ 3.1 | HTML template | — | `_REPORT_TEMPLATE` trong `pdf_report.py` |
+| **NumPy** | ≥ 1.26 | Tính toán array | — | Mọi tính toán số |
+| **openpyxl + xlrd** | — | Đọc Excel | — | `.xlsx` (openpyxl), `.xls` cũ (xlrd) |
+
+**Quy tắc bắt buộc**:
+
+1. **PDF báo cáo** → ưu tiên **WeasyPrint** (HTML/CSS render chuẩn web, multi-page, font Vietnamese OK). Fallback **ReportLab** chỉ khi WeasyPrint thiếu native libs (Windows local).
+
+2. **Biểu đồ tương tác trên web** → **Plotly** (drag/zoom/rotate/hover). KHÔNG dùng Matplotlib cho web charts trừ fallback.
+
+3. **Biểu đồ kỹ thuật cố định** (sơ đồ CDM, mặt cắt, soil column) → **Matplotlib** (đơn giản, kiểm soát chính xác layout).
+
+4. **Bảng** → **Pandas DataFrame** → render qua `st.dataframe()` trên web, `df.to_html()` trong PDF. KHÔNG xây bảng thủ công bằng list-of-lists.
+
+5. **Công thức** → trên app dùng LaTeX MathJax (`$$...$$` trong `st.markdown`) như tab Thông số. Cho symbolic derivation (vd parametric) → **SymPy** với `sp.latex(expr)`.
+
+6. **Pipeline báo cáo PDF chuẩn**: `pandas` (input) → `numpy + sympy` (calc) → `plotly + matplotlib` (figs, → PNG qua kaleido) → `pandas.to_html + CSS` (tables) → `Jinja2` template → `WeasyPrint` HTML→PDF.
+
+**Yêu cầu Cloud**: `packages.txt` cài 7 apt libs cho WeasyPrint (libpango, libcairo, libharfbuzz, libgdk-pixbuf, libffi-dev, shared-mime-info).
+
+**Yêu cầu local Windows**: WeasyPrint cần GTK3 runtime (https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer). Nếu thiếu → tự fallback `pdf_export.py` (reportlab).
+
+### 13. NT2 Cọc đóng — Đa phương pháp TCVN 11823-10:2017
+
+Engine `scripts/ke_sw_nt_calc.py` tự động chọn phương pháp theo `symbol`:
+
+- **Lớp sét** (mặc định) → α-method (Tomlinson 1980), Điều 7.3.8.6.2, φ_stat = 0,35
+- **Lớp cát** (`SAND_SYMBOLS = {F, 2a, 2b, 2c, 4, 5a, 6, 7}`) → SPT-Meyerhof, Điều 7.3.8.6.7, φ_stat = 0,30
+
+**Đơn vị**: TCVN dùng MPa·mm² → engine đổi sang kPa·m² nhân ra kN.
+- `qs_kPa = 1.9·N₁₆₀` (cọc chiếm chỗ — SW); `0.96·N₁₆₀` (chữ H / ống hở)
+- `qp_kPa = 38·N₁₆₀·(Db/D) ≤ 3200·N₁₆₀` (cát) hoặc `≤ 1800·N₁₆₀` (cát bột)
+- `N₁₆₀ = N·CN`, với `CN = √(100/σ'v_kPa)` clamp [0.5, 2.0]
+
+**σ'v effective**: tích phân γ qua các lớp; phần dưới MNN dùng γ' = γ − γw; lớp cắt ngang MNN chia đôi tự động.
+
+**φ_stat dynamic**: sand Rs > 10% hoặc tip cát → 0,30; còn lại 0,35.
+
+Khi thiếu SPT cho lớp cát → Rs/Rp = 0 + warning trong `n2["warnings"]`. Khi import SPT, formula auto-activate.
+
+**File chi tiết:** [42-ke-sw-nt1-nt2-chi-tiet.md](42-ke-sw-nt1-nt2-chi-tiet.md) + [18-driven-pile-TCVN11823.md](18-driven-pile-TCVN11823.md)
 
 **NHC DXF — Tọa độ hố khoan (cập nhật 2026-05-19):**
 
