@@ -92,10 +92,11 @@ def compute_fill_zone(
         pressure[i] = max(0.0, ka * sv - 2.0 * geom.c_fill * sqrt_ka)
 
     # Resultant: F = ∫ σ_h dh  (h = depth from top_elev, increasing downward)
-    F = float(np.trapz(pressure, x=-elevs))  # x=-elevs là chiều tăng dần
+    _trap = getattr(np, "trapezoid", None) or np.trapz   # numpy<2 trapz, ≥2 trapezoid
+    F = float(_trap(pressure, x=-elevs))  # x=-elevs là chiều tăng dần
 
     if F > 0.0:
-        moment = float(np.trapz(pressure * (geom.top_elev - elevs), x=-elevs))
+        moment = float(_trap(pressure * (geom.top_elev - elevs), x=-elevs))
         z_fill = geom.top_elev - moment / F
     else:
         z_fill = geom.soil_level_front + geom.H_fill / 3.0

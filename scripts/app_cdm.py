@@ -8897,8 +8897,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             st.pyplot(_fig_tot, use_container_width=True)
                             plt.close(_fig_tot)
 
-                            # Tổng lực hợp lực Net
-                            _F_total_net = float(_np_ep.trapezoid(_p_total_t, _elevs_t))
+                            # Tổng lực hợp lực Net (numpy<2.0 dùng trapz, ≥2.0 dùng trapezoid)
+                            _trap_fn = getattr(_np_ep, "trapezoid", None) or getattr(_np_ep, "trapz")
+                            _F_total_net = float(_trap_fn(_p_total_t, _elevs_t))
                             _c1m, _c2m, _c3m = st.columns(3)
                             _c1m.metric("F Active (kN/m)", f"{_ep_res_cdm['F_active']:.0f}",
                                           delta=f"Δ {_ep_res_cdm['F_active']-_ep_res['F_active']:+.0f}",
@@ -8984,7 +8985,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         _e_tip_bs = float(_dpy_top_ke - _dpy_L)
                         _elevs_bs = _np_b.linspace(_e_top_bs, _e_tip_bs, 40)
                         _dph_bs   = [_dph_at(e, _bs_strip, _e_top_bs) for e in _elevs_bs]
-                        _F_bs     = float(_np_b.trapezoid(_dph_bs, -_elevs_bs))
+                        _trap_fn_b = getattr(_np_b, "trapezoid", None) or getattr(_np_b, "trapz")
+                        _F_bs     = float(_trap_fn_b(_dph_bs, -_elevs_bs))
                     except Exception as _eb:
                         _dph_bs = None
                         _F_bs   = 0.0
