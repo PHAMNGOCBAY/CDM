@@ -17,3 +17,11 @@ shapely>=2.1
 sqlalchemy>=2.0
 geojson>=3.2
 scipy>=1.13
+# Geotech libraries (pure Python — work on Streamlit Cloud)
+groundhog>=0.15
+anastruct>=1.6
+striplog>=0.9
+lasio>=0.32
+welly>=0.5
+meshio>=5.3
+d-geolib>=2.8
