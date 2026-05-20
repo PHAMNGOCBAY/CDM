@@ -3021,18 +3021,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.sidebar.divider()
-import streamlit.components.v1 as _components
-_components.html(
-    """<button onclick="window.parent.print()"
-       style="width:100%; padding:8px; border-radius:6px;
-              border:1px solid #1F4E79; background:#1F4E79; color:white;
-              font-weight:600; cursor:pointer; font-size:14px;">
-       In trang / Xuất PDF
-       </button>
-       <div style="font-size:11px; color:#666; margin-top:6px; text-align:center;">
-       Mở mọi expander trước khi in để xem đủ nội dung
-       </div>""",
-    height=70,
+st.sidebar.markdown("### In trang / Xuất PDF")
+st.sidebar.info(
+    "Nhấn **Ctrl+P** (Windows) hoặc **⌘+P** (Mac) → "
+    "chọn **Save as PDF** trong dialog Print.\n\n"
+    "**Trước khi in:** mở các expander muốn in để nội dung hiển thị đầy đủ."
 )
 
 
@@ -3097,22 +3090,37 @@ def _read_md(filename: str) -> str | None:
 
 
 def _show_theory(page_key: str) -> None:
-    """Hiển thị các file lý thuyết liên quan ở đầu tab, mỗi file 1 expander."""
+    """Hiển thị các file lý thuyết — dropdown chọn tài liệu, render trong 1 expander."""
     docs = _PAGE_DOCS.get(page_key, [])
     if not docs:
         return
     with st.expander(f"Lý thuyết & Tiêu chuẩn ({len(docs)} tài liệu)", expanded=False):
         st.caption(
-            "Mở các tài liệu lý thuyết áp dụng cho trang này. "
-            "Trước khi in PDF, mở tất cả expander để nội dung được in đầy đủ."
+            "Chọn tài liệu muốn xem. Trước khi in PDF: mở expander này → chọn tài liệu → "
+            "nội dung sẽ in cùng với kết quả tính toán bên dưới."
         )
-        for title, fname in docs:
+        _opts = {f"{i+1}. {t[0]}": t[1] for i, t in enumerate(docs)}
+        _opts_with_all = {"— Hiện tất cả —": None, **_opts}
+        _pick = st.selectbox(
+            "Tài liệu", list(_opts_with_all.keys()),
+            key=f"_theory_pick_{page_key}",
+        )
+        if _pick == "— Hiện tất cả —":
+            for title, fname in docs:
+                content = _read_md(fname)
+                st.markdown(f"---\n#### {title}  \n_Nguồn: `{fname}`_")
+                if content:
+                    st.markdown(content)
+                else:
+                    st.caption(f"_(không tìm thấy `{fname}`)_")
+        else:
+            fname = _opts_with_all[_pick]
             content = _read_md(fname)
-            if content is None:
-                st.caption(f"_(không tìm thấy `{fname}`)_")
-                continue
-            with st.expander(f"{title} — `{fname}`", expanded=False):
+            st.caption(f"Nguồn: `{fname}`")
+            if content:
                 st.markdown(content)
+            else:
+                st.caption("_(không tìm thấy file)_")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
