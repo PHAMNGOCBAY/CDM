@@ -2445,7 +2445,9 @@ if _page == "geology":
         bh_name = st.selectbox(_t("bh_lbl"), bh_names, index=sel_idx)
 
         if st.button(_t("apply_bh"), type="primary"):
-            st.session_state["cdm_bh"] = bh_name
+            st.session_state["cdm_bh"]  = bh_name
+            st.session_state["sl_zone"] = zone
+            st.session_state["sl_bh"]   = bh_name
             # Auto-fill soil params
             cp = _clay_params(bh_name, zone)
             if cp:
@@ -3218,6 +3220,63 @@ elif _page == "params":
             q_tot = q_total(ld)
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
+
+    # ── Bảng thông số địa chất (từ hố khoan đã áp dụng) ────────────────────────
+    _p_bh = _get("cdm_bh")
+    if _p_bh:
+        _p_layers = _load_layers(_p_bh)
+        if _p_layers:
+            _p_zone = _get("cdm_zone")
+            _p_rows = []
+            _p_borrowed = False
+            for _lr in _p_layers:
+                _sym = _lr.get("symbol") or ""
+                _Cc  = _lr.get("Cc");  _Cs = _lr.get("Cs")
+                _e0  = _lr.get("e0");  _PC = _lr.get("PC_kPa")
+                _Cv  = _lr.get("Cv_cm2s"); _gam = _lr.get("gamma_kNm3")
+                _src = ""
+                if _Cc is None or _e0 is None:
+                    _fb = _load_zone_params_by_symbol(_p_zone, _sym)
+                    if _fb:
+                        _Cc  = _Cc  if _Cc  is not None else _fb.get("Cc")
+                        _Cs  = _Cs  if _Cs  is not None else _fb.get("Cs")
+                        _e0  = _e0  if _e0  is not None else _fb.get("e0")
+                        _PC  = _PC  if _PC  is not None else _fb.get("PC_kPa")
+                        _Cv  = _Cv  if _Cv  is not None else _fb.get("Cv_cm2s")
+                        _gam = _gam if _gam is not None else _fb.get("gamma_kNm3")
+                        _src = _fb.get("source_bh") or ""
+                        if _src:
+                            _p_borrowed = True
+                _p_rows.append({
+                    "Lớp":         _sym,
+                    "Mô tả":       (_lr.get("description") or "")[:30],
+                    "h (m)":       _lr.get("thickness_m"),
+                    "γ (kN/m³)":  _gam,
+                    "e0":          _e0,
+                    "Cc":          _Cc,
+                    "Cs":          _Cs,
+                    "PC (kPa)":   _PC,
+                    "Cv (cm²/s)": f"{_Cv:.2e}" if _Cv is not None else "—",
+                    "_src":        _src,
+                })
+            _df_p = pd.DataFrame(_p_rows)
+            def _hl_p(row):
+                return ["background-color:#FFF8DC"]*len(row) if row["_src"] else [""]*len(row)
+            with st.expander(f"Thông số địa chất — {_p_bh}", expanded=True):
+                st.dataframe(
+                    _df_p.drop(columns=["_src"]).style.apply(_hl_p, axis=1),
+                    use_container_width=True, hide_index=True,
+                    column_config={
+                        "h (m)":     st.column_config.NumberColumn(format="%.2f"),
+                        "γ (kN/m³)":st.column_config.NumberColumn(format="%.2f"),
+                        "e0":        st.column_config.NumberColumn(format="%.3f"),
+                        "Cc":        st.column_config.NumberColumn(format="%.4f"),
+                        "Cs":        st.column_config.NumberColumn(format="%.4f"),
+                        "PC (kPa)": st.column_config.NumberColumn(format="%.1f"),
+                    },
+                )
+                if _p_borrowed:
+                    st.caption("*Ô nền vàng: tham khảo từ hố khoan khác cùng khu vực.*")
 
     # ── Kiểm tra ràng buộc số liệu ──────────────────────────────────────────────
     _vc_top  = _get("cdm_top_clay")
