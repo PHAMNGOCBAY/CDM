@@ -8373,12 +8373,16 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         _su_db = _su_avg_in_range(_z_c, 0.0, float(_dpy_H1_a))
                         if _su_db is not None:
                             st.session_state["dpy_su"] = float(_su_db)
+                            # Su Back mặc định = Su lớp bùn (đất tự nhiên Back chính
+                            # là cùng lớp 1 chưa xử lý) — đồng bộ tại đây
+                            st.session_state["dpy_su_back"] = float(_su_db)
                     except Exception:
                         pass
                     st.session_state["dpy_applied"] = {
                         "dpy_pile": _dpy_apply_bh, "dpy_L": _dpy_apply_bh,
                         "dpy_Z": _dpy_apply_bh, "dpy_H1": _dpy_apply_bh,
                         "dpy_su": _dpy_apply_bh,
+                        "dpy_su_back": _dpy_apply_bh,
                     }
                     st.rerun()
 
@@ -8454,11 +8458,14 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                   -2.0, 0.05,
                                                   key="dpy_Z_back",
                                                   help="Cao độ đáy đào phía Back (mặc định −2.0m; thấp hơn Front do đã đào)")
-            _dpy_sub    = _dpy_b2.number_input("Su Back (kN/m²)",
-                                                  value=0.0, step=1.0,
-                                                  key="dpy_su_back",
-                                                  help="Sức kháng cắt không thoát nước phía Back (đất tự nhiên, "
-                                                       "chưa xử lý). Kỹ sư nhập theo thí nghiệm.")
+            # Su Back mặc định = Su lớp bùn (_dpy_su) — đất Back là cùng lớp 1
+            # chưa xử lý, nên Su tương đương lớp bùn Front (trước CDM).
+            _dpy_sub    = _dpy_b2.number_input(
+                _dlbl("dpy_su_back", "Su Back (kN/m²)"),
+                value=float(_dpy_su) if _dpy_su > 0 else 0.0, step=1.0,
+                key="dpy_su_back",
+                help="Sức kháng cắt không thoát nước phía Back (đất tự nhiên, "
+                     "chưa xử lý). Mặc định = Su lớp bùn = giá trị Ctd Front.")
             _dpy_wlvl_b = _dpy_b3.number_input("Mực nước Back (m)", -10.0, 5.0,
                                                   -2.0, 0.5,
                                                   key="dpy_wlvl_back",
