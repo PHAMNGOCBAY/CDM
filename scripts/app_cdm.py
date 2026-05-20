@@ -8250,9 +8250,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _zone_c_iter = (_ke_data.get("_meta", {}).get("zone_code")
                                     or _bh_pick_d.get("zone_code") or "KE")
                     _su_db_iter  = _su_avg_in_range(_zone_c_iter, 0.0, _dpy_H1_default)
-                    _dpy_su_default = float(_su_db_iter) if _su_db_iter is not None else 0.0
+                    # Ctd Front SAU xử lý CDM — bộ chuẩn dự án 80 kPa (CDM 28d)
+                    _dpy_su_default = float(_su_db_iter) if _su_db_iter is not None else 80.0
                 except Exception:
-                    _dpy_su_default = 0.0
+                    _dpy_su_default = 80.0
                 _dpy_apply_bh = _hk_iter
                 for _k, _v in [
                     (f"dpy_pile_{_hk_iter}",    _dpy_pile_default),
@@ -8297,18 +8298,19 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                     5.0, 35.0, 22.0, 0.5, key=f"dpy_H1_{_hk_iter}")
                         _dpy_su = st.number_input(
                             _dlbl("dpy_su", "Ctd lớp đất xử lý nền Front (kN/m²)"),
-                            value=0.0, step=1.0, key=f"dpy_su_{_hk_iter}",
+                            value=80.0, step=1.0, key=f"dpy_su_{_hk_iter}",
                             help="Lực dính tương đương của lớp đất Front sau khi xử lý nền (CDM). "
-                                 "Chỉ áp dụng cho Front — Back giữ Su tự nhiên."
+                                 "Mặc định 80 kN/m² — bộ chuẩn dự án (CDM 28 ngày qu ≈ 160 kPa)."
                         )
                     with _df_c3:
                         _dpy_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 30.0, 5.0,
                                                   key=f"dpy_H_load_{_hk_iter}")
                         _dpy_M = st.number_input("Mô-men đầu cọc M (kNm/m)", 0.0, 500.0, 0.0, 10.0,
                                                   key=f"dpy_M_load_{_hk_iter}")
-                        _dpy_q_op = st.number_input("Tải trọng khai thác q (kN/m²)", 0.0, 200.0, 20.0, 2.5,
+                        _dpy_q_op = st.number_input("Tải trọng khai thác q (kN/m²)", 0.0, 200.0, 15.0, 2.5,
                                                       key=f"dpy_q_operation_{_hk_iter}",
                                                       help="Tải trọng thường xuyên trên mặt Front (xe, người, công trình). "
+                                                           "Mặc định 15 kN/m² — bộ chuẩn dự án kè công viên. "
                                                            "Boussinesq công thức (39) TCVN 11823-3 §10.6.2.")
                     st.caption(
                         "**Quy ước:** **Front (TRÁI)** = phía đất đắp / mặt đường / xe chạy / người đi / "
@@ -8323,9 +8325,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _dpy_q_a   = _dpy_w2.number_input("a — khoảng cách tải (m)", 0.0, 20.0, 0.0, 0.5,
                                                          key=f"dpy_q_a_{_hk_iter}",
                                                          help="a=0: tải sát tường; a>0: tải lùi ra xa")
-                    _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 50.0, 1.0,
+                    _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 10.0, 1.0,
                                                          key=f"dpy_q_w_{_hk_iter}",
-                                                         help="w ≥ 100m ≈ tải vô hạn")
+                                                         help="Mặc định 10m — bộ chuẩn dự án (làn xe + lề). w ≥ 100m ≈ tải vô hạn.")
                     _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
                                                          key=f"dpy_wlvl_{_hk_iter}")
                     _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"],
