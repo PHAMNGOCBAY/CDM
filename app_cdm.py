@@ -1627,8 +1627,20 @@ def calc_punching_check(
 
 def build_scenarios(
     D: float, Lc: float, qu_field: float, Cu: float,
-    q: float, spacings: list[float], arrangement: str
+    q: float, spacings: list[float], arrangement: str,
+    q_static: float | None = None,
 ) -> list[dict]:
+    """
+    Quy ước tải trọng (TCVN 9403:2012 + TCCS 41:2022):
+    - **Lún S₁** (TCCS 41:2022 Phụ lục A): tính bằng tải TĨNH `q_static`
+      (đất đắp + đệm + mặt đường + ô tô đắp), **KHÔNG xét hoạt tải bánh xe**
+      vì hoạt tải có tần suất ngắn không gây cố kết.
+    - **Sức tải đầu cọc Pcol** (TCVN 9403 Phụ lục C): tính bằng tải TỔNG `q`
+      (bao gồm hoạt tải) vì cọc CDM chịu trực tiếp cả hoạt tải.
+    Nếu `q_static = None` → dùng `q` cho cả hai (tương thích ngược).
+    """
+    if q_static is None:
+        q_static = q
     Ec = calc_Ec(qu_field)
     Es = calc_Es(Cu)
     Cc = qu_field / 2
@@ -1636,8 +1648,8 @@ def build_scenarios(
     for e in spacings:
         a    = calc_a(D, e, arrangement)
         Etb  = calc_Etb(a, Ec, Es)
-        S1   = calc_S1(q, Lc, Etb)
-        sc   = calc_sigma_col(q, Ec, Etb)
+        S1   = calc_S1(q_static, Lc, Etb)          # tải tĩnh, BỎ qua hoạt tải
+        sc   = calc_sigma_col(q, Ec, Etb)          # tải tổng, XÉT hoạt tải
         Pcol = calc_Pcol(sc, D)
         bc   = calc_bearing(D, Lc, Cc, Cu)
         rows.append({
@@ -1654,8 +1666,16 @@ def build_scenarios(
 
 
 def q_total(loads: dict) -> float:
+    """Tải tổng bao gồm hoạt tải xe — dùng cho Pcol/SCT."""
     return (loads.get("q_traffic", 20)
             + loads.get("h_road", 0.8) * loads.get("g_road", 24)
+            + loads.get("h_fill", 1.5) * loads.get("g_fill", 18)
+            + loads.get("h_mat",  0.4) * loads.get("g_mat",  22.5))
+
+
+def q_static(loads: dict) -> float:
+    """Tải tĩnh (đất đắp + đệm + mặt đường, KHÔNG hoạt tải) — dùng cho lún."""
+    return (loads.get("h_road", 0.8) * loads.get("g_road", 24)
             + loads.get("h_fill", 1.5) * loads.get("g_fill", 18)
             + loads.get("h_mat",  0.4) * loads.get("g_mat",  22.5))
 
@@ -4374,10 +4394,19 @@ elif _page == "compare":
     qu  = _get("cdm_qu")
     Su  = _get("cdm_Su")
     arr = _get("cdm_arrangement")
-    q   = q_total(_get("cdm_loads"))
+    _ld_now = _get("cdm_loads")
+    q       = q_total(_ld_now)   # tổng (xét hoạt tải) → cho Pcol
+    q_st    = q_static(_ld_now)  # tĩnh (bỏ hoạt tải) → cho S1
 
-    scenarios = build_scenarios(D, Lc, qu, Su, q, spacings, arr)
+    scenarios = build_scenarios(D, Lc, qu, Su, q, spacings, arr, q_static=q_st)
     df = pd.DataFrame(scenarios)
+    st.caption(
+        f"**Quy ước tải trọng** (TCVN 9403 / TCCS 41):  \n"
+        f"• **Lún $S_1$** dùng tải tĩnh $q_{{static}} = {q_st:.1f}$ kN/m² "
+        f"(đất đắp + đệm + mặt đường, **bỏ hoạt tải xe**)  \n"
+        f"• **Sức tải $P_{{col}}$** dùng tải tổng $q = {q:.1f}$ kN/m² "
+        f"(bao gồm hoạt tải $q_{{traffic}} = {_ld_now.get('q_traffic',20):.1f}$ kN/m²)"
+    )
 
     # Chọn PA kiến nghị
     _alt_prefix = "PA" if _get("lang") == "VN" else "Alt."
@@ -4493,8 +4522,8 @@ elif _page == "compare":
             _Es_v  = calc_Es(Su)
             _a_v   = calc_a(D, _e_rec, arr)
             _Etb_v = calc_Etb(_a_v, _Ec_v, _Es_v)
-            _S1_v  = calc_S1(q, Lc, _Etb_v)
-            _sc_v  = calc_sigma_col(q, _Ec_v, _Etb_v)
+            _S1_v  = calc_S1(q_st, Lc, _Etb_v)        # S1: tải tĩnh
+            _sc_v  = calc_sigma_col(q, _Ec_v, _Etb_v) # Pcol: tải tổng
             _Pcol_v = calc_Pcol(_sc_v, D)
             _bc_v  = calc_bearing(D, Lc, _qv / 2, Su)
             _qu_rows.append({
@@ -4543,8 +4572,8 @@ elif _page == "compare":
             _Es_v  = calc_Es(Su)
             _a_v   = calc_a(_Dv, _e_rec, arr)
             _Etb_v = calc_Etb(_a_v, _Ec_v, _Es_v)
-            _S1_v  = calc_S1(q, Lc, _Etb_v)
-            _sc_v  = calc_sigma_col(q, _Ec_v, _Etb_v)
+            _S1_v  = calc_S1(q_st, Lc, _Etb_v)        # S1: tải tĩnh
+            _sc_v  = calc_sigma_col(q, _Ec_v, _Etb_v) # Pcol: tải tổng
             _Pcol_v = calc_Pcol(_sc_v, _Dv)
             _bc_v  = calc_bearing(_Dv, Lc, qu / 2, Su)
             _D_rows.append({
@@ -4607,12 +4636,13 @@ elif _page == "compare":
         for _hm in _hmat_list:
             _ld_v = _ld_base.copy()
             _ld_v["h_mat"] = _hm
-            _q_v   = q_total(_ld_v)
+            _q_v    = q_total(_ld_v)   # tổng (xét hoạt tải)
+            _q_st_v = q_static(_ld_v)  # tĩnh (bỏ hoạt tải) — cho S1
             _Ec_v  = calc_Ec(qu)
             _Es_v  = calc_Es(Su)
             _a_v   = calc_a(D, _e_rec, arr)
             _Etb_v = calc_Etb(_a_v, _Ec_v, _Es_v)
-            _S1_v  = calc_S1(_q_v, Lc, _Etb_v)
+            _S1_v  = calc_S1(_q_st_v, Lc, _Etb_v)   # S1: tải tĩnh
             _hm_rows.append({
                 "h_mat (m)": _hm,
                 "q (kN/m²)": round(_q_v, 2),
