@@ -5539,12 +5539,14 @@ if _page == "ke_sw":
 
         # ── Chi tiết NT1/NT2 từng hố khoan (SQLite) ─────────────────────────────
         with st.expander("Chi tiết tính toán NT1/NT2 từng hố khoan"):
-            _SRC_BADGE = {
-                "VST":     "🟢 VST",
-                "lab":     "🔵 Lab",
-                "default": "🟡 Giả định",
-                "sand":    "⬛ Cát",
-                "unknown": "🔴 Không rõ",
+            _SRC_LBL = {
+                "VST":     "VST",
+                "lab":     "Lab",
+                "default": "Giả định",
+                "sand":    "Cát",
+                "SPT":     "SPT",
+                "missing": "Thiếu SPT",
+                "unknown": "Không rõ",
             }
             try:
                 _con_nt = sqlite3.connect(str(_DB))
@@ -5553,7 +5555,9 @@ if _page == "ke_sw":
                     "SELECT bh_name, pile_type, L_design_m, Z_m, Z_source, "
                     "fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source, "
                     "L_req_nt1_m, margin_nt1_m, nt1_result, "
-                    "Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN, "
+                    "Rs_kN, Rs_clay_kN, Rs_sand_kN, "
+                    "tip_symbol, tip_method, tip_su_kNm2, tip_N160, "
+                    "Rp_kN, phi_stat, phi_basis, RR_kN, W_kN, "
                     "ratio_nt2, nt2_result, su_warnings "
                     "FROM ke_sw_nt_detail ORDER BY bh_name"
                 )
@@ -5570,16 +5574,17 @@ if _page == "ke_sw":
                             _bh_n, _pile_t, _L_d, _Z_m, _Z_src,
                             _fill_m, _L_soil, _tip_d, _D_bot, _D_src,
                             _L_req1, _marg1, _res1,
-                            _Rs, _tip_sym, _tip_su, _Rp, _RR, _W,
+                            _Rs, _Rs_clay, _Rs_sand,
+                            _tip_sym, _tip_meth, _tip_su, _tip_N160,
+                            _Rp, _phi, _phi_basis, _RR, _W,
                             _rat2, _res2, _warns,
                         ) = _nt
                         st.markdown(f"#### {_bh_n}")
 
-                        # Cảnh báo su mặc định (nếu có)
                         if _warns:
                             st.warning(
-                                "**Cảnh báo — su giả định:** Một số lớp không có dữ liệu "
-                                "VST/lab trong SQLite, đã dùng giá trị mặc định theo ký hiệu.\n\n"
+                                "**Cảnh báo dữ liệu:** Một số lớp thiếu thí nghiệm — "
+                                "đã dùng giả định / bỏ qua ma sát.\n\n"
                                 + "\n\n".join(f"- {w}" for w in _warns.split("; "))
                             )
 
@@ -5604,18 +5609,30 @@ if _page == "ke_sw":
                                 delta=f"RR/W = {_rat2:.2f}",
                                 delta_color="normal" if _rat2 >= 1 else "inverse",
                             )
+                            _rs_parts = []
+                            if _Rs_clay is not None:
+                                _rs_parts.append(f"sét={_Rs_clay:.0f}")
+                            if _Rs_sand is not None:
+                                _rs_parts.append(f"cát={_Rs_sand:.0f}")
+                            _rs_breakdown = " (" + " + ".join(_rs_parts) + ")" if _rs_parts else ""
+                            _tip_info = f"**{_tip_sym}** [{_tip_meth or 'alpha'}]"
+                            if _tip_meth == "SPT":
+                                _tip_info += f" — N₁₆₀={_tip_N160:.0f}" if _tip_N160 else " — không SPT"
+                            else:
+                                _tip_info += f" — su={_tip_su:.0f} kPa"
                             st.caption(
-                                f"Rs = {_Rs:.0f} kN | Rp = {_Rp:.0f} kN  \n"
+                                f"Rs = {_Rs:.0f} kN{_rs_breakdown} | Rp = {_Rp:.0f} kN  \n"
                                 f"RR = φ × (Rs + Rp) = {_RR:.0f} kN | W = {_W:.0f} kN  \n"
-                                f"Lớp mũi cọc: **{_tip_sym}** (su = {_tip_su:.0f} kPa)"
+                                f"φ_stat = **{_phi:.2f}** ({_phi_basis or 'mặc định'})  \n"
+                                f"Lớp mũi cọc: {_tip_info}"
                             )
 
-                        # Bảng lớp đất NT2 — join với ke_sw_nt_detail (không ke_sw_design)
                         _con2 = sqlite3.connect(str(_DB))
                         _cur2 = _con2.cursor()
                         _cur2.execute(
                             "SELECT l.symbol, l.L_m, l.su_kPa, l.su_source, "
-                            "l.alpha, l.Rs_kN, l.note "
+                            "l.alpha, l.method, l.N160, l.sigma_v_eff_kPa, "
+                            "l.gamma_kNm3, l.Rs_kN, l.note "
                             "FROM ke_sw_nt2_layers l "
                             "JOIN ke_sw_nt_detail d ON l.sw_design_id = d.id "
                             "WHERE d.bh_name=? ORDER BY l.layer_order",
@@ -5625,15 +5642,19 @@ if _page == "ke_sw":
                         _con2.close()
                         if _lyrs:
                             _ldf = []
-                            for _sym, _Llyr, _su, _su_src, _alp, _Rs_lyr, _note in _lyrs:
+                            for (_sym, _Llyr, _su, _su_src, _alp, _meth,
+                                 _N, _sigv, _gam, _Rs_lyr, _note) in _lyrs:
                                 _ldf.append({
-                                    "Lớp đất": _sym,
-                                    "L (m)": round(_Llyr, 2),
-                                    "su (kPa)": round(_su, 1) if _su else 0,
-                                    "Nguồn su": _SRC_BADGE.get(_su_src or "", _su_src or ""),
-                                    "α": round(_alp, 3) if _alp else 0,
-                                    "Rs lớp (kN)": round(_Rs_lyr, 1),
-                                    "Chiều sâu": _note,
+                                    "Lớp đất":      _sym,
+                                    "L (m)":        round(_Llyr, 2),
+                                    "Phương pháp":  _meth or "alpha",
+                                    "su (kPa)":     round(_su, 1) if _su else 0,
+                                    "α":            round(_alp, 3) if _alp else 0,
+                                    "N₁₆₀":        round(_N, 1) if _N is not None else "—",
+                                    "γ (kN/m³)":   round(_gam, 1) if _gam else "—",
+                                    "σ'v (kPa)":   round(_sigv, 0) if _sigv else "—",
+                                    "Nguồn":        _SRC_LBL.get(_su_src or "", _su_src or ""),
+                                    "Rs lớp (kN)":  round(_Rs_lyr, 1),
                                 })
                             st.dataframe(
                                 pd.DataFrame(_ldf),
@@ -5643,8 +5664,8 @@ if _page == "ke_sw":
                         st.caption(
                             f"Cọc: {_pile_t} | L thiết kế = {_L_d:.1f} m | "
                             f"Chiều sâu mũi cọc = {_tip_d:.2f} m  \n"
-                            "Nguồn su: 🟢 VST (cắt cánh) · 🔵 Lab (Cu/c thí nghiệm) · "
-                            "🟡 Giả định theo ký hiệu lớp (cần bổ sung thí nghiệm)"
+                            "Phương pháp: **alpha** (Tomlinson, sét) · **SPT** (Meyerhof, cát) — "
+                            "TCVN 11823-10:2017 Điều 7.3.8.6"
                         )
                         st.divider()
             except Exception as _exc_nt:
@@ -5775,6 +5796,92 @@ if _page == "ke_sw":
                 "Công thức: Rs = α × Su × P × L_soil  |  "
                 "Rp = 9 × Su × Ap  |  RR = 0,35 × (Rs + Rp)  |  "
                 "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
+            )
+
+    # ── C.2 SPT-Meyerhof cho lớp cát ────────────────────────────────────────────
+    st.divider()
+    st.markdown("### C.2. Kiểm tra SPT-Meyerhof — lớp cát (Điều 7.3.8.6.7)")
+    st.info(
+        "Áp dụng cho cọc trong cát/cát bột.  \n"
+        "qs = 0,0019·N₁₆₀ (cọc chiếm chỗ — SW) hoặc 0,00096·N₁₆₀ (chữ H / ống hở), MPa  \n"
+        "qp = 0,038·N₁₆₀·(Db/D) ≤ λq · MPa  |  λq cát = 3,2·N₁₆₀ MPa  |  φ_stat = 0,30"
+    )
+
+    _spt_c1, _spt_c2, _spt_c3 = st.columns(3)
+    with _spt_c1:
+        _spt_sw    = st.selectbox("Loại cọc SW", _sw_names,
+                                  index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
+                                  key="spt_sw_sel")
+        _spt_L     = st.number_input("L cọc trong cát (m)", 1.0, 30.0, 5.0, 0.5, key="spt_L")
+        _spt_disp  = st.checkbox("Cọc chiếm chỗ (SW = chiếm chỗ)",
+                                 value=True, key="spt_displacing")
+    with _spt_c2:
+        _spt_N160  = st.number_input("N₁₆₀ trung bình lớp cát", 0.0, 100.0, 15.0, 1.0,
+                                     key="spt_N160",
+                                     help="N hiệu chỉnh CN = √(100/σ'v), clamp [0.5, 2.0]")
+        _spt_Db    = st.number_input("Db — mũi cọc trong tầng cát (m)", 0.1, 20.0, 2.0, 0.1,
+                                     key="spt_Db",
+                                     help="Db = chiều sâu mũi cọc DƯỚI đỉnh tầng cát chịu lực")
+        _spt_silt  = st.checkbox("Cát bột (giảm λq từ 3,2 → 1,8·N₁₆₀)",
+                                 value=False, key="spt_silt")
+    with _spt_c3:
+        _spt_phi   = st.number_input("φ_stat SPT", 0.1, 0.5, 0.30, 0.01, key="spt_phi")
+        _spt_W     = st.number_input("W cọc (kN)", 0.0, 500.0, 211.0, 1.0, key="spt_W",
+                                     help="Trọng lượng cọc tự chống nhổ")
+
+    if st.button("Kiểm tra SPT-Meyerhof", type="primary", key="spt_check"):
+        _sp_pile = _sw_by_name(_spt_sw)
+        if _sp_pile is None:
+            st.error(f"Không tìm thấy cọc {_spt_sw}.")
+        else:
+            _sp_P   = (_sp_pile.get("perimeter_mm") or 0) / 1000.0
+            _sp_Ap  = (_sp_pile.get("Atd_cm2", 0) or 0) * 1e-4
+            _sp_D   = (_sp_pile.get("H_mm", 840) or 840) / 1000.0
+
+            # qs (kPa) = (1.9 nếu chiếm chỗ else 0.96) × N160
+            _sp_qs  = (1.9 if _spt_disp else 0.96) * _spt_N160
+            _sp_Rs  = _sp_qs * _sp_P * _spt_L
+            # qp (kPa) = 38 × N160 × Db/D, giới hạn λq
+            _sp_qp_raw = 38.0 * _spt_N160 * (_spt_Db / _sp_D)
+            _sp_lambda_q = (1800.0 if _spt_silt else 3200.0) * _spt_N160
+            _sp_qp  = min(_sp_qp_raw, _sp_lambda_q)
+            _sp_qp_capped = _sp_qp_raw > _sp_lambda_q
+            _sp_Rp  = _sp_qp * _sp_Ap
+            _sp_RR  = _spt_phi * (_sp_Rs + _sp_Rp)
+            _sp_ratio = _sp_RR / _spt_W if _spt_W > 0 else 0
+            _sp_ok  = _sp_RR >= _spt_W
+
+            _sr1, _sr2, _sr3, _sr4 = st.columns(4)
+            _sr1.metric("qs (kPa)", f"{_sp_qs:.1f}",
+                        f"{'chiếm chỗ' if _spt_disp else 'không chiếm chỗ'}")
+            _sr2.metric("qp (kPa)", f"{_sp_qp:.1f}",
+                        f"{'đã cắt λq' if _sp_qp_capped else f'raw={_sp_qp_raw:.0f}'}",
+                        delta_color="off")
+            _sr3.metric("RR = φ(Rs+Rp) (kN)", f"{_sp_RR:.1f}",
+                        f"Rs={_sp_Rs:.0f}  Rp={_sp_Rp:.0f}",
+                        delta_color="normal" if _sp_ok else "inverse")
+            _sr4.metric("Tỷ số RR/W", f"{_sp_ratio:.2f}",
+                        "Đạt" if _sp_ok else "Không đạt",
+                        delta_color="normal" if _sp_ok else "inverse")
+
+            st.dataframe(
+                pd.DataFrame({
+                    "Thông số": [
+                        "Cọc", "Chu vi P (m)", "Bề rộng D (m)", "Diện tích mũi Ap (cm²)",
+                        "N₁₆₀", "L cát (m)", "Db (m)",
+                        "qs (kPa)", "qp_raw (kPa)", "λq giới hạn (kPa)", "qp dùng (kPa)",
+                        "Rs (kN)", "Rp (kN)", "RR = φ(Rs+Rp) (kN)", "W (kN)", "Kết quả",
+                    ],
+                    "Giá trị": [
+                        _spt_sw, f"{_sp_P:.4f}", f"{_sp_D:.3f}", f"{_sp_Ap*1e4:.0f}",
+                        f"{_spt_N160:.1f}", f"{_spt_L:.1f}", f"{_spt_Db:.2f}",
+                        f"{_sp_qs:.2f}", f"{_sp_qp_raw:.1f}", f"{_sp_lambda_q:.0f}",
+                        f"{_sp_qp:.1f}",
+                        f"{_sp_Rs:.1f}", f"{_sp_Rp:.1f}", f"{_sp_RR:.1f}",
+                        f"{_spt_W:.0f}", "Đạt" if _sp_ok else "Không đạt",
+                    ],
+                }),
+                use_container_width=True, hide_index=True,
             )
 
 # ── Placeholder: TKBVTC CDM ──────────────────────────────────────────────────

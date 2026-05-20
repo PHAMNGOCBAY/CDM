@@ -34,10 +34,32 @@ SU_BY_SYMBOL: dict[str, float] = {
     "1": 10.0, "1b": 20.0, "3": 35.0,
     "5": 75.0, "5b": 100.0, "XMD": 10.0,
 }
-# Lớp cát/san lấp — su = 0, không tính ma sát
+# Lớp cát/san lấp — dùng SPT-Meyerhof (TCVN 11823-10 Điều 7.3.8.6.7)
 SAND_SYMBOLS = frozenset({"F", "2a", "2b", "2c", "4", "5a", "6", "7"})
 # Lớp yếu xử lý — tính là vùng mềm trong NT1
 SOFT_SYMBOLS = frozenset({"1", "XMD"})
+
+# Cọc SW = cọc bê tông DUL chữ U lõi đặc → cọc CHIẾM CHỖ
+SW_IS_DISPLACING = True
+
+# Hệ số sức kháng theo phương pháp (TCVN 11823-10:2017 Bảng 9)
+PHI_BY_METHOD = {
+    "alpha":  0.35,  # Tomlinson 1987, Skempton 1951 — sét
+    "beta":   0.25,  # Esrig & Kirby 1979 — sét
+    "lambda": 0.40,  # Vijayvergiya & Focht 1972 — sét cọc ống
+    "SPT":    0.30,  # Meyerhof — cát
+}
+
+# γ mặc định theo ký hiệu khi không có lab_tests (kN/m³)
+GAMMA_DEFAULT_BY_SYMBOL: dict[str, float] = {
+    "1": 15.0, "1b": 16.0, "XMD": 14.0,
+    "2a": 18.0, "2b": 18.5, "2c": 19.0,
+    "3":  18.0, "4":  19.0, "5":  19.0, "5a": 19.5, "5b": 19.5,
+    "6":  20.0, "7":  20.0, "F":  17.0,
+}
+# Mực nước ngầm mặc định (m, hệ cao độ tuyệt đối)
+WATER_TABLE_DEFAULT = -1.0
+_GAMMA_W = 9.81
 
 
 # ── Alpha Tomlinson (1980) — bảng Hình 18, TCVN 11823-10:2017 Điều 7.3.8.6.2 ─
@@ -66,6 +88,117 @@ def _alpha_tomlinson(su: float) -> float:
         if s0 <= su <= s1:
             return round(a0 + (su - s0) / (s1 - s0) * (a1 - a0), 4)
     return 1.0
+
+
+# ── γ + σ'v + N₁₆₀ helpers (cho SPT-Meyerhof) ────────────────────────────────
+def _get_gamma_for_layer(
+    bh_name: str, depth_top: float, depth_bot: float,
+    symbol: str, db_path: Path = DB_PATH,
+) -> tuple[float, str]:
+    """Trung bình γ (kN/m³) từ lab_tests trong [depth_top, depth_bot].
+    Fallback GAMMA_DEFAULT_BY_SYMBOL. source: 'lab' | 'default'."""
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+    cur.execute(
+        "SELECT AVG(lt.gamma_kNm3) FROM lab_tests lt "
+        "JOIN boreholes b ON lt.borehole_id=b.id "
+        "WHERE b.name=? AND lt.gamma_kNm3 IS NOT NULL "
+        "  AND (lt.depth_from_m + lt.depth_to_m)/2.0 >= ? "
+        "  AND (lt.depth_from_m + lt.depth_to_m)/2.0 <= ?",
+        (bh_name, depth_top, depth_bot),
+    )
+    row = cur.fetchone()
+    con.close()
+    if row and row[0] is not None:
+        return round(float(row[0]), 2), "lab"
+    return GAMMA_DEFAULT_BY_SYMBOL.get(symbol, 18.0), "default"
+
+
+def _sigma_v_eff_at_depth(
+    bh_name: str, depth_target: float,
+    db_path: Path = DB_PATH,
+    water_table_elev: float = WATER_TABLE_DEFAULT,
+) -> float:
+    """Ứng suất hiệu quả thẳng đứng σ'v (kPa) tại độ sâu depth_target (m từ cổ HK).
+    Tích phân γ·dz qua các lớp; dưới MNN dùng γ' = γ − γw."""
+    layers = _load_layers(bh_name, db_path)
+    Z_top = _get_bh_Z_m(bh_name, db_path) or 0.0
+    # Độ sâu MNN từ cổ HK (m, dương xuống dưới)
+    depth_wt = Z_top - water_table_elev
+    sigma = 0.0
+    for dtop, dbot, sym in layers:
+        if dtop >= depth_target:
+            break
+        dbot_eff = min(dbot, depth_target)
+        L_total = dbot_eff - dtop
+        if L_total <= 0:
+            continue
+        gamma, _ = _get_gamma_for_layer(bh_name, dtop, dbot, sym, db_path)
+        # Chia lớp đôi nếu cắt qua MNN
+        if dtop >= depth_wt:
+            # Toàn bộ lớp dưới MNN → γ' = γ − γw
+            sigma += max(gamma - _GAMMA_W, 0.0) * L_total
+        elif dbot_eff <= depth_wt:
+            # Toàn bộ lớp trên MNN → γ
+            sigma += gamma * L_total
+        else:
+            # Cắt ngang: phần trên MNN dùng γ, phần dưới dùng γ'
+            L_above = depth_wt - dtop
+            L_below = dbot_eff - depth_wt
+            sigma += gamma * L_above + max(gamma - _GAMMA_W, 0.0) * L_below
+    return round(max(sigma, 0.0), 2)
+
+
+def _get_N160_for_layer(
+    bh_name: str, depth_top: float, depth_bot: float,
+    db_path: Path = DB_PATH,
+    water_table_elev: float = WATER_TABLE_DEFAULT,
+) -> tuple[float | None, str]:
+    """Trung bình N₁₆₀ trong [depth_top, depth_bot].
+    Hiệu chỉnh CN = √(100/σ'v_kPa), clamp [0.5, 2.0] — TCVN 11823-10 Điều 4.6.2.4.
+    Trả (N160_avg, source). source: 'SPT' | 'missing'."""
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+    cur.execute(
+        "SELECT s.depth_m, s.N FROM spt_values s "
+        "JOIN boreholes b ON s.borehole_id=b.id "
+        "WHERE b.name=? AND s.depth_m >= ? AND s.depth_m <= ? "
+        "  AND s.N IS NOT NULL AND s.N > 0",
+        (bh_name, depth_top, depth_bot),
+    )
+    rows = cur.fetchall()
+    con.close()
+    if not rows:
+        return None, "missing"
+    N160_vals: list[float] = []
+    for depth, N in rows:
+        sigma_v = _sigma_v_eff_at_depth(bh_name, depth, db_path, water_table_elev)
+        CN = (100.0 / sigma_v) ** 0.5 if sigma_v > 0 else 1.0
+        CN = max(0.5, min(2.0, CN))
+        N160_vals.append(float(N) * CN)
+    return round(sum(N160_vals) / len(N160_vals), 1), "SPT"
+
+
+# ── Công thức SPT-Meyerhof (TCVN 11823-10:2017 Điều 7.3.8.6.7) ───────────────
+def _qs_spt_kPa(N160: float | None, displacing: bool = True) -> float:
+    """qs (kPa) cho cát — Pt.69/70. qs[MPa] = 0.0019·N160 (chiếm chỗ) hoặc 0.00096 (không)."""
+    if N160 is None or N160 <= 0:
+        return 0.0
+    return (1.9 if displacing else 0.96) * N160  # ×1000 đổi MPa→kPa
+
+
+def _qp_spt_kPa(
+    N160: float | None, Db_m: float, D_m: float,
+    soil_type: str = "sand",
+) -> float:
+    """qp (kPa) cho cát — Pt.68: qp[MPa] = 0.038·N160·(Db/D), giới hạn λq.
+    cát: λq = 3.2·N160 MPa = 3200·N160 kPa.
+    cát bột: λq = 1.8·N160 MPa = 1800·N160 kPa."""
+    if N160 is None or N160 <= 0 or D_m <= 0:
+        return 0.0
+    qp = 38.0 * N160 * (Db_m / D_m)        # ×1000 đổi MPa→kPa
+    lambda_q = (1800.0 if soil_type == "silt_sand" else 3200.0) * N160
+    return min(qp, lambda_q)
 
 
 # ── Đọc catalog cọc ──────────────────────────────────────────────────────────
@@ -250,15 +383,20 @@ def calc_nt2_layers(
     L_design_m: float,
     tip_elev: float = TIP_ELEV_M,
     top_ke: float   = TOP_KE_M,
-    phi_stat: float = PHI_STAT,
+    phi_stat: float | None = None,
     db_path: Path   = DB_PATH,
+    water_table_elev: float = WATER_TABLE_DEFAULT,
 ) -> dict:
     """
     NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc
-    su mỗi lớp: ưu tiên VST → lab → mặc định (cảnh báo).
+    - Lớp sét: α-method (Tomlinson 1980), su ưu tiên VST → lab → mặc định
+    - Lớp cát: SPT-Meyerhof (TCVN 11823-10 Điều 7.3.8.6.7),
+              N₁₆₀ hiệu chỉnh CN = √(100/σ'v), clamp [0.5, 2.0]
+    - φ_stat: nếu phi_stat=None → tính động (sét dominant=0.35, cát dominant=0.30)
     """
     perimeter_m = pile["perimeter_mm"] / 1000.0
     Ap_m2       = pile["Atd_cm2"] * 1e-4
+    D_m         = pile["H_mm"] / 1000.0           # bề rộng cọc — dùng cho qp_SPT
     TL_T        = pile["weight_T"]
     L_std       = pile["L_std_m"]
     w_per_m     = TL_T * 9.81 / L_std
@@ -269,9 +407,14 @@ def calc_nt2_layers(
 
     layers_raw = _load_layers(bh_name, db_path)
     rows: list[dict] = []
-    Rs_total   = 0.0
-    tip_su     = 0.0
-    tip_symbol = ""
+    Rs_total      = 0.0
+    Rs_clay_total = 0.0
+    Rs_sand_total = 0.0
+    tip_su       = 0.0
+    tip_N160     = None
+    tip_symbol   = ""
+    tip_method   = "alpha"
+    tip_layer_top = 0.0
     warnings:  list[str] = []
 
     for depth_top, depth_bot, symbol in layers_raw:
@@ -281,8 +424,50 @@ def calc_nt2_layers(
             continue
         L_lyr = round(eff_bot - eff_top, 3)
 
-        su, source = _get_su_for_layer(bh_name, depth_top, depth_bot, symbol, db_path)
+        # γ + σ'v dùng cho mọi phương pháp (lưu vào row để debug)
+        gamma_v, gamma_src = _get_gamma_for_layer(bh_name, depth_top, depth_bot, symbol, db_path)
+        sigma_v = _sigma_v_eff_at_depth(
+            bh_name, (depth_top + depth_bot) / 2.0, db_path, water_table_elev,
+        )
 
+        # ── SPT-Meyerhof cho cát ──────────────────────────────────────────────
+        if symbol in SAND_SYMBOLS:
+            N160, n_src = _get_N160_for_layer(
+                bh_name, depth_top, depth_bot, db_path, water_table_elev,
+            )
+            qs_kPa = _qs_spt_kPa(N160, displacing=SW_IS_DISPLACING)
+            Rs_lyr = round(qs_kPa * perimeter_m * L_lyr, 1)
+            Rs_sand_total += Rs_lyr
+            if n_src == "missing":
+                warnings.append(
+                    f"Lớp cát '{symbol}' ({depth_top:.1f}–{depth_bot:.1f} m): "
+                    "không có SPT → bỏ qua ma sát thành bên"
+                )
+            rows.append({
+                "symbol":          symbol,
+                "depth_top_m":     depth_top,
+                "depth_bot_m":     depth_bot,
+                "eff_top_m":       round(eff_top, 2),
+                "eff_bot_m":       round(eff_bot, 2),
+                "L_lyr_m":         L_lyr,
+                "su_kNm2":         0.0,
+                "su_source":       n_src,
+                "alpha":           0.0,
+                "Rs_lyr_kN":       Rs_lyr,
+                "method":          "SPT",
+                "N160":            N160 if N160 is not None else 0.0,
+                "sigma_v_eff_kPa": sigma_v,
+                "gamma_kNm3":      gamma_v,
+            })
+            if depth_top <= tip_depth <= depth_bot:
+                tip_N160     = N160
+                tip_symbol   = symbol
+                tip_method   = "SPT"
+                tip_layer_top = depth_top
+            continue
+
+        # ── α-method cho sét (logic gốc) ──────────────────────────────────────
+        su, source = _get_su_for_layer(bh_name, depth_top, depth_bot, symbol, db_path)
         if source == "default":
             warnings.append(
                 f"Lớp '{symbol}' ({depth_top:.1f}–{depth_bot:.1f} m): "
@@ -291,56 +476,93 @@ def calc_nt2_layers(
         elif source == "unknown":
             warnings.append(
                 f"Lớp '{symbol}' ({depth_top:.1f}–{depth_bot:.1f} m): "
-                f"không xác định được su — bỏ qua ma sát"
+                "không xác định được su — bỏ qua ma sát"
             )
-
         alpha  = _alpha_tomlinson(su) if su > 0 else 0.0
         Rs_lyr = round(alpha * su * perimeter_m * L_lyr, 1)
-        Rs_total += Rs_lyr
-
+        Rs_clay_total += Rs_lyr
         rows.append({
-            "symbol":      symbol,
-            "depth_top_m": depth_top,
-            "depth_bot_m": depth_bot,
-            "eff_top_m":   round(eff_top, 2),
-            "eff_bot_m":   round(eff_bot, 2),
-            "L_lyr_m":     L_lyr,
-            "su_kNm2":     su,
-            "su_source":   source,
-            "alpha":       round(alpha, 3),
-            "Rs_lyr_kN":   Rs_lyr,
+            "symbol":          symbol,
+            "depth_top_m":     depth_top,
+            "depth_bot_m":     depth_bot,
+            "eff_top_m":       round(eff_top, 2),
+            "eff_bot_m":       round(eff_bot, 2),
+            "L_lyr_m":         L_lyr,
+            "su_kNm2":         su,
+            "su_source":       source,
+            "alpha":           round(alpha, 3),
+            "Rs_lyr_kN":       Rs_lyr,
+            "method":          "alpha",
+            "N160":            None,
+            "sigma_v_eff_kPa": sigma_v,
+            "gamma_kNm3":      gamma_v,
         })
-
         if depth_top <= tip_depth <= depth_bot:
-            tip_su     = su
-            tip_symbol = symbol
+            tip_su        = su
+            tip_symbol    = symbol
+            tip_method    = "alpha"
+            tip_layer_top = depth_top
 
-    Rs_total = round(Rs_total, 1)
-    Rp_kN    = round(9.0 * tip_su * Ap_m2, 1) if tip_su > 0 else 0.0
-    RR_kN    = round(phi_stat * (Rs_total + Rp_kN), 1)
-    ratio    = round(RR_kN / W_kN, 2) if W_kN > 0 else 0.0
+    Rs_total = round(Rs_clay_total + Rs_sand_total, 1)
+
+    # ── Rp tại mũi ────────────────────────────────────────────────────────────
+    if tip_method == "SPT":
+        if tip_N160 and tip_N160 > 0:
+            Db_m   = max(tip_depth - tip_layer_top, 0.01)
+            qp_kPa = _qp_spt_kPa(tip_N160, Db_m, D_m, soil_type="sand")
+            Rp_kN  = round(qp_kPa * Ap_m2, 1)
+        else:
+            Rp_kN = 0.0
+            warnings.append(
+                f"Mũi cọc trong lớp cát '{tip_symbol}' nhưng không có SPT → Rp = 0"
+            )
+    else:
+        Rp_kN = round(9.0 * tip_su * Ap_m2, 1) if tip_su > 0 else 0.0
+
+    # ── φ_stat động ───────────────────────────────────────────────────────────
+    if phi_stat is None:
+        # Sand chiếm > 10% Rs → SPT dominant → φ=0.30
+        sand_share = Rs_sand_total / Rs_total if Rs_total > 0 else 0.0
+        if tip_method == "SPT" or sand_share > 0.10:
+            phi_eff = PHI_BY_METHOD["SPT"]
+            phi_basis = f"SPT dominant (sand Rs={sand_share*100:.0f}% / tip={tip_method})"
+        else:
+            phi_eff = PHI_BY_METHOD["alpha"]
+            phi_basis = "α dominant (sét chiếm ưu thế)"
+    else:
+        phi_eff = phi_stat
+        phi_basis = f"user-set {phi_stat}"
+
+    RR_kN = round(phi_eff * (Rs_total + Rp_kN), 1)
+    ratio = round(RR_kN / W_kN, 2) if W_kN > 0 else 0.0
 
     return {
-        "bh_name":     bh_name,
-        "pile_name":   pile_name,
-        "L_design_m":  L_design_m,
-        "fill_m":      fill_m,
-        "L_soil_m":    round(L_design_m - fill_m, 3),
-        "tip_depth_m": tip_depth,
-        "perimeter_m": round(perimeter_m, 4),
-        "Ap_cm2":      pile["Atd_cm2"],
-        "w_kNm":       round(w_per_m, 3),
-        "W_kN":        W_kN,
-        "layers":      rows,
-        "Rs_kN":       Rs_total,
-        "tip_symbol":  tip_symbol,
-        "tip_su_kNm2": tip_su,
-        "Rp_kN":       Rp_kN,
-        "phi_stat":    phi_stat,
-        "RR_kN":       RR_kN,
-        "ratio":       ratio,
-        "result":      "Đạt" if ratio >= 1.0 else "Không đạt",
-        "warnings":    warnings,
+        "bh_name":       bh_name,
+        "pile_name":     pile_name,
+        "L_design_m":    L_design_m,
+        "fill_m":        fill_m,
+        "L_soil_m":      round(L_design_m - fill_m, 3),
+        "tip_depth_m":   tip_depth,
+        "perimeter_m":   round(perimeter_m, 4),
+        "Ap_cm2":        pile["Atd_cm2"],
+        "D_m":           round(D_m, 3),
+        "w_kNm":         round(w_per_m, 3),
+        "W_kN":          W_kN,
+        "layers":        rows,
+        "Rs_clay_kN":    round(Rs_clay_total, 1),
+        "Rs_sand_kN":    round(Rs_sand_total, 1),
+        "Rs_kN":         Rs_total,
+        "tip_symbol":    tip_symbol,
+        "tip_method":    tip_method,
+        "tip_su_kNm2":   tip_su,
+        "tip_N160":      tip_N160,
+        "Rp_kN":         Rp_kN,
+        "phi_stat":      phi_eff,
+        "phi_basis":     phi_basis,
+        "RR_kN":         RR_kN,
+        "ratio":         ratio,
+        "result":        "Đạt" if ratio >= 1.0 else "Không đạt",
+        "warnings":      warnings,
     }
 
 
@@ -429,32 +651,42 @@ def create_nt_tables(db_path: Path = DB_PATH) -> None:
             D_bottom_soft_m   REAL,
             D_source          TEXT,
             L_req_nt1_m       REAL,
-            margin_nt1_m REAL,
-            nt1_result   TEXT,
-            Rs_kN        REAL,
-            tip_symbol   TEXT,
-            tip_su_kNm2  REAL,
-            Rp_kN        REAL,
-            RR_kN        REAL,
-            W_kN         REAL,
-            ratio_nt2    REAL,
-            nt2_result   TEXT,
-            su_warnings  TEXT,
-            created_at   TEXT,
+            margin_nt1_m      REAL,
+            nt1_result        TEXT,
+            Rs_kN             REAL,
+            Rs_clay_kN        REAL,
+            Rs_sand_kN        REAL,
+            tip_symbol        TEXT,
+            tip_method        TEXT,           -- 'alpha' | 'SPT'
+            tip_su_kNm2       REAL,
+            tip_N160          REAL,
+            Rp_kN             REAL,
+            phi_stat          REAL,           -- φ_stat hiệu dụng đã chọn
+            phi_basis         TEXT,           -- lý do chọn φ
+            RR_kN             REAL,
+            W_kN              REAL,
+            ratio_nt2         REAL,
+            nt2_result        TEXT,
+            su_warnings       TEXT,
+            created_at        TEXT,
             UNIQUE(bh_name, pile_type, L_design_m)
         );
 
         CREATE TABLE ke_sw_nt2_layers (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
-            sw_design_id INTEGER NOT NULL,
-            layer_order  INTEGER,
-            symbol       TEXT,
-            L_m          REAL,
-            su_kPa       REAL,
-            su_source    TEXT,
-            alpha        REAL,
-            Rs_kN        REAL,
-            note         TEXT,
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            sw_design_id    INTEGER NOT NULL,
+            layer_order     INTEGER,
+            symbol          TEXT,
+            L_m             REAL,
+            su_kPa          REAL,
+            su_source       TEXT,
+            alpha           REAL,
+            method          TEXT,           -- 'alpha' | 'SPT'
+            N160            REAL,           -- SPT hiệu chỉnh (null nếu sét)
+            sigma_v_eff_kPa REAL,           -- σ'v tại giữa lớp
+            gamma_kNm3      REAL,           -- dung trọng dùng tính σ'v
+            Rs_kN           REAL,
+            note            TEXT,
             FOREIGN KEY (sw_design_id) REFERENCES ke_sw_nt_detail(id)
         );
     """)
@@ -479,9 +711,11 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
             (project, zone, bh_name, pile_type, L_design_m, Z_m, Z_source,
              fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source,
              L_req_nt1_m, margin_nt1_m, nt1_result,
-             Rs_kN, tip_symbol, tip_su_kNm2, Rp_kN, RR_kN, W_kN,
+             Rs_kN, Rs_clay_kN, Rs_sand_kN,
+             tip_symbol, tip_method, tip_su_kNm2, tip_N160,
+             Rp_kN, phi_stat, phi_basis, RR_kN, W_kN,
              ratio_nt2, nt2_result, su_warnings, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             "202605-TTHC", "KE",
             n1["bh_name"], n1["pile_name"], n1["L_design_m"],
@@ -489,8 +723,11 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
             n2["fill_m"], n2["L_soil_m"], n2["tip_depth_m"],
             n1["D_bottom_soft_m"], r["D_source"],
             n1["L_req_m"], n1["margin_m"], n1["result"],
-            n2["Rs_kN"], n2["tip_symbol"], n2["tip_su_kNm2"],
-            n2["Rp_kN"], n2["RR_kN"], n2["W_kN"],
+            n2["Rs_kN"], n2.get("Rs_clay_kN"), n2.get("Rs_sand_kN"),
+            n2["tip_symbol"], n2.get("tip_method"),
+            n2["tip_su_kNm2"], n2.get("tip_N160"),
+            n2["Rp_kN"], n2["phi_stat"], n2.get("phi_basis"),
+            n2["RR_kN"], n2["W_kN"],
             n2["ratio"], n2["result"],
             warnings_txt, now,
         ))
@@ -499,12 +736,16 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
         for i, lyr in enumerate(n2["layers"], start=1):
             cur.execute("""
                 INSERT INTO ke_sw_nt2_layers
-                (sw_design_id, layer_order, symbol, L_m, su_kPa, su_source, alpha, Rs_kN, note)
-                VALUES (?,?,?,?,?,?,?,?,?)
+                (sw_design_id, layer_order, symbol, L_m, su_kPa, su_source,
+                 alpha, method, N160, sigma_v_eff_kPa, gamma_kNm3, Rs_kN, note)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 detail_id, i, lyr["symbol"],
                 lyr["L_lyr_m"], lyr["su_kNm2"], lyr["su_source"],
-                lyr["alpha"], lyr["Rs_lyr_kN"],
+                lyr["alpha"], lyr.get("method", "alpha"),
+                lyr.get("N160"), lyr.get("sigma_v_eff_kPa"),
+                lyr.get("gamma_kNm3"),
+                lyr["Rs_lyr_kN"],
                 f"depth {lyr['eff_top_m']:.2f}–{lyr['eff_bot_m']:.2f} m",
             ))
 
