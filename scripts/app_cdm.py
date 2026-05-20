@@ -5177,39 +5177,50 @@ if _page == "params":   # tiếp nội dung Kết quả CDM (gộp vào tab Thô
     st.markdown(f"**{_t('punch_res')}**")
     _ld_r   = _get("cdm_loads")
     _pr_r   = _punch[rec_idx]
-    if _get("lang") == "VN":
-        _punch_steps = [
-            ("Bề dày đệm xi măng",        "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
-            ("Chiều cao đất đắp trên đệm", "He = h_fill",                        f"{_ld_r.get('h_fill',1.5):.2f} m"),
-            ("Cường độ kháng nén đệm XM",  "quckse",                             f"{_get('cdm_quckse'):.0f} kPa"),
-            ("Ứng suất cắt cho phép",      "τase = quckse/(2·Fs)",               f"{_pr_r['tase_kPa']:.2f} kPa"),
-            ("Chiều cao vùng vòm đất",     "Ho = (e−D)·tan(θ/2)",                f"{_pr_r['Ho_m']:.3f} m"),
-            ("So sánh Ho vs He",           "Chọn công thức",                     _pr_r["cong_thuc"]),
-            ("Thể tích đất tác dụng",      "Vsoil",                              f"{_pr_r['Vsoil_m3']:.4f} m³"),
-            ("Thể tích đệm XM tác dụng",   "VCGCXM",                             f"{_pr_r['VCGCXM_m3']:.4f} m³"),
-            ("Áp lực vùng không gia cố",   "PSoil",                              f"{_pr_r['PSoil_kPa']:.3f} kPa"),
-            ("Ứng suất cắt thực tế",       "τse = PSoil·(e²−πD²/4)/(π·D·Hse)",  f"{_pr_r['tse_kPa']:.3f} kPa"),
-            ("Kiểm tra",                   "τse ≤ τase ?",                       _pr_r["check_CT"]),
-        ]
-    else:
-        _punch_steps = [
-            ("Cement mat thickness",       "Hse",                                f"{_ld_r.get('h_mat',0.4):.2f} m"),
-            ("Fill height above mat",      "He = h_fill",                        f"{_ld_r.get('h_fill',1.5):.2f} m"),
-            ("Cement mat strength",        "quckse",                             f"{_get('cdm_quckse'):.0f} kPa"),
-            ("Allowable shear stress",     "τase = quckse/(2·Fs)",               f"{_pr_r['tase_kPa']:.2f} kPa"),
-            ("Arch height",               "Ho = (e−D)·tan(θ/2)",                f"{_pr_r['Ho_m']:.3f} m"),
-            ("Ho vs He comparison",        "Select formula",                     _pr_r["cong_thuc"]),
-            ("Soil volume acting",         "Vsoil",                              f"{_pr_r['Vsoil_m3']:.4f} m³"),
-            ("Cement mat volume acting",   "VCGCXM",                             f"{_pr_r['VCGCXM_m3']:.4f} m³"),
-            ("Pressure on unimproved zone","PSoil",                              f"{_pr_r['PSoil_kPa']:.3f} kPa"),
-            ("Actual shear stress",        "τse = PSoil·(e²−πD²/4)/(π·D·Hse)",  f"{_pr_r['tse_kPa']:.3f} kPa"),
-            ("Check",                      "τse ≤ τase ?",                       _pr_r["check_CT"]),
-        ]
-    _df_punch = pd.DataFrame(_punch_steps, columns=[_CP, _CF, _CV])
-    st.dataframe(
-        _df_punch.style.map(_color_sct, subset=[_CV]),
-        use_container_width=True, hide_index=True,
-        column_config={_CF: st.column_config.TextColumn(width="large")},
+    _ok_ct  = _pr_r["check_CT"] == "Đạt"
+    _ct_check = "**:green[Đạt]**" if _ok_ct else "**:red[Không đạt]**"
+    _punch_rows_md = [
+        ("Bề dày đệm xi măng",
+         "$H_{se}$",
+         f"{_ld_r.get('h_mat',0.4):.2f} m"),
+        ("Chiều cao đất đắp trên đệm",
+         "$H_e = h_{\\text{fill}}$",
+         f"{_ld_r.get('h_fill',1.5):.2f} m"),
+        ("Cường độ kháng nén đệm XM",
+         "$q_{u,ck,se}$",
+         f"{_get('cdm_quckse'):.0f} kPa"),
+        ("Ứng suất cắt cho phép",
+         r"$\tau_{ase} = \dfrac{q_{u,ck,se}}{2 \cdot F_s}$",
+         f"{_pr_r['tase_kPa']:.2f} kPa"),
+        ("Chiều cao vùng vòm đất",
+         r"$H_o = (e - D) \cdot \tan(\theta/2)$",
+         f"{_pr_r['Ho_m']:.3f} m"),
+        ("So sánh $H_o$ vs $H_e$",
+         "Chọn công thức",
+         _pr_r["cong_thuc"]),
+        ("Thể tích đất tác dụng",
+         "$V_{soil}$",
+         f"{_pr_r['Vsoil_m3']:.4f} m³"),
+        ("Thể tích đệm XM tác dụng",
+         "$V_{CGCXM}$",
+         f"{_pr_r['VCGCXM_m3']:.4f} m³"),
+        ("Áp lực vùng không gia cố",
+         "$P_{Soil}$",
+         f"{_pr_r['PSoil_kPa']:.3f} kPa"),
+        ("Ứng suất cắt thực tế",
+         r"$\tau_{se} = \dfrac{P_{Soil} \cdot (e^2 - \pi D^2/4)}{\pi \cdot D \cdot H_{se}}$",
+         f"{_pr_r['tse_kPa']:.3f} kPa"),
+        ("Kiểm tra",
+         r"$\tau_{se} \leq \tau_{ase} \;?$",
+         _ct_check),
+    ]
+    _md_ct = "| Thông số | Công thức | Giá trị |\n|---|---|---|\n"
+    for _n, _f, _v in _punch_rows_md:
+        _md_ct += f"| {_n} | {_f} | **{_v}** |\n"
+    st.markdown(_md_ct)
+    st.caption(
+        "_Phương pháp **ALiCC (PWRI Japan)** — TCVN 9403:2012 Phụ lục C.  \n"
+        "Điều kiện đạt: $\\tau_{se} \\leq \\tau_{ase}$ (ứng suất cắt thực tế ≤ ứng suất cắt cho phép)._"
     )
 
     _punch_md = _load_punch_theory()
