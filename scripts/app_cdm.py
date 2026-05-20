@@ -6623,6 +6623,32 @@ if _page == "ke_sw":
                 st.session_state[_ltk_key][_bh["name"]] = _olmax
             st.rerun()
 
+        # ── Helper: tính lại NT1/NT2 theo Cọc kiến nghị + L thiết kế ──────────
+        @st.cache_data(show_spinner=False)
+        def _recalc_nt(_bh_name: str, _Z_m: float, _H_lyr1: float,
+                       _pile: str, _L_des: float) -> dict:
+            """Tính NT1+NT2 cho 1 HK theo pile+L do user chọn. Cache theo input."""
+            try:
+                import sys as _sys_rc
+                _sys_rc.path.insert(0, str(_ROOT / "scripts"))
+                from ke_sw_nt_calc import calc_nt_for_bh as _calc_for_bh_rc
+                _n1, _n2 = _calc_for_bh_rc(
+                    f"KE-{_bh_name}", _Z_m or 0.0, _H_lyr1 or 0.0,
+                    _pile, _L_des,
+                )
+                return {
+                    "L_req_m":  _n1.get("L_req_m"),
+                    "NT1":      _n1.get("result"),
+                    "NT2":      _n2.get("result"),
+                    "Rs_kN":    _n2.get("Rs_kN"),
+                    "Rp_kN":    _n2.get("Rp_kN"),
+                    "RR_kN":    _n2.get("RR_kN"),
+                    "W_kN":     _n2.get("W_kN"),
+                    "ratio":    _n2.get("ratio"),
+                }
+            except Exception:
+                return {}
+
         _ke_rows = []
         for _bh in _bhs_on_alignment:
             _nt2    = _bh.get("NT2_multilayer") or {}
@@ -6638,6 +6664,33 @@ if _page == "ke_sw":
                 _bh["name"],
                 _pile_lmax.get(_rec) or _bh.get("recommended_L_m") or _opt_Lmax,
             )
+            _ltk_f = float(_ltk) if _ltk is not None else float(_opt_Lmax)
+
+            # Nếu pile / L khác JSON → tính lại; nếu trùng → dùng giá trị JSON
+            _json_pile = _bh.get("recommended_pile")
+            _json_L    = _bh.get("recommended_L_m")
+            _need_recalc = (_rec != _json_pile) or (
+                _json_L is not None and abs(_ltk_f - float(_json_L)) > 0.01
+            )
+            if _need_recalc:
+                _rc = _recalc_nt(_bh["name"], _bh.get("Z_m"), _bh.get("H_layer1_m"),
+                                 _rec, _ltk_f)
+                _nt1_val = _rc.get("NT1") or "–"
+                _nt2_val = _rc.get("NT2") or "–"
+                _rs_val  = _rc.get("Rs_kN")
+                _rp_val  = _rc.get("Rp_kN")
+                _rr_val  = _rc.get("RR_kN")
+                _w_val   = _rc.get("W_kN")
+                _rat_val = _rc.get("ratio")
+            else:
+                _nt1_val = _bh.get("NT1")
+                _nt2_val = _bh.get("NT2")
+                _rs_val  = _nt2.get("Rs_kN")
+                _rp_val  = _nt2.get("Rp_kN")
+                _rr_val  = _nt2.get("RR_kN")
+                _w_val   = _bh.get("W_pile_kN")
+                _rat_val = _nt2.get("ratio")
+
             _ke_rows.append({
                 "Hố khoan":          _bh["name"],
                 "Z (m)":             _bh.get("Z_m"),
@@ -6647,15 +6700,16 @@ if _page == "ke_sw":
                 "L_max (m)":         _opt_Lmax,
                 "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
                 "Cọc kiến nghị":     _rec,
-                "L thiết kế (m)":    float(_ltk) if _ltk is not None else _opt_Lmax,
-                "NT1":               _bh.get("NT1"),
-                "NT2":               _bh.get("NT2"),
-                "Rs (kN)":           _nt2.get("Rs_kN", "–"),
-                "Rp (kN)":           _nt2.get("Rp_kN", "–"),
-                "RR (kN)":           _nt2.get("RR_kN", "–"),
-                "W (kN)":            round(_bh.get("W_pile_kN") or 0, 1),
-                "RR/W":              round(_nt2.get("ratio") or 0, 2) if _nt2 else "–",
-                "Ghi chú":           _bh.get("note", ""),
+                "L thiết kế (m)":    _ltk_f,
+                "NT1":               _nt1_val,
+                "NT2":               _nt2_val,
+                "Rs (kN)":           round(_rs_val, 1) if _rs_val is not None else "–",
+                "Rp (kN)":           round(_rp_val, 1) if _rp_val is not None else "–",
+                "RR (kN)":           round(_rr_val, 1) if _rr_val is not None else "–",
+                "W (kN)":            round(_w_val or 0, 1),
+                "RR/W":              round(_rat_val or 0, 2) if _rat_val is not None else "–",
+                "Ghi chú":           ("Tính lại theo cọc user chọn" if _need_recalc
+                                       else _bh.get("note", "")),
             })
 
         if not _ke_rows:
