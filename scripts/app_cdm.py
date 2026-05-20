@@ -8017,6 +8017,207 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 except Exception as _e_solve:
                     st.error(f"Lỗi giải Winkler: {_e_solve}")
 
+        # ═══════════════════════════════════════════════════════════════════════
+        # D.4. Áp lực đất Rankine & ổn định đáy hố đào
+        # ═══════════════════════════════════════════════════════════════════════
+        st.markdown("### D.4. Áp lực đất Rankine & ổn định đáy hố đào")
+        st.info(
+            "**Tham chiếu:** USACE EM 1110-2-2504 · Terzaghi & Peck (1967) · CWALSHT methodology. "
+            "Phương pháp truyền thống thiết kế cọc bản: cân bằng áp lực chủ động (active) — bị động (passive) "
+            "+ kiểm tra ổn định đáy hố đào (basal heave) cho đất sét mềm."
+        )
+
+        # ── Sơ đồ cọc bản: consolle vs có neo ───────────────────────────────
+        st.markdown("#### Sơ đồ hai dạng cọc bản")
+        if _HAS_MPL:
+            import numpy as _np_sp
+            _fig_sp, (_ax_a, _ax_b) = plt.subplots(1, 2, figsize=(11, 6))
+
+            # ─── (a) Cọc consolle (cantilever) ────────────────────────────
+            _H_dao = 3.0
+            _d_emb = 4.5
+            _L_tot = _H_dao + _d_emb
+            _ax_a.add_patch(plt.Rectangle((-0.2, -_L_tot), 0.4, _L_tot,
+                                            facecolor="#555", edgecolor="black", lw=1.5))
+            # Đất phía chủ động (trái) — trên đáy đào
+            _ax_a.add_patch(plt.Rectangle((-5, -_H_dao), 5-0.2, _H_dao,
+                                            facecolor="#A1887F", alpha=0.4))
+            # Đất phía bị động (phải) — toàn bộ
+            _ax_a.add_patch(plt.Rectangle((0.2, -_L_tot), 5, _L_tot,
+                                            facecolor="#8D6E63", alpha=0.4))
+            # Hố đào (trống)
+            _ax_a.add_patch(plt.Rectangle((-5, -_L_tot), 5-0.2, _L_tot-_H_dao,
+                                            facecolor="white", edgecolor="gray", linestyle="--"))
+            # Mũi tên áp lực chủ động (←)
+            for _yy in _np_sp.arange(-0.5, -_H_dao, -0.5):
+                _ax_a.annotate("", xy=(-0.3, _yy), xytext=(-1.5, _yy),
+                                arrowprops=dict(arrowstyle="->", color="red", lw=1.5))
+            # Mũi tên áp lực bị động (→)
+            for _yy in _np_sp.arange(-_H_dao - 0.5, -_L_tot, -0.7):
+                _ax_a.annotate("", xy=(0.3, _yy), xytext=(1.5, _yy),
+                                arrowprops=dict(arrowstyle="<-", color="green", lw=1.5))
+            _ax_a.text(-1.5, -_H_dao/2, "Active\n(K_a)", color="red", ha="center", fontsize=10, fontweight="bold")
+            _ax_a.text(1.5, -(_H_dao + _d_emb/2), "Passive\n(K_p)", color="green", ha="center", fontsize=10, fontweight="bold")
+            # Mặt đất
+            _ax_a.axhline(0, color="black", lw=1.5)
+            _ax_a.axhline(-_H_dao, xmin=0.05, xmax=0.46, color="black", lw=1.5, linestyle="-")
+            _ax_a.text(-4.8, 0.2, "Mặt đất", fontsize=9, fontweight="bold")
+            _ax_a.text(-4.8, -_H_dao + 0.15, f"Đáy đào H = {_H_dao}m", fontsize=9)
+            _ax_a.annotate("", xy=(0, -_L_tot), xytext=(0, -_H_dao),
+                            arrowprops=dict(arrowstyle="<->", color="blue", lw=2))
+            _ax_a.text(0.3, -(_H_dao + _d_emb/2), f"d = {_d_emb}m\n(ngàm)", color="blue", fontsize=10, fontweight="bold")
+            _ax_a.set_xlim(-5, 5)
+            _ax_a.set_ylim(-_L_tot - 0.5, 1)
+            _ax_a.set_title("(a) Cọc consolle (Cantilever)", fontsize=11, fontweight="bold")
+            _ax_a.set_aspect("equal", adjustable="datalim")
+            _ax_a.set_xticks([]); _ax_a.set_yticks([])
+            for _sp in _ax_a.spines.values(): _sp.set_visible(False)
+
+            # ─── (b) Cọc có neo (anchored) ────────────────────────────────
+            _H_dao2 = 5.0
+            _d_emb2 = 2.5
+            _z_anchor = 1.0
+            _L_tot2 = _H_dao2 + _d_emb2
+            _ax_b.add_patch(plt.Rectangle((-0.2, -_L_tot2), 0.4, _L_tot2,
+                                            facecolor="#555", edgecolor="black", lw=1.5))
+            _ax_b.add_patch(plt.Rectangle((-5, -_H_dao2), 5-0.2, _H_dao2,
+                                            facecolor="#A1887F", alpha=0.4))
+            _ax_b.add_patch(plt.Rectangle((0.2, -_L_tot2), 5, _L_tot2,
+                                            facecolor="#8D6E63", alpha=0.4))
+            _ax_b.add_patch(plt.Rectangle((-5, -_L_tot2), 5-0.2, _L_tot2-_H_dao2,
+                                            facecolor="white", edgecolor="gray", linestyle="--"))
+            # Active arrows
+            for _yy in _np_sp.arange(-0.5, -_H_dao2, -0.5):
+                _ax_b.annotate("", xy=(-0.3, _yy), xytext=(-1.5, _yy),
+                                arrowprops=dict(arrowstyle="->", color="red", lw=1.5))
+            for _yy in _np_sp.arange(-_H_dao2 - 0.5, -_L_tot2, -0.7):
+                _ax_b.annotate("", xy=(0.3, _yy), xytext=(1.5, _yy),
+                                arrowprops=dict(arrowstyle="<-", color="green", lw=1.5))
+            # Neo (anchor)
+            _ax_b.plot([-3, -0.2], [-_z_anchor, -_z_anchor], "-", color="#1565C0", lw=4)
+            _ax_b.plot([-3], [-_z_anchor], "s", color="#1565C0", markersize=12)
+            _ax_b.annotate("Neo (anchor)", xy=(-0.2, -_z_anchor), xytext=(-3.5, -_z_anchor - 0.6),
+                            arrowprops=dict(arrowstyle="->", color="#1565C0"),
+                            color="#1565C0", fontsize=10, fontweight="bold")
+            _ax_b.text(-1.5, -_H_dao2/2, "Active\n(K_a)", color="red", ha="center", fontsize=10, fontweight="bold")
+            _ax_b.text(1.5, -(_H_dao2 + _d_emb2/2), "Passive\n(K_p)", color="green", ha="center", fontsize=10, fontweight="bold")
+            _ax_b.axhline(0, color="black", lw=1.5)
+            _ax_b.text(-4.8, 0.2, "Mặt đất", fontsize=9, fontweight="bold")
+            _ax_b.text(-4.8, -_H_dao2 + 0.15, f"Đáy đào H = {_H_dao2}m", fontsize=9)
+            _ax_b.annotate("", xy=(0, -_L_tot2), xytext=(0, -_H_dao2),
+                            arrowprops=dict(arrowstyle="<->", color="blue", lw=2))
+            _ax_b.text(0.3, -(_H_dao2 + _d_emb2/2), f"d = {_d_emb2}m\n(ngàm)", color="blue", fontsize=10, fontweight="bold")
+            _ax_b.set_xlim(-5, 5)
+            _ax_b.set_ylim(-_L_tot2 - 0.5, 1)
+            _ax_b.set_title("(b) Cọc có neo (Anchored — Free Earth Support)",
+                             fontsize=11, fontweight="bold")
+            _ax_b.set_aspect("equal", adjustable="datalim")
+            _ax_b.set_xticks([]); _ax_b.set_yticks([])
+            for _sp in _ax_b.spines.values(): _sp.set_visible(False)
+            _fig_sp.tight_layout()
+            st.pyplot(_fig_sp, use_container_width=True)
+            plt.close(_fig_sp)
+
+        # ── Áp lực đất Rankine ──────────────────────────────────────────────
+        st.markdown("#### Áp lực đất Rankine")
+        st.latex(r"K_a = \tan^2\!\left(45^\circ - \dfrac{\varphi}{2}\right), \quad K_p = \tan^2\!\left(45^\circ + \dfrac{\varphi}{2}\right)")
+        st.latex(r"\sigma_a = K_a \cdot \sigma'_v - 2c\sqrt{K_a}, \quad \sigma_p = K_p \cdot \sigma'_v + 2c\sqrt{K_p}")
+
+        # Bảng Ka/Kp theo φ — tính động + plot
+        import math as _math_d4
+        _phi_arr  = [0, 15, 20, 25, 30, 35, 40]
+        _Ka_arr   = [_math_d4.tan(_math_d4.radians(45 - p/2))**2 for p in _phi_arr]
+        _Kp_arr   = [_math_d4.tan(_math_d4.radians(45 + p/2))**2 for p in _phi_arr]
+        _ratio    = [k/a if a > 0 else 0 for k, a in zip(_Kp_arr, _Ka_arr)]
+
+        _d_kak_c1, _d_kak_c2 = st.columns([1, 2])
+        with _d_kak_c1:
+            _df_kak = pd.DataFrame({
+                "φ (°)":  _phi_arr,
+                "Ka":     [round(k, 3) for k in _Ka_arr],
+                "Kp":     [round(k, 3) for k in _Kp_arr],
+                "Kp/Ka":  [round(r, 1) for r in _ratio],
+            })
+            st.dataframe(_df_kak, use_container_width=True, hide_index=True)
+        with _d_kak_c2:
+            if _HAS_PLOTLY:
+                _fig_kak = go.Figure()
+                _phi_fine = list(range(0, 41))
+                _Ka_fine  = [_math_d4.tan(_math_d4.radians(45 - p/2))**2 for p in _phi_fine]
+                _Kp_fine  = [_math_d4.tan(_math_d4.radians(45 + p/2))**2 for p in _phi_fine]
+                _fig_kak.add_trace(go.Scatter(x=_phi_fine, y=_Ka_fine, name="K_a",
+                                               line=dict(color="#C62828", width=2.5)))
+                _fig_kak.add_trace(go.Scatter(x=_phi_fine, y=_Kp_fine, name="K_p",
+                                               line=dict(color="#2E7D32", width=2.5)))
+                _fig_kak.update_layout(
+                    title="K_a và K_p theo góc ma sát φ",
+                    xaxis_title="φ (°)", yaxis_title="Hệ số áp lực",
+                    yaxis=dict(type="log", range=[-1, 1.5]),
+                    height=280, margin=dict(t=45, b=40, l=10, r=10),
+                    legend=dict(orientation="h", y=1.1),
+                )
+                st.plotly_chart(_fig_kak, use_container_width=True)
+
+        # ── Ổn định đáy hố đào (basal heave) ────────────────────────────────
+        st.markdown("#### Kiểm tra ổn định đáy hố đào (Basal Heave)")
+        st.markdown(
+            "**Áp dụng khi đào trong đất sét mềm (Su thấp, không thoát nước).**"
+        )
+        st.markdown("**Terzaghi (1943):**")
+        st.latex(r"F_s = \dfrac{5{,}14 \cdot c_u}{\gamma H + q_s}")
+        st.markdown("**Bjerrum & Eide (1956):**")
+        st.latex(r"F_s = \dfrac{N_c \cdot c_u}{\gamma H + q_s}")
+
+        _bh1, _bh2 = st.columns([1, 1])
+        with _bh1:
+            st.markdown("**Bảng N_c theo H/B:**")
+            _df_nc = pd.DataFrame({
+                "H/B":  [1.0, 2.0, 4.0, "∞"],
+                "N_c":  [5.14, 5.63, 6.17, 7.60],
+            })
+            st.dataframe(_df_nc, use_container_width=True, hide_index=True)
+            st.caption("**Yêu cầu:** Fs ≥ 1,5 (thường xuyên) · Fs ≥ 1,3 (tạm thời)")
+        with _bh2:
+            st.markdown("**Tính nhanh Fs:**")
+            _bh_H  = st.number_input("H (m) — chiều sâu đào", 1.0, 20.0, 5.0, 0.5, key="d4_bh_H")
+            _bh_cu = st.number_input("c_u (kPa)", 5.0, 100.0, 20.0, 1.0, key="d4_bh_cu")
+            _bh_g  = st.number_input("γ (kN/m³)", 14.0, 22.0, 17.0, 0.5, key="d4_bh_g")
+            _bh_q  = st.number_input("q_s (kPa) — phụ tải mặt", 0.0, 50.0, 10.0, 1.0, key="d4_bh_q")
+            _bh_B  = st.number_input("B (m) — chiều rộng hố đào", 2.0, 50.0, 8.0, 0.5, key="d4_bh_B")
+            _Fs_terz = (5.14 * _bh_cu) / (_bh_g * _bh_H + _bh_q)
+            _HB = _bh_H / _bh_B
+            if _HB <= 1: _Nc = 5.14
+            elif _HB <= 2: _Nc = 5.63
+            elif _HB <= 4: _Nc = 6.17
+            else: _Nc = 7.60
+            _Fs_be = (_Nc * _bh_cu) / (_bh_g * _bh_H + _bh_q)
+            _bh_c1, _bh_c2 = st.columns(2)
+            _bh_c1.metric("Fs Terzaghi", f"{_Fs_terz:.2f}",
+                           "Đạt" if _Fs_terz >= 1.5 else "Không đạt",
+                           delta_color="normal" if _Fs_terz >= 1.5 else "inverse")
+            _bh_c2.metric("Fs Bjerrum-Eide", f"{_Fs_be:.2f}",
+                           f"N_c = {_Nc} (H/B = {_HB:.1f})",
+                           delta_color="normal" if _Fs_be >= 1.5 else "inverse")
+
+        # ── Chọn tiết diện cọc SW theo M_max ────────────────────────────────
+        st.markdown("#### Chọn tiết diện cọc SW theo $M_{max}$")
+        st.markdown(r"Sau khi có $M_{max}$ từ tính toán, kiểm tra: $M_{max} \leq M_{cr}$")
+        if _sw_piles:
+            _df_mcr = pd.DataFrame([
+                {"Cọc": p["name"], "H (mm)": p.get("H_mm"),
+                 "M_cr (T.m)": p.get("Mcr_Tm"), "M_cr (kN.m/m)": round((p.get("Mcr_Tm", 0) or 0) * 9.81, 1),
+                 "L_max (m)": p.get("L_max_m")}
+                for p in sorted(_sw_piles, key=lambda x: x.get("H_mm", 0))
+                if p["name"] not in {n for n in []}  # all
+            ]).drop_duplicates(subset=["Cọc"]).reset_index(drop=True)
+            st.dataframe(_df_mcr, use_container_width=True, hide_index=True)
+
+        st.caption(
+            "**Module gốc:** `geotech-staff-engineer` (local) — `sheet_pile.analyze_cantilever`, "
+            "`sheet_pile.rankine_Ka`, `soe.check_basal_heave_terzaghi`. "
+            "Module Cloud version: chưa khả dụng, hiện công thức được implement trực tiếp trong app."
+        )
+
     # ═══════════════════════════════════════════════════════════════════════════
     # E. Phương pháp FEM 2D — ĐANG PHÁT TRIỂN
     # ═══════════════════════════════════════════════════════════════════════════
