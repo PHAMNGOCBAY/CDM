@@ -8125,9 +8125,123 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             )
 
         # ═══════════════════════════════════════════════════════════════════════
-        # D.1. Nhập dữ liệu p-y Winkler + sơ đồ trực quan
+        # D.1. Tổng quan p-y Winkler — tự động cho mọi HK ở Mục B
         # ═══════════════════════════════════════════════════════════════════════
-        st.markdown("### D.1. Nhập dữ liệu p-y Winkler")
+        st.markdown("### D.1. Tổng quan p-y Winkler — tự động cho mọi HK ở Mục B")
+
+        # ── Auto-loop: chạy Winkler cho mọi HK đã pick ở Mục B ────────────────
+        _picks_d = st.session_state.get("ke_sw_alignment_picks", []) or []
+        _hk_d_list = [nm for nm in _picks_d if nm.startswith("HK")]
+        # Lấy params tải chung từ session_state (nếu user đã chỉnh ở form D.1
+        # chi tiết bên dưới) — nếu chưa có thì dùng mặc định
+        _H_auto    = float(st.session_state.get("dpy_H_load", 30.0) or 30.0)
+        _M_auto    = float(st.session_state.get("dpy_M_load", 0.0)  or 0.0)
+        _eps50_a   = float(st.session_state.get("dpy_eps50", 0.02)  or 0.02)
+        _cdm_Lc_a  = float(st.session_state.get("cdm_Lc", 0.0) or 0.0)
+        _cdm_Lng_a = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
+        _cdm_thk_a = max(0.0, _cdm_Lc_a - _cdm_Lng_a)
+        _k_cdm_a   = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
+
+        _auto_rows: list = []
+        for _hk_nm in _hk_d_list:
+            _hk_pile = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_hk_nm)
+            _hk_L    = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_hk_nm)
+            if not _hk_pile or not _hk_L:
+                continue
+            try:
+                _r_auto = _calc_py_winkler(
+                    bh_name=f"KE-{_hk_nm}", pile_name=_hk_pile,
+                    L_m=float(_hk_L), H_kNm=_H_auto, M_kNm=_M_auto,
+                    cdm_thk_m=_cdm_thk_a, eps50=_eps50_a,
+                    k_cdm_factor=_k_cdm_a,
+                )
+            except Exception as _e_each:
+                st.warning(f"KE-{_hk_nm}: lỗi tính — {_e_each}")
+                continue
+            if "error" in _r_auto:
+                continue
+            _u    = _r_auto["u_top_mm"]
+            _Mmax = _r_auto["M_max_kNm"]
+            _Mcr  = _r_auto["Mcr_kNm"]
+            _ok_u = abs(_u) < 25.0
+            _ok_M = _Mmax < _Mcr if _Mcr > 0 else False
+            _ok   = _ok_u and _ok_M
+            _auto_rows.append({
+                "Hố khoan":  f"KE-{_hk_nm}",
+                "Cọc":       _hk_pile,
+                "L (m)":     float(_hk_L),
+                "u_top (mm)": _u,
+                "M_max (kNm)": _Mmax,
+                "Mcr (kNm)": _Mcr,
+                "M/Mcr":     _Mmax/_Mcr if _Mcr > 0 else 0.0,
+                "Q_max (kN)": _r_auto.get("Q_max_kN", 0.0),
+                "Kết quả":   "Đạt" if _ok else "Không đạt",
+                "_res":      _r_auto,
+            })
+
+        if not _auto_rows:
+            st.caption("_(Chưa có HK nào ở Mục B để chạy auto Winkler.)_")
+        else:
+            st.caption(
+                f"Đang chạy với: H = {_H_auto:.0f} kN/m · M = {_M_auto:.0f} kNm/m · "
+                f"ε₅₀ = {_eps50_a:.3f} · CDM thk = {_cdm_thk_a:.1f} m × {_k_cdm_a:.1f}. "
+                f"Sửa params ở form chi tiết D.1 bên dưới rồi reload để cập nhật summary."
+            )
+            _auto_df = pd.DataFrame([{k: v for k, v in r.items() if k != "_res"}
+                                       for r in _auto_rows])
+
+            def _hl_d_auto(val):
+                if val == "Đạt":      return "background-color:#d4edda; color:#155724"
+                if val == "Không đạt": return "background-color:#f8d7da; color:#721c24"
+                return ""
+
+            st.dataframe(
+                _auto_df.style.map(_hl_d_auto, subset=["Kết quả"]),
+                use_container_width=True, hide_index=True,
+                column_config={
+                    "L (m)":        st.column_config.NumberColumn(format="%.1f"),
+                    "u_top (mm)":   st.column_config.NumberColumn(format="%.2f"),
+                    "M_max (kNm)":  st.column_config.NumberColumn(format="%.1f"),
+                    "Mcr (kNm)":    st.column_config.NumberColumn(format="%.0f"),
+                    "M/Mcr":        st.column_config.NumberColumn(format="%.2f"),
+                    "Q_max (kN)":   st.column_config.NumberColumn(format="%.1f"),
+                },
+            )
+
+            # Bar chart u_top + M/Mcr cho mọi HK
+            if _HAS_PLOTLY:
+                from plotly.subplots import make_subplots as _msub_d1
+                _fig_d1a = _msub_d1(rows=1, cols=2,
+                                     subplot_titles=("Chuyển vị đỉnh u_top (mm)",
+                                                     "Tỷ số M/Mcr"))
+                _xs_d1a = [r["Hố khoan"] for r in _auto_rows]
+                _us_d1a = [r["u_top (mm)"] for r in _auto_rows]
+                _ms_d1a = [r["M/Mcr"]     for r in _auto_rows]
+                _fig_d1a.add_trace(go.Bar(
+                    x=_xs_d1a, y=_us_d1a, name="u_top",
+                    marker_color=["#1565C0" if abs(u) < 25 else "#E53935" for u in _us_d1a],
+                    text=[f"{u:.1f}" for u in _us_d1a], textposition="outside",
+                ), row=1, col=1)
+                _fig_d1a.add_hline(y=25, line_dash="dash", line_color="#666",
+                                    annotation_text="25 mm", row=1, col=1)
+                _fig_d1a.add_hline(y=-25, line_dash="dash", line_color="#666", row=1, col=1)
+                _fig_d1a.add_trace(go.Bar(
+                    x=_xs_d1a, y=_ms_d1a, name="M/Mcr",
+                    marker_color=["#2E7D32" if m < 1 else "#E53935" for m in _ms_d1a],
+                    text=[f"{m:.2f}" for m in _ms_d1a], textposition="outside",
+                ), row=1, col=2)
+                _fig_d1a.add_hline(y=1.0, line_dash="dash", line_color="#666",
+                                    annotation_text="M_cr", row=1, col=2)
+                _fig_d1a.update_layout(height=380, showlegend=False,
+                                        margin=dict(t=50, b=40),
+                                        title="So sánh Winkler — tất cả HK ở Mục B")
+                st.plotly_chart(_fig_d1a, use_container_width=True)
+
+        # ═══════════════════════════════════════════════════════════════════════
+        # D.1 chi tiết: nhập tay 1 HK để xem biểu đồ u/M/k_h/Boussinesq + EP
+        # ═══════════════════════════════════════════════════════════════════════
+        st.markdown("---")
+        st.markdown("### D.1 (chi tiết). Chạy chi tiết cho 1 HK (tinh chỉnh)")
 
         # ── Áp dữ liệu HK từ Mục B ───────────────────────────────────────────
         _dpy_bh_list = [b["name"] for b in _bhs_on_alignment] if _bhs_on_alignment else []
