@@ -4093,7 +4093,7 @@ elif _page == "params":
 
     # ── Áp địa chất từ HK (SQLite + nearest fallback) ────────────────────────
     with st.container(border=True):
-        st.markdown("**Áp địa chất từ hố khoan** — đọc trực tiếp từ SQLite, "
+        st.markdown("**Áp địa chất từ hố khoan** — đọc trực tiếp từ số liệu khảo sát, "
                     "thiếu thì lấy HK gần nhất")
         _ap_c1, _ap_c2, _ap_c3 = st.columns([1, 2, 1])
         with _ap_c1:
