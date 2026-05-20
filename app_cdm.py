@@ -7500,11 +7500,6 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     except ImportError:
         _HAS_ANASTRUCT = False
         _SE = None
-        st.info(
-            "Lý thuyết và biểu đồ minh họa hiển thị bên dưới. "
-            "Bảng kết quả tính toán p-y cần thư viện `anastruct` — cloud đang rebuild, "
-            "vui lòng đợi 2-5 phút rồi refresh."
-        )
 
     if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có anastruct
         # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
@@ -7897,11 +7892,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                      key="d_yd_py", help="Dùng để tính k_h cát theo secant từ p-y")
 
         if st.button("Tính chuyển vị + nội lực (p-y Winkler)", type="primary", key="btn_d_py"):
-            if not _HAS_ANASTRUCT:
-                st.warning("Chưa thể tính — cần thư viện `anastruct`. Cloud đang rebuild (đợi 2-5 phút).")
-                _pile_d = None
-            else:
-                _pile_d = _sw_by_name(_d_pile)
+            _pile_d = _sw_by_name(_d_pile) if _HAS_ANASTRUCT else None
             if not _pile_d:
                 if _HAS_ANASTRUCT:
                     st.error(f"Không tìm thấy cọc {_d_pile}")
