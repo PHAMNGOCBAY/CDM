@@ -119,20 +119,25 @@ def _find_nearest_bh_with_data(
 
     if depth_top is not None and depth_bot is not None:
         # Match theo depth range — không phụ thuộc symbol mapping
-        rows = cur.execute(
-            f"""
-            SELECT b.name, b.x_coord_m, b.y_coord_m, AVG(lt.{field}) v
-            FROM lab_tests lt
-            JOIN boreholes b ON lt.borehole_id=b.id
-            JOIN zones z ON b.zone_id=z.id
-            WHERE z.code=? AND b.name<>?
-              AND lt.{field} IS NOT NULL
-              AND b.x_coord_m IS NOT NULL
-              AND (lt.depth_from_m + lt.depth_to_m)/2.0 BETWEEN ? AND ?
-            GROUP BY b.id
-            """,
-            (zone, bh_name, depth_top, depth_bot),
-        ).fetchall()
+        # Thử 3 mức tolerance tăng dần: exact, ±2m, ±5m
+        rows = []
+        for tol in (0.0, 2.0, 5.0):
+            rows = cur.execute(
+                f"""
+                SELECT b.name, b.x_coord_m, b.y_coord_m, AVG(lt.{field}) v
+                FROM lab_tests lt
+                JOIN boreholes b ON lt.borehole_id=b.id
+                JOIN zones z ON b.zone_id=z.id
+                WHERE z.code=? AND b.name<>?
+                  AND lt.{field} IS NOT NULL
+                  AND b.x_coord_m IS NOT NULL
+                  AND (lt.depth_from_m + lt.depth_to_m)/2.0 BETWEEN ? AND ?
+                GROUP BY b.id
+                """,
+                (zone, bh_name, depth_top - tol, depth_bot + tol),
+            ).fetchall()
+            if rows:
+                break
     else:
         # Match theo symbol TCVN
         rows = cur.execute(
