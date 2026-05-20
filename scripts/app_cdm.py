@@ -1565,26 +1565,30 @@ def _draw_cdm_section(
             ha="center", va="bottom", fontsize=10,
             color="#B71C1C", fontweight="bold", zorder=6)
 
-    # Chiều cao đắp H (từ mặt đất tự nhiên đến đỉnh mặt đường)
-    _H_total = z_road - _clay_top_eff
-    if _H_total > 0.1:
+    # He = h_fill (cát đắp, từ đỉnh đệm z_mat đến đỉnh lớp cát z_fill)
+    _He = z_fill - z_mat
+    if _He > 0.05:
         _dim_xH = -W * 0.18
-        ax.annotate("", xy=(_dim_xH, _clay_top_eff), xytext=(_dim_xH, z_road),
+        ax.annotate("", xy=(_dim_xH, z_mat), xytext=(_dim_xH, z_fill),
                     arrowprops=dict(arrowstyle="<->", color="#1565C0", lw=1.5), zorder=5)
-        ax.text(_dim_xH - W * 0.03, (_clay_top_eff + z_road) / 2,
-                f"H\n={_H_total:.1f}m",
+        ax.text(_dim_xH - W * 0.03, (z_mat + z_fill) / 2,
+                f"He\n={_He:.1f}m",
                 ha="right", va="center", fontsize=8.5, color="#1565C0",
                 fontweight="bold", zorder=5,
                 bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="#1565C0",
                           alpha=0.9, lw=0.8))
-        if top_clay is None or abs(top_clay - CDTK) <= 0.05:
-            ax.plot([-W * 0.3, W * 0.3], [_clay_top_eff, _clay_top_eff],
-                    color="#795548", lw=1.0, ls="--", zorder=4, alpha=0.75)
-            ax.text(W * 0.02, _clay_top_eff + 0.08,
-                    f"Mặt đất TN = {_clay_top_eff:+.2f} m",
-                    ha="left", va="bottom", fontsize=7.5, color="#795548", zorder=5,
-                    bbox=dict(boxstyle="round,pad=0.1", fc="white", ec="#795548",
-                              alpha=0.85, lw=0.6))
+    # Hse = h_mat (đệm xi măng, từ CDTK đến z_mat)
+    _Hse = z_mat - CDTK
+    if _Hse > 0.05:
+        _dim_xH2 = -W * 0.18
+        ax.annotate("", xy=(_dim_xH2, CDTK), xytext=(_dim_xH2, z_mat),
+                    arrowprops=dict(arrowstyle="<->", color="#E65100", lw=1.2), zorder=5)
+        ax.text(_dim_xH2 - W * 0.03, (CDTK + z_mat) / 2,
+                f"Hse\n={_Hse:.1f}m",
+                ha="right", va="center", fontsize=7.5, color="#E65100",
+                fontweight="bold", zorder=5,
+                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="#E65100",
+                          alpha=0.9, lw=0.7))
 
     plt.tight_layout(pad=0.5)
     return fig
@@ -3084,8 +3088,9 @@ elif _page == "params":
             Lc   = st.number_input(_t("Lc_lbl"), 5.0, 60.0, _get("cdm_Lc"), 0.5)
             CDTK = st.number_input(_t("CDTK_lbl"), -5.0, 10.0, _get("cdm_CDTK"), 0.1)
             _ld0 = _get("cdm_loads")
-            _cdtk_cal = CDTK + _ld0.get("h_mat", 0.4) + _ld0.get("h_fill", 1.5)
-            st.info(_t("cdtk_info", v=_cdtk_cal))
+            _He_v  = _ld0.get("h_fill", 1.5)
+            _Hse_v = _ld0.get("h_mat",  0.4)
+            st.info(f"He = **{_He_v:.2f} m**   |   Hse = **{_Hse_v:.2f} m**")
             arr  = st.radio(_t("arr_lbl"), ["triangle", "square"],
                             format_func=lambda x: _t("arr_tri") if x == "triangle" else _t("arr_sq"),
                             index=["triangle", "square"].index(_get("cdm_arrangement")))
