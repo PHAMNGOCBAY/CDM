@@ -2691,7 +2691,11 @@ def _export_word_bytes(
         from docx.oxml import OxmlElement as _Oxm
         from docx.shared import Cm as _Cm
         import math as _m
-    except ImportError as e:
+    except Exception as e:
+        # Surface error thay vì silent b""
+        import traceback as _tb
+        st.error(f"Import lỗi: {type(e).__name__}: {e}")
+        st.code(_tb.format_exc())
         return b""
 
     H.reset_counters()
@@ -2942,9 +2946,15 @@ def _export_word_bytes(
                         ref_line=_pr_w["tase_kPa"]),
             width=_In(5.5))
 
-    buf = io.BytesIO()
-    doc.save(buf)
-    return buf.getvalue()
+    try:
+        buf = io.BytesIO()
+        doc.save(buf)
+        return buf.getvalue()
+    except Exception as _e_save:
+        import traceback as _tb
+        st.error(f"Lỗi khi save Word: {type(_e_save).__name__}: {_e_save}")
+        st.code(_tb.format_exc())
+        return b""
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
