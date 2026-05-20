@@ -4402,6 +4402,131 @@ elif _page == "sample_check":
                 )
                 st.plotly_chart(_fig_cdm, use_container_width=True)
 
+                # ─────────────────────────────────────────────────────────────
+                # Biểu đồ phân tích bổ sung
+                # ─────────────────────────────────────────────────────────────
+                st.markdown("---")
+                st.markdown("#### Phân tích bổ sung")
+
+                # 1. Scatter qu vs E50 — tương quan
+                _fig_qE = go.Figure()
+                _qu_arr = _df_cdm7["qu R7 (kPa)"].values
+                _E_arr  = _df_cdm7["E50 R7 (MPa)"].values
+                # Hồi quy tuyến tính
+                import numpy as _np_cdm
+                _slope, _intc = _np_cdm.polyfit(_qu_arr, _E_arr, 1)
+                _qu_fit = _np_cdm.linspace(_qu_arr.min(), _qu_arr.max(), 50)
+                _E_fit  = _slope * _qu_fit + _intc
+                _corr   = _np_cdm.corrcoef(_qu_arr, _E_arr)[0, 1]
+                for _combo in _df_cdm7["Combo"].unique():
+                    _sub = _df_cdm7[_df_cdm7["Combo"] == _combo]
+                    _fig_qE.add_trace(go.Scatter(
+                        x=_sub["qu R7 (kPa)"], y=_sub["E50 R7 (MPa)"],
+                        mode="markers", marker=dict(size=12),
+                        name=_combo,
+                        text=_sub["Mã mẫu"], hovertemplate="%{text}<br>qu=%{x:.0f}<br>E50=%{y:.1f}",
+                    ))
+                _fig_qE.add_trace(go.Scatter(
+                    x=_qu_fit, y=_E_fit, mode="lines",
+                    line=dict(color="black", dash="dash", width=2),
+                    name=f"Hồi quy: E50 = {_slope:.4f}·qu + {_intc:.2f} (r={_corr:.3f})",
+                ))
+                _fig_qE.update_layout(
+                    title="Tương quan qu R7 ↔ E50 R7",
+                    xaxis_title="qu R7 (kPa)", yaxis_title="E50 R7 (MPa)",
+                    height=380, margin=dict(t=50, b=40),
+                    legend=dict(orientation="h", y=1.13),
+                )
+
+                # 2. Box plot qu theo loại xi măng
+                _fig_box_cm = go.Figure()
+                for _ct in _df_cdm7["Loại xi măng"].unique():
+                    _vals = _df_cdm7[_df_cdm7["Loại xi măng"] == _ct]["qu R7 (kPa)"]
+                    _fig_box_cm.add_trace(go.Box(
+                        y=_vals, name=_ct, boxmean="sd",
+                        boxpoints="all", jitter=0.3, pointpos=-1.8,
+                    ))
+                _fig_box_cm.update_layout(
+                    title="Phân bố qu R7 theo loại xi măng",
+                    yaxis_title="qu R7 (kPa)",
+                    height=380, margin=dict(t=50, b=40),
+                    showlegend=False,
+                )
+
+                _col_a, _col_b = st.columns(2)
+                _col_a.plotly_chart(_fig_qE, use_container_width=True)
+                _col_b.plotly_chart(_fig_box_cm, use_container_width=True)
+
+                # 3. Heatmap qu theo cement × dosage (W/C = 0.8 và 1.0)
+                from plotly.subplots import make_subplots as _mksub_cdm
+                _wc_vals = sorted(_df_cdm7["W/C"].unique())
+                _fig_hm = _mksub_cdm(rows=1, cols=len(_wc_vals),
+                                       subplot_titles=[f"W/C = {w:.1f}" for w in _wc_vals],
+                                       shared_yaxes=True)
+                for _i_w, _w in enumerate(_wc_vals):
+                    _sub_w = _df_cdm7[_df_cdm7["W/C"] == _w]
+                    _piv = _sub_w.pivot_table(
+                        index="Loại xi măng", columns="Hàm lượng (kg/m³)",
+                        values="qu R7 (kPa)", aggfunc="mean",
+                    )
+                    _fig_hm.add_trace(go.Heatmap(
+                        z=_piv.values, x=_piv.columns, y=_piv.index,
+                        text=[[f"{v:.0f}" for v in row] for row in _piv.values],
+                        texttemplate="%{text}",
+                        colorscale="RdYlGn", showscale=(_i_w == len(_wc_vals)-1),
+                        colorbar=dict(title="qu R7<br>(kPa)", x=1.02),
+                        zmin=300, zmax=750,
+                    ), row=1, col=_i_w+1)
+                    _fig_hm.update_xaxes(title_text="Hàm lượng (kg/m³)", row=1, col=_i_w+1)
+                _fig_hm.update_yaxes(title_text="Loại xi măng", row=1, col=1)
+                _fig_hm.update_layout(
+                    title="Heatmap qu R7 theo loại xi măng × hàm lượng × W/C",
+                    height=320, margin=dict(t=60, b=40, r=80),
+                )
+                st.plotly_chart(_fig_hm, use_container_width=True)
+
+                # 4. Bar chart qu trung bình + std theo nhóm
+                _grp = _df_cdm7.groupby(["Loại xi măng", "W/C"]).agg(
+                    qu_mean=("qu R7 (kPa)", "mean"),
+                    qu_std=("qu R7 (kPa)", "std"),
+                    qu_min=("qu R7 (kPa)", "min"),
+                    qu_max=("qu R7 (kPa)", "max"),
+                    n=("qu R7 (kPa)", "count"),
+                ).reset_index()
+                _grp["Tổ hợp"] = _grp["Loại xi măng"] + " | W/C=" + _grp["W/C"].astype(str)
+                _fig_bar = go.Figure()
+                _fig_bar.add_trace(go.Bar(
+                    x=_grp["Tổ hợp"], y=_grp["qu_mean"],
+                    error_y=dict(type="data", array=_grp["qu_std"]),
+                    marker_color=["#1565C0", "#2E7D32", "#E65100", "#C62828"][:len(_grp)],
+                    text=[f"{m:.0f}±{s:.0f}" for m, s in zip(_grp["qu_mean"], _grp["qu_std"])],
+                    textposition="outside",
+                ))
+                if _qu_design_req > 0:
+                    _fig_bar.add_hline(y=_qu_design_req, line_dash="dash", line_color="red",
+                                         annotation_text=f"qu yêu cầu = {_qu_design_req:.0f}")
+                _fig_bar.update_layout(
+                    title="qu R7 trung bình ± độ lệch chuẩn theo tổ hợp",
+                    yaxis_title="qu R7 (kPa)",
+                    height=380, margin=dict(t=50, b=80),
+                    showlegend=False,
+                )
+                st.plotly_chart(_fig_bar, use_container_width=True)
+
+                # Bảng thống kê tổ hợp
+                _grp_display = _grp[["Tổ hợp", "n", "qu_mean", "qu_std", "qu_min", "qu_max"]].copy()
+                _grp_display.columns = ["Tổ hợp", "n mẫu", "qu trung bình", "qu σ", "qu min", "qu max"]
+                st.markdown("**Bảng thống kê theo tổ hợp:**")
+                st.dataframe(
+                    _grp_display.style.format({
+                        "qu trung bình": "{:.1f}",
+                        "qu σ":  "{:.1f}",
+                        "qu min": "{:.1f}",
+                        "qu max": "{:.1f}",
+                    }),
+                    use_container_width=True, hide_index=True,
+                )
+
             # Tổ hợp tốt nhất (qu cao nhất)
             _best = _df_cdm7.loc[_df_cdm7["qu R7 (kPa)"].idxmax()]
             st.success(
