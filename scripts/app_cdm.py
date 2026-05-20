@@ -3910,7 +3910,16 @@ if _page == "settlement":
                 _sl_bhs = [b["name"] for b in _load_boreholes_by_zone(_sl_zone)]
                 _sl_bh  = st.selectbox("Hố khoan tính lún", _sl_bhs, key="sl_bh")
             with _sc2:
-                _sl_H   = st.number_input("Chiều cao đắp H (m)", 1.0, 10.0, 3.0, 0.5, key="sl_H")
+                _sl_from_cdm = st.checkbox("Lấy H từ tab Thông số CDM", key="sl_H_from_cdm")
+                if _sl_from_cdm:
+                    _cdm_ld  = _get("cdm_loads")
+                    _cdm_top = _get("cdm_top_clay")
+                    _sl_H    = round(_cdm_ld.get("z_tk", 3.5) - _cdm_top, 2)
+                    st.info(f"H = z_tk − đỉnh bùn = **{_sl_H:.2f} m**")
+                else:
+                    _sl_H = st.number_input("Chiều cao đắp H (m)", 0.5, 15.0,
+                                            st.session_state.get("sl_H_manual", 3.0), 0.5,
+                                            key="sl_H_manual")
                 _sl_lim = st.number_input("Giới hạn lún còn lại (cm)", 10, 50, 30, 5, key="sl_lim")
                 _sl_tc  = st.number_input("Thời gian thi công (tháng)", 3, 36, 6, 1, key="sl_tc")
             with _sc3:
