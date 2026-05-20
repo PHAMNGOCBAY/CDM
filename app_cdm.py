@@ -7706,6 +7706,33 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                   key="dpy_wlvl_back",
                                                   help="Mực nước phía Back (sông/đào). Mặc định −2.0m.")
 
+            # ── Thông số lớp đất đắp (Fill — chỉ Front) ──────────────────────
+            st.markdown(
+                "**Đất đắp Front (Fill — từ đỉnh kè xuống mặt đất tự nhiên):** "
+                "*Nhập thông số thiết kế đất đắp; mặc định = sét pha đắp chặt vừa.*"
+            )
+            _dpy_f1, _dpy_f2, _dpy_f3, _dpy_f4 = st.columns(4)
+            _dpy_gamma_fill = _dpy_f1.number_input(
+                "γ_fill (kN/m³)", 14.0, 22.0, 18.0, 0.1,
+                key="dpy_gamma_fill",
+                help="Dung trọng đất đắp ướt. Mặc định 18 kN/m³ (đất đắp chặt vừa)."
+            )
+            _dpy_phi_fill = _dpy_f2.number_input(
+                "φ_fill (°)", 0.0, 45.0, 28.0, 0.5,
+                key="dpy_phi_fill",
+                help="Góc ma sát đất đắp. Mặc định 28°."
+            )
+            _dpy_c_fill = _dpy_f3.number_input(
+                "c_fill (kPa)", 0.0, 100.0, 5.0, 1.0,
+                key="dpy_c_fill",
+                help="Lực dính đất đắp. Mặc định 5 kPa (đất đắp lẫn sét)."
+            )
+            _dpy_gamma_sub_fill = _dpy_f4.number_input(
+                "γ_sub_fill (kN/m³)", 6.0, 14.0, 10.0, 0.1,
+                key="dpy_gamma_sub_fill",
+                help="Dung trọng đất đắp bão hoà = γ_sat − γ_w. Mặc định 10 kN/m³."
+            )
+
         with _col_schem_d:
             if _HAS_MPL:
                 _pile_tip_d = _dpy_top_ke - _dpy_L
@@ -7783,6 +7810,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         soil_lvl_front=_dpy_Z, soil_lvl_back=_dpy_Zb,
                         water_lvl_back=_dpy_wlvl_b,
                         back_layers=_layers_B,
+                        gamma_fill=float(_dpy_gamma_fill),
+                        phi_fill=float(_dpy_phi_fill),
+                        c_fill=float(_dpy_c_fill),
                     )
                     if _fig_sch_d:
                         st.pyplot(_fig_sch_d, use_container_width=True)
@@ -8036,18 +8066,15 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _con_lab.close()
                 _ep_back_layers = list(_ep_front_layers)   # cùng layers (lớp ngang)
 
-                # Fill thực: nếu HK có lớp F (đất đắp) thì dùng thông số đó, không thì NULL
-                _fill_real = next((L for L in _ep_front_layers
-                                    if L.tip_elev >= _dpy_Z - 0.5), None)
-                if _fill_real:
-                    _ep_fill = _SL(
-                        tip_elev=float(_dpy_Z),
-                        gamma=_fill_real.gamma, gamma_sub=_fill_real.gamma_sub,
-                        phi=_fill_real.phi, c=_fill_real.c,
-                        delta=float(_ep_delta),
-                    )
-                else:
-                    _ep_fill = None   # không có fill → bỏ qua
+                # Fill (đất đắp Front) — DÙNG THÔNG SỐ USER NHẬP
+                _ep_fill = _SL(
+                    tip_elev=float(_dpy_Z),
+                    gamma=float(_dpy_gamma_fill),
+                    gamma_sub=float(_dpy_gamma_sub_fill),
+                    phi=float(_dpy_phi_fill),
+                    c=float(_dpy_c_fill),
+                    delta=float(_ep_delta),
+                )
                 _ep_geom = _EpG(
                     top_elev=float(_dpy_top_ke),
                     pile_length=float(_dpy_L),
