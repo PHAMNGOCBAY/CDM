@@ -8086,7 +8086,6 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         "**SPT-Meyerhof** (cát, Điều 7.3.8.6.7, φ=0,30)"
     )
 
-    _cmp_c1, _cmp_c2, _cmp_c3 = st.columns(3)
     try:
         import sys as _sys_cmp
         _sys_cmp.path.insert(0, str(_ROOT / "scripts"))
@@ -8097,6 +8096,36 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         )
         _cat_cmp = _load_cat()
         _ke_bhs  = ["KE-HK2", "KE-HK3", "KE-HK7", "KE-HK8", "KE-HK9", "KE-HK10", "KE-HK11"]
+
+        # ── Áp dữ liệu HK từ Mục B (cọc kiến nghị + L thiết kế đã chọn ở B) ─────
+        _picks_b = st.session_state.get("ke_sw_alignment_picks", []) or []
+        _b_bh_list = [f"KE-{nm}" for nm in _picks_b if nm.startswith("HK")]
+        _b_bh_list = [nm for nm in _b_bh_list if nm in _ke_bhs]  # giới hạn HK có data
+        _ca1, _ca2 = st.columns([2, 3])
+        with _ca1:
+            _cmp_apply_bh = st.selectbox(
+                "Áp dữ liệu HK từ Mục B",
+                ["(không áp)"] + _b_bh_list,
+                key="cmp_apply_bh",
+                help="Chọn HK đã có ở Mục B để tự điền cọc kiến nghị + L thiết kế.",
+            )
+        with _ca2:
+            if _cmp_apply_bh != "(không áp)":
+                _b_nm    = _cmp_apply_bh.replace("KE-", "")
+                _b_pile  = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_b_nm)
+                _b_L     = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_b_nm)
+                if _b_pile and _b_L:
+                    st.info(f"**{_cmp_apply_bh}** → Cọc = **{_b_pile}** | L = {float(_b_L):.1f} m")
+                    if st.button(f"Áp dữ liệu {_cmp_apply_bh} → form bên dưới",
+                                  key="btn_cmp_apply"):
+                        st.session_state["cmp_bh"]   = _cmp_apply_bh
+                        st.session_state["cmp_pile"] = _b_pile
+                        st.session_state["cmp_L"]    = float(_b_L)
+                        st.rerun()
+                else:
+                    st.caption("_(Mục B chưa có cọc kiến nghị / L cho HK này)_")
+
+        _cmp_c1, _cmp_c2, _cmp_c3 = st.columns(3)
         with _cmp_c1:
             _cmp_bh = st.selectbox("Hố khoan", _ke_bhs, key="cmp_bh")
         with _cmp_c2:
