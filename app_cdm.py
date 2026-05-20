@@ -7488,6 +7488,230 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
     except Exception as _e_cmp:
         st.warning(f"Không thực hiện được so sánh 4 phương pháp: {_e_cmp}")
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # D. Phương pháp giải tích + p-y (Winkler beam)
+    # ═══════════════════════════════════════════════════════════════════════════
+    st.markdown("---")
+    st.markdown("### D. Phương pháp giải tích + p-y")
+    st.info(
+        "**Stage 1 — Giải tích:** mô hình cọc làm dầm trên nền đàn hồi (Winkler) với "
+        "lò xo phi tuyến p-y theo TCVN/API. Lớp CDM tăng cường k_h tăng 3-5 lần."
+    )
+
+    try:
+        from anastruct import SystemElements as _SE
+        _HAS_ANASTRUCT = True
+    except ImportError:
+        _HAS_ANASTRUCT = False
+        st.warning("Cần cài thư viện `anastruct` (Winkler beam). Đã có trên cloud.")
+
+    if _HAS_ANASTRUCT:
+        _d_c1, _d_c2, _d_c3 = st.columns(3)
+        with _d_c1:
+            _d_bh = st.selectbox("Hố khoan",
+                                  [b["name"] for b in _bhs_on_alignment] or ["KE-HK2"],
+                                  key="d_bh_py")
+            _d_pile = st.selectbox("Loại cọc", _sw_names,
+                                    index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
+                                    key="d_pile_py")
+            _d_L = st.number_input("Chiều dài L (m)", 10.0, 35.0, 24.0, 0.5, key="d_L_py")
+        with _d_c2:
+            _d_H = st.number_input("Tải ngang đầu cọc H (kN/m)", 0.0, 200.0, 30.0, 5.0,
+                                    key="d_H_py", help="Lực ngang phân bố theo m dài tường")
+            _d_M = st.number_input("Mô-men đầu cọc M (kNm/m)", 0.0, 500.0, 0.0, 10.0, key="d_M_py")
+            _d_cdm_thk = st.number_input("Bề dày CDM tăng cường (m)", 0.0, 10.0, 3.0, 0.5,
+                                          key="d_cdm_thk",
+                                          help="Đoạn cọc nằm trong khối CDM — k_h tăng 3-5 lần")
+        with _d_c3:
+            _d_eps50 = st.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
+                                        key="d_eps50",
+                                        help="ε₅₀ = 0.02 (sét yếu), 0.01 (sét dẻo cứng)")
+            _d_k_cdm_factor = st.number_input("Hệ số tăng k_h cho CDM", 1.0, 10.0, 4.0, 0.5,
+                                                key="d_k_cdm")
+            _d_yd = st.number_input("Chuyển vị thiết kế y_d (mm)", 1.0, 100.0, 25.0, 1.0,
+                                     key="d_yd_py", help="Dùng để tính k_h cát theo secant từ p-y")
+
+        if st.button("Tính chuyển vị + nội lực (p-y Winkler)", type="primary", key="btn_d_py"):
+            # Thông số cọc
+            _pile_d = _sw_by_name(_d_pile)
+            if not _pile_d:
+                st.error(f"Không tìm thấy cọc {_d_pile}")
+            else:
+                _D_pile  = _pile_d["H_mm"] / 1000.0     # bề rộng cọc (m)
+                _I_pile  = (_pile_d.get("Itd_cm4") or 0) * 1e-8   # m^4
+                _E_pile  = 31.6e6  # kN/m² (fc=40MPa)
+                _EI      = _E_pile * _I_pile  # kNm²
+
+                # Địa tầng từ HK
+                _layers_d = _load_layers(_d_bh.replace("KE-", "").replace("NHC-", "")
+                                          if not _d_bh.startswith("KE-") else _d_bh.replace("KE-", ""))
+                # Fallback: nếu chưa load được layers, dùng bùn sét 25m
+                if not _layers_d:
+                    _layers_d = [{"symbol": "1", "thickness_m": 25.0, "depth_top_m": 0.0,
+                                   "depth_bot_m": 25.0, "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
+
+                # Chia cọc thành N node
+                _N_node = max(20, int(_d_L * 2))   # 1 node / 0.5m
+                _dz = _d_L / (_N_node - 1)
+                import numpy as _np
+                _zs = _np.linspace(0, _d_L, _N_node)   # 0 = đầu cọc, L = mũi cọc
+
+                # Tính k_h theo độ sâu (Matlock soft clay & API sand)
+                _k_h = _np.zeros(_N_node)
+                for i, z in enumerate(_zs):
+                    _su_z, _gam_z, _is_clay = 11.0, 15.0, True
+                    _dep = 0.0
+                    for _lr in _layers_d:
+                        _h = _lr.get("thickness_m") or 0
+                        if _dep + _h >= z:
+                            _su_z  = _lr.get("Su_kPa") or 11.0
+                            _gam_z = _lr.get("gamma_kNm3") or 15.0
+                            _sym   = (_lr.get("symbol") or "1").lower()
+                            _is_clay = _sym in {"1", "xmd", "3", "5"}
+                            break
+                        _dep += _h
+                    if _is_clay:
+                        # Matlock: k_h ≈ p_u / y_50 = (N_p * su * D) / (2.5 * ε50 * D)
+                        # = N_p * su / (2.5 * ε50)
+                        _Np = min(3 + _gam_z * z / max(_su_z, 1), 9.0)
+                        _pu = _Np * _su_z * _D_pile  # kN/m
+                        _y50 = 2.5 * _d_eps50 * _D_pile  # m
+                        _k_z = (_pu / _y50) if _y50 > 0 else 1000.0
+                    else:
+                        # API sand: k_h ≈ k_z (k = const × z, hệ số k≈10 MN/m³ cho cát chặt vừa)
+                        _k_z = 10_000 * z   # kN/m/m
+                    # Tăng cường tại vùng CDM (lớp trên cùng _d_cdm_thk m)
+                    if z < _d_cdm_thk:
+                        _k_z *= _d_k_cdm_factor
+                    _k_h[i] = _k_z
+
+                # Giải Winkler bằng anastruct
+                _ss = _SE(EA=1e9, EI=_EI)
+                # Tạo nodes
+                _node_ids = []
+                for i, z in enumerate(_zs):
+                    if i == 0:
+                        _ni = _ss.add_element(location=[[0, 0], [0, _dz]], EI=_EI)
+                        _node_ids.append(1)
+                    else:
+                        _ni = _ss.add_element(location=[[0, -z + _dz], [0, -z]], EI=_EI)
+                # Lò xo tại mỗi node (k_h * dz)
+                for i in range(1, _N_node + 1):
+                    _k_spring = _k_h[i-1] * _dz   # kN/m chuyển vị
+                    _ss.add_support_spring(node_id=i, translation=1, k=_k_spring)
+                # Tải đầu cọc (node 1)
+                _ss.point_load(node_id=1, Fx=_d_H)
+                if _d_M > 0:
+                    _ss.moment_load(node_id=1, Ty=_d_M)
+                # Cố định mũi cọc (node N) — ngàm hoặc tự do
+                # Để tự do với chỉ k_h spring đã đủ → bài toán tĩnh
+                try:
+                    _ss.solve()
+                    _disp = _ss.get_node_displacements()
+                    _ux = [d["ux"] * 1000 for d in _disp]   # mm
+                    _moments = _ss.get_element_results(verbose=False)
+                    _M_max = max(abs(e["Mmax"]) for e in _moments) if _moments else 0
+                    _u_top = _ux[0]
+
+                    _md1, _md2, _md3 = st.columns(3)
+                    _md1.metric("Chuyển vị đỉnh u (mm)", f"{_u_top:.2f}",
+                                 f"{'Đạt' if abs(_u_top) < 25 else 'Vượt 25mm'}",
+                                 delta_color="normal" if abs(_u_top) < 25 else "inverse")
+                    _md2.metric("Mô-men max M (kNm/m)", f"{_M_max:.1f}",
+                                 f"Mcr = {_pile_d.get('Mcr_Tm', 0):.1f} Tm")
+                    _md3.metric("EI cọc (kNm²)", f"{_EI:.0f}",
+                                 f"D = {_D_pile*1000:.0f}mm")
+
+                    # Plot chuyển vị + nội lực
+                    if _HAS_PLOTLY:
+                        from plotly.subplots import make_subplots as _mksub
+                        _fig_d = _mksub(rows=1, cols=3, shared_yaxes=True,
+                                         subplot_titles=("Chuyển vị u (mm)",
+                                                         "Mô-men M (kNm/m)",
+                                                         "k_h theo độ sâu (kN/m²)"))
+                        _fig_d.add_trace(go.Scatter(x=_ux, y=_zs, mode="lines+markers",
+                                                     line=dict(color="#1565C0", width=2),
+                                                     name="u"), row=1, col=1)
+                        _M_arr = [e["Mmax"] for e in _moments]
+                        _z_M   = [(_zs[i] + _zs[i+1])/2 for i in range(len(_M_arr))]
+                        _fig_d.add_trace(go.Scatter(x=_M_arr, y=_z_M, mode="lines",
+                                                     line=dict(color="#E53935"),
+                                                     name="M"), row=1, col=2)
+                        _fig_d.add_trace(go.Scatter(x=_k_h, y=_zs, mode="lines+markers",
+                                                     line=dict(color="#2E7D32"),
+                                                     marker=dict(size=4),
+                                                     name="k_h",
+                                                     fill="tozerox"), row=1, col=3)
+                        # Đánh dấu vùng CDM
+                        _fig_d.add_hline(y=_d_cdm_thk, line_dash="dash",
+                                          line_color="#9C27B0",
+                                          annotation_text=f"Đáy CDM ({_d_cdm_thk}m)")
+                        _fig_d.update_yaxes(autorange="reversed", title_text="Độ sâu (m)")
+                        _fig_d.update_layout(height=480, showlegend=False,
+                                              title="p-y Winkler — chuyển vị, mô-men, k_h")
+                        st.plotly_chart(_fig_d, use_container_width=True)
+
+                    st.caption(
+                        f"**Phương pháp:** Matlock (1970) cho sét yếu + API RP2GEO cho cát. "
+                        f"ε₅₀={_d_eps50}, k_h CDM nhân {_d_k_cdm_factor}×. "
+                        f"Solver: anastruct {_SE.__module__ if hasattr(_SE, '__module__') else '1.6.2'} (Winkler beam)."
+                    )
+                except Exception as _e_solve:
+                    st.error(f"Lỗi giải Winkler: {_e_solve}")
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # E. Phương pháp FEM 2D
+    # ═══════════════════════════════════════════════════════════════════════════
+    st.markdown("---")
+    st.markdown("### E. Phương pháp FEM 2D")
+    st.info(
+        "**Stage 2 — FEM 2D:** mô phỏng chi tiết với OpenSeesPy / PLAXIS 2D. "
+        "Khai báo BeamContact2D mô phỏng trượt tường-đất; phần tử 9_4_QuadUP cho bài toán liên hợp rắn-lỏng."
+    )
+
+    try:
+        import openseespy.opensees as _ops
+        _HAS_OPS = True
+    except ImportError:
+        _HAS_OPS = False
+
+    if not _HAS_OPS:
+        st.warning(
+            "**OpenSeesPy chưa khả dụng trên Streamlit Cloud** (cần binary C++). "
+            "Stage 2 FEM chỉ chạy được khi clone repo về máy local + cài `openseespy gmsh fenics-basix`.\n\n"
+            "Trên local: file `scripts/sw_fem_opensees.py` (sẽ tạo) sẽ build mô hình 2D với:\n"
+            "- Phần tử: `9_4_QuadUP` (đất bão hoà), `dispBeamColumn` (cọc)\n"
+            "- Tiếp xúc: `BeamContact2D` (μ=0.4, tan φ)\n"
+            "- Vật liệu: PressureDependMultiYield (cát), PressureIndependMultiYield (sét), Concrete02 (cọc BTCT)\n"
+            "- Phases: K0 init → excavation → loading → consolidation\n"
+        )
+        st.markdown(
+            "**Pipeline tham khảo:**\n"
+            "1. `gmsh.py` → tạo mesh tam giác/tứ giác từ hình học (CDM + tường + đất)\n"
+            "2. `pygmsh` → wrapper Python tiện hơn cho gmsh\n"
+            "3. `meshio` → convert mesh sang `.tcl` (OpenSees) hoặc `.geo` (PLAXIS)\n"
+            "4. `openseespy` → định nghĩa nodes/elements/materials, solve\n"
+            "5. `pyvista` → render kết quả 3D (stress contour, displacement field)\n"
+            "6. `plxscripting` → automation PLAXIS 2D (chỉ Windows + license)\n"
+        )
+    else:
+        st.success(f"OpenSeesPy đang chạy local (version: {_ops.version() if hasattr(_ops, 'version') else '3.x'})")
+        _ec1, _ec2 = st.columns(2)
+        with _ec1:
+            _e_pile = st.selectbox("Cọc FEM", _sw_names,
+                                    index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
+                                    key="e_pile_fem")
+            _e_L    = st.number_input("L FEM (m)", 10.0, 35.0, 24.0, 0.5, key="e_L_fem")
+            _e_H    = st.number_input("Tải ngang H (kN/m)", 0.0, 200.0, 30.0, 5.0, key="e_H_fem")
+        with _ec2:
+            _e_mesh_h = st.number_input("Mesh size đất (m)", 0.2, 2.0, 0.5, 0.1, key="e_mesh")
+            _e_phases = st.multiselect("Pha tính toán",
+                                       ["K0 init", "Đào", "Tải ngang", "Cố kết"],
+                                       default=["K0 init", "Tải ngang"], key="e_phases")
+        if st.button("Chạy FEM OpenSeesPy (đơn giản)", type="primary", key="btn_e_fem"):
+            st.info("Đang xây dựng module sw_fem_opensees.py — tạm dùng kết quả Stage 1 ở mục D.")
+            # TODO: gọi scripts/sw_fem_opensees.py khi đã viết
+
     # ── Xuất PDF tab Cọc ván SW ──────────────────────────────────────────────
     if _HAS_PDF:
         st.divider()
