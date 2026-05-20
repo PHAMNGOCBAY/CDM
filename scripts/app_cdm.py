@@ -3020,13 +3020,15 @@ def _nav(label: str, pid: str, indent: bool = False) -> None:
         st.session_state["_page"] = pid
         st.rerun()
 
+# Migrate session_state cũ: "compare" / "export" → "params" (đã gộp)
+if st.session_state.get("_page") in ("compare", "export"):
+    st.session_state["_page"] = "params"
+
 _nav(_t("p_geology"),      "geology")
 _nav(_t("p_sample_check"), "sample_check")
 st.sidebar.markdown(f"**{_t('p_tkcs_cdm')}**")
-_nav(_t("p_params"),    "params",     indent=True)
-_nav(_t("p_compare"),   "compare",    indent=True)
+_nav(_t("p_params"),    "params",     indent=True)   # gộp: Thông số + Kết quả CDM + Xuất kết quả
 _nav(_t("p_settlement"),"settlement", indent=True)
-_nav(_t("p_export"),    "export",     indent=True)
 _nav(_t("p_cdm_bvt"),   "cdm_bvt")
 st.sidebar.markdown(f"**{_t('p_tkcs_sw')}**")
 _nav(_t("p_ke_sw"),  "ke_sw",  indent=True)
@@ -4503,7 +4505,7 @@ elif _page == "params":
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 3 – SO SÁNH PHƯƠNG ÁN
 # ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "compare":
+if _page == "params":   # tiếp nội dung Kết quả CDM (gộp vào tab Thông số)
     st.subheader(_t("p3_sub"))
 
     # Input khoảng cách + thông số đệm xi măng
@@ -5221,7 +5223,7 @@ elif _page == "compare":
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE 5 – XUẤT
 # ═══════════════════════════════════════════════════════════════════════════════
-elif _page == "export":
+if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab Thông số)
     st.subheader(_t("p5_sub"))
 
     D   = _get("cdm_D")
