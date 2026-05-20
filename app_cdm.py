@@ -8278,17 +8278,46 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     Atd_cm2=float(_pl_obj.get("Atd_cm2") or 0),
                     fc_MPa=70.0, name=pile_name,
                 )
-                # Layers từ DB (cùng logic legacy)
-                _ly_raw = _load_layers(bh_name.replace("KE-", ""))
+                # Layers từ DB — query trực tiếp, KHÔNG dùng _load_layers (cached)
+                # để tránh nested cache + lỗi sqlite trên Streamlit Cloud
+                _bh_short = bh_name.replace("KE-", "")
+                _ly_raw = []
+                try:
+                    _con_py = sqlite3.connect(str(_DB))
+                    _con_py.row_factory = sqlite3.Row
+                    _rows_py = _con_py.execute("""
+                        SELECT l.symbol, l.thickness_m,
+                               ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
+                               ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
+                               ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                        FROM layers l
+                        JOIN boreholes b ON l.borehole_id = b.id
+                        LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
+                            AND lt.depth_from_m >= l.depth_top_m
+                            AND lt.depth_to_m <= l.depth_bot_m
+                        WHERE b.name = ?
+                        GROUP BY l.id ORDER BY l.depth_top_m
+                    """, (_bh_short,)).fetchall()
+                    _con_py.close()
+                    for _r in _rows_py:
+                        _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                        _ly_raw.append({
+                            "symbol": _r["symbol"] or "1",
+                            "thickness_m": _r["thickness_m"] or 0,
+                            "Su_kPa": _su if _su is not None else 11.0,
+                            "gamma_kNm3": _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
+                        })
+                except Exception:
+                    pass
                 if not _ly_raw:
                     _ly_raw = [{"symbol": "1", "thickness_m": L_m + 5.0,
                                 "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
                 _ly_pn = [
                     _WIF_SoilLayer(
-                        symbol=str(_lr.get("symbol") or "1"),
-                        thickness_m=float(_lr.get("thickness_m") or 0),
-                        Su_kPa=float(_lr.get("Su_kPa") or 11.0),
-                        gamma_kNm3=float(_lr.get("gamma_kNm3") or 15.0),
+                        symbol=str(_lr["symbol"]),
+                        thickness_m=float(_lr["thickness_m"] or 0),
+                        Su_kPa=float(_lr["Su_kPa"]),
+                        gamma_kNm3=float(_lr["gamma_kNm3"]),
                     ) for _lr in _ly_raw
                 ]
                 _res_pn = _solve_pynite(
