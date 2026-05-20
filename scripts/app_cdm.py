@@ -1145,6 +1145,7 @@ def _build_borehole_3d_deck(
     cdm_top_z: float = 2.7,
     pair_highlight: tuple | None = None,
     z_scale: float = 5.0,
+    col_radius: float = 2.5,
 ):
     """Pydeck 3D map cho hố khoan — native drag/zoom/rotate qua deck.gl.
     z_scale: phóng đại trục Z (vì khoảng cách HK ~100m, độ sâu chỉ ~30m,
@@ -1168,8 +1169,8 @@ def _build_borehole_3d_deck(
             return [200, 200, 200]
         return [int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)]
 
-    # PathLayer: mỗi lớp = đường thẳng đứng 2 điểm [lon, lat, z*scale]
-    paths = []
+    # ColumnLayer: mỗi lớp = trụ extrude từ z_bot lên z_top → thấy rõ bề dày
+    columns = []
     for l in lays:
         b = bh_by_id.get(l["borehole_id"])
         if b is None:
@@ -1177,28 +1178,36 @@ def _build_borehole_3d_deck(
         sym  = l["symbol"]
         col  = _LAYER_COLORS.get(sym, _LAYER_DEFAULT_COLOR)
         rgb  = _hex_rgb(col)
-        z0   = (b["elevation_m"] - l["depth_top_m"]) * z_scale
-        z1   = (b["elevation_m"] - l["depth_bot_m"]) * z_scale
-        paths.append({
-            "path":  [[b["lon"], b["lat"], z0], [b["lon"], b["lat"], z1]],
-            "color": rgb,
-            "bh":    b["name"],
-            "sym":   sym,
-            "desc":  (l.get("description") or sym)[:40],
-            "rng":   f"{l['depth_top_m']:.1f}–{l['depth_bot_m']:.1f} m",
+        z_top = (b["elevation_m"] - l["depth_top_m"]) * z_scale
+        z_bot = (b["elevation_m"] - l["depth_bot_m"]) * z_scale
+        thick = max(z_top - z_bot, 0.01)
+        columns.append({
+            # base position bao gồm altitude → ColumnLayer extrude lên từ z này
+            "position":  [b["lon"], b["lat"], z_bot],
+            "elevation": thick,
+            "color":     rgb + [220],
+            "bh":        b["name"],
+            "sym":       sym,
+            "desc":      (l.get("description") or sym)[:40],
+            "rng":       f"{l['depth_top_m']:.1f}–{l['depth_bot_m']:.1f} m",
+            "thk":       f"{l['depth_bot_m'] - l['depth_top_m']:.2f} m",
         })
 
     layers_deck = [
         pdk.Layer(
-            "PathLayer",
-            paths,
+            "ColumnLayer",
+            columns,
             pickable=True,
-            get_path="path",
-            get_color="color",
-            get_width=4,
-            width_min_pixels=4,
-            width_max_pixels=12,
-            width_units="pixels",
+            extruded=True,
+            radius=float(col_radius),    # bán kính trụ — đơn vị mét
+            disk_resolution=24,          # 24 cạnh → trông tròn
+            elevation_scale=1.0,         # đã scale trong z_scale
+            get_position="position",
+            get_elevation="elevation",
+            get_fill_color="color",
+            line_width_min_pixels=0,
+            material={"ambient": 0.6, "diffuse": 0.6, "shininess": 30},
+            auto_highlight=True,
         ),
     ]
 
@@ -1338,7 +1347,7 @@ def _build_borehole_3d_deck(
     return pdk.Deck(
         layers=layers_deck,
         initial_view_state=view,
-        tooltip={"html": "<b>{bh}</b><br>Lớp {sym}: {desc}<br>{rng}",
+        tooltip={"html": "<b>{bh}</b><br>Lớp <b>{sym}</b>: {desc}<br>Độ sâu: {rng}<br>Dày: <b>{thk}</b>",
                  "style": {"color": "white", "backgroundColor": "rgba(33,33,33,0.85)"}},
         map_style=None,
     )
@@ -3214,13 +3223,17 @@ if _page == "geology":
                 _show_clay_pd = st.checkbox(_t("clay_surf"), value=True, key="_3d_pd_clay")
                 _show_cdm_pd  = st.checkbox(_t("cdm_top_show"), value=False, key="_3d_pd_top")
             _cdm_z_pd = float(_get("cdm_CDTK"))
-            _zscale_col, _cdmz_col = st.columns(2)
+            _zscale_col, _radius_col, _cdmz_col = st.columns(3)
             if _show_cdm_pd:
                 _cdm_z_pd = _cdmz_col.number_input(
                     _t("elev_lbl"), value=_cdm_z_pd, step=0.1, key="_3d_pd_top_z")
             _z_scale_pd = _zscale_col.slider(
                 "Phóng đại trục Z", 1.0, 20.0, 5.0, 0.5, key="_3d_pd_zscale",
                 help="Z (cao độ) thường rất nhỏ so với khoảng cách XY → phóng đại để dễ nhìn",
+            )
+            _col_radius_pd = _radius_col.slider(
+                "Bán kính trụ (m)", 0.5, 10.0, 2.5, 0.5, key="_3d_pd_radius",
+                help="Bán kính trụ địa chất — to để thấy rõ bề dày, nhỏ để không che HK kế bên",
             )
 
             # ── Đo khoảng cách 2 HK ────────────────────────────────────────
@@ -3252,6 +3265,7 @@ if _page == "geology":
                         cdm_top_z=_cdm_z_pd,
                         pair_highlight=_pair_sel_pd,
                         z_scale=_z_scale_pd,
+                        col_radius=_col_radius_pd,
                     )
                     if _deck is not None:
                         st.pydeck_chart(_deck, use_container_width=True, height=560)
