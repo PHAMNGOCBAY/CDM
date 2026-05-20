@@ -8292,6 +8292,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
     # Solver Winkler — ưu tiên PyNiteFEA (MIT, pure Python, Cloud-ready),
     # fallback về anastruct (legacy). Xem scripts/wall_internal_force.py.
+    _pynite_err = ""
+    _anastruct_err = ""
     try:
         import sys as _sys_wif
         _sys_wif.path.insert(0, str(_ROOT / "scripts"))
@@ -8304,33 +8306,41 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             sw_pile_props as _wif_sw_props,
         )
         _HAS_PYNITE = True
-    except ImportError as _e_pn:
+    except Exception as _e_pn:
         _HAS_PYNITE = False
         _solve_pynite = None
-        _pynite_err = str(_e_pn)
+        _pynite_err = f"{type(_e_pn).__name__}: {_e_pn}"
     try:
         from anastruct import SystemElements as _SE
         _HAS_ANASTRUCT = True
-    except ImportError:
+    except Exception as _e_an:
         _HAS_ANASTRUCT = False
         _SE = None
+        _anastruct_err = f"{type(_e_an).__name__}: {_e_an}"
     _HAS_WINKLER_SOLVER = _HAS_PYNITE or _HAS_ANASTRUCT
 
     # Cảnh báo sớm nếu không có solver Winkler nào
     if not _HAS_WINKLER_SOLVER:
-        st.warning(
+        import sys as _sys_diag
+        st.error(
             "**Tính năng p-y Winkler cần thư viện FEM Python.** "
             "Hiện không có `PyNiteFEA` cũng không có `anastruct` trong môi trường.\n\n"
+            f"- **Python:** `{_sys_diag.version.split()[0]}` ({_sys_diag.platform})\n"
+            f"- **PyNiteFEA lỗi:** `{_pynite_err or '(không thử)'}`\n"
+            f"- **anastruct lỗi:** `{_anastruct_err or '(không thử)'}`\n\n"
             "**Local:**\n"
             "```\npip install PyNiteFEA>=2.0 anastruct>=1.6\n```\n"
             "Sau đó khởi động lại Streamlit (đóng tab + chạy lại `start_app.bat`).\n\n"
-            "**Streamlit Cloud:** đã có sẵn cả hai trong `cdm-deploy/requirements.txt`. "
-            "Nếu vẫn lỗi → kiểm tra build log Cloud, có thể do version conflict."
+            "**Streamlit Cloud:** kiểm tra build log → xem deps có cài được không."
         )
     else:
-        _solver_used = ("PyNiteFEA" if _HAS_PYNITE
-                         else "anastruct (fallback)")
-        st.caption(f"_Solver Winkler hiện dùng: **{_solver_used}**_")
+        # Ưu tiên anastruct (ổn định trên Streamlit Cloud); PyNite là fallback
+        _solver_used = ("anastruct" if _HAS_ANASTRUCT
+                         else "PyNiteFEA (fallback)")
+        _caption_extra = ""
+        if not _HAS_ANASTRUCT and _anastruct_err:
+            _caption_extra = f" — anastruct lỗi: `{_anastruct_err}`"
+        st.caption(f"_Solver Winkler hiện dùng: **{_solver_used}**{_caption_extra}_")
 
     if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có solver
         # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
@@ -8350,8 +8360,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     "rồi khởi động lại Streamlit."
                 )}
 
-            # Path PyNite — sạch, không phụ thuộc legacy code
-            if _HAS_PYNITE:
+            # Path PyNite — sạch, không phụ thuộc legacy code.
+            # Chỉ dùng khi anastruct không có (anastruct là solver chính trên Cloud)
+            if _HAS_PYNITE and not _HAS_ANASTRUCT:
                 _pl_obj = _sw_by_name(pile_name)
                 if not _pl_obj:
                     return {"error": f"Không có cọc {pile_name}"}
