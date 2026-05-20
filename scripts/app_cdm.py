@@ -7499,15 +7499,22 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         _HAS_ANASTRUCT = True
     except ImportError:
         _HAS_ANASTRUCT = False
-        st.warning("Cần cài thư viện `anastruct` (Winkler beam). Cloud cần rebuild.")
+        _SE = None
+        st.info(
+            "Lý thuyết và biểu đồ minh họa hiển thị bên dưới. "
+            "Bảng kết quả tính toán p-y cần thư viện `anastruct` — cloud đang rebuild, "
+            "vui lòng đợi 2-5 phút rồi refresh."
+        )
 
-    if _HAS_ANASTRUCT:
+    if True:  # Luôn hiển thị D.1 lý thuyết + D.4 Rankine; D.2/D.3 chỉ chạy nếu có anastruct
         # ── Helper: tính p-y Winkler cho 1 HK + cọc + L ──────────────────────
         @st.cache_data(show_spinner=False)
         def _calc_py_winkler(bh_name: str, pile_name: str, L_m: float,
                              H_kNm: float, M_kNm: float, cdm_thk_m: float,
                              eps50: float, k_cdm_factor: float) -> dict:
             """Giải Winkler p-y cho 1 cọc. Trả dict {u_top, M_max, Q_max, zs, ux, Ms, k_h}."""
+            if not _HAS_ANASTRUCT:
+                return {"error": "anastruct chưa cài"}
             import numpy as _np
             _pl = _sw_by_name(pile_name)
             if not _pl:
@@ -7890,10 +7897,14 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                      key="d_yd_py", help="Dùng để tính k_h cát theo secant từ p-y")
 
         if st.button("Tính chuyển vị + nội lực (p-y Winkler)", type="primary", key="btn_d_py"):
-            # Thông số cọc
-            _pile_d = _sw_by_name(_d_pile)
+            if not _HAS_ANASTRUCT:
+                st.warning("Chưa thể tính — cần thư viện `anastruct`. Cloud đang rebuild (đợi 2-5 phút).")
+                _pile_d = None
+            else:
+                _pile_d = _sw_by_name(_d_pile)
             if not _pile_d:
-                st.error(f"Không tìm thấy cọc {_d_pile}")
+                if _HAS_ANASTRUCT:
+                    st.error(f"Không tìm thấy cọc {_d_pile}")
             else:
                 _D_pile  = _pile_d["H_mm"] / 1000.0     # bề rộng cọc (m)
                 _I_pile  = (_pile_d.get("Itd_cm4") or 0) * 1e-8   # m^4
