@@ -3101,21 +3101,25 @@ elif _page == "params":
             ld = _get("cdm_loads").copy()
             ld["q_traffic"] = st.number_input(_t("q_traf"), 0.0, 200.0,
                                               ld.get("q_traffic", 20.0), 5.0)
-            _pad = "<div style='padding-top:28px'>{}</div>"
+            _hdr_style = "font-size:12px; font-weight:600; color:#444; margin-bottom:2px"
             _cl, _ch, _cg = st.columns([1.5, 1, 1])
-            _cl.markdown(_pad.format(_t("pavement")), unsafe_allow_html=True)
-            ld["h_road"] = _ch.number_input(_t("h_lbl"), 0.0, 2.0, ld.get("h_road", 0.8), 0.1, key="h_road")
-            ld["g_road"] = _cg.number_input("γ (kN/m³)", 10.0, 30.0, ld.get("g_road", 24.0), 0.5, key="g_road")
+            _ch.markdown(f"<div style='{_hdr_style}'>h (m)</div>", unsafe_allow_html=True)
+            _cg.markdown(f"<div style='{_hdr_style}'>γ (kN/m³)</div>", unsafe_allow_html=True)
 
             _cl, _ch, _cg = st.columns([1.5, 1, 1])
-            _cl.markdown(_pad.format(_t("fill")), unsafe_allow_html=True)
-            ld["h_fill"] = _ch.number_input(_t("h_lbl"), 0.0, 5.0, ld.get("h_fill", 1.5), 0.1, key="h_fill")
-            ld["g_fill"] = _cg.number_input("γ (kN/m³)", 10.0, 24.0, ld.get("g_fill", 18.0), 0.5, key="g_fill")
+            _cl.markdown(_t("pavement"))
+            ld["h_road"] = _ch.number_input("h_road", 0.0, 2.0, ld.get("h_road", 0.8), 0.1, key="h_road", label_visibility="collapsed")
+            ld["g_road"] = _cg.number_input("g_road", 10.0, 30.0, ld.get("g_road", 24.0), 0.5, key="g_road", label_visibility="collapsed")
 
             _cl, _ch, _cg = st.columns([1.5, 1, 1])
-            _cl.markdown(_pad.format(_t("mat")), unsafe_allow_html=True)
-            ld["h_mat"] = _ch.number_input(_t("h_lbl"), 0.0, 2.0, ld.get("h_mat", 0.4), 0.1, key="h_mat")
-            ld["g_mat"] = _cg.number_input("γ (kN/m³)", 10.0, 26.0, ld.get("g_mat", 22.5), 0.5, key="g_mat")
+            _cl.markdown(_t("fill"))
+            ld["h_fill"] = _ch.number_input("h_fill", 0.0, 5.0, ld.get("h_fill", 1.5), 0.1, key="h_fill", label_visibility="collapsed")
+            ld["g_fill"] = _cg.number_input("g_fill", 10.0, 24.0, ld.get("g_fill", 18.0), 0.5, key="g_fill", label_visibility="collapsed")
+
+            _cl, _ch, _cg = st.columns([1.5, 1, 1])
+            _cl.markdown(_t("mat"))
+            ld["h_mat"] = _ch.number_input("h_mat", 0.0, 2.0, ld.get("h_mat", 0.4), 0.1, key="h_mat", label_visibility="collapsed")
+            ld["g_mat"] = _cg.number_input("g_mat", 10.0, 26.0, ld.get("g_mat", 22.5), 0.5, key="g_mat", label_visibility="collapsed")
             q_tot = q_total(ld)
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
