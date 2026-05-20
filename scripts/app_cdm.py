@@ -243,8 +243,14 @@ _CLAY_SYMBOLS = {        # symbol lớp bùn sét yếu theo zone
     "KE":  ["1", "1b"],
     "BXN": ["2"],
     "NHC": ["2", "1"],   # NHC chưa có layers – fallback
+    "QTT": ["1", "2"],   # Quảng Trường TT — chưa có layers nhập
 }
-_ZONE_NAMES = {"KE": "Kè Công Viên (KE)", "BXN": "Bãi Đỗ Xe Ngầm (BXN)", "NHC": "Nhà Hành Chính (NHC)"}
+_ZONE_NAMES = {
+    "KE":  "Kè Công Viên (KE)",
+    "BXN": "Bãi Đỗ Xe Ngầm (BXN)",
+    "NHC": "Nhà Hành Chính (NHC)",
+    "QTT": "Quảng Trường Trung Tâm (QTT)",
+}
 
 _LAYER_COLORS: dict[str, str] = {
     # Ký hiệu địa tầng Việt Nam (TCVN)
@@ -287,7 +293,7 @@ _LAYER_COLORS: dict[str, str] = {
     "PT":   "#2E7D32",   # Peat – xanh lá
 }
 _LAYER_DEFAULT_COLOR = "#EEEEEE"
-_ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond"}
+_ZONE_MARKER: dict[str, str] = {"KE": "circle", "BXN": "square", "NHC": "diamond", "QTT": "cross"}
 
 # ─── Bảng dịch VN / EN ────────────────────────────────────────────────────────
 _L: dict[str, tuple[str, str]] = {
@@ -842,7 +848,7 @@ def _draw_boreholes_3d(
         ))
 
     # Labels tên hố khoan
-    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32"}
+    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32", "QTT": "#F9A825"}
     fig.add_trace(go.Scatter3d(
         x=[b["x_coord_m"] for b in bhs],
         y=[b["y_coord_m"] for b in bhs],
@@ -1060,8 +1066,8 @@ def _draw_boreholes_3d_mpl(
             )
 
     # Markers + nhãn tên HK
-    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32"}
-    _zone_markers = {"KE": "o", "BXN": "s", "NHC": "D"}
+    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32", "QTT": "#F9A825"}
+    _zone_markers = {"KE": "o", "BXN": "s", "NHC": "D", "QTT": "P"}
     for bh in bhs:
         z_top = bh["elevation_m"] + 3
         ax.scatter(bh["x_coord_m"], bh["y_coord_m"], z_top,
@@ -1216,7 +1222,7 @@ def _build_borehole_3d_deck(
     ]
 
     # Nhãn tên HK (toggle được)
-    _zone_rgb = {"KE": [229, 57, 53], "BXN": [21, 101, 192], "NHC": [46, 125, 50]}
+    _zone_rgb = {"KE": [229, 57, 53], "BXN": [21, 101, 192], "NHC": [46, 125, 50], "QTT": [249, 168, 37]}
     if show_bh_names:
         label_data = [
             {
@@ -1472,7 +1478,7 @@ _MAP_STYLES = {
 
 def _draw_map_2d(bhs_ll: list[dict], style_key: str) -> "go.Figure":
     """Bản đồ 2D vị trí hố khoan, hỗ trợ OSM / Esri satellite."""
-    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32"}
+    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32", "QTT": "#F9A825"}
     fig = go.Figure()
 
     for zone, color in _zone_colors.items():
