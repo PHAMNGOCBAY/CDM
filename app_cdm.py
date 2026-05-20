@@ -2679,6 +2679,200 @@ def _export_excel(scenarios: list[dict], params: dict) -> bytes:
     return buf.getvalue()
 
 
+def _custom_report_pdf(
+    scenarios: list[dict], params: dict, rec_idx: int,
+    include_params: bool = True, include_compare: bool = True,
+    include_charts: bool = True, include_sens: bool = False,
+    include_punch: bool = True, include_rec: bool = True,
+    charts_only: bool = False,
+) -> bytes:
+    """Sinh PDF tuỳ chỉnh — chọn từng mục, hoặc 'charts only' mode.
+    Dùng ReportLab (luôn cài được trên Cloud) + matplotlib charts → PNG embed."""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm, mm
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                         Table, TableStyle, Image, PageBreak,
+                                         KeepTogether)
+        import matplotlib.pyplot as plt
+        import io as _io
+    except Exception as e:
+        st.error(f"Không tải được thư viện PDF: {e}")
+        return b""
+
+    buf_out = _io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf_out, pagesize=A4,
+        leftMargin=14 * mm, rightMargin=12 * mm,
+        topMargin=14 * mm, bottomMargin=14 * mm,
+        title="Báo cáo Thiết kế CDM", author="PLAXIS AI Copilot",
+    )
+    styles = getSampleStyleSheet()
+    style_title = ParagraphStyle("t", parent=styles["Title"], fontSize=14,
+                                  alignment=1, spaceAfter=8)
+    style_h1 = ParagraphStyle("h1", parent=styles["Heading1"], fontSize=12,
+                               textColor=colors.HexColor("#1F4E79"), spaceBefore=10, spaceAfter=4)
+    style_p = ParagraphStyle("p", parent=styles["BodyText"], fontSize=9.5, leading=12)
+    style_cap = ParagraphStyle("cap", parent=styles["BodyText"], fontSize=8,
+                                alignment=1, textColor=colors.grey, spaceAfter=4)
+
+    story = []
+    rec = scenarios[rec_idx] if scenarios and rec_idx < len(scenarios) else {}
+
+    # ── Title ────────────────────────────────────────────────────────────────
+    title = ("BÁO CÁO BIỂU ĐỒ THIẾT KẾ CDM" if charts_only
+             else "BÁO CÁO THIẾT KẾ CỌC ĐẤT XI MĂNG (CDM)")
+    story.append(Paragraph(title, style_title))
+    story.append(Paragraph(
+        f"Khu vực: <b>{params.get('zone', '—')}</b>  |  "
+        f"Hố khoan: <b>{params.get('bh_name', '—')}</b>  |  "
+        f"D = {int(params.get('D', 0.8) * 1000)} mm  |  "
+        f"Lc = {params.get('Lc', 0):.1f} m",
+        style_p,
+    ))
+    story.append(Spacer(1, 8))
+
+    # ── 1. Thông số đầu vào ──────────────────────────────────────────────────
+    if include_params and not charts_only:
+        story.append(Paragraph("1. THÔNG SỐ ĐẦU VÀO", style_h1))
+        tbl_data = [
+            ["Tham số", "Ký hiệu", "Giá trị", "Đơn vị"],
+            ["Đường kính cọc", "D", f"{params.get('D', 0.8):.2f}", "m"],
+            ["Chiều dài cọc", "Lc", f"{params.get('Lc', 23):.1f}", "m"],
+            ["Cường độ nén thiết kế", "qu", f"{params.get('qu', 800):.0f}", "kPa"],
+            ["Sức kháng cắt KTN", "Su", f"{params.get('Su', 10):.1f}", "kPa"],
+            ["Bề dày lớp bùn", "h_clay", f"{params.get('h_clay', 22):.1f}", "m"],
+            ["Dung trọng đất", "γ", f"{params.get('gamma', 15):.1f}", "kN/m³"],
+            ["Tải tổng (xét hoạt tải)", "q", f"{params.get('q_total', 75):.1f}", "kN/m²"],
+            ["Hàm lượng xi măng", "x", f"{params.get('dosage', 240):.0f}", "kg/m³"],
+            ["Bố trí", "—",
+             "Tam giác" if params.get("arrangement") == "triangle" else "Hình vuông", "—"],
+        ]
+        t = Table(tbl_data, colWidths=[6.5*cm, 2.5*cm, 3*cm, 2*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
+            ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("GRID",     (0, 0), (-1, -1), 0.4, colors.HexColor("#888")),
+            ("ALIGN",    (1, 0), (-1, -1), "CENTER"),
+            ("VALIGN",   (0, 0), (-1, -1), "MIDDLE"),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 8))
+
+    # ── 2. Bảng so sánh phương án ────────────────────────────────────────────
+    if include_compare and not charts_only:
+        story.append(Paragraph("2. BẢNG SO SÁNH PHƯƠNG ÁN", style_h1))
+        rows = [["PA", "e (m)", "a (%)", "Etb (kN/m²)", "S₁ (cm)",
+                 "Pcol (kN)", "Qa (kN)", "Đạt SCT"]]
+        for i, s in enumerate(scenarios):
+            star = " *" if i == rec_idx else ""
+            rows.append([
+                f"PA{i+1}{star}", f"{s['e (m)']}",
+                f"{s['a (%)']:.1f}", f"{int(s['Etb (kN/m²)']):,}",
+                f"{s['S₁ (cm)']:.2f}", f"{s['Pcol (kN)']:.1f}",
+                f"{s['Qa (kN)']:.1f}", s["Đạt SCT"],
+            ])
+        t = Table(rows, colWidths=[1.5*cm, 1.5*cm, 1.8*cm, 3*cm, 2*cm, 2*cm, 2*cm, 2*cm])
+        ts = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
+            ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+            ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+            ("GRID",     (0, 0), (-1, -1), 0.4, colors.HexColor("#888")),
+            ("ALIGN",    (0, 0), (-1, -1), "CENTER"),
+        ]
+        if rec_idx + 1 < len(rows):
+            ts.append(("BACKGROUND", (0, rec_idx + 1), (-1, rec_idx + 1),
+                       colors.HexColor("#FFF2CC")))
+        t.setStyle(TableStyle(ts))
+        story.append(t)
+        story.append(Paragraph("* = Phương án kiến nghị", style_cap))
+        story.append(Spacer(1, 8))
+
+    # ── 3. Biểu đồ so sánh ───────────────────────────────────────────────────
+    if include_charts:
+        story.append(Paragraph("3. BIỂU ĐỒ SO SÁNH PHƯƠNG ÁN", style_h1))
+        fig, axs = plt.subplots(2, 2, figsize=(11, 7))
+        _xs = [f"e={s['e (m)']}m" for s in scenarios]
+        _cols = ['#ED7D31' if i == rec_idx else '#4472C4' for i in range(len(scenarios))]
+        # S1
+        axs[0,0].bar(_xs, [s["S₁ (cm)"] for s in scenarios], color=_cols, edgecolor='black')
+        axs[0,0].set_title("Lún S₁ (cm)"); axs[0,0].set_ylabel("cm")
+        for i, v in enumerate([s["S₁ (cm)"] for s in scenarios]):
+            axs[0,0].text(i, v*1.02, f"{v:.2f}", ha='center', fontsize=8)
+        # Etb
+        axs[0,1].bar(_xs, [s["Etb (kN/m²)"] for s in scenarios], color=_cols, edgecolor='black')
+        axs[0,1].set_title("Mô-đun tương đương Etb (kN/m²)")
+        # Pcol vs Qa
+        _p = [s["Pcol (kN)"] for s in scenarios]
+        _q = [s["Qa (kN)"]   for s in scenarios]
+        axs[1,0].bar(_xs, _p, color=_cols, edgecolor='black', label='Pcol')
+        axs[1,0].plot(_xs, _q, 'D-', color='#E53935', lw=2, label='Qa (giới hạn)')
+        axs[1,0].set_title("Sức chịu tải: Pcol vs Qa"); axs[1,0].set_ylabel("kN")
+        axs[1,0].legend(fontsize=8)
+        # a (%)
+        axs[1,1].bar(_xs, [s["a (%)"] for s in scenarios], color=_cols, edgecolor='black')
+        axs[1,1].set_title("Tỷ lệ thay thế a (%)")
+        for ax in axs.flat:
+            ax.grid(True, axis='y', ls=':', alpha=0.4)
+        fig.suptitle("So sánh phương án — cam = PA kiến nghị", fontsize=11, fontweight='bold')
+        fig.tight_layout()
+        buf_img = _io.BytesIO()
+        fig.savefig(buf_img, format='png', dpi=130, bbox_inches='tight', facecolor='white')
+        plt.close(fig); buf_img.seek(0)
+        story.append(Image(buf_img, width=17*cm, height=11*cm))
+        story.append(Paragraph("Hình 1. So sánh 4 chỉ tiêu chính theo khoảng cách e", style_cap))
+        story.append(Spacer(1, 8))
+
+    # ── 4. Phân tích độ nhạy ─────────────────────────────────────────────────
+    if include_sens:
+        story.append(Paragraph("4. PHÂN TÍCH ĐỘ NHẠY", style_h1))
+        story.append(Paragraph(
+            "Khảo sát ảnh hưởng của các tham số thiết kế đến lún S₁ và sức chịu tải. "
+            "Tham số được biến thiên quanh giá trị kiến nghị.", style_p))
+        story.append(Spacer(1, 6))
+
+    # ── 5. Kiểm tra chọc thủng ──────────────────────────────────────────────
+    if include_punch and not charts_only:
+        story.append(Paragraph("5. KIỂM TRA CHỌC THỦNG (ALiCC)", style_h1))
+        story.append(Paragraph(
+            "Phương pháp ALiCC (PWRI Japan) — TCVN 9403:2012 Phụ lục C. "
+            "Điều kiện đạt: τse ≤ τase.", style_p))
+        story.append(Spacer(1, 6))
+
+    # ── 6. Kết quả PA kiến nghị ──────────────────────────────────────────────
+    if include_rec and not charts_only and rec:
+        story.append(PageBreak())
+        story.append(Paragraph(f"6. KẾT QUẢ PHƯƠNG ÁN KIẾN NGHỊ (e = {rec['e (m)']} m)",
+                                style_h1))
+        rec_rows = [
+            ["Đại lượng", "Giá trị"],
+            ["Tỷ lệ thay thế a",        f"{rec.get('a', 0):.4f}  ({rec.get('a (%)', 0):.1f}%)"],
+            ["Mô-đun tương đương Etb",  f"{int(rec.get('Etb (kN/m²)', 0)):,} kN/m²"],
+            ["Độ lún S₁",               f"{rec.get('S₁ (cm)', 0):.2f} cm"],
+            ["Độ lún S₂",               "0,00 cm (CDM xuyên hết lớp bùn)"],
+            ["Tổng lún S",              f"{rec.get('S₁ (cm)', 0):.2f} cm"],
+            ["Lực nén lên cọc Pcol",    f"{rec.get('Pcol (kN)', 0):.1f} kN"],
+            ["Sức chịu tải Qa",         f"{rec.get('Qa (kN)', 0):.1f} kN"],
+            ["Kiểm tra SCT",            rec.get("Đạt SCT", "—")],
+        ]
+        t = Table(rec_rows, colWidths=[7*cm, 8*cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E79")),
+            ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+            ("FONTSIZE", (0, 0), (-1, -1), 10),
+            ("GRID",     (0, 0), (-1, -1), 0.4, colors.HexColor("#888")),
+            ("ALIGN",    (1, 1), (-1, -1), "LEFT"),
+        ]))
+        story.append(t)
+
+    doc.build(story)
+    return buf_out.getvalue()
+
+
 def _export_word_bytes(
     scenarios: list[dict],
     params: dict,
@@ -5323,20 +5517,72 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
             else:
                 st.error("Lỗi tạo Excel. Kiểm tra openpyxl đã cài chưa.")
 
+    # ── Báo cáo PDF tuỳ chỉnh ────────────────────────────────────────────────
+    st.divider()
+    st.markdown("#### Báo cáo PDF tuỳ chỉnh")
+    st.caption("Chọn các mục muốn xuất ra PDF. Hỗ trợ xuất chỉ biểu đồ.")
+
+    _rep_c1, _rep_c2, _rep_c3 = st.columns(3)
+    with _rep_c1:
+        _opt_params = st.checkbox("Thông số đầu vào",
+                                  value=True, key="rep_opt_params")
+        _opt_compare = st.checkbox("Bảng so sánh phương án",
+                                   value=True, key="rep_opt_compare")
+    with _rep_c2:
+        _opt_charts = st.checkbox("Biểu đồ so sánh",
+                                  value=True, key="rep_opt_charts")
+        _opt_sens = st.checkbox("Phân tích độ nhạy",
+                                value=False, key="rep_opt_sens")
+    with _rep_c3:
+        _opt_punch = st.checkbox("Kiểm tra chọc thủng",
+                                 value=True, key="rep_opt_punch")
+        _opt_rec = st.checkbox("Kết quả PA kiến nghị",
+                               value=True, key="rep_opt_rec")
+
+    _br1, _br2 = st.columns(2)
+    with _br1:
+        if st.button("Xuất PDF tuỳ chỉnh", type="primary", use_container_width=True,
+                      key="btn_custom_pdf"):
+            with st.spinner("Đang tạo báo cáo..."):
+                pdf_bytes = _custom_report_pdf(
+                    scenarios, params, rec,
+                    include_params=_opt_params, include_compare=_opt_compare,
+                    include_charts=_opt_charts, include_sens=_opt_sens,
+                    include_punch=_opt_punch, include_rec=_opt_rec,
+                )
+            if pdf_bytes:
+                st.download_button(
+                    "Tải xuống PDF tuỳ chỉnh",
+                    pdf_bytes,
+                    file_name=f"CDM-Tuychinh-{params['bh_name']}-{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+    with _br2:
+        if st.button("Xuất PDF chỉ biểu đồ", use_container_width=True,
+                      key="btn_charts_pdf"):
+            with st.spinner("Đang gom biểu đồ..."):
+                pdf_charts = _custom_report_pdf(
+                    scenarios, params, rec,
+                    include_params=False, include_compare=False,
+                    include_charts=True, include_sens=True,
+                    include_punch=False, include_rec=False,
+                    charts_only=True,
+                )
+            if pdf_charts:
+                st.download_button(
+                    "Tải PDF chỉ biểu đồ",
+                    pdf_charts,
+                    file_name=f"CDM-Bieudo-{params['bh_name']}-{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                )
+
     # ── Lý thuyết tính toán (in PDF) ─────────────────────────────────────────
     st.divider()
     _theory_text = _load_theory()
     if _theory_text:
-        with st.expander("Lý thuyết tính toán – đính kèm khi in PDF", expanded=True):
-            st.markdown(
-                "<style>"
-                "@media print {"
-                "  details { display: block !important; }"
-                "  summary { display: none; }"
-                "}"
-                "</style>",
-                unsafe_allow_html=True,
-            )
+        with st.expander("Lý thuyết tính toán – đính kèm khi in PDF", expanded=False):
             st.markdown(_theory_text)
 
 
