@@ -5937,15 +5937,14 @@ if _page == "ke_sw":
             "unknown": "?",
         }
         try:
-            # Lọc theo HK người dùng chọn ở Mục B (auto add/remove)
+            # Lọc + GIỮ THỨ TỰ chính xác như Mục B (_picked_bhs)
             _picked_db = [f"KE-{n}" for n in _picked_bhs]
             if not _picked_db:
                 st.info("Chưa có HK nào được chọn ở Mục B.")
             else:
                 _placeholders = ",".join("?" * len(_picked_db))
                 _con_nt = sqlite3.connect(str(_DB))
-                _cur_nt = _con_nt.cursor()
-                _nt_rows = _cur_nt.execute(
+                _nt_rows_raw = _con_nt.execute(
                     f"""SELECT bh_name, pile_type, L_design_m, Z_m, Z_source,
                     fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source,
                     L_req_nt1_m, margin_nt1_m, nt1_result,
@@ -5954,16 +5953,18 @@ if _page == "ke_sw":
                     Rp_kN, phi_stat, phi_basis, RR_kN, W_kN,
                     ratio_nt2, nt2_result, su_warnings
                     FROM ke_sw_nt_detail
-                    WHERE bh_name IN ({_placeholders})
-                    ORDER BY bh_name""",
+                    WHERE bh_name IN ({_placeholders})""",
                     _picked_db,
                 ).fetchall()
                 _con_nt.close()
+                # Sort theo thứ tự _picked_db (giống bảng Mục B)
+                _bh_order = {nm: i for i, nm in enumerate(_picked_db)}
+                _nt_rows = sorted(_nt_rows_raw, key=lambda r: _bh_order.get(r[0], 999))
+
                 if not _nt_rows:
                     st.info("Không có dữ liệu NT trong SQLite cho các HK đã chọn. "
                             "Chạy `python scripts/ke_sw_nt_calc.py`.")
 
-                # Pre-load VST cho zone KE 1 lần
                 _df_vst_ke = _load_vst_su("KE") if _picked_db else pd.DataFrame()
 
                 for _nt in _nt_rows:
@@ -5978,22 +5979,28 @@ if _page == "ke_sw":
                     ) = _nt
                     st.markdown(f"##### {_bh_n}")
 
-                    # Layout 2 cột: trái text + bảng, phải hình
-                    _cD, _cF = st.columns([3, 2], gap="medium")
+                    if _warns:
+                        st.warning("**Cảnh báo:** " + " · ".join(_warns.split("; ")))
 
-                    with _cD:
-                        if _warns:
-                            st.warning(
-                                "**Cảnh báo:** " +
-                                " · ".join(_warns.split("; ")),
-                            )
-
-                        # Compact NT1 + NT2 1 dòng badge
-                        _badge_nt1 = "🟢" if _marg1 >= 0 else "🔴"
-                        _badge_nt2 = "🟢" if _rat2 >= 1 else "🔴"
+                    # ── Hàng 1: NT1 và NT2 cùng một hàng ────────────────────────
+                    _nt1_col, _nt2_col = st.columns(2)
+                    _badge_nt1 = "🟢" if _marg1 >= 0 else "🔴"
+                    _badge_nt2 = "🟢" if _rat2 >= 1 else "🔴"
+                    with _nt1_col:
                         st.markdown(
-                            f"**NT1** {_badge_nt1} {_res1} (Δ={_marg1:+.2f} m)  | "
-                            f"**NT2** {_badge_nt2} {_res2} (RR/W = {_rat2:.2f})"
+                            f"**NT1 — Chiều dài xuyên qua lớp yếu** {_badge_nt1} **{_res1}**"
+                        )
+                        st.caption(
+                            f"L tk = **{_L_d:.1f} m** | L req = {_L_req1:.1f} m | "
+                            f"Δ = **{_marg1:+.2f} m**  \n"
+                            f"Đáy lớp mềm = {_D_bot:.1f} m | "
+                            f"Z mặt đất = {_Z_m:+.2f} m  \n"
+                            f"Đắp = {_fill_m:.2f} m | Trong đất = {_L_soil:.2f} m"
+                        )
+                    with _nt2_col:
+                        st.markdown(
+                            f"**NT2 — Sức kháng nhổ TCVN 11823-10** {_badge_nt2} **{_res2}** "
+                            f"(RR/W = **{_rat2:.2f}**)"
                         )
                         _rs_parts = []
                         if _Rs_clay is not None:
@@ -6006,53 +6013,61 @@ if _page == "ke_sw":
                             _tip_short += (f"·N₁₆₀={_tip_N160:.0f}" if _tip_N160
                                            else "·noSPT")
                         else:
-                            _tip_short += f"·su={_tip_su:.0f}"
+                            _tip_short += f"·su={_tip_su:.0f} kPa"
                         st.caption(
-                            f"L tk = **{_L_d:.1f} m** | L req = {_L_req1:.1f} m | "
-                            f"Đáy bùn = {_D_bot:.1f} m  \n"
-                            f"Rs = {_Rs:.0f}{_rs_bd} | Rp = {_Rp:.0f} | "
-                            f"RR = {_RR:.0f} kN | W = {_W:.0f} kN  \n"
+                            f"Rs = {_Rs:.0f}{_rs_bd} | Rp = {_Rp:.0f} kN  \n"
+                            f"RR = φ(Rs+Rp) = **{_RR:.0f} kN** | W = {_W:.0f} kN  \n"
                             f"φ = **{_phi:.2f}** ({_phi_basis or '—'}) | Tip: {_tip_short}"
                         )
 
-                        # Bảng lớp đất compact (bỏ cột mô tả dài)
-                        _con2 = sqlite3.connect(str(_DB))
-                        _lyrs = _con2.execute(
-                            "SELECT l.symbol, l.L_m, l.method, l.su_kPa, l.alpha, "
-                            "l.N160, l.gamma_kNm3, l.sigma_v_eff_kPa, l.su_source, l.Rs_kN "
-                            "FROM ke_sw_nt2_layers l "
-                            "JOIN ke_sw_nt_detail d ON l.sw_design_id=d.id "
-                            "WHERE d.bh_name=? ORDER BY l.layer_order",
-                            (_bh_n,),
-                        ).fetchall()
-                        _con2.close()
-                        if _lyrs:
-                            _ldf_rows = []
-                            for (_sym, _Llyr, _meth, _su, _alp, _N, _gam, _sigv,
-                                 _src, _Rs_lyr) in _lyrs:
-                                _src_short = (_src.replace("nearest:", "≈")
-                                              if _src and _src.startswith("nearest:")
-                                              else _SRC_LBL.get(_src or "", _src or ""))
-                                _ldf_rows.append({
-                                    "Lớp":   _sym,
-                                    "L":     round(_Llyr, 1),
-                                    "M":     (_meth or "α")[:3],
-                                    "su":    round(_su, 0) if _su else "—",
-                                    "N₁₆₀": round(_N, 0) if _N is not None else "—",
-                                    "γ":     round(_gam, 1) if _gam else "—",
-                                    "σ'v":   round(_sigv, 0) if _sigv else "—",
-                                    "Src":   _src_short,
-                                    "Rs":    round(_Rs_lyr, 0),
-                                })
-                            st.dataframe(
-                                pd.DataFrame(_ldf_rows),
-                                hide_index=True,
-                                use_container_width=True,
-                                height=min(280, 38 + 32 * len(_ldf_rows)),
-                            )
+                    # ── Hàng 2: bảng lớp đất full width ─────────────────────────
+                    _con2 = sqlite3.connect(str(_DB))
+                    _lyrs = _con2.execute(
+                        "SELECT l.symbol, l.L_m, l.method, l.su_kPa, l.alpha, "
+                        "l.N160, l.gamma_kNm3, l.sigma_v_eff_kPa, l.su_source, l.Rs_kN "
+                        "FROM ke_sw_nt2_layers l "
+                        "JOIN ke_sw_nt_detail d ON l.sw_design_id=d.id "
+                        "WHERE d.bh_name=? ORDER BY l.layer_order",
+                        (_bh_n,),
+                    ).fetchall()
+                    _con2.close()
+                    # Tìm HK gốc VST tham khảo (nếu có nearest)
+                    _vst_ref_bh = None
+                    if _lyrs:
+                        _ldf_rows = []
+                        for (_sym, _Llyr, _meth, _su, _alp, _N, _gam, _sigv,
+                             _src, _Rs_lyr) in _lyrs:
+                            _src_short = (_src.replace("nearest:", "≈")
+                                          if _src and _src.startswith("nearest:")
+                                          else _SRC_LBL.get(_src or "", _src or ""))
+                            if _src and _src.startswith("nearest:") and _vst_ref_bh is None:
+                                # Parse "nearest:KE-HK2(233m,c_)" → "KE-HK2"
+                                import re as _re_src
+                                _m = _re_src.match(r"nearest:([\w-]+)\(", _src)
+                                if _m:
+                                    _vst_ref_bh = _m.group(1)
+                            _ldf_rows.append({
+                                "Lớp":   _sym,
+                                "L (m)": round(_Llyr, 2),
+                                "Phương pháp": (_meth or "alpha")[:5],
+                                "su (kPa)":   round(_su, 1) if _su else 0,
+                                "α":     round(_alp, 3) if _alp else 0,
+                                "N₁₆₀": round(_N, 0) if _N is not None else "—",
+                                "γ (kN/m³)":  round(_gam, 1) if _gam else "—",
+                                "σ'v (kPa)":  round(_sigv, 0) if _sigv else "—",
+                                "Nguồn": _src_short,
+                                "Rs (kN)": round(_Rs_lyr, 0),
+                            })
+                        st.dataframe(
+                            pd.DataFrame(_ldf_rows),
+                            hide_index=True,
+                            use_container_width=True,
+                        )
 
-                    with _cF:
-                        # Cột địa chất + SPT (matplotlib, compact)
+                    # ── Hàng 3: Cột địa chất + VST cùng hàng ────────────────────
+                    _col_sc, _col_vst = st.columns(2, gap="medium")
+                    with _col_sc:
+                        st.markdown(f"**Cột địa chất {_bh_n}**")
                         try:
                             _sc_lay = _load_layers(_bh_n)
                             _sc_spt = _load_spt(_bh_n)
@@ -6061,21 +6076,31 @@ if _page == "ke_sw":
                                                                 spt=_sc_spt or None)
                                 st.pyplot(_fig_sc, use_container_width=True)
                                 plt.close(_fig_sc)
+                            else:
+                                st.caption("_(không có địa tầng)_")
                         except Exception as _e_sc:
-                            st.caption(f"_(không vẽ được cột địa chất: {_e_sc})_")
+                            st.caption(f"_(không vẽ được: {_e_sc})_")
 
-                        # VST profile cho HK này (nếu có)
+                    with _col_vst:
+                        # VST tham khảo: ưu tiên HK gốc (nearest source), fallback HK hiện tại
+                        _vst_target_bh = _vst_ref_bh or _bh_n
+                        st.markdown(
+                            f"**VST {_vst_target_bh}**"
+                            + ("  _(tham khảo từ HK gốc)_"
+                               if _vst_ref_bh and _vst_ref_bh != _bh_n else "")
+                        )
                         if not _df_vst_ke.empty and _HAS_MPL:
-                            # Match VST loc với bh_name (vd KE-HK10 → loc KE-HK10 hoặc KE-VST10)
-                            _bh_short = _bh_n.replace("KE-", "")
+                            _bh_short = _vst_target_bh.replace("KE-", "")
                             _vst_match = [l for l in _df_vst_ke["loc_name"].unique()
-                                          if _bh_short in l or l in _bh_n]
+                                          if _bh_short in l or l in _vst_target_bh]
                             if _vst_match:
-                                _fig_vst = _chart_su_profile_mpl(
-                                    _df_vst_ke, _vst_match
-                                )
+                                _fig_vst = _chart_su_profile_mpl(_df_vst_ke, _vst_match)
                                 st.pyplot(_fig_vst, use_container_width=True)
                                 plt.close(_fig_vst)
+                            else:
+                                st.caption(f"_(không có VST cho {_vst_target_bh})_")
+                        else:
+                            st.caption("_(không có dữ liệu VST)_")
 
                     st.divider()
         except Exception as _exc_nt:
