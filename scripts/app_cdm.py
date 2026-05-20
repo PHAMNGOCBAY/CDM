@@ -7728,9 +7728,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 help="Lực dính đất đắp. Mặc định 5 kPa (đất đắp lẫn sét)."
             )
             _dpy_gamma_sub_fill = _dpy_f4.number_input(
-                "γ_sub_fill (kN/m³)", 6.0, 14.0, 10.0, 0.1,
+                "γ_sub_fill (kN/m³)",
+                value=10.0, step=0.1,
                 key="dpy_gamma_sub_fill",
-                help="Dung trọng đất đắp bão hoà = γ_sat − γ_w. Mặc định 10 kN/m³."
+                help="Dung trọng đất đắp bão hoà = γ_sat − γ_w. Tự do, không giới hạn."
             )
 
         with _col_schem_d:
