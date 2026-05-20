@@ -7826,260 +7826,16 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         except Exception as _exc_nt:
             st.error(f"Lỗi khi đọc dữ liệu NT: {_exc_nt}")
 
-    # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
-    st.divider()
-    st.markdown("### C. Kiểm tra NT1 / NT2 — nhập thông số tùy chỉnh")
-    st.info(
-        "Tiêu chuẩn: TCVN 11823-10:2017, Điều 7.3.8.6.2 (phương pháp alpha).  \n"
-        "NT1 = kiểm tra chiều dài xuyên qua lớp yếu.  \n"
-        "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
-    )
-
-    # ── Áp dữ liệu HK từ Mục B ─────────────────────────────────────────────────
-    _bh_names_b = [b["name"] for b in _bhs_on_alignment] if _ke_data else []
-    _rec_piles_b = sorted({
-        st.session_state.get("ke_sw_rec_piles", {}).get(_n) or
-        next((b.get("recommended_pile") for b in _bhs_on_alignment if b["name"] == _n), "")
-        for _n in _bh_names_b
-    } - {""})
-    if not _rec_piles_b:
-        _rec_piles_b = _sw_names   # fallback toàn bộ catalog
-    _apply_c1, _apply_c2 = st.columns([2, 3])
-    with _apply_c1:
-        _apply_bh = st.selectbox(
-            "Áp dữ liệu HK từ Mục B",
-            ["(không áp)"] + _bh_names_b,
-            key="sw_apply_bh",
-            help="Chọn HK trong Mục B để tự động điền Z, H₁, su, cọc kiến nghị, L thiết kế",
-        )
-    with _apply_c2:
-        if _apply_bh != "(không áp)":
-            _bh_pick = next((b for b in _bhs_on_alignment if b["name"] == _apply_bh), {})
-            _apply_pile = (st.session_state.get("ke_sw_rec_piles", {}).get(_apply_bh)
-                           or _bh_pick.get("recommended_pile") or "SW-840")
-            _apply_Ldes = (st.session_state.get("ke_sw_L_thiet_ke", {}).get(_apply_bh)
-                           or _bh_pick.get("recommended_L_m") or 29.0)
-            _apply_Z    = _bh_pick.get("Z_m") or -0.8
-            _apply_H1   = _bh_pick.get("H_layer1_m") or 22.0
-            st.info(
-                f"**{_apply_bh}** → Z = {_apply_Z:+.2f}m | H₁ = {_apply_H1:.1f}m | "
-                f"Cọc kiến nghị = **{_apply_pile}** | L = {_apply_Ldes:.0f}m"
-            )
-            if st.button(f"Áp dữ liệu {_apply_bh} → form bên dưới", key="btn_apply_bh"):
-                st.session_state["sw_sel"]    = _apply_pile
-                st.session_state["sw_L"]      = float(_apply_Ldes)
-                st.session_state["sw_Z"]      = float(_apply_Z)
-                st.session_state["sw_H1"]     = float(_apply_H1)
-                # Su trung bình lớp bùn (VST) — nếu có
-                try:
-                    _zone_c = _ke_data.get("_meta", {}).get("zone_code") or _bh_pick.get("zone_code") or "KE"
-                    _su_db  = _su_avg_in_range(_zone_c, 0.0, float(_apply_H1))
-                except Exception:
-                    _su_db = None
-                _applied = {
-                    "sw_sel": {"src": _apply_bh, "value": _apply_pile},
-                    "sw_L":   {"src": _apply_bh, "value": float(_apply_Ldes)},
-                    "sw_Z":   {"src": _apply_bh, "value": float(_apply_Z)},
-                    "sw_H1":  {"src": _apply_bh, "value": float(_apply_H1)},
-                }
-                if _su_db is not None:
-                    st.session_state["sw_su"] = float(_su_db)
-                    _applied["sw_su"] = {"src": f"{_apply_bh} (VST)", "value": float(_su_db)}
-                st.session_state["sw_applied_fields"] = _applied
-                st.rerun()
-
-    # ── Áp dữ liệu từ tab Thiết kế CDM (geology) ──────────────────────────────
-    _geo_zone = st.session_state.get("cdm_zone")
-    _geo_bh   = st.session_state.get("cdm_bh")
-    _geo_elev = st.session_state.get("cdm_elevation")
-    _geo_hcl  = st.session_state.get("cdm_h_clay")
-    _geo_su   = st.session_state.get("cdm_Su")
-    _geo_top  = st.session_state.get("cdm_top_clay")
-    _geo_gam  = st.session_state.get("cdm_gamma")
-    if _geo_bh and _geo_hcl and _geo_su:
-        _gc1, _gc2 = st.columns([2, 3])
-        with _gc1:
-            st.markdown(f"**Tab Thiết kế CDM** — Zone `{_geo_zone}` · HK `{_geo_bh}`")
-        with _gc2:
-            st.info(
-                f"Z = {_geo_elev:+.2f}m | top_clay = {_geo_top:.2f}m | "
-                f"H_clay = {_geo_hcl:.1f}m | Su = {_geo_su:.1f} kPa | γ = {_geo_gam:.1f} kN/m³"
-            )
-        if st.button(f"Áp dữ liệu từ Thiết kế CDM ({_geo_bh}) → form bên dưới",
-                     key="btn_apply_geo"):
-            _src_lbl = f"Thiết kế CDM ({_geo_bh})"
-            _applied_g = {}
-            if _geo_elev is not None:
-                st.session_state["sw_Z"]  = float(_geo_elev)
-                _applied_g["sw_Z"]  = {"src": _src_lbl, "value": float(_geo_elev)}
-            if _geo_hcl is not None:
-                st.session_state["sw_H1"] = float(_geo_hcl)
-                _applied_g["sw_H1"] = {"src": _src_lbl, "value": float(_geo_hcl)}
-            if _geo_su is not None:
-                st.session_state["sw_su"] = float(_geo_su)
-                _applied_g["sw_su"] = {"src": f"{_src_lbl} VST", "value": float(_geo_su)}
-            st.session_state["sw_applied_fields"] = _applied_g
-            st.rerun()
-
-    # ── Helper: tô màu label + caption nguồn cho field áp từ HK ───────────────
-    _sw_applied = st.session_state.get("sw_applied_fields", {}) or {}
-
-    def _lbl(_key: str, _txt: str) -> str:
-        """Label màu xanh đậm nếu field được áp từ HK, ngược lại label thường."""
-        return f":blue[**{_txt}**]" if _key in _sw_applied else _txt
-
-    def _cap(_key: str) -> None:
-        """In caption nguồn nếu field áp từ HK + clear flag nếu user gõ khác."""
-        if _key in _sw_applied:
-            _info = _sw_applied[_key]
-            _cur  = st.session_state.get(_key)
-            if _cur != _info["value"]:
-                # User đã sửa → bỏ flag
-                del st.session_state["sw_applied_fields"][_key]
-            else:
-                st.caption(f":blue[← Số liệu khảo sát: {_info['src']}]")
-
-    _col_form, _col_schem = st.columns([3, 2], gap="large")
-
-    with _col_form:
-        _c1, _c2, _c3 = st.columns(3)
-        with _c1:
-            # Filter cọc theo Mục B (chỉ cọc đã được kiến nghị)
-            _sw_opts_c = [n for n in _sw_names if n in _rec_piles_b] or _sw_names
-            _sw_default_idx = (
-                _sw_opts_c.index("SW-840") if "SW-840" in _sw_opts_c else 0
-            )
-            _sw_sel   = st.selectbox(
-                _lbl("sw_sel", f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_c)} loại)"),
-                _sw_opts_c, index=_sw_default_idx, key="sw_sel",
-                help="Chỉ hiển thị cọc đã được dùng làm 'Cọc kiến nghị' trong Mục B",
-            )
-            _cap("sw_sel")
-            _L_des    = st.number_input(_lbl("sw_L", "Chiều dài thiết kế L (m)"),
-                                        10.0, 35.0, 29.0, 0.5, key="sw_L")
-            _cap("sw_L")
-            _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
-        with _c2:
-            _Z_nat    = st.number_input(_lbl("sw_Z", "Cao độ mặt đất tự nhiên (m)"),
-                                        -5.0, 3.0, -0.80, 0.05, key="sw_Z")
-            _cap("sw_Z")
-            _H_lyr1   = st.number_input(_lbl("sw_H1", "Chiều dày lớp bùn sét H₁ (m)"),
-                                        5.0, 35.0, 22.0, 0.5, key="sw_H1")
-            _cap("sw_H1")
-            _su_avg   = st.number_input(_lbl("sw_su", "Su trung bình lớp bùn (kN/m²)"),
-                                        5.0, 50.0, 10.0, 1.0, key="sw_su")
-            _cap("sw_su")
-        with _c3:
-            _alpha_sw = st.number_input("Hệ số bám α", 0.5, 1.0, 1.0, 0.05, key="sw_alpha")
-            _phi_stat = st.number_input("φ_stat (TCVN 11823-10)", 0.1, 0.5, 0.35, 0.01, key="sw_phi")
-            _min_pen  = st.number_input("Xuyên qua lớp cứng tối thiểu (m)", 0.5, 3.0, 1.0, 0.5, key="sw_pen")
-        _wc1, _wc2 = st.columns(2)
-        _water_lvl_c = _wc1.number_input("Mực nước (m)", -5.0, 3.0, -1.0, 0.5, key="sw_wlvl")
-        _bc_type_c   = _wc2.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"], key="sw_bc")
-
-    with _col_schem:
-        if _HAS_MPL:
-            _lyr_mid = _Z_nat - _H_lyr1
-            _pile_tip = _top_ke - _L_des
-            _layers_sch = [
-                ("Bùn sét", _Z_nat,    _lyr_mid,  16.0, 0.0),
-                ("Lớp cứng", _lyr_mid, _pile_tip,  18.0, 20.0),
-            ]
-            _fig_sch = draw_pile_schematic(
-                L_m=_L_des, water_lvl=_water_lvl_c, top_elev=_top_ke,
-                H_kN=0, M_kNm=0, layers=_layers_sch, bc_type=_bc_type_c,
-                soil_lvl_front=_Z_nat, soil_lvl_back=_Z_nat,
-                water_lvl_back=_water_lvl_c,
-            )
-            if _fig_sch:
-                st.pyplot(_fig_sch, use_container_width=True)
-                plt.close(_fig_sch)
-
-    if st.button("Kiểm tra NT1 / NT2", type="primary", key="sw_check"):
-        _pile = _sw_by_name(_sw_sel)
-        if _pile is None:
-            st.error(f"Không tìm thấy cọc {_sw_sel} trong catalog.")
-        else:
-            _TL_T    = _pile.get("weight_T", 0) or 0
-            _Lstd    = _pile.get("L_std_m", 1) or 1
-            _spc_m   = (_pile.get("width_mm", 996)) / 1000
-            _peri_m  = (_pile.get("perimeter_mm") or 0) / 1000
-            _Ap_m2   = (_pile.get("Atd_cm2", 0) or 0) * 1e-4
-
-            _w_per_pile = _TL_T * 9.81 / _Lstd
-            _W_pile     = _w_per_pile * _L_des
-
-            _L_req_nt1  = _top_ke - _Z_nat + _H_lyr1 + _min_pen
-            _nt1_ok     = _L_des >= _L_req_nt1
-            _nt1_margin = _L_des - _L_req_nt1
-
-            _fill_m    = _top_ke - _Z_nat
-            _L_soil_m  = max(0.0, _L_des - _fill_m)
-            _Rs_kN     = _alpha_sw * _su_avg * _peri_m * _L_soil_m if _peri_m > 0 else 0
-            _Rp_kN     = 9.0 * _su_avg * _Ap_m2
-            _RR_kN     = _phi_stat * (_Rs_kN + _Rp_kN)
-            _nt2_ok    = _RR_kN >= _W_pile
-            _ratio_nt2 = _RR_kN / _W_pile if _W_pile > 0 else 0
-
-            _r1, _r2, _r3, _r4 = st.columns(4)
-            _r1.metric("NT1 — L yêu cầu (m)", f"{_L_req_nt1:.1f}",
-                       f"{'Đạt' if _nt1_ok else 'Không đạt'} (biên {_nt1_margin:+.1f} m)",
-                       delta_color="normal" if _nt1_ok else "inverse")
-            _r2.metric("W cọc (kN)", f"{_W_pile:.1f}",
-                       f"{_TL_T:.2f} T × 9.81 / {_Lstd}m × {_L_des}m")
-            _r3.metric("RR = φ(Rs+Rp) (kN)", f"{_RR_kN:.1f}",
-                       f"Rs={_Rs_kN:.0f}  Rp={_Rp_kN:.0f}",
-                       delta_color="normal" if _nt2_ok else "inverse")
-            _r4.metric("NT2 — Tỷ số RR/W", f"{_ratio_nt2:.2f}",
-                       "Đạt" if _nt2_ok else "Không đạt",
-                       delta_color="normal" if _nt2_ok else "inverse")
-
-            st.dataframe(
-                pd.DataFrame({
-                    "Thông số": [
-                        "Loại cọc", "Chiều dài L (m)", "Spacing (m)", "Chu vi P (m)",
-                        "Diện tích mũi Ap (cm²)", "w (kN/m/cọc)", "W cọc (kN)",
-                        "Phần đất đắp (m)", "Phần trong đất L_soil (m)",
-                        "Rs (kN)", "Rp (kN)", "RR = φ×(Rs+Rp) (kN)", "Kết quả NT2",
-                    ],
-                    "Giá trị": [
-                        _sw_sel, f"{_L_des:.1f}", f"{_spc_m:.3f}",
-                        f"{_peri_m:.4f}" if _peri_m > 0 else "– (chưa có trong catalog)",
-                        f"{_Ap_m2*1e4:.0f}",
-                        f"{_w_per_pile:.2f}", f"{_W_pile:.1f}",
-                        f"{_fill_m:.2f}", f"{_L_soil_m:.2f}",
-                        f"{_Rs_kN:.1f}", f"{_Rp_kN:.1f}", f"{_RR_kN:.1f}",
-                        "Đạt" if _nt2_ok else "Không đạt",
-                    ],
-                }).style.apply(
-                    lambda col: [
-                        "background-color:#d4edda" if "Đạt" in str(v) and "Không" not in str(v)
-                        else "background-color:#f8d7da" if "Không đạt" in str(v)
-                        else "" for v in col
-                    ],
-                    subset=["Giá trị"],
-                ),
-                use_container_width=True, hide_index=True,
-            )
-
-            if _peri_m == 0:
-                st.warning(
-                    f"Cọc {_sw_sel} chưa có chu vi trong catalog (perimeter_mm = null). "
-                    "Rs = 0. Cần bổ sung thông số từ nhà sản xuất để tính NT2 chính xác."
-                )
-            st.caption(
-                "Công thức: Rs = α × Su × P × L_soil  |  "
-                "Rp = 9 × Su × Ap  |  RR = 0,35 × (Rs + Rp)  |  "
-                "Bỏ qua đất đắp khi tính Rs (TCVN 11823-10 Điều 7.3.8.6.2)"
-            )
+    # Mục C (Kiểm tra NT1/NT2 tùy chỉnh) đã ẩn — chuyển sang C.3 auto-loop.
+    # Xem git history (commit trước 2026-05-21) nếu cần khôi phục form thủ công.
 
     # C.2 (SPT-Meyerhof riêng) đã gỡ — đã có trong C.3 (so sánh 4 phương pháp).
 
-    # ── C.3 So sánh 4 phương pháp NT2 ──────────────────────────────────────────
+    # ── C. So sánh 4 phương pháp NT2 — tự động cho mọi HK ở Mục B ─────────────
     st.divider()
-    st.markdown("### C.3. So sánh 4 phương pháp NT2 cho 1 hố khoan")
+    st.markdown("### C. So sánh 4 phương pháp NT2 — tự động cho mọi HK ở Mục B")
     st.info(
-        "So sánh Rs/Rp/RR theo 4 phương pháp TCVN 11823-10:2017 cho cùng 1 HK + 1 cọc:  \n"
+        "Tự động chạy so sánh Rs/Rp/RR theo 4 phương pháp TCVN 11823-10:2017 cho mọi HK + cọc kiến nghị ở Mục B:  \n"
         "**α** (Tomlinson 1980, sét, Điều 7.3.8.6.2, φ=0,35) · "
         "**β** (Esrig & Kirby 1979, sét, Điều 7.3.8.6.3, φ=0,25) · "
         "**λ** (Vijayvergiya & Focht 1972, cọc ống, Điều 7.3.8.6.4, φ=0,40) · "
@@ -8095,133 +7851,166 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             _get_bh_Z_m as _get_bh_z,
         )
         _cat_cmp = _load_cat()
-        _ke_bhs  = ["KE-HK2", "KE-HK3", "KE-HK7", "KE-HK8", "KE-HK9", "KE-HK10", "KE-HK11"]
+        _ke_bhs_all = {"KE-HK2", "KE-HK3", "KE-HK7", "KE-HK8", "KE-HK9", "KE-HK10", "KE-HK11"}
 
-        # ── Áp dữ liệu HK từ Mục B (cọc kiến nghị + L thiết kế đã chọn ở B) ─────
-        _picks_b = st.session_state.get("ke_sw_alignment_picks", []) or []
-        _b_bh_list = [f"KE-{nm}" for nm in _picks_b if nm.startswith("HK")]
-        _b_bh_list = [nm for nm in _b_bh_list if nm in _ke_bhs]  # giới hạn HK có data
-        _ca1, _ca2 = st.columns([2, 3])
-        with _ca1:
-            _cmp_apply_bh = st.selectbox(
-                "Áp dữ liệu HK từ Mục B",
-                ["(không áp)"] + _b_bh_list,
-                key="cmp_apply_bh",
-                help="Chọn HK đã có ở Mục B để tự điền cọc kiến nghị + L thiết kế.",
-            )
-        with _ca2:
-            if _cmp_apply_bh != "(không áp)":
-                _b_nm    = _cmp_apply_bh.replace("KE-", "")
-                _b_pile  = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_b_nm)
-                _b_L     = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_b_nm)
-                if _b_pile and _b_L:
-                    st.info(f"**{_cmp_apply_bh}** → Cọc = **{_b_pile}** | L = {float(_b_L):.1f} m")
-                    if st.button(f"Áp dữ liệu {_cmp_apply_bh} → form bên dưới",
-                                  key="btn_cmp_apply"):
-                        st.session_state["cmp_bh"]   = _cmp_apply_bh
-                        st.session_state["cmp_pile"] = _b_pile
-                        st.session_state["cmp_L"]    = float(_b_L)
-                        st.rerun()
-                else:
-                    st.caption("_(Mục B chưa có cọc kiến nghị / L cho HK này)_")
+        # HK list = lấy từ Mục B (alignment picks), chỉ giữ HK có data
+        _picks_c = st.session_state.get("ke_sw_alignment_picks", []) or []
+        _bh_c_list = [f"KE-{nm}" for nm in _picks_c if nm.startswith("HK")]
+        _bh_c_list = [nm for nm in _bh_c_list if nm in _ke_bhs_all]
 
-        _cmp_c1, _cmp_c2, _cmp_c3 = st.columns(3)
-        with _cmp_c1:
-            _cmp_bh = st.selectbox("Hố khoan", _ke_bhs, key="cmp_bh")
-        with _cmp_c2:
-            _cmp_pile_name = st.selectbox("Loại cọc",
-                                          list(_cat_cmp.keys()),
-                                          index=list(_cat_cmp.keys()).index("SW-840")
-                                          if "SW-840" in _cat_cmp else 0,
-                                          key="cmp_pile")
-        with _cmp_c3:
-            _cmp_L = st.number_input("L thiết kế (m)", 10.0, 35.0, 29.0, 0.5, key="cmp_L")
-
-        if st.button("So sánh 4 phương pháp", type="primary", key="btn_cmp4"):
-            _cmp_z = _get_bh_z(_cmp_bh) or 0.0
-            _cmp_res = _calc_4m(_cmp_bh, _cmp_z, _cmp_pile_name,
-                                _cat_cmp[_cmp_pile_name], _cmp_L)
-            _common = _cmp_res["common"]
-
-            # Hiển thị thông số chung
-            _ic1, _ic2, _ic3, _ic4 = st.columns(4)
-            _ic1.metric("L cọc trong sét (m)", f"{_common['L_clay_total_m']:.2f}")
-            _ic2.metric("Su TB sét (kPa)", f"{_common['su_avg_clay_kPa']:.1f}")
-            _ic3.metric("σ'v TB sét (kPa)", f"{_common['sigma_avg_clay_kPa']:.0f}")
-            _ic4.metric("W cọc (kN)", f"{_common['W_kN']:.0f}",
-                        f"D={_common['D_m']:.3f}m, P={_common['perimeter_m']:.3f}m")
-
-            # Bảng so sánh 5 phương pháp
-            _cmp_rows = []
+        if not _bh_c_list:
+            st.caption("_(Chưa có HK nào ở Mục B để so sánh — chọn HK ở Mục B trước.)_")
+        else:
             _method_lbl = {
                 "auto":   "Auto (α+SPT)",
-                "alpha":  "α-method",
-                "beta":   "β-method",
-                "lambda": "λ-method",
-                "SPT":    "SPT (all clay)",
+                "alpha":  "α",
+                "beta":   "β",
+                "lambda": "λ",
+                "SPT":    "SPT-Meyerhof",
             }
-            for m in ["auto", "alpha", "beta", "lambda", "SPT"]:
-                x = _cmp_res[m]
-                _cmp_rows.append({
-                    "Phương pháp":  _method_lbl[m],
-                    "φ_stat":       x["phi_stat"],
-                    "Rs (kN)":      x["Rs_kN"],
-                    "Rp (kN)":      x["Rp_kN"],
-                    "RR (kN)":      x["RR_kN"],
-                    "W (kN)":       _common["W_kN"],
-                    "Tỷ số RR/W":   x["ratio"],
-                    "Kết quả":      x["result"],
-                    "tip method":   x.get("tip_method", "—"),
-                })
-            _cmp_df = pd.DataFrame(_cmp_rows)
 
-            def _hl_cmp(val):
-                if val == "Đạt":
-                    return "background-color:#d4edda; color:#155724"
-                if val == "Không đạt":
-                    return "background-color:#f8d7da; color:#721c24"
-                return ""
+            # Loop tính toán cho mọi HK
+            _all_results: list = []   # list of (bh, pile, L, common, dict_per_method)
+            for _bh_c in _bh_c_list:
+                _nm_short = _bh_c.replace("KE-", "")
+                _pile_c   = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_nm_short)
+                _L_c      = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_nm_short)
+                if not _pile_c or not _L_c:
+                    continue
+                if _pile_c not in _cat_cmp:
+                    continue
+                _z_c   = _get_bh_z(_bh_c) or 0.0
+                try:
+                    _res_c = _calc_4m(_bh_c, _z_c, _pile_c,
+                                       _cat_cmp[_pile_c], float(_L_c))
+                except Exception as _e_each:
+                    st.warning(f"{_bh_c}: lỗi tính — {_e_each}")
+                    continue
+                _all_results.append((_bh_c, _pile_c, float(_L_c),
+                                     _res_c["common"], _res_c))
 
-            st.dataframe(
-                _cmp_df.style.map(_hl_cmp, subset=["Kết quả"]),
-                use_container_width=True, hide_index=True,
-                column_config={
-                    "φ_stat":     st.column_config.NumberColumn(format="%.2f"),
-                    "Rs (kN)":    st.column_config.NumberColumn(format="%.0f"),
-                    "Rp (kN)":    st.column_config.NumberColumn(format="%.0f"),
-                    "RR (kN)":    st.column_config.NumberColumn(format="%.0f"),
-                    "W (kN)":     st.column_config.NumberColumn(format="%.0f"),
-                    "Tỷ số RR/W": st.column_config.NumberColumn(format="%.2f"),
-                },
-            )
-            st.caption(
-                f"λ_coef = {_common['lambda_coef']:.3f} (Vijayvergiya & Focht — theo L cọc sét {_common['L_clay_total_m']:.1f}m). "
-                "**Khuyến nghị TCVN**: dùng `auto` (α cho sét, SPT cho cát) — phản ánh đúng từng lớp. "
-                "α/β/λ chỉ áp dụng cho lớp sét; SPT (all clay) là sai phương pháp cho minh hoạ."
-            )
+            if not _all_results:
+                st.warning("Không có HK nào có đủ dữ liệu (cọc kiến nghị + L) để so sánh.")
+            else:
+                # ── Bảng tổng hợp: 1 dòng / HK, 5 cột RR theo phương pháp ─────
+                _sum_rows = []
+                for _bh, _pl, _L, _cm, _res in _all_results:
+                    _row = {
+                        "Hố khoan": _bh,
+                        "Cọc":      _pl,
+                        "L (m)":    _L,
+                        "W (kN)":   _cm["W_kN"],
+                    }
+                    for _m_key, _m_name in _method_lbl.items():
+                        _x = _res[_m_key]
+                        _row[f"RR — {_m_name}"]    = _x["RR_kN"]
+                        _row[f"Ratio — {_m_name}"] = _x["ratio"]
+                    _row["Kết quả (auto)"] = _res["auto"]["result"]
+                    _sum_rows.append(_row)
 
-            if _HAS_PLOTLY:
-                _fig_cmp = go.Figure()
-                _fig_cmp.add_trace(go.Bar(
-                    x=[r["Phương pháp"] for r in _cmp_rows],
-                    y=[r["RR (kN)"] for r in _cmp_rows],
-                    name="RR (kN)",
-                    marker_color=["#1565C0" if r["Kết quả"] == "Đạt" else "#E53935"
-                                   for r in _cmp_rows],
-                    text=[f"{r['Tỷ số RR/W']:.2f}" for r in _cmp_rows],
-                    textposition="outside",
-                ))
-                _fig_cmp.add_hline(
-                    y=_common["W_kN"], line_dash="dash", line_color="#666",
-                    annotation_text=f"W = {_common['W_kN']:.0f} kN",
-                    annotation_position="bottom right",
+                _sum_df = pd.DataFrame(_sum_rows)
+
+                def _hl_kq(val):
+                    if val == "Đạt":
+                        return "background-color:#d4edda; color:#155724"
+                    if val == "Không đạt":
+                        return "background-color:#f8d7da; color:#721c24"
+                    return ""
+
+                _ratio_cols = [f"Ratio — {n}" for n in _method_lbl.values()]
+                _RR_cols    = [f"RR — {n}"    for n in _method_lbl.values()]
+                _col_cfg = {"L (m)":  st.column_config.NumberColumn(format="%.1f"),
+                            "W (kN)": st.column_config.NumberColumn(format="%.0f")}
+                for _c in _RR_cols:
+                    _col_cfg[_c] = st.column_config.NumberColumn(format="%.0f")
+                for _c in _ratio_cols:
+                    _col_cfg[_c] = st.column_config.NumberColumn(format="%.2f")
+
+                st.markdown("**Bảng tổng hợp NT2 — mọi HK ở Mục B**")
+                st.dataframe(
+                    _sum_df.style.map(_hl_kq, subset=["Kết quả (auto)"]),
+                    use_container_width=True, hide_index=True,
+                    column_config=_col_cfg,
                 )
-                _fig_cmp.update_layout(
-                    title=f"So sánh RR theo 4 phương pháp — {_cmp_bh} / {_cmp_pile_name}",
-                    yaxis_title="RR = φ·(Rs+Rp) (kN)",
-                    height=360, margin=dict(t=45, b=40),
-                )
-                st.plotly_chart(_fig_cmp, use_container_width=True)
+
+                # ── Bar chart so sánh RR (group by phương pháp, color by HK) ──
+                if _HAS_PLOTLY:
+                    _fig_all = go.Figure()
+                    for _m_key, _m_name in _method_lbl.items():
+                        _ys = [r[_m_key]["RR_kN"] for *_t, r in _all_results]
+                        _xs = [t[0] for t in _all_results]
+                        _W  = [t[3]["W_kN"] for t in _all_results]
+                        _ok = [r[_m_key]["RR_kN"] >= w for w, (*_t, r) in zip(_W, _all_results)]
+                        _fig_all.add_trace(go.Bar(
+                            x=_xs, y=_ys, name=_m_name,
+                            text=[f"{r[_m_key]['ratio']:.2f}" for *_t, r in _all_results],
+                            textposition="outside", textfont=dict(size=9),
+                        ))
+                    # Đường W (mỗi HK có W khác nhau — vẽ scatter)
+                    _fig_all.add_trace(go.Scatter(
+                        x=[t[0] for t in _all_results],
+                        y=[t[3]["W_kN"] for t in _all_results],
+                        mode="lines+markers", name="W cọc",
+                        line=dict(color="#333", dash="dash", width=2),
+                        marker=dict(size=8, symbol="diamond"),
+                    ))
+                    _fig_all.update_layout(
+                        title="So sánh RR theo 4 phương pháp — tất cả HK",
+                        xaxis_title="Hố khoan",
+                        yaxis_title="RR = φ·(Rs+Rp) (kN)",
+                        barmode="group", height=420,
+                        margin=dict(t=50, b=40),
+                        legend=dict(orientation="h", y=-0.18),
+                    )
+                    st.plotly_chart(_fig_all, use_container_width=True)
+
+                # ── Chi tiết từng HK (expander) ───────────────────────────────
+                st.markdown("**Chi tiết từng hố khoan**")
+                for _bh, _pl, _L, _cm, _res in _all_results:
+                    _auto_ok = _res["auto"]["result"] == "Đạt"
+                    _exp_lbl = (f"{_bh} — {_pl} L={_L:.0f}m — "
+                                 f"Auto: {_res['auto']['result']} "
+                                 f"(RR={_res['auto']['RR_kN']:.0f} kN, "
+                                 f"ratio={_res['auto']['ratio']:.2f})")
+                    with st.expander(_exp_lbl, expanded=not _auto_ok):
+                        _ic1, _ic2, _ic3, _ic4 = st.columns(4)
+                        _ic1.metric("L cọc trong sét (m)", f"{_cm['L_clay_total_m']:.2f}")
+                        _ic2.metric("Su TB sét (kPa)", f"{_cm['su_avg_clay_kPa']:.1f}")
+                        _ic3.metric("σ'v TB sét (kPa)", f"{_cm['sigma_avg_clay_kPa']:.0f}")
+                        _ic4.metric("W cọc (kN)", f"{_cm['W_kN']:.0f}",
+                                    f"D={_cm['D_m']:.3f}m, P={_cm['perimeter_m']:.3f}m")
+
+                        _det_rows = []
+                        for _m_key, _m_name in _method_lbl.items():
+                            _x = _res[_m_key]
+                            _det_rows.append({
+                                "Phương pháp": _m_name,
+                                "φ_stat":      _x["phi_stat"],
+                                "Rs (kN)":     _x["Rs_kN"],
+                                "Rp (kN)":     _x["Rp_kN"],
+                                "RR (kN)":     _x["RR_kN"],
+                                "W (kN)":      _cm["W_kN"],
+                                "Tỷ số RR/W":  _x["ratio"],
+                                "Kết quả":     _x["result"],
+                                "tip method":  _x.get("tip_method", "—"),
+                            })
+                        _det_df = pd.DataFrame(_det_rows)
+                        st.dataframe(
+                            _det_df.style.map(_hl_kq, subset=["Kết quả"]),
+                            use_container_width=True, hide_index=True,
+                            column_config={
+                                "φ_stat":     st.column_config.NumberColumn(format="%.2f"),
+                                "Rs (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                                "Rp (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                                "RR (kN)":    st.column_config.NumberColumn(format="%.0f"),
+                                "W (kN)":     st.column_config.NumberColumn(format="%.0f"),
+                                "Tỷ số RR/W": st.column_config.NumberColumn(format="%.2f"),
+                            },
+                        )
+                        st.caption(
+                            f"λ_coef = {_cm['lambda_coef']:.3f}. "
+                            "Khuyến nghị: dùng `Auto` (α cho sét, SPT cho cát) — phản ánh đúng từng lớp."
+                        )
     except Exception as _e_cmp:
         st.warning(f"Không thực hiện được so sánh 4 phương pháp: {_e_cmp}")
 
