@@ -4110,9 +4110,9 @@ elif _page == "params":
         _fig_sec.clf()
 
     with _col_grd:
-        _sps_now   = _get("cdm_spacings")
-        _rec_now   = min(_get("cdm_rec_idx"), len(_sps_now) - 1) if _sps_now else 0
-        _e_ref_now = _sps_now[_rec_now] if _sps_now else _get("cdm_e")
+        # Hình lưới ở tab Thông số dùng e do user nhập trực tiếp (cdm_e)
+        # — KHÔNG dùng cdm_spacings[rec_idx] (đó là kết quả từ tab So sánh)
+        _e_ref_now = _get("cdm_e")
         _fig_grd = _draw_cdm_grid(_get("cdm_D"), _get("cdm_arrangement"), _e_ref_now)
         st.pyplot(_fig_grd, use_container_width=True)
         _fig_grd.clf()
