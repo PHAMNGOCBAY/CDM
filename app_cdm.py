@@ -5714,6 +5714,7 @@ if _page == "ke_sw":
     # ── B. Kết quả thiết kế TTHC ────────────────────────────────────────────────
     st.divider()
     st.markdown("### B. Kết quả thiết kế — Kè Công Viên TTHC")
+    _bhs_on_alignment: list = []   # default cho Section C có thể truy cập
     if not _ke_data:
         st.warning("Không tải được dữ liệu. Kiểm tra `data/ke_sw_202605_TTHC.json`.")
     else:
@@ -5755,8 +5756,65 @@ if _page == "ke_sw":
         if _ltk_key not in st.session_state:
             st.session_state[_ltk_key] = {}
 
-        # Bảng tổng hợp — chỉ các HK trên tuyến kè SW (on_sw_alignment=True)
-        _bhs_on_alignment = [b for b in _bhs_ke if b.get("on_sw_alignment")]
+        # ── Cho phép user chọn HK trên tuyến kè SW (override JSON default) ─────
+        _default_align = [b["name"] for b in _bhs_ke if b.get("on_sw_alignment")]
+        _all_bh_names  = [b["name"] for b in _bhs_ke]
+        _sw_align_key  = "ke_sw_alignment_picks"
+        if _sw_align_key not in st.session_state:
+            st.session_state[_sw_align_key] = _default_align
+
+        _col_pick, _col_btn = st.columns([3, 1])
+        with _col_pick:
+            _picked_bhs = st.multiselect(
+                "Hố khoan trên tuyến kè (chọn HK để tính NT1/NT2)",
+                _all_bh_names,
+                default=st.session_state[_sw_align_key],
+                key=_sw_align_key,
+                help="Mặc định lấy theo JSON `on_sw_alignment`. Bỏ chọn / thêm HK để cập nhật danh sách.",
+            )
+        with _col_btn:
+            st.markdown("&nbsp;", unsafe_allow_html=True)
+            if st.button("Tính lại từ SQLite", key="btn_recalc_sql",
+                          help="Chạy lại engine NT1/NT2 với danh sách HK đã chọn — số liệu từ SQLite"):
+                try:
+                    import sys as _sys_re
+                    _sys_re.path.insert(0, str(_ROOT / "scripts"))
+                    from ke_sw_nt_calc import (
+                        calc_nt_for_bh as _calc_for_bh,
+                        _load_catalog  as _ld_cat,
+                        _get_bh_Z_m    as _get_z,
+                    )
+                    _cat_re = _ld_cat()
+                    for _bh in _bhs_ke:
+                        _nm = _bh["name"]
+                        if _nm not in _picked_bhs:
+                            continue
+                        _z_re   = _get_z(f"KE-{_nm}") or _bh.get("Z_m") or 0.0
+                        _rec_pile = _bh.get("recommended_pile") or "SW-840"
+                        _L_re   = _bh.get("recommended_L_m") or 29.0
+                        _n1, _n2 = _calc_for_bh(
+                            f"KE-{_nm}", _z_re, _bh.get("H_layer1_m") or 0,
+                            _rec_pile, _L_re,
+                        )
+                        _bh["L_req_m"]  = _n1["L_req_m"]
+                        _bh["NT1"]      = _n1["result"]
+                        _bh["NT2"]      = _n2["result"]
+                        _bh["W_pile_kN"] = _n2["W_kN"]
+                        _bh["NT2_multilayer"] = {
+                            "Rs_kN": _n2["Rs_kN"], "Rp_kN": _n2["Rp_kN"],
+                            "RR_kN": _n2["RR_kN"], "ratio": _n2["ratio"],
+                            "tip_layer": _n2["tip_symbol"],
+                            "tip_method": _n2.get("tip_method"),
+                        }
+                    st.success(f"Đã tính lại {len(_picked_bhs)} HK từ SQLite")
+                    st.rerun()
+                except Exception as _e_re:
+                    st.warning(f"Không tính lại được: {_e_re}")
+
+        # Lọc HK theo user pick
+        _bhs_on_alignment = [b for b in _bhs_ke if b["name"] in _picked_bhs]
+        if not _bhs_on_alignment:
+            st.info("Chọn ít nhất 1 HK trên tuyến kè để xem bảng tổng hợp.")
 
         # Nút tự động điền cọc tối ưu + L_max tương ứng
         _btn_opt = st.button("Dùng cọc tối ưu cho tất cả", key="btn_use_optimal")
@@ -6014,14 +6072,58 @@ if _page == "ke_sw":
         "NT2: RR = φ_stat × (Rs + Rp) ≥ W_cọc  |  φ_stat = 0,35  |  bỏ qua đất đắp khi tính Rs."
     )
 
+    # ── Áp dữ liệu HK từ Mục B ─────────────────────────────────────────────────
+    _bh_names_b = [b["name"] for b in _bhs_on_alignment] if _ke_data else []
+    _rec_piles_b = sorted({
+        st.session_state.get("ke_sw_rec_piles", {}).get(_n) or
+        next((b.get("recommended_pile") for b in _bhs_on_alignment if b["name"] == _n), "")
+        for _n in _bh_names_b
+    } - {""})
+    if not _rec_piles_b:
+        _rec_piles_b = _sw_names   # fallback toàn bộ catalog
+    _apply_c1, _apply_c2 = st.columns([2, 3])
+    with _apply_c1:
+        _apply_bh = st.selectbox(
+            "Áp dữ liệu HK từ Mục B",
+            ["(không áp)"] + _bh_names_b,
+            key="sw_apply_bh",
+            help="Chọn HK trong Mục B để tự động điền Z, H₁, su, cọc kiến nghị, L thiết kế",
+        )
+    with _apply_c2:
+        if _apply_bh != "(không áp)":
+            _bh_pick = next((b for b in _bhs_on_alignment if b["name"] == _apply_bh), {})
+            _apply_pile = (st.session_state.get("ke_sw_rec_piles", {}).get(_apply_bh)
+                           or _bh_pick.get("recommended_pile") or "SW-840")
+            _apply_Ldes = (st.session_state.get("ke_sw_L_thiet_ke", {}).get(_apply_bh)
+                           or _bh_pick.get("recommended_L_m") or 29.0)
+            _apply_Z    = _bh_pick.get("Z_m") or -0.8
+            _apply_H1   = _bh_pick.get("H_layer1_m") or 22.0
+            st.info(
+                f"**{_apply_bh}** → Z = {_apply_Z:+.2f}m | H₁ = {_apply_H1:.1f}m | "
+                f"Cọc kiến nghị = **{_apply_pile}** | L = {_apply_Ldes:.0f}m"
+            )
+            if st.button(f"Áp dữ liệu {_apply_bh} → form bên dưới", key="btn_apply_bh"):
+                st.session_state["sw_sel"]    = _apply_pile
+                st.session_state["sw_L"]      = float(_apply_Ldes)
+                st.session_state["sw_Z"]      = float(_apply_Z)
+                st.session_state["sw_H1"]     = float(_apply_H1)
+                st.rerun()
+
     _col_form, _col_schem = st.columns([3, 2], gap="large")
 
     with _col_form:
         _c1, _c2, _c3 = st.columns(3)
         with _c1:
-            _sw_sel   = st.selectbox("Loại cọc SW", _sw_names,
-                                     index=_sw_names.index("SW-840") if "SW-840" in _sw_names else 0,
-                                     key="sw_sel")
+            # Filter cọc theo Mục B (chỉ cọc đã được kiến nghị)
+            _sw_opts_c = [n for n in _sw_names if n in _rec_piles_b] or _sw_names
+            _sw_default_idx = (
+                _sw_opts_c.index("SW-840") if "SW-840" in _sw_opts_c else 0
+            )
+            _sw_sel   = st.selectbox(
+                f"Loại cọc SW (lọc theo Mục B — {len(_sw_opts_c)} loại)",
+                _sw_opts_c, index=_sw_default_idx, key="sw_sel",
+                help="Chỉ hiển thị cọc đã được dùng làm 'Cọc kiến nghị' trong Mục B",
+            )
             _L_des    = st.number_input("Chiều dài thiết kế L (m)", 10.0, 35.0, 29.0, 0.5, key="sw_L")
             _top_ke   = st.number_input("Cao độ đỉnh kè (m)", 0.0, 5.0, 2.70, 0.05, key="sw_top_ke")
         with _c2:
