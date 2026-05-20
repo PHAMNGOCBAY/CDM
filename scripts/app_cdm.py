@@ -6624,17 +6624,19 @@ if _page == "ke_sw":
             st.rerun()
 
         # ── Helper: tính lại NT1/NT2 theo Cọc kiến nghị + L thiết kế ──────────
+        # LƯU Ý: tham số KHÔNG được bắt đầu bằng "_" — Streamlit @st.cache_data
+        # bỏ qua hash với arg có prefix "_" → tất cả call ra cùng cache key!
         @st.cache_data(show_spinner=False)
-        def _recalc_nt(_bh_name: str, _Z_m: float, _H_lyr1: float,
-                       _pile: str, _L_des: float) -> dict:
+        def _recalc_nt(bh_name: str, Z_m: float, H_lyr1: float,
+                       pile: str, L_des: float) -> dict:
             """Tính NT1+NT2 cho 1 HK theo pile+L do user chọn. Cache theo input."""
             try:
                 import sys as _sys_rc
                 _sys_rc.path.insert(0, str(_ROOT / "scripts"))
                 from ke_sw_nt_calc import calc_nt_for_bh as _calc_for_bh_rc
                 _n1, _n2 = _calc_for_bh_rc(
-                    f"KE-{_bh_name}", _Z_m or 0.0, _H_lyr1 or 0.0,
-                    _pile, _L_des,
+                    f"KE-{bh_name}", Z_m or 0.0, H_lyr1 or 0.0,
+                    pile, L_des,
                 )
                 return {
                     "L_req_m":  _n1.get("L_req_m"),
@@ -6673,8 +6675,13 @@ if _page == "ke_sw":
                 _json_L is not None and abs(_ltk_f - float(_json_L)) > 0.01
             )
             if _need_recalc:
-                _rc = _recalc_nt(_bh["name"], _bh.get("Z_m"), _bh.get("H_layer1_m"),
-                                 _rec, _ltk_f)
+                _rc = _recalc_nt(
+                    bh_name=_bh["name"],
+                    Z_m=float(_bh.get("Z_m") or 0.0),
+                    H_lyr1=float(_bh.get("H_layer1_m") or 0.0),
+                    pile=_rec,
+                    L_des=float(_ltk_f),
+                )
                 _nt1_val = _rc.get("NT1") or "–"
                 _nt2_val = _rc.get("NT2") or "–"
                 _rs_val  = _rc.get("Rs_kN")
@@ -6780,6 +6787,69 @@ if _page == "ke_sw":
             "Cam = HK kiểm soát (tỷ số RR/W nhỏ nhất). "
             "Nguồn: ke_sw_202605_TTHC.json (on_sw_alignment=True)."
         )
+
+        # ── Chú thích ý nghĩa ký hiệu + công thức tính ────────────────────────
+        with st.expander("Giải thích ký hiệu & công thức trong bảng", expanded=True):
+            st.markdown(
+                r"""
+**Cột mô tả hố khoan:**
+| Ký hiệu | Ý nghĩa | Nguồn |
+|---|---|---|
+| **Z (m)** | Cao độ mặt đất tự nhiên tại HK | SQLite `boreholes.elevation_m` |
+| **H lớp 1 (m)** | Chiều dày lớp bùn sét yếu (lớp 1) | SQLite `layers` (lớp ký hiệu `1` hoặc `XMD`) |
+| **L yêu cầu (m)** | Chiều dài cọc tối thiểu = `Z_đỉnh_kè − Z + H_yếu + h_ngàm` | Tính từ Z và H lớp 1 |
+
+**Cột lựa chọn cọc:**
+| Ký hiệu | Ý nghĩa | Nguồn |
+|---|---|---|
+| **Cọc tối ưu** | Cọc nhỏ nhất trong catalog có `L_max ≥ L_yêu_cầu` | Tự động chọn |
+| **L_max (m)** | Chiều dài tối đa khả thi của cọc tối ưu | Catalog `sw_pile_catalog.json` |
+| **Đủ chiều dài** | "Đạt" nếu `L_max ≥ L_yêu_cầu` | So sánh hai cột trên |
+| **Cọc kiến nghị** | Cọc user chọn (dropdown — có thể khác cọc tối ưu) | Bảng có thể chỉnh sửa |
+| **L thiết kế (m)** | Chiều dài cọc user nhập | Bảng có thể chỉnh sửa |
+
+**Cột kết quả NT1 / NT2 (TCVN 11823-10:2017, Điều 7.3.8.6.2):**
+
+NT1 — Kiểm tra chiều dài xuyên qua lớp yếu:
+"""
+            )
+            st.latex(r"L_{thiết\ kế} \;\geq\; L_{yêu\ cầu} \;=\; (Z_{đỉnh\ kè} - Z_{tự\ nhiên}) + H_{lớp\ yếu} + h_{ngàm}")
+            st.markdown(
+                r"""
+NT2 — Kiểm tra sức kháng nhổ (phương pháp α — Tomlinson 1980):
+"""
+            )
+            st.latex(r"R_s \;=\; \alpha \cdot s_u \cdot p \cdot L_{ngập\ đất}")
+            st.latex(r"R_p \;=\; 9 \cdot s_u \cdot A_p \quad (\text{sét}); \quad R_p = q_p^{SPT} \cdot A_p \quad (\text{cát})")
+            st.latex(r"RR \;=\; \varphi_{stat} \cdot (R_s + R_p) \;\geq\; W_{cọc}")
+            st.latex(r"W_{cọc} \;=\; \dfrac{TL \times 9{,}81}{L_{std}} \cdot L_{thiết\ kế}")
+            st.markdown(
+                r"""
+| Ký hiệu | Ý nghĩa | Đơn vị | Công thức / Nguồn |
+|---|---|---|---|
+| **Rs** | Sức kháng ma sát thân cọc | kN | $\alpha \cdot s_u \cdot p \cdot L_{ngập}$ (α=1.0; $p$ = chu vi cọc; $L_{ngập}$ = $L_{tk}$ − đắp) |
+| **Rp** | Sức kháng mũi cọc | kN | $9 s_u A_p$ (sét) hoặc Meyerhof (cát) |
+| **RR** | Sức kháng tính toán | kN | $\varphi_{stat}(R_s + R_p)$, $\varphi_{stat}=0{,}35$ — TCVN 11823-10 Bảng 9 |
+| **W** | Trọng lượng cọc | kN | $\dfrac{TL_T \cdot 9{,}81}{L_{std}} \cdot L_{tk}$ — TL/L_std lấy từ catalog |
+| **RR/W** | Hệ số an toàn nhổ | – | Yêu cầu **≥ 1,0**; HK có giá trị nhỏ nhất = HK kiểm soát |
+| **NT1 / NT2** | Kết quả "Đạt" / "Không đạt" | – | Theo hai điều kiện trên |
+
+**Ghi chú quan trọng — vì sao W khác nhau:**
+
+W cọc phụ thuộc vào **TL (trọng lượng cọc tiêu chuẩn)** và **L_std (chiều dài tiêu chuẩn)** của từng loại cọc trong catalog. Hai cọc khác loại sẽ có TL và L_std khác nhau → W khác nhau dù L thiết kế giống nhau.
+
+| Cọc | TL (T) | L_std (m) | w/m (kN/m) | W tại L=24m (kN) |
+|---|---|---|---|---|
+| SW-600B | 10,88 | 20 | 5,34 | 128,1 |
+| SW-740  | 14,55 | 21 | 6,80 | 163,2 |
+| SW-840  | 16,35 | 22 | 7,29 | 175,0 |
+| SW-940  | 18,31 | 23 | 7,81 | 187,4 |
+
+Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui lòng báo lại.
+
+**Cột Ghi chú:** *"Tính lại theo cọc user chọn"* = số liệu Rs/Rp/RR/W trong hàng đã được tính lại real-time theo cọc + L user vừa chọn (không phải lấy từ JSON gốc).
+"""
+            )
 
         # ── Chi tiết NT1/NT2 từng hố khoan (inline, lọc theo Mục B) ──────────
         st.markdown("#### Chi tiết tính toán NT1/NT2 từng hố khoan")
