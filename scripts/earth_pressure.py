@@ -357,58 +357,16 @@ def plot_earth_pressure_diagram(
         ax.grid(axis="y", lw=0.3, color="#eee")
         ax.axvline(0, color="black", lw=0.8)
 
-    # --- Layer boundaries + soil type labels
+    # --- Layer boundaries (chỉ vẽ đường, bỏ label Sand/Clay vì gây rối)
     if front_layers:
-        cur_top = geom.soil_level_front
-        for i, lay in enumerate(front_layers):
-            # Boundary line
+        for lay in front_layers:
             axes[0].axhline(lay.tip_elev, color="#faa", lw=0.5, ls="--")
             axes[1].axhline(lay.tip_elev, color="#faa", lw=0.5, ls="--")
-            # Mid-elevation label
-            mid = (cur_top + lay.tip_elev) / 2.0
-            stype = (front_soil_types[i] if front_soil_types and i < len(front_soil_types)
-                     else ("Clay" if lay.phi < 2.0 and lay.c > 0 else "Sand"))
-            su_v  = (front_sus[i] if front_sus and i < len(front_sus) else 0.0)
-            if stype.lower() == "clay":
-                lbl = f"Clay\nCtd={su_v:.0f} kPa"
-                box_col = "#d6eaf8"
-            else:
-                lbl = f"Sand\nφ={lay.phi:.0f}°"
-                box_col = "#fef9e7"
-            axes[0].text(
-                0.02, mid, lbl,
-                transform=axes[0].get_yaxis_transform(),
-                fontsize=6, va="center", ha="left", color="#333",
-                bbox=dict(boxstyle="round,pad=0.2", facecolor=box_col,
-                          edgecolor="#ccc", alpha=0.85, linewidth=0.6),
-                zorder=10,
-            )
-            cur_top = lay.tip_elev
 
     if back_layers:
-        cur_top = geom.soil_level_back
-        for i, lay in enumerate(back_layers):
+        for lay in back_layers:
             axes[2].axhline(lay.tip_elev, color="#afa", lw=0.5, ls="--")
             axes[1].axhline(lay.tip_elev, color="#cec", lw=0.5, ls="--")
-            mid = (cur_top + lay.tip_elev) / 2.0
-            stype = (back_soil_types[i] if back_soil_types and i < len(back_soil_types)
-                     else ("Clay" if lay.phi < 2.0 and lay.c > 0 else "Sand"))
-            su_v  = (back_sus[i] if back_sus and i < len(back_sus) else 0.0)
-            if stype.lower() == "clay":
-                lbl = f"Clay\nSu={su_v:.0f} kPa"
-                box_col = "#d6eaf8"
-            else:
-                lbl = f"Sand\nφ={lay.phi:.0f}°"
-                box_col = "#fef9e7"
-            axes[2].text(
-                0.02, mid, lbl,
-                transform=axes[2].get_yaxis_transform(),
-                fontsize=6, va="center", ha="left", color="#333",
-                bbox=dict(boxstyle="round,pad=0.2", facecolor=box_col,
-                          edgecolor="#ccc", alpha=0.85, linewidth=0.6),
-                zorder=10,
-            )
-            cur_top = lay.tip_elev
 
     axes[0].set_ylabel("Elevation [m]", fontsize=8)
 
@@ -467,16 +425,26 @@ def _draw_bars(ax: plt.Axes, elevs: np.ndarray, values: np.ndarray,
 
 def _add_fill_indicator(ax: plt.Axes, geom: EpGeometry,
                         fill: SoilLayer | None) -> None:
-    """Vẽ vùng đất đắp (fill) trong panel Active bằng hatch."""
+    """Vẽ vùng đất đắp (fill) trong panel Active bằng hatch.
+
+    Label đặt ở góc phải-trên của vùng fill (right-aligned, padding nhỏ vào trong)
+    để không đè lên biểu đồ áp lực và các annotation khác.
+    """
     if fill is None or geom.fill_thickness <= 0:
         return
     ax.axhspan(geom.soil_level_front, geom.top_elev,
                color="sandybrown", alpha=0.18, hatch="\\\\", zorder=0)
-    mid = (geom.soil_level_front + geom.top_elev) / 2
-    ax.text(0, mid,
-            f"Đất đắp Front (Fill)\nγ={fill.gamma:.1f} kN/m³\nφ={fill.phi:.1f}° c={fill.c:.1f} kPa",
+    # Đặt label ở góc phải-trên, cách lề trên 5% chiều dày fill
+    y_top = geom.top_elev - 0.05 * geom.fill_thickness
+    ax.text(0.98, y_top,
+            f"Đất đắp Front (Fill)\nγ={fill.gamma:.1f} kN/m³  "
+            f"φ={fill.phi:.1f}°  c={fill.c:.1f} kPa",
+            transform=ax.get_yaxis_transform(),
             fontsize=6, color="#8B4513",
-            ha="center", va="center", style="italic", linespacing=1.3)
+            ha="right", va="top", style="italic", linespacing=1.3,
+            bbox=dict(boxstyle="round,pad=0.25", facecolor="white",
+                       edgecolor="#c9a577", alpha=0.85, linewidth=0.5),
+            zorder=11)
 
 
 def _annotate_resultant(ax: plt.Axes, F: float, z: float,
