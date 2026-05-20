@@ -3062,34 +3062,44 @@ st.markdown("""
 }
 @page { size: A4; margin: 12mm 10mm; }
 </style>
+""", unsafe_allow_html=True)
 
+# JS auto-mở expander trước khi in — qua components.v1.html (iframe same-origin)
+# vì st.markdown bị sanitize <script>.
+import streamlit.components.v1 as _components_pdf
+_components_pdf.html("""
 <script>
-// Auto-mở tất cả <details> (expander) trước khi in, đóng lại sau khi in xong
 (function() {
-  const openAllDetails = () => {
-    document.querySelectorAll('details').forEach(d => {
-      d.setAttribute('data-was-open', d.open ? '1' : '0');
-      d.open = true;
-    });
-  };
-  const restoreDetails = () => {
-    document.querySelectorAll('details').forEach(d => {
-      if (d.getAttribute('data-was-open') === '0') d.open = false;
-      d.removeAttribute('data-was-open');
-    });
-  };
-  window.addEventListener('beforeprint', openAllDetails);
-  window.addEventListener('afterprint', restoreDetails);
-  // Matchmedia fallback cho 1 số browser
-  if (window.matchMedia) {
-    const mql = window.matchMedia('print');
-    mql.addEventListener && mql.addEventListener('change', e => {
-      if (e.matches) openAllDetails(); else restoreDetails();
-    });
-  }
+  try {
+    const top = window.parent;
+    if (!top || top._printHandlerAttached) return;
+    top._printHandlerAttached = true;
+    const openAllDetails = () => {
+      top.document.querySelectorAll('details').forEach(d => {
+        d.setAttribute('data-was-open', d.open ? '1' : '0');
+        d.open = true;
+      });
+      // Cuộn về đầu trang để Chrome reflow toàn bộ content
+      top.scrollTo(0, 0);
+    };
+    const restoreDetails = () => {
+      top.document.querySelectorAll('details').forEach(d => {
+        if (d.getAttribute('data-was-open') === '0') d.open = false;
+        d.removeAttribute('data-was-open');
+      });
+    };
+    top.addEventListener('beforeprint', openAllDetails);
+    top.addEventListener('afterprint', restoreDetails);
+    if (top.matchMedia) {
+      const mql = top.matchMedia('print');
+      const handler = e => { if (e.matches) openAllDetails(); else restoreDetails(); };
+      if (mql.addEventListener) mql.addEventListener('change', handler);
+    }
+    console.log('[Print] beforeprint handler attached to parent window');
+  } catch(e) { console.error('[Print] Failed to attach handler:', e); }
 })();
 </script>
-""", unsafe_allow_html=True)
+""", height=0)
 
 st.sidebar.divider()
 st.sidebar.caption(
