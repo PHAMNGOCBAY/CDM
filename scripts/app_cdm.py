@@ -5929,139 +5929,157 @@ if _page == "ke_sw":
             "Nguồn: ke_sw_202605_TTHC.json (on_sw_alignment=True)."
         )
 
-        # ── Chi tiết NT1/NT2 từng hố khoan (SQLite) ─────────────────────────────
-        with st.expander("Chi tiết tính toán NT1/NT2 từng hố khoan"):
-            _SRC_LBL = {
-                "VST":     "VST",
-                "lab":     "Lab",
-                "default": "Giả định",
-                "sand":    "Cát",
-                "SPT":     "SPT",
-                "missing": "Thiếu SPT",
-                "unknown": "Không rõ",
-            }
-            try:
+        # ── Chi tiết NT1/NT2 từng hố khoan (inline, lọc theo Mục B) ──────────
+        st.markdown("#### Chi tiết tính toán NT1/NT2 từng hố khoan")
+        _SRC_LBL = {
+            "VST": "VST", "lab": "Lab", "default": "Giả định",
+            "sand": "Cát", "SPT": "SPT", "missing": "Thiếu SPT",
+            "unknown": "?",
+        }
+        try:
+            # Lọc theo HK người dùng chọn ở Mục B (auto add/remove)
+            _picked_db = [f"KE-{n}" for n in _picked_bhs]
+            if not _picked_db:
+                st.info("Chưa có HK nào được chọn ở Mục B.")
+            else:
+                _placeholders = ",".join("?" * len(_picked_db))
                 _con_nt = sqlite3.connect(str(_DB))
                 _cur_nt = _con_nt.cursor()
-                _cur_nt.execute(
-                    "SELECT bh_name, pile_type, L_design_m, Z_m, Z_source, "
-                    "fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source, "
-                    "L_req_nt1_m, margin_nt1_m, nt1_result, "
-                    "Rs_kN, Rs_clay_kN, Rs_sand_kN, "
-                    "tip_symbol, tip_method, tip_su_kNm2, tip_N160, "
-                    "Rp_kN, phi_stat, phi_basis, RR_kN, W_kN, "
-                    "ratio_nt2, nt2_result, su_warnings "
-                    "FROM ke_sw_nt_detail ORDER BY bh_name"
-                )
-                _nt_rows = _cur_nt.fetchall()
+                _nt_rows = _cur_nt.execute(
+                    f"""SELECT bh_name, pile_type, L_design_m, Z_m, Z_source,
+                    fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source,
+                    L_req_nt1_m, margin_nt1_m, nt1_result,
+                    Rs_kN, Rs_clay_kN, Rs_sand_kN,
+                    tip_symbol, tip_method, tip_su_kNm2, tip_N160,
+                    Rp_kN, phi_stat, phi_basis, RR_kN, W_kN,
+                    ratio_nt2, nt2_result, su_warnings
+                    FROM ke_sw_nt_detail
+                    WHERE bh_name IN ({_placeholders})
+                    ORDER BY bh_name""",
+                    _picked_db,
+                ).fetchall()
                 _con_nt.close()
                 if not _nt_rows:
-                    st.info(
-                        "Chưa có dữ liệu NT1/NT2 trong SQLite. "
-                        "Chạy `scripts/ke_sw_nt_calc.py` để tạo dữ liệu."
-                    )
-                else:
-                    for _nt in _nt_rows:
-                        (
-                            _bh_n, _pile_t, _L_d, _Z_m, _Z_src,
-                            _fill_m, _L_soil, _tip_d, _D_bot, _D_src,
-                            _L_req1, _marg1, _res1,
-                            _Rs, _Rs_clay, _Rs_sand,
-                            _tip_sym, _tip_meth, _tip_su, _tip_N160,
-                            _Rp, _phi, _phi_basis, _RR, _W,
-                            _rat2, _res2, _warns,
-                        ) = _nt
-                        st.markdown(f"#### {_bh_n}")
+                    st.info("Không có dữ liệu NT trong SQLite cho các HK đã chọn. "
+                            "Chạy `python scripts/ke_sw_nt_calc.py`.")
 
+                # Pre-load VST cho zone KE 1 lần
+                _df_vst_ke = _load_vst_su("KE") if _picked_db else pd.DataFrame()
+
+                for _nt in _nt_rows:
+                    (
+                        _bh_n, _pile_t, _L_d, _Z_m, _Z_src,
+                        _fill_m, _L_soil, _tip_d, _D_bot, _D_src,
+                        _L_req1, _marg1, _res1,
+                        _Rs, _Rs_clay, _Rs_sand,
+                        _tip_sym, _tip_meth, _tip_su, _tip_N160,
+                        _Rp, _phi, _phi_basis, _RR, _W,
+                        _rat2, _res2, _warns,
+                    ) = _nt
+                    st.markdown(f"##### {_bh_n}")
+
+                    # Layout 2 cột: trái text + bảng, phải hình
+                    _cD, _cF = st.columns([3, 2], gap="medium")
+
+                    with _cD:
                         if _warns:
                             st.warning(
-                                "**Cảnh báo dữ liệu:** Một số lớp thiếu thí nghiệm — "
-                                "đã dùng giả định / bỏ qua ma sát.\n\n"
-                                + "\n\n".join(f"- {w}" for w in _warns.split("; "))
+                                "**Cảnh báo:** " +
+                                " · ".join(_warns.split("; ")),
                             )
 
-                        _cn1, _cn2 = st.columns(2)
-                        with _cn1:
-                            st.markdown("**NT1 — Chiều dài xuyên qua lớp yếu**")
-                            st.metric(
-                                "Kết quả NT1", _res1,
-                                delta=f"Biên an toàn = {_marg1:+.2f} m",
-                                delta_color="normal" if _marg1 >= 0 else "inverse",
-                            )
-                            st.caption(
-                                f"L thiết kế = **{_L_d:.1f} m** | L yêu cầu = {_L_req1:.1f} m  \n"
-                                f"Đáy lớp mềm = {_D_bot:.2f} m [{_D_src}]  \n"
-                                f"Z mặt đất = {_Z_m:.3f} m [{_Z_src}] | "
-                                f"Đất đắp = {_fill_m:.2f} m | Trong đất = {_L_soil:.2f} m"
-                            )
-                        with _cn2:
-                            st.markdown("**NT2 — Sức kháng nhổ (TCVN 11823-10:2017)**")
-                            st.metric(
-                                "Kết quả NT2", _res2,
-                                delta=f"RR/W = {_rat2:.2f}",
-                                delta_color="normal" if _rat2 >= 1 else "inverse",
-                            )
-                            _rs_parts = []
-                            if _Rs_clay is not None:
-                                _rs_parts.append(f"sét={_Rs_clay:.0f}")
-                            if _Rs_sand is not None:
-                                _rs_parts.append(f"cát={_Rs_sand:.0f}")
-                            _rs_breakdown = " (" + " + ".join(_rs_parts) + ")" if _rs_parts else ""
-                            _tip_info = f"**{_tip_sym}** [{_tip_meth or 'alpha'}]"
-                            if _tip_meth == "SPT":
-                                _tip_info += f" — N₁₆₀={_tip_N160:.0f}" if _tip_N160 else " — không SPT"
-                            else:
-                                _tip_info += f" — su={_tip_su:.0f} kPa"
-                            st.caption(
-                                f"Rs = {_Rs:.0f} kN{_rs_breakdown} | Rp = {_Rp:.0f} kN  \n"
-                                f"RR = φ × (Rs + Rp) = {_RR:.0f} kN | W = {_W:.0f} kN  \n"
-                                f"φ_stat = **{_phi:.2f}** ({_phi_basis or 'mặc định'})  \n"
-                                f"Lớp mũi cọc: {_tip_info}"
-                            )
+                        # Compact NT1 + NT2 1 dòng badge
+                        _badge_nt1 = "🟢" if _marg1 >= 0 else "🔴"
+                        _badge_nt2 = "🟢" if _rat2 >= 1 else "🔴"
+                        st.markdown(
+                            f"**NT1** {_badge_nt1} {_res1} (Δ={_marg1:+.2f} m)  | "
+                            f"**NT2** {_badge_nt2} {_res2} (RR/W = {_rat2:.2f})"
+                        )
+                        _rs_parts = []
+                        if _Rs_clay is not None:
+                            _rs_parts.append(f"sét={_Rs_clay:.0f}")
+                        if _Rs_sand is not None and _Rs_sand > 0:
+                            _rs_parts.append(f"cát={_Rs_sand:.0f}")
+                        _rs_bd = " (" + " + ".join(_rs_parts) + ")" if _rs_parts else ""
+                        _tip_short = f"{_tip_sym}[{_tip_meth or 'α'}]"
+                        if _tip_meth == "SPT":
+                            _tip_short += (f"·N₁₆₀={_tip_N160:.0f}" if _tip_N160
+                                           else "·noSPT")
+                        else:
+                            _tip_short += f"·su={_tip_su:.0f}"
+                        st.caption(
+                            f"L tk = **{_L_d:.1f} m** | L req = {_L_req1:.1f} m | "
+                            f"Đáy bùn = {_D_bot:.1f} m  \n"
+                            f"Rs = {_Rs:.0f}{_rs_bd} | Rp = {_Rp:.0f} | "
+                            f"RR = {_RR:.0f} kN | W = {_W:.0f} kN  \n"
+                            f"φ = **{_phi:.2f}** ({_phi_basis or '—'}) | Tip: {_tip_short}"
+                        )
 
+                        # Bảng lớp đất compact (bỏ cột mô tả dài)
                         _con2 = sqlite3.connect(str(_DB))
-                        _cur2 = _con2.cursor()
-                        _cur2.execute(
-                            "SELECT l.symbol, l.L_m, l.su_kPa, l.su_source, "
-                            "l.alpha, l.method, l.N160, l.sigma_v_eff_kPa, "
-                            "l.gamma_kNm3, l.Rs_kN, l.note "
+                        _lyrs = _con2.execute(
+                            "SELECT l.symbol, l.L_m, l.method, l.su_kPa, l.alpha, "
+                            "l.N160, l.gamma_kNm3, l.sigma_v_eff_kPa, l.su_source, l.Rs_kN "
                             "FROM ke_sw_nt2_layers l "
-                            "JOIN ke_sw_nt_detail d ON l.sw_design_id = d.id "
+                            "JOIN ke_sw_nt_detail d ON l.sw_design_id=d.id "
                             "WHERE d.bh_name=? ORDER BY l.layer_order",
                             (_bh_n,),
-                        )
-                        _lyrs = _cur2.fetchall()
+                        ).fetchall()
                         _con2.close()
                         if _lyrs:
-                            _ldf = []
-                            for (_sym, _Llyr, _su, _su_src, _alp, _meth,
-                                 _N, _sigv, _gam, _Rs_lyr, _note) in _lyrs:
-                                _ldf.append({
-                                    "Lớp đất":      _sym,
-                                    "L (m)":        round(_Llyr, 2),
-                                    "Phương pháp":  _meth or "alpha",
-                                    "su (kPa)":     round(_su, 1) if _su else 0,
-                                    "α":            round(_alp, 3) if _alp else 0,
-                                    "N₁₆₀":        round(_N, 1) if _N is not None else "—",
-                                    "γ (kN/m³)":   round(_gam, 1) if _gam else "—",
-                                    "σ'v (kPa)":   round(_sigv, 0) if _sigv else "—",
-                                    "Nguồn":        _SRC_LBL.get(_su_src or "", _su_src or ""),
-                                    "Rs lớp (kN)":  round(_Rs_lyr, 1),
+                            _ldf_rows = []
+                            for (_sym, _Llyr, _meth, _su, _alp, _N, _gam, _sigv,
+                                 _src, _Rs_lyr) in _lyrs:
+                                _src_short = (_src.replace("nearest:", "≈")
+                                              if _src and _src.startswith("nearest:")
+                                              else _SRC_LBL.get(_src or "", _src or ""))
+                                _ldf_rows.append({
+                                    "Lớp":   _sym,
+                                    "L":     round(_Llyr, 1),
+                                    "M":     (_meth or "α")[:3],
+                                    "su":    round(_su, 0) if _su else "—",
+                                    "N₁₆₀": round(_N, 0) if _N is not None else "—",
+                                    "γ":     round(_gam, 1) if _gam else "—",
+                                    "σ'v":   round(_sigv, 0) if _sigv else "—",
+                                    "Src":   _src_short,
+                                    "Rs":    round(_Rs_lyr, 0),
                                 })
                             st.dataframe(
-                                pd.DataFrame(_ldf),
+                                pd.DataFrame(_ldf_rows),
                                 hide_index=True,
                                 use_container_width=True,
+                                height=min(280, 38 + 32 * len(_ldf_rows)),
                             )
-                        st.caption(
-                            f"Cọc: {_pile_t} | L thiết kế = {_L_d:.1f} m | "
-                            f"Chiều sâu mũi cọc = {_tip_d:.2f} m  \n"
-                            "Phương pháp: **alpha** (Tomlinson, sét) · **SPT** (Meyerhof, cát) — "
-                            "TCVN 11823-10:2017 Điều 7.3.8.6"
-                        )
-                        st.divider()
-            except Exception as _exc_nt:
-                st.error(f"Lỗi khi đọc dữ liệu NT: {_exc_nt}")
+
+                    with _cF:
+                        # Cột địa chất + SPT (matplotlib, compact)
+                        try:
+                            _sc_lay = _load_layers(_bh_n)
+                            _sc_spt = _load_spt(_bh_n)
+                            if _sc_lay and _HAS_MPL:
+                                _fig_sc = _draw_soil_column_mpl(_sc_lay, _bh_n,
+                                                                spt=_sc_spt or None)
+                                st.pyplot(_fig_sc, use_container_width=True)
+                                plt.close(_fig_sc)
+                        except Exception as _e_sc:
+                            st.caption(f"_(không vẽ được cột địa chất: {_e_sc})_")
+
+                        # VST profile cho HK này (nếu có)
+                        if not _df_vst_ke.empty and _HAS_MPL:
+                            # Match VST loc với bh_name (vd KE-HK10 → loc KE-HK10 hoặc KE-VST10)
+                            _bh_short = _bh_n.replace("KE-", "")
+                            _vst_match = [l for l in _df_vst_ke["loc_name"].unique()
+                                          if _bh_short in l or l in _bh_n]
+                            if _vst_match:
+                                _fig_vst = _chart_su_profile_mpl(
+                                    _df_vst_ke, _vst_match
+                                )
+                                st.pyplot(_fig_vst, use_container_width=True)
+                                plt.close(_fig_vst)
+
+                    st.divider()
+        except Exception as _exc_nt:
+            st.error(f"Lỗi khi đọc dữ liệu NT: {_exc_nt}")
 
     # ── C. Kiểm tra NT1 / NT2 tùy chỉnh ────────────────────────────────────────
     st.divider()
