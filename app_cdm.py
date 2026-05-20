@@ -566,6 +566,30 @@ def _load_layers(bh_name: str) -> list[dict]:
 
 
 @st.cache_data(ttl=300)
+def _load_zone_params_by_symbol(zone_code: str, symbol: str) -> dict:
+    """Trả về {Cc, Cs, e0, PC_kPa, Cv_cm2s, gamma_kNm3, source_bh} trung bình
+    từ mọi hố khoan trong zone có symbol khớp (dùng khi hố khoan hiện tại thiếu)."""
+    with _db() as con:
+        row = con.execute("""
+            SELECT
+                ROUND(AVG(lt.Cc),        4) AS Cc,
+                ROUND(AVG(lt.Cs),        4) AS Cs,
+                ROUND(AVG(lt.e0),        3) AS e0,
+                ROUND(AVG(lt.PC_kPa),    1) AS PC_kPa,
+                AVG(lt.Cv_cm2s)             AS Cv_cm2s,
+                ROUND(AVG(lt.gamma_kNm3),2) AS gamma_kNm3,
+                GROUP_CONCAT(DISTINCT b.name) AS source_bh
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            JOIN zones z ON b.zone_id = z.id
+            WHERE z.code = ?
+              AND lt.symbol_tcvn = ?
+              AND lt.Cc IS NOT NULL
+        """, (zone_code, symbol)).fetchone()
+    return dict(row) if row and row["Cc"] is not None else {}
+
+
+@st.cache_data(ttl=300)
 def _load_spt(bh_name: str) -> list[dict]:
     with _db() as con:
         # Thử spt_values cũ (KE / BXN)
@@ -3925,6 +3949,70 @@ if _page == "settlement":
             with _sc3:
                 st.caption("**Phương pháp tính:** TCCS 41:2022 — Phụ lục A (lún sơ cấp), Điều 9.3-9.4 (độ cố kết)")
                 st.caption("**Lún còn lại ΔS** = lún tổng − lún tại thời điểm kết thúc thi công")
+
+            # ── Bảng thông số địa chất dùng để tính lún cố kết ─────────────
+            if _sl_bh:
+                _geo_layers = _load_layers(_sl_bh)
+                if _geo_layers:
+                    _param_rows = []
+                    _has_borrowed = False
+                    for _lr in _geo_layers:
+                        _sym = _lr.get("symbol") or ""
+                        _Cc  = _lr.get("Cc")
+                        _Cs  = _lr.get("Cs")
+                        _e0  = _lr.get("e0")
+                        _PC  = _lr.get("PC_kPa")
+                        _Cv  = _lr.get("Cv_cm2s")
+                        _gam = _lr.get("gamma_kNm3")
+                        _src = ""
+                        # Nếu thiếu thông số cố kết → tham khảo hố khoan khác trong zone
+                        if _Cc is None or _e0 is None:
+                            _fb = _load_zone_params_by_symbol(_sl_zone, _sym)
+                            if _fb:
+                                _Cc  = _Cc  if _Cc  is not None else _fb.get("Cc")
+                                _Cs  = _Cs  if _Cs  is not None else _fb.get("Cs")
+                                _e0  = _e0  if _e0  is not None else _fb.get("e0")
+                                _PC  = _PC  if _PC  is not None else _fb.get("PC_kPa")
+                                _Cv  = _Cv  if _Cv  is not None else _fb.get("Cv_cm2s")
+                                _gam = _gam if _gam is not None else _fb.get("gamma_kNm3")
+                                _src = _fb.get("source_bh") or ""
+                                if _src:
+                                    _has_borrowed = True
+                        _Cv_fmt = f"{_Cv:.2e}" if _Cv is not None else "—"
+                        _param_rows.append({
+                            "Lớp":         _sym,
+                            "Mô tả":       (_lr.get("description") or "")[:30],
+                            "h (m)":       _lr.get("thickness_m"),
+                            "γ (kN/m³)":  _gam,
+                            "e0":          _e0,
+                            "Cc":          _Cc,
+                            "Cs":          _Cs,
+                            "PC (kPa)":   _PC,
+                            "Cv (cm²/s)": _Cv_fmt,
+                            "_src":        _src,
+                        })
+                    _df_geo = pd.DataFrame(_param_rows)
+
+                    def _highlight_borrowed(row):
+                        if row["_src"]:
+                            return ["background-color: #FFF8DC"] * len(row)
+                        return [""] * len(row)
+
+                    st.markdown("**Thông số địa chất dùng tính lún cố kết**")
+                    st.dataframe(
+                        _df_geo.drop(columns=["_src"]).style.apply(_highlight_borrowed, axis=1),
+                        use_container_width=True, hide_index=True,
+                        column_config={
+                            "h (m)":      st.column_config.NumberColumn(format="%.2f"),
+                            "γ (kN/m³)": st.column_config.NumberColumn(format="%.2f"),
+                            "e0":         st.column_config.NumberColumn(format="%.3f"),
+                            "Cc":         st.column_config.NumberColumn(format="%.4f"),
+                            "Cs":         st.column_config.NumberColumn(format="%.4f"),
+                            "PC (kPa)":  st.column_config.NumberColumn(format="%.1f"),
+                        },
+                    )
+                    if _has_borrowed:
+                        st.caption("*Ô nền vàng: thông số tham khảo từ hố khoan khác cùng khu vực do hố khoan hiện tại chưa đủ dữ liệu.*")
 
             if st.button("Tính toán lún", type="primary", key="sl_calc"):
                 with st.spinner("Đang tính..."):
