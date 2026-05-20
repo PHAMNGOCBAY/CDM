@@ -1422,6 +1422,11 @@ def _draw_soil_column_mpl(
         fig, ax_col = plt.subplots(figsize=(4, 7))
         ax_spt = None
 
+    _fs_lbl  = 14 if has_spt else 8
+    _fs_sym  = 16 if has_spt else 9
+    _fs_axis = 16 if has_spt else 9
+    _fs_tick = 14 if has_spt else 8
+    _fs_ttl  = 18 if has_spt else 10
     for lay in layers:
         y0, y1 = lay["depth_top_m"], lay["depth_bot_m"]
         sym   = (lay.get("symbol") or "").strip()
@@ -1429,23 +1434,23 @@ def _draw_soil_column_mpl(
             sym, _LAYER_COLORS.get(sym[:2] if len(sym) > 2 else sym, _LAYER_DEFAULT_COLOR))
         ax_col.add_patch(mpatches.Rectangle(
             (0, y0), 1, y1 - y0, facecolor=color, edgecolor="#555", lw=0.6))
-        ax_col.text(1.04, y0, f"{y0:.1f}", fontsize=7, color="#555", va="center")
+        ax_col.text(1.04, y0, f"{y0:.1f}", fontsize=_fs_lbl, color="#555", va="center")
         if (y1 - y0) >= 0.5:
             mid = (y0 + y1) / 2
             sym_lbl = sym if sym else f"L{layers.index(lay)+1}"
             desc = (lay.get("description") or "")[:18]
             lbl = f"{sym_lbl}\n{desc}" if (y1-y0) >= 2.5 and desc else sym_lbl
-            ax_col.text(0.5, mid, lbl, fontsize=8, color=_tc(color),
+            ax_col.text(0.5, mid, lbl, fontsize=_fs_sym, color=_tc(color),
                         ha="center", va="center", fontweight="bold")
-    ax_col.text(1.04, y_bot, f"{y_bot:.1f}", fontsize=7, color="#555", va="center")
+    ax_col.text(1.04, y_bot, f"{y_bot:.1f}", fontsize=_fs_lbl, color="#555", va="center")
     ax_col.set_xlim(-0.05, 1.5)
     ax_col.set_ylim(y_bot + 1, -0.5)
     ax_col.set_xticks([])
-    ax_col.set_ylabel("Độ sâu (m)", fontsize=9)
-    ax_col.tick_params(labelsize=8)
+    ax_col.set_ylabel("Độ sâu (m)", fontsize=_fs_axis)
+    ax_col.tick_params(labelsize=_fs_tick)
     ax_col.grid(True, axis="y", ls=":", color="#EEE", lw=0.5)
     ax_col.set_title("Địa chất" if has_spt else f"Cột ĐC: {bh_name}",
-                     fontsize=10, color="#1F4E79")
+                     fontsize=_fs_ttl, color="#1F4E79")
 
     if has_spt and ax_spt is not None:
         _n_max = max((s["N"] or 0 for s in spt), default=10)
@@ -1455,16 +1460,16 @@ def _draw_soil_column_mpl(
         colors = [_spt_color(n) for n in N_vals]
         ax_spt.barh(depths, N_vals, height=0.6, color=colors, edgecolor="#444", lw=0.5)
         for d, n in zip(depths, N_vals):
-            ax_spt.text(n + 1, d, str(n), fontsize=7, va="center")
+            ax_spt.text(n + 1, d, str(n), fontsize=14, va="center")
         ax_spt.plot(N_vals, depths, ":", color="#333", lw=1)
         ax_spt.axvline(4, ls="--", color="#E53935", lw=1, alpha=0.6)
-        ax_spt.text(4.2, -0.2, "N=4", fontsize=7, color="#E53935")
+        ax_spt.text(4.2, -0.2, "N=4", fontsize=14, color="#E53935")
         ax_spt.set_xlim(0, _x_max)
-        ax_spt.set_xlabel("N (blows/30cm)", fontsize=9)
-        ax_spt.tick_params(labelsize=8)
+        ax_spt.set_xlabel("N (blows/30cm)", fontsize=16)
+        ax_spt.tick_params(labelsize=14)
         ax_spt.grid(True, axis="x", ls=":", color="#EEE", lw=0.5)
-        ax_spt.set_title("SPT – N", fontsize=10, color="#1F4E79")
-        fig.suptitle(f"Cột ĐC: {bh_name}", fontsize=10, color="#1F4E79", y=0.995)
+        ax_spt.set_title("SPT – N", fontsize=18, color="#1F4E79")
+        fig.suptitle(f"Cột ĐC: {bh_name}", fontsize=18, color="#1F4E79", y=0.995)
 
     fig.tight_layout()
     return fig
@@ -1967,7 +1972,7 @@ def _draw_soil_column(
             marker_line=dict(color="#444", width=0.5),
             text=[str(n) for n in _N_vals],
             textposition="outside",
-            textfont=dict(size=9),
+            textfont=dict(size=13),
             customdata=_labels,
             hovertemplate="%{customdata}<extra></extra>",
             showlegend=False,
@@ -1990,18 +1995,20 @@ def _draw_soil_column(
                       annotation_position="top right", row=1, col=2)
 
         fig.update_xaxes(
-            title_text="N (blows/30cm)", title_font=dict(size=9),
-            range=[0, _x_max], tickfont=dict(size=8),
+            title_text="N (blows/30cm)", title_font=dict(size=14),
+            range=[0, _x_max], tickfont=dict(size=12),
             showgrid=True, gridcolor="#EEE",
             row=1, col=2,
         )
 
     # ── Layout ───────────────────────────────────────────────────────────────
     y_range  = [y_bot + 1, -0.5]
+    _yfs_t = 14 if has_spt else 9
+    _yfs_k = 12 if has_spt else 8
     y_axis   = dict(
         range=y_range,
-        title="Độ sâu (m)", title_font=dict(size=9),
-        tickfont=dict(size=8),
+        title="Độ sâu (m)", title_font=dict(size=_yfs_t),
+        tickfont=dict(size=_yfs_k),
         showgrid=True, gridcolor="#EEE", gridwidth=0.5,
         dtick=5,
     )
