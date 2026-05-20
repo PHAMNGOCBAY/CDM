@@ -5810,25 +5810,6 @@ if _page == "ke_sw":
                     st.session_state[_rec_key][_bh_n] = _row["Cọc kiến nghị"]
                     st.session_state[_ltk_key][_bh_n] = _row["L thiết kế (m)"]
 
-        # Kết luận phương án
-        _sc1, _sc2 = st.columns(2)
-        with _sc1:
-            st.markdown("**Phương án A — Đồng nhất tuyến**")
-            _oA = _sum_ke.get("option_A", {})
-            st.info(
-                f"Cọc: **{_oA.get('pile_type')}**  \n"
-                f"Chiều dài: **{_oA.get('L_m')} m**  \n"
-                f"Áp dụng: {', '.join(_oA.get('applies_to', []))}"
-            )
-        with _sc2:
-            st.markdown("**Phương án B — Khu vực KE-HK10**")
-            _oB = _sum_ke.get("option_B", {})
-            st.warning(
-                f"Cọc: **{_oB.get('pile_type')}**  \n"
-                f"Chiều dài: **{_oB.get('L_m')} m**  \n"
-                f"Lý do: {_oB.get('note', '')}"
-            )
-
         if _HAS_PLOTLY and _ke_rows:
             _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
             _ratios_plot = [float(r["RR/W"]) for r in _ke_rows if r["RR/W"] != "–"]
