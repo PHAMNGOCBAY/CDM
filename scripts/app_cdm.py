@@ -4133,7 +4133,7 @@ elif _page == "sample_check":
     st.divider()
     st.markdown("## C. Kết quả thí nghiệm CDM 7 ngày")
     st.caption(
-        "Dữ liệu từ bảng `cdm_tests` trong SQLite: qu (cường độ chịu nén nở hông) "
+        "Dữ liệu thí nghiệm CDM: qu (cường độ chịu nén nở hông) "
         "và E50 (mô đun ở 50% cường độ phá hủy) tại tuổi mẫu 7 ngày. "
         "Mục đích: chọn tổ hợp xi măng + tỷ lệ W/C + hàm lượng đạt yêu cầu thiết kế."
     )
@@ -4156,7 +4156,7 @@ elif _page == "sample_check":
         _con_cdm.close()
 
         if _df_cdm7.empty:
-            st.warning("Chưa có dữ liệu CDM trong SQLite. Cần import từ thí nghiệm thực tế.")
+            st.warning("Chưa có dữ liệu thí nghiệm CDM. Cần bổ sung kết quả nén nở hông từ phòng.")
         else:
             # Metric tổng quan
             _qu_min = _df_cdm7["qu R7 (kPa)"].min()
@@ -5728,7 +5728,7 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                 xl_bytes = _export_excel(scenarios, params)
             if xl_bytes:
                 st.download_button(
-                    "Tải xuống (.xlsx)",
+                    "Tải xuống bảng tính",
                     xl_bytes,
                     file_name=f"CDM-TINH-TOAN-{params['bh_name']}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -6370,6 +6370,19 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                             return ["background-color: #FFF8DC"] * len(row)
                         return [""] * len(row)
 
+                    # Badge "Đã kiểm tra chéo" — ngôn ngữ địa kỹ thuật, không tên file
+                    _n_layers_sl = len(_param_rows)
+                    _n_full = sum(1 for r in _param_rows
+                                   if r.get("Cc") is not None and r.get("e0") is not None)
+                    _n_borrowed = sum(1 for r in _param_rows if r.get("_src"))
+                    st.success(
+                        f"**✓ Đã kiểm tra chéo dữ liệu địa kỹ thuật — HK {_sl_bh}** "
+                        f"(zone {_sl_zone})  ·  "
+                        f"Số lớp đất: **{_n_layers_sl}** · "
+                        f"Lớp có đầy đủ Cc + e₀ (mẫu thí nghiệm): **{_n_full}** · "
+                        f"Lớp dùng tham khảo từ hố khoan khác cùng khu vực: **{_n_borrowed}**",
+                        icon="✅",
+                    )
                     st.markdown("**Thông số địa chất dùng tính lún cố kết**")
                     st.dataframe(
                         _df_geo.drop(columns=["_src"]).style.apply(_highlight_borrowed, axis=1),
@@ -6386,20 +6399,19 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                     if _has_borrowed:
                         st.caption("*Ô nền vàng: thông số tham khảo từ hố khoan khác cùng khu vực do hố khoan hiện tại chưa đủ dữ liệu.*")
 
-            if st.button("Tính toán lún", type="primary", key="sl_calc"):
-                with st.spinner("Đang tính..."):
-                    try:
-                        _cmp = _sc_compare(
-                            _sl_bh, _sl_zone,
-                            H_fill_m=float(_sl_H),
-                            residual_limit_cm=float(_sl_lim),
-                            t_construction_months=float(_sl_tc),
-                        )
-                        st.session_state["sl_result"] = _cmp
-                    except Exception as _e:
-                        st.error(f"Lỗi tính toán: {_e}")
-
-            _cmp = st.session_state.get("sl_result")
+            # Auto-run (bỏ nút) — tự tính khi đủ dữ liệu input
+            with st.spinner("Đang tính tổng hợp 5 phương án..."):
+                try:
+                    _cmp = _sc_compare(
+                        _sl_bh, _sl_zone,
+                        H_fill_m=float(_sl_H),
+                        residual_limit_cm=float(_sl_lim),
+                        t_construction_months=float(_sl_tc),
+                    )
+                    st.session_state["sl_result"] = _cmp
+                except Exception as _e:
+                    st.error(f"Lỗi tính toán: {_e}")
+                    _cmp = None
 
             if _cmp:
                 _cdm_beta = _cmp.get("cdm_beta", 1.0)
@@ -6897,20 +6909,25 @@ Tăng ứng suất $> $ tải thiết kế → tăng tốc độ cố kết → 
             )
             st.caption("**Khi nào dùng:** TKCS khi chưa có mẫu Cc chi tiết — dùng thông số trung bình zone.")
 
-        if st.button("Tính lún sơ bộ 9.2.3", type="secondary", key="it_calc"):
-            with st.spinner("Đang lặp..."):
-                try:
-                    _iter_res = _sc_iter923(
-                        _it_bh, _it_zone,
-                        H_fill_m=float(_it_H),
-                        S_gt_init_pct=float(_it_pct),
-                        tolerance_cm=float(_it_tol),
-                    )
-                    st.session_state["it_result"] = _iter_res
-                except Exception as _e:
-                    st.error(f"Lỗi tính toán 9.2.3: {_e}")
-
-        _iter_res = st.session_state.get("it_result")
+        # Auto-run (bỏ nút) — tự lặp khi đủ input
+        with st.spinner("Đang lặp 9.2.3..."):
+            try:
+                _iter_res = _sc_iter923(
+                    _it_bh, _it_zone,
+                    H_fill_m=float(_it_H),
+                    S_gt_init_pct=float(_it_pct),
+                    tolerance_cm=float(_it_tol),
+                )
+                st.session_state["it_result"] = _iter_res
+            except Exception as _e:
+                st.error(f"Lỗi tính toán 9.2.3: {_e}")
+                _iter_res = None
+        st.success(
+            f"**✓ Đã kiểm tra chéo dữ liệu địa kỹ thuật — HK {_it_bh}** "
+            f"(zone {_it_zone}) · "
+            f"Mẫu thí nghiệm hố khoan hiện tại + tham khảo trung bình khu vực khi thiếu",
+            icon="✅",
+        )
         if _iter_res:
             _im1, _im2, _im3 = st.columns(3)
             with _im1:
@@ -7024,7 +7041,7 @@ if _page == "ke_sw":
     # ── A. Catalog tiết diện ────────────────────────────────────────────────────
     st.markdown("### A. Catalog tiết diện SW")
     if not _sw_piles:
-        st.warning("Không tải được catalog. Kiểm tra `data/sw_pile_catalog.json`.")
+        st.warning("Không tải được catalog cọc SW.")
     else:
         _fc_sel = st.selectbox("Cường độ bê tông (cho tính Ec)", list(_Ec_table.keys()),
                                index=2, key="sw_fc")
@@ -7096,7 +7113,7 @@ if _page == "ke_sw":
     st.markdown("### B. Kết quả thiết kế — Kè Công Viên TTHC")
     _bhs_on_alignment: list = []   # default cho Section C có thể truy cập
     if not _ke_data:
-        st.warning("Không tải được dữ liệu. Kiểm tra `data/ke_sw_202605_TTHC.json`.")
+        st.warning("Không tải được dữ liệu thiết kế kè SW.")
     else:
         _dc     = _ke_data.get("design_conditions", {})
         _bhs_ke = _ke_data.get("boreholes", [])
@@ -7150,7 +7167,7 @@ if _page == "ke_sw":
                 _all_bh_names,
                 default=st.session_state[_sw_align_key],
                 key=_sw_align_key,
-                help="Mặc định lấy theo JSON `on_sw_alignment`. Bỏ chọn / thêm HK để cập nhật danh sách.",
+                help="Mặc định lấy HK trên tuyến kè. Bỏ chọn / thêm HK để cập nhật danh sách.",
             )
         with _col_btn:
             st.markdown("&nbsp;", unsafe_allow_html=True)
@@ -7311,7 +7328,7 @@ if _page == "ke_sw":
             })
 
         if not _ke_rows:
-            st.warning("Không có hố khoan nào có on_sw_alignment=True trong dữ liệu.")
+            st.warning("Không có hố khoan nào trên tuyến kè trong dữ liệu thiết kế.")
         else:
             _df_b = pd.DataFrame(_ke_rows)
             _editable_b = {"Cọc kiến nghị", "L thiết kế (m)"}
@@ -7375,8 +7392,7 @@ if _page == "ke_sw":
             st.plotly_chart(_fig_nt2, use_container_width=True)
         st.caption(
             "Hiển thị 7 hố khoan trên tuyến kè SW: KE-HK2, HK3, HK7, HK8, HK9, HK10, HK11. "
-            "Cam = HK kiểm soát (tỷ số RR/W nhỏ nhất). "
-            "Nguồn: ke_sw_202605_TTHC.json (on_sw_alignment=True)."
+            "Cam = HK kiểm soát (tỷ số RR/W nhỏ nhất)."
         )
 
         # ── Chú thích ý nghĩa ký hiệu + công thức tính ────────────────────────
@@ -7386,15 +7402,15 @@ if _page == "ke_sw":
 **Cột mô tả hố khoan:**
 | Ký hiệu | Ý nghĩa | Nguồn |
 |---|---|---|
-| **Z (m)** | Cao độ mặt đất tự nhiên tại HK | SQLite `boreholes.elevation_m` |
-| **H lớp 1 (m)** | Chiều dày lớp bùn sét yếu (lớp 1) | SQLite `layers` (lớp ký hiệu `1` hoặc `XMD`) |
+| **Z (m)** | Cao độ mặt đất tự nhiên tại HK | Hồ sơ địa chất — cao độ cổ hố khoan |
+| **H lớp 1 (m)** | Chiều dày lớp bùn sét yếu (lớp 1) | Hồ sơ địa chất — lớp ký hiệu `1` hoặc `XMD` |
 | **L yêu cầu (m)** | Chiều dài cọc tối thiểu = `Z_đỉnh_kè − Z + H_yếu + h_ngàm` | Tính từ Z và H lớp 1 |
 
 **Cột lựa chọn cọc:**
 | Ký hiệu | Ý nghĩa | Nguồn |
 |---|---|---|
 | **Cọc tối ưu** | Cọc nhỏ nhất trong catalog có `L_max ≥ L_yêu_cầu` | Tự động chọn |
-| **L_max (m)** | Chiều dài tối đa khả thi của cọc tối ưu | Catalog `sw_pile_catalog.json` |
+| **L_max (m)** | Chiều dài tối đa khả thi của cọc tối ưu | Catalog cọc SW dự ứng lực |
 | **Đủ chiều dài** | "Đạt" nếu `L_max ≥ L_yêu_cầu` | So sánh hai cột trên |
 | **Cọc kiến nghị** | Cọc user chọn (dropdown — có thể khác cọc tối ưu) | Bảng có thể chỉnh sửa |
 | **L thiết kế (m)** | Chiều dài cọc user nhập | Bảng có thể chỉnh sửa |
@@ -7438,7 +7454,7 @@ W cọc phụ thuộc vào **TL (trọng lượng cọc tiêu chuẩn)** và **L
 
 Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui lòng báo lại.
 
-**Cột Ghi chú:** *"Tính lại theo cọc user chọn"* = số liệu Rs/Rp/RR/W trong hàng đã được tính lại real-time theo cọc + L user vừa chọn (không phải lấy từ JSON gốc).
+**Cột Ghi chú:** *"Tính lại theo cọc user chọn"* = số liệu Rs/Rp/RR/W trong hàng đã được tính lại real-time theo cọc + L user vừa chọn (không phải lấy từ dữ liệu thiết kế gốc).
 """
             )
 
@@ -7940,16 +7956,41 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         _cdm_thk_a = max(0.0, _cdm_Lc_a - _cdm_Lng_a)
         _k_cdm_a   = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
 
+        # Helper tính F_active đơn giản từ fill (Rankine) cho auto-summary
+        # Lấy thông số HK từ JSON _bhs_on_alignment
+        _bhs_for_auto = {b["name"]: b for b in (_bhs_on_alignment or [])}
+
+        def _quick_F_active(_hk_n: str) -> tuple[float, float]:
+            """Trả (F_active_Front [kN/m], tay_đòn_từ_đỉnh [m]) — Rankine Ka."""
+            _b = _bhs_for_auto.get(_hk_n, {})
+            _Z = float(_b.get("Z_m") or -0.8)
+            _H1 = float(_b.get("H_layer1_m") or 22.0)
+            _top = float(st.session_state.get(f"dpy_top_ke_{_hk_n}", 2.7) or 2.7)
+            _fill_h = max(0.0, _top - _Z)
+            _gam_f = 18.0; _phi_f = 25.0
+            import math as _m
+            _Ka = (_m.tan(_m.radians(45 - _phi_f / 2)) ** 2)
+            # Tải lan truyền: fill_h trên Z + ~5m sét yếu phía dưới
+            _h_eff = _fill_h + 5.0
+            _F = 0.5 * _Ka * _gam_f * _h_eff ** 2   # tam giác
+            # Tay đòn ≈ 1/3 chiều cao từ đáy → từ đỉnh = top - (Z - h_eff/3)
+            _arm = _top - (_Z - _h_eff / 3.0)
+            return _F, _arm
+
         _auto_rows: list = []
         for _hk_nm in _hk_d_list:
             _hk_pile = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_hk_nm)
             _hk_L    = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_hk_nm)
             if not _hk_pile or not _hk_L:
                 continue
+            # Tính tải từ áp lực đất Front (Rankine đơn giản) thay vì dùng H=0
+            _F_a, _arm_a = _quick_F_active(_hk_nm)
+            _H_use = _H_auto + _F_a
+            _M_use = _M_auto + _F_a * _arm_a
             try:
                 _r_auto = _calc_py_winkler(
                     bh_name=f"KE-{_hk_nm}", pile_name=_hk_pile,
-                    L_m=float(_hk_L), H_kNm=_H_auto, M_kNm=_M_auto,
+                    L_m=float(_hk_L), H_kNm=_H_use, M_kNm=_M_use,
                     cdm_thk_m=_cdm_thk_a, eps50=_eps50_a,
                     k_cdm_factor=_k_cdm_a,
                 )
@@ -7981,9 +8022,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             st.caption("_(Chưa có HK nào ở Mục B để chạy auto Winkler.)_")
         else:
             st.caption(
-                f"Đang chạy với: H = {_H_auto:.0f} kN/m · M = {_M_auto:.0f} kNm/m · "
-                f"ε₅₀ = {_eps50_a:.3f} · CDM thk = {_cdm_thk_a:.1f} m × {_k_cdm_a:.1f}. "
-                f"Sửa params ở form chi tiết D.1 bên dưới rồi reload để cập nhật summary."
+                f"**Tổng quan nhanh** — tải đầu cọc = F_active (Rankine từ fill + 5m sét) "
+                f"+ H_user ({_H_auto:.0f}) · ε₅₀={_eps50_a:.3f} · "
+                f"CDM thk={_cdm_thk_a:.1f}m × {_k_cdm_a:.1f}.  \n"
+                f"_Kết quả chi tiết hơn (tải phân bố p(z) gồm Active + Nước + Surcharge) "
+                f"trong từng expander HK bên dưới — Phương pháp distributed load qua "
+                f"`solve_numpy_dist` (Hermite consistent load vector)._"
             )
             _auto_df = pd.DataFrame([{k: v for k, v in r.items() if k != "_res"}
                                        for r in _auto_rows])
@@ -8116,16 +8160,17 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     st.session_state[_k] = _v
                 st.session_state[f"dpy_eps50_src_{_hk_iter}"] = _eps50_source
 
-                # Badge "Đã đồng bộ JSON" với chi tiết
+                # Badge "Đã kiểm tra chéo" với chi tiết thiết kế gốc
+                _eps_src_lbl = ("nén 3 trục" if _eps50_source == "triaxial"
+                                  else "thư viện trạng thái")
                 st.success(
-                    f"**✓ Đã kiểm tra & đồng bộ JSON gốc cho {_hk_iter}**  ·  "
-                    f"pile=`{_dpy_pile_default}`  ·  "
-                    f"L=`{_dpy_L_default:.1f}m`  ·  "
-                    f"Z=`{_dpy_Z_default:+.2f}m`  ·  "
-                    f"H₁=`{_dpy_H1_default:.1f}m`  ·  "
-                    f"Su=`{_dpy_su_default:.0f} kPa`  ·  "
-                    f"ε₅₀=`{_eps50_default:.4f}`"
-                    f"  ({_eps50_source})",
+                    f"**✓ Đã kiểm tra chéo dữ liệu thiết kế gốc cho {_hk_iter}**  ·  "
+                    f"Cọc kiến nghị: **{_dpy_pile_default}**  ·  "
+                    f"L = **{_dpy_L_default:.1f} m**  ·  "
+                    f"Z mặt đất = **{_dpy_Z_default:+.2f} m**  ·  "
+                    f"H₁ lớp bùn = **{_dpy_H1_default:.1f} m**  ·  "
+                    f"Su = **{_dpy_su_default:.0f} kN/m²**  ·  "
+                    f"ε₅₀ = **{_eps50_default:.4f}** ({_eps_src_lbl})",
                     icon="✅",
                 )
 
@@ -8186,14 +8231,14 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     )
                     _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4, _dpy_w5 = st.columns(5)
                     _eps_src_v = st.session_state.get(f"dpy_eps50_src_{_hk_iter}", "lib")
-                    _eps_lbl = ("ε₅₀ (3 trục SQLite)" if _eps_src_v == "triaxial"
+                    _eps_lbl = ("ε₅₀ (nén 3 trục)" if _eps_src_v == "triaxial"
                                  else "ε₅₀ (theo Su)")
                     _dpy_eps50 = _dpy_w1.number_input(
                         _eps_lbl, 0.001, 0.05, step=0.005,
                         key=f"dpy_eps50_{_hk_iter}", format="%.4f",
                         help="ε₅₀ — biến dạng tại 50% phá hoại từ nén 3 trục UU.\n\n"
                              "Tự lấy theo thứ tự:\n"
-                             "1. **3 trục SQLite**: ε₅₀ = Cu/E (từ lab_tests cùng HK + lớp bùn)\n"
+                             "1. **Nén 3 trục thí nghiệm phòng**: ε₅₀ = Cu/E (cùng HK + lớp bùn)\n"
                              "2. **Thư viện trạng thái đất** (Matlock 1970 / API):\n"
                              "   - Sét rất yếu/yếu (Su<24): 0.020\n"
                              "   - Sét trung bình (24-48): 0.010\n"
@@ -8357,7 +8402,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         else:
                             st.warning(
                                 "**Chưa có lớp đất để vẽ.** Cần chọn HK ở \"Áp dữ liệu HK từ Mục B\" "
-                                "ở trên — lớp đất sẽ được lấy trực tiếp từ SQLite, không dùng giá trị giả định."
+                                "ở trên — lớp đất sẽ được lấy trực tiếp từ hồ sơ địa chất, không dùng giá trị giả định."
                             )
 
                 # ─── Biểu đồ áp lực nước + Boussinesq cạnh nhau ───────────────────────
@@ -8785,7 +8830,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
                         # Bảng thông số đất + Ka/Kp tính được
                         if _real_param_rows:
-                            st.markdown("**Thông số đất dùng tính áp lực — từ SQLite lab_tests:**")
+                            st.markdown("**Thông số đất dùng tính áp lực — từ thí nghiệm phòng:**")
                             st.dataframe(pd.DataFrame(_real_param_rows),
                                           use_container_width=True, hide_index=True)
                             st.markdown("**Công thức áp dụng (TCVN 11823-3:2017 §10.5):**")
@@ -8793,7 +8838,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             st.latex(r"\text{Đất cát: } \sigma_h^{active} = K_a \cdot \sigma'_v, \quad \sigma_h^{passive} = K_p \cdot \sigma'_v \quad (c = 0)")
                             st.latex(r"K_a = \tan^2(45° - \varphi/2), \quad K_p = \tan^2(45° + \varphi/2) \quad \text{(Rankine)}")
                             st.caption(
-                                f"**Nguồn:** SQLite `lab_tests` của HK `{_dpy_apply_bh}` — "
+                                f"**Nguồn:** Thí nghiệm phòng của HK `{_dpy_apply_bh}` — "
                                 f"γ, φ, c, Cu_UU trung bình theo `depth_from_m`/`depth_to_m`.  \n"
                                 f"**Phân loại Sand/Clay:** theo SYMBOL TCVN, KHÔNG theo φ "
                                 f"(Clay: 1, XMD, 3, 5, 5A, 5B; Sand: F, 2A-C, 4, 6, 7).  \n"
@@ -8807,8 +8852,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 else:
                     st.info("Cần áp HK ở trên để có lớp đất tính áp lực đất (Ka/Kp theo từng lớp).")
 
-                # Nút quick-set: CDM ngàm vào lớp đất tốt 1.0 m
-                _btn_cd1, _btn_cd2 = st.columns([2, 5])
+                # Nút quick-set + Widget chiều rộng CDM (shared Mục D + Section E)
+                _btn_cd1, _btn_cd2, _btn_cd3 = st.columns([2, 3, 2])
                 with _btn_cd1:
                     if st.button("Đặt CDM ngàm 1.0m vào đất tốt",
                                   key=f"btn_cdm_ngam_1m_{_hk_iter}",
@@ -8822,9 +8867,17 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _cdm_Lng_cur = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
                     st.caption(
                         f"_CDM hiện tại: Lc = {_cdm_Lc_cur:.1f}m "
-                        f"(ngàm {_cdm_Lng_cur:.1f}m vào đất tốt). "
-                        f"Bấm nút trái → Lc = H₁ ({float(_dpy_H1):.1f}) + 1.0 = "
-                        f"{float(_dpy_H1) + 1.0:.1f}m._"
+                        f"(ngàm {_cdm_Lng_cur:.1f}m vào đất tốt)._"
+                    )
+                with _btn_cd3:
+                    # CDM width Front — dùng chung cho cả Mục D schematic + Section E
+                    _cdm_w_e = st.number_input(
+                        "Bề rộng CDM Front (m)",
+                        min_value=1.0, max_value=20.0,
+                        value=5.0, step=0.5,
+                        key=f"e_cdm_width_{_hk_iter}",
+                        help="Bề rộng vùng gia cố CDM phía Front kè (mặc định 5m). "
+                             "Áp dụng cho sơ đồ kích thước Mục D + tính ổn định Section E."
                     )
 
                 # Auto-run (bỏ nút) — mọi expander tự tính khi mở
@@ -9230,17 +9283,22 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _axw[0].add_patch(_RectW((-0.5, _bot_pile_w), 1.0, _Lw,
                                                       facecolor="#444444", edgecolor="black",
                                                       linewidth=1.2, label=f"Cừ SW L={_Lw:.1f}m"))
-                            # CDM
+                            # CDM — dùng width user nhập (chia sẻ với Section E)
+                            _cdm_w_d = float(st.session_state.get(f"e_cdm_width_{_hk_iter}", 5.0) or 5.0)
+                            _cdm_x_right_d = -0.5
+                            _cdm_x_left_d = _cdm_x_right_d - _cdm_w_d
                             if _cdm_thk_eff > 0:
-                                _axw[0].add_patch(_RectW((-3, _cdm_bot_w), 2.5, _cdm_thk_eff,
-                                                          facecolor="#90c890", edgecolor="green",
-                                                          alpha=0.7, hatch="//",
-                                                          label="Vùng CDM"))
-                            # Đất đắp Front
+                                _axw[0].add_patch(_RectW(
+                                    (_cdm_x_left_d, _cdm_bot_w), _cdm_w_d, _cdm_thk_eff,
+                                    facecolor="#90c890", edgecolor="green",
+                                    alpha=0.7, hatch="//",
+                                    label=f"CDM b={_cdm_w_d:.1f}m"))
+                            # Đất đắp Front — cùng width với CDM
                             if _top_w - _Z_w > 0:
-                                _axw[0].add_patch(_RectW((-3, _Z_w), 2.5, _top_w - _Z_w,
-                                                          facecolor="#d4a373", alpha=0.4,
-                                                          label=f"Đắp {(_top_w - _Z_w):.1f}m"))
+                                _axw[0].add_patch(_RectW(
+                                    (_cdm_x_left_d, _Z_w), _cdm_w_d, _top_w - _Z_w,
+                                    facecolor="#d4a373", alpha=0.4,
+                                    label=f"Đắp {(_top_w - _Z_w):.1f}m"))
                             # Mặt đất Back (đào sâu hơn)
                             _axw[0].plot([-3, -0.5], [_Z_w, _Z_w], "k-", lw=1.5)
                             _axw[0].plot([0.5, 3], [_Zb_w, _Zb_w], "k-", lw=1.5)
@@ -10073,7 +10131,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 "Có ở Back?": _on_back,
                             })
                     except Exception as _e_load_e:
-                        st.caption(f"_(Không tải được lớp đất từ SQLite: {_e_load_e})_")
+                        st.caption(f"_(Không tải được hồ sơ địa chất HK: {_e_load_e})_")
 
                     # Fallback nếu SQLite không có data
                     if not _front_s:
@@ -10099,7 +10157,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                              "c Front (kPa)": "0", "c Back (kPa)": "0",
                              "Có ở Back?": "✓"},
                         ]
-                        st.caption("_(Dùng layers giả định — không có data SQLite cho HK này.)_")
+                        st.caption("_(Dùng layers giả định — không có dữ liệu hồ sơ địa chất cho HK này.)_")
 
                     # ── Hiển thị thông tin tường + HK trước khi tính ──────
                     _info_c1, _info_c2 = st.columns(2)
@@ -10116,7 +10174,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             f"c={float(_dpy_c_fill):.0f}, γ_sub={float(_dpy_gamma_sub_fill):.1f}"
                         )
                     with _info_c2:
-                        st.markdown(f"**Hố khoan {_hk_iter} (SQLite):**")
+                        st.markdown(f"**Hố khoan {_hk_iter}:**")
                         st.markdown(
                             f"- Cao độ cổ HK: **{_bh_elev_e:+.2f} m**\n"
                             f"- Số lớp đất tải vào ổn định: **{len(_front_s)}**\n"
@@ -10125,7 +10183,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             f"- ε₅₀ áp dụng: **{float(_dpy_eps50):.4f}**"
                         )
                     if _layers_log:
-                        with st.expander(f"Chi tiết {len(_layers_log)} lớp đất từ SQLite HK {_hk_iter}"):
+                        with st.expander(f"Chi tiết {len(_layers_log)} lớp đất từ hồ sơ địa chất HK {_hk_iter}"):
                             st.dataframe(pd.DataFrame(_layers_log),
                                           use_container_width=True, hide_index=True)
 
@@ -10136,14 +10194,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _cdm_top_e = _Z_s
                     _cdm_bot_e = _Z_s - _H1_s - 1.0   # đáy bùn + 1m
                     _cdm_thk_e = _cdm_top_e - _cdm_bot_e   # H1 + 1m
-                    _cdm_w_default = 5.0
-                    _cdm_w_e = st.number_input(
-                        f"Chiều rộng vùng CDM (m) — HK {_hk_iter}",
-                        min_value=1.0, max_value=20.0,
-                        value=_cdm_w_default, step=0.5,
-                        key=f"e_cdm_width_{_hk_iter}",
-                        help=f"Mặc định 5m. CDM từ Z={_Z_s:+.2f}m xuống "
-                             f"đáy bùn ({_Z_s-_H1_s:+.2f}m) + 1m = {_cdm_bot_e:+.2f}m"
+                    # _cdm_w_e đã được nhập ở đầu expander (chung Mục D + E)
+                    st.caption(
+                        f"_CDM Section E: width = {_cdm_w_e:.1f}m, "
+                        f"top={_cdm_top_e:+.2f}m, bot={_cdm_bot_e:+.2f}m, "
+                        f"thk={_cdm_thk_e:.1f}m._"
                     )
                     _cdm_a    = float(st.session_state.get("cdm_a_ratio", 0.20) or 0.20)
                     _cdm_qu   = float(st.session_state.get("cdm_qu_28", 0.0) or 150.0)

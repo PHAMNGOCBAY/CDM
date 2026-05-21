@@ -185,8 +185,9 @@ $$\text{Chiều dày CDM} = H_1 + 1{,}0 \text{ m}, \qquad \text{Chiều rộng m
 | $Cu$ (sét) | SQLite `lab_tests.Cu_UU_kPa` của HK | 1 |
 | $\gamma_{\text{sub}}$ | $\gamma - \gamma_w$, sàn 5 kN/m³ | 1 |
 | Symbol phân loại | SQLite `layers.symbol`: Clay (1, XMD, 3, 5, 5A, 5B) vs Sand (F, 2A-C, 4, 6, 7) | 1 |
-| Phía Front | Đầy đủ tất cả lớp + Fill | — |
+| Phía Front | Đầy đủ tất cả lớp + Fill + **CDM block composite** (TCVN 9403 Phụ lục C) | — |
 | Phía Back | **Chỉ từ lớp bùn (1, XMD) trở xuống** (đã đào hết Fill / lớp trên) | — |
+| **Phía Back KHÔNG có CDM** | **Cọc CDM chỉ gia cố Front (kè). Back là đất tự nhiên chưa xử lý.** c=Su Back, φ tự nhiên, KHÔNG dùng `c_col` của CDMBlock. | — |
 
 ### 5.2 Fill (đất đắp Front)
 
