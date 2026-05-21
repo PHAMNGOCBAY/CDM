@@ -10132,6 +10132,18 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     "(3) Xoay nhổ chân cừ (toe kick-out) — Free Earth Support. "
                     "CDM composite theo TCVN 9403:2012 Phụ lục C."
                 )
+
+                # Expander công thức chi tiết — đọc từ 48-ke-sw-on-dinh-tong-the.md
+                with st.expander("Công thức tính ổn định tổng thể — chi tiết"):
+                    try:
+                        _md_e_path = _ROOT / "48-ke-sw-on-dinh-tong-the.md"
+                        if _md_e_path.exists():
+                            _md_e_text = _md_e_path.read_text(encoding="utf-8")
+                            st.markdown(_md_e_text, unsafe_allow_html=False)
+                        else:
+                            st.caption(f"_(Không tìm thấy {_md_e_path.name})_")
+                    except Exception as _e_md_e:
+                        st.caption(f"_(Lỗi đọc công thức: {_e_md_e})_")
                 try:
                     from sw_global_stability import (
                         CDMBlock as _CDMB, check_all as _sw_check_all,
