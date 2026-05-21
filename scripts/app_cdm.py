@@ -9345,218 +9345,305 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
                         # ───────────────────────────────────────────────────────
                         # Phân tích nội lực theo TỪNG LOẠI TẢI TRỌNG
-                        # (chạy Winkler riêng cho mỗi component → so sánh + tổng)
+                        # Phương pháp: TẢI PHÂN BỐ p(z) trên dầm Euler-Bernoulli
+                        # (solve_numpy_dist + Hermite consistent load vector).
+                        # KHÔNG quy đổi tải về tập trung ở đỉnh.
                         # ───────────────────────────────────────────────────────
                         try:
-                            st.markdown("##### Nội lực theo từng loại tải trọng")
+                            st.markdown("##### Nội lực theo từng loại tải trọng — TẢI PHÂN BỐ p(z)")
                             st.caption(
-                                "Chạy Winkler riêng cho mỗi thành phần (F áp dụng dạng "
-                                "lực tập trung ở đỉnh + mô-men từ tay đòn tới điểm đặt). "
-                                "Kết quả TỔNG = chồng chất tuyến tính của các thành phần."
+                                "Phương pháp: `solve_numpy_dist()` — Hermite consistent load "
+                                "vector, p(z) interpolate qua các nút FEM. "
+                                "Phương trình: $EI \\, y'''' + k_h(z) \\cdot D \\cdot y = p(z)$. "
+                                "TỔNG = chồng chất tuyến tính các thành phần."
                             )
 
-                            # Helper: chạy Winkler với 1 lực + tay đòn
-                            def _calc_for_load(_F_v: float, _arm_v: float):
-                                if abs(_F_v) < 0.1:
-                                    return None
-                                _M_v = _F_v * _arm_v
-                                return _calc_py_winkler(
-                                    bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
-                                    pile_name=_dpy_pile, L_m=float(_dpy_L),
-                                    H_kNm=float(_F_v), M_kNm=float(_M_v),
-                                    cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
-                                    k_cdm_factor=_k_cdm_fac,
-                                )
+                            import numpy as _np_dl
+                            from winkler_np import solve_numpy_dist as _sn_dist
+                            from wall_internal_force import sw_pile_props as _sw_props_pl
+                            _trap_dl = (getattr(_np_dl, "trapezoid", None) or _np_dl.trapz)
 
-                            # Tay đòn từng loại tải (top → điểm đặt resultant)
-                            # z_app ước lượng: Active 1/3 fill từ chân; Passive ở phía dưới đáy đào;
-                            # Water/Surcharge dùng z_net từ EP
-                            _arm_act = (float(_dpy_top_ke) - _Z_w) / 2.0   # mid fill
-                            _arm_pas = float(_dpy_top_ke) - (_Zb_w - 1.0)  # mid passive (gần đáy đào)
+                            # 1. Build pile object (giống _calc_py_winkler)
+                            _pl_obj_dl = _sw_by_name(_dpy_pile)
+                            if _pl_obj_dl is None:
+                                raise RuntimeError(f"Không có cọc {_dpy_pile}")
+                            _pile_dl = _sw_props_pl(
+                                H_mm=float(_pl_obj_dl["H_mm"]),
+                                Itd_cm4=float(_pl_obj_dl.get("Itd_cm4") or 0),
+                                Mcr_Tm=float(_pl_obj_dl.get("Mcr_Tm") or 0),
+                                Atd_cm2=float(_pl_obj_dl.get("Atd_cm2") or 0),
+                                fc_MPa=70.0, name=_dpy_pile,
+                            )
+
+                            # 2. Build kh_layers (cùng query với _calc_py_winkler)
+                            _bh_short_dl = (_dpy_apply_bh or "HK2").replace("KE-", "")
+                            _ly_raw_dl: list = []
                             try:
-                                _arm_water = float(_dpy_top_ke) - float(_ep_res_cdm.get("z_net", _Z_w))
+                                _con_dl = sqlite3.connect(str(_DB))
+                                _con_dl.row_factory = sqlite3.Row
+                                _rows_dl = _con_dl.execute("""
+                                    SELECT l.symbol, l.thickness_m,
+                                           ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
+                                           ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
+                                           ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                                    FROM layers l
+                                    JOIN boreholes b ON l.borehole_id = b.id
+                                    LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
+                                        AND lt.depth_from_m >= l.depth_top_m
+                                        AND lt.depth_to_m <= l.depth_bot_m
+                                    WHERE b.name = ?
+                                    GROUP BY l.id ORDER BY l.depth_top_m
+                                """, (_bh_short_dl,)).fetchall()
+                                _con_dl.close()
+                                for _r in _rows_dl:
+                                    _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                                    _ly_raw_dl.append({
+                                        "symbol":      _r["symbol"] or "1",
+                                        "thickness_m": _r["thickness_m"] or 0,
+                                        "Su_kPa":      _su if _su is not None else 11.0,
+                                        "gamma_kNm3":  _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
+                                    })
                             except Exception:
-                                _arm_water = (float(_dpy_top_ke) - _Z_w) * 0.7
-                            _arm_bs = float(_dpy_top_ke) - _Z_w * 0.5     # Boussinesq lan dần xuống
+                                pass
+                            if not _ly_raw_dl:
+                                _ly_raw_dl = [{"symbol": "1", "thickness_m": float(_dpy_L) + 5.0,
+                                                "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
+                            _layers_kh_dl = [
+                                _WIF_SoilLayer(
+                                    symbol=str(lr["symbol"]),
+                                    thickness_m=float(lr["thickness_m"] or 0),
+                                    Su_kPa=float(lr["Su_kPa"]),
+                                    gamma_kNm3=float(lr["gamma_kNm3"]),
+                                ) for lr in _ly_raw_dl
+                            ]
 
-                            _comp_rows = []
-                            _comp_colors = {
+                            # 3. Build p(z) profiles per component (z = độ sâu từ đỉnh cừ)
+                            _L_dl = float(_dpy_L)
+                            _top_dl = float(_dpy_top_ke)
+                            _N_load = 100
+                            _zs_load_dl = list(_np_dl.linspace(0, _L_dl, _N_load))
+
+                            def _ep_to_pile(_p_ep, _elev_ep):
+                                """Convert (elev, p) profile to p(z) on pile depth grid."""
+                                _depths = _top_dl - _np_dl.asarray(_elev_ep)
+                                _idx = _np_dl.argsort(_depths)
+                                _d_s = _depths[_idx]
+                                _p_s = _np_dl.asarray(_p_ep)[_idx]
+                                return list(_np_dl.interp(_zs_load_dl, _d_s, _p_s,
+                                                            left=0.0, right=0.0))
+
+                            # Active + Passive lấy từ EP đã tính trước đó
+                            _has_ep = "_ep_res_cdm" in dir() and _ep_res_cdm is not None
+                            if _has_ep:
+                                _p_act_z  = _ep_to_pile(_ep_res_cdm["active_h"],
+                                                          _ep_res_cdm["elevs"])
+                                _p_pas_z  = _ep_to_pile(_ep_res_cdm["passive_h"],
+                                                          _ep_res_cdm["elevs"])
+                            else:
+                                _p_act_z  = [0.0] * _N_load
+                                _p_pas_z  = [0.0] * _N_load
+
+                            # Nước net Front − Back theo cao độ
+                            _gw_dl = 9.81
+                            _p_water_z: list = []
+                            for _z in _zs_load_dl:
+                                _e = _top_dl - _z
+                                _wf = max(0.0, float(_dpy_wlvl) - _e) * _gw_dl
+                                _wb = max(0.0, float(_dpy_wlvl_b) - _e) * _gw_dl
+                                _p_water_z.append(_wf - _wb)
+
+                            # Surcharge Boussinesq từ tải khai thác q
+                            _has_bs = ("_dph_bs" in dir() and _dph_bs is not None
+                                       and len(_dph_bs) > 0)
+                            if _has_bs:
+                                _p_surch_z = _ep_to_pile(_dph_bs, _elevs_bs)
+                            else:
+                                _p_surch_z = [0.0] * _N_load
+
+                            # TỔNG = Active − Passive + Nước + Surcharge
+                            _p_total_z = [_p_act_z[i] - _p_pas_z[i] + _p_water_z[i] + _p_surch_z[i]
+                                           for i in range(_N_load)]
+
+                            # 4. Chạy solve_numpy_dist cho từng thành phần
+                            _comps_dist = [
+                                ("Active",    _p_act_z),
+                                ("Passive",   [-p for p in _p_pas_z]),  # kháng → âm
+                                ("Nước",      _p_water_z),
+                                ("Surcharge", _p_surch_z),
+                                ("TỔNG",      _p_total_z),
+                            ]
+                            _comp_colors_dl = {
                                 "Active":    "#C62828",
                                 "Passive":   "#1565C0",
                                 "Nước":      "#0277BD",
                                 "Surcharge": "#FF6F00",
                                 "TỔNG":      "#1B5E20",
                             }
-                            _comp_results = {}
-                            for _name, _F_kn, _arm in [
-                                ("Active",    _F_act_v,    _arm_act),
-                                ("Passive",   -_F_pas_v,   _arm_pas),  # dấu âm: kháng
-                                ("Nước",      _F_water_v,  _arm_water),
-                                ("Surcharge", _F_bs_v,     _arm_bs),
-                            ]:
-                                _r = _calc_for_load(_F_kn, _arm)
-                                if _r is None or "error" in (_r or {}):
+                            _N_fem = max(60, int(_L_dl * 3))
+                            _comp_dist_results: dict = {}
+                            for _nm_dl, _prof_dl in _comps_dist:
+                                _F_int = abs(float(_trap_dl(_prof_dl, _zs_load_dl)))
+                                if _F_int < 0.1 and _nm_dl != "TỔNG":
                                     continue
-                                _comp_results[_name] = _r
-                                _comp_rows.append({
-                                    "Tải":         _name,
-                                    "F (kN/m)":    _F_kn,
-                                    "Tay đòn (m)": _arm,
-                                    "u_top (mm)":  _r["u_top_mm"],
-                                    "M_max (kNm)": _r["M_max_kNm"],
-                                    "Q_max (kN)":  _r.get("Q_max_kN", 0.0),
-                                })
+                                try:
+                                    _res_dl = _sn_dist(
+                                        layers=_layers_kh_dl, pile=_pile_dl, L_m=_L_dl,
+                                        zs_load=_zs_load_dl, p_load_kNm2=_prof_dl,
+                                        N=_N_fem,
+                                        eps50=float(_dpy_eps50),
+                                        k_sand_kNm3=10_000.0,
+                                        cdm_thickness_m=_cdm_thk_eff,
+                                        cdm_factor=_k_cdm_fac,
+                                        tip_fixity="free", top_pin=False,
+                                    )
+                                    if "error" not in _res_dl:
+                                        _res_dl["F_int_kNm"] = _F_int
+                                        _comp_dist_results[_nm_dl] = _res_dl
+                                except Exception as _e_dl:
+                                    st.caption(f"_({_nm_dl}: {_e_dl})_")
 
-                            # TỔNG = chồng chất tuyến tính u/M/Q của các thành phần
-                            if _comp_results:
-                                import numpy as _np_sum
-                                _ux_sum = None; _M_sum = None; _Q_sum = None
-                                _zs_ref = None
-                                for _nm, _r in _comp_results.items():
-                                    _ux = _np_sum.array(_r["ux"])
-                                    _Ms = _np_sum.array(_r["Ms"])
-                                    _Qs = _np_sum.array(_r.get("Qs", [0]*len(_r["Ms"])))
-                                    if _ux_sum is None:
-                                        _ux_sum = _ux.copy()
-                                        _M_sum = _Ms.copy()
-                                        _Q_sum = _Qs.copy()
-                                        _zs_ref = _r["zs"]
-                                    else:
-                                        _ux_sum += _ux
-                                        _M_sum += _Ms
-                                        _Q_sum += _Qs
-                                _comp_results["TỔNG"] = {
-                                    "zs": _zs_ref,
-                                    "ux": _ux_sum.tolist(),
-                                    "Ms": _M_sum.tolist(),
-                                    "Qs": _Q_sum.tolist(),
-                                    "u_top_mm":  float(_ux_sum[0]),
-                                    "u_max_mm":  float(_np_sum.max(_np_sum.abs(_ux_sum))),
-                                    "M_max_kNm": float(_np_sum.max(_np_sum.abs(_M_sum))),
-                                    "Q_max_kN":  float(_np_sum.max(_np_sum.abs(_Q_sum))),
-                                }
-                                _comp_rows.append({
-                                    "Tải":         "TỔNG",
-                                    "F (kN/m)":    sum(r["F (kN/m)"] for r in _comp_rows),
-                                    "Tay đòn (m)": 0.0,
-                                    "u_top (mm)":  _comp_results["TỔNG"]["u_top_mm"],
-                                    "M_max (kNm)": _comp_results["TỔNG"]["M_max_kNm"],
-                                    "Q_max (kN)":  _comp_results["TỔNG"]["Q_max_kN"],
-                                })
-
-                            # Bảng
-                            if _comp_rows:
+                            # 5. Bảng tổng hợp
+                            if _comp_dist_results:
+                                _rows_dist = []
+                                for _nm_dl, _res_dl in _comp_dist_results.items():
+                                    _rows_dist.append({
+                                        "Tải":         _nm_dl,
+                                        "F tích phân (kN/m)": _res_dl["F_int_kNm"],
+                                        "u_top (mm)":  _res_dl["u_top_mm"],
+                                        "u_max (mm)":  _res_dl["u_max_mm"],
+                                        "M_max (kNm)": _res_dl["M_max_kNm"],
+                                        "Q_max (kN)":  _res_dl.get("Q_max_kN", 0.0),
+                                    })
                                 st.dataframe(
-                                    pd.DataFrame(_comp_rows),
+                                    pd.DataFrame(_rows_dist),
                                     use_container_width=True, hide_index=True,
                                     column_config={
-                                        "F (kN/m)":    st.column_config.NumberColumn(format="%.1f"),
-                                        "Tay đòn (m)": st.column_config.NumberColumn(format="%.2f"),
+                                        "F tích phân (kN/m)": st.column_config.NumberColumn(format="%.1f"),
                                         "u_top (mm)":  st.column_config.NumberColumn(format="%.2f"),
+                                        "u_max (mm)":  st.column_config.NumberColumn(format="%.2f"),
                                         "M_max (kNm)": st.column_config.NumberColumn(format="%.1f"),
                                         "Q_max (kN)":  st.column_config.NumberColumn(format="%.1f"),
                                     },
                                 )
 
-                                # Biểu đồ matplotlib overlay 5 loại tải — đồng bộ style
-                                # với biểu đồ nội lực tổng (cao độ ref lines + Front/Back)
+                                # 6. Biểu đồ matplotlib 4 panel: p(z) + u + M + Q
                                 try:
-                                    import matplotlib.pyplot as _plt_pl
-                                    _fig_pl, _axpl = _plt_pl.subplots(
-                                        1, 3, figsize=(13, 6.5), sharey=True,
+                                    import matplotlib.pyplot as _plt_dl_mpl
+                                    _fig_dl, _ax_dl = _plt_dl_mpl.subplots(
+                                        1, 4, figsize=(15, 6.5), sharey=True,
+                                        gridspec_kw={"width_ratios": [1.2, 1, 1, 1]},
                                     )
 
-                                    def _refs_pl(_ax):
+                                    def _refs_dl(_ax):
                                         if _cdm_thk_eff > 0:
                                             _ax.axhspan(_cdm_bot_w, _cdm_top_w,
                                                          alpha=0.10, color="green")
-                                        _ax.axhline(_top_w, color="#1565C0", lw=0.8, alpha=0.5)
+                                        _ax.axhline(_top_w, color="#1565C0", lw=0.7, alpha=0.5)
                                         _ax.axhline(_Z_w, color="#8B4513", lw=0.7, alpha=0.5)
                                         _ax.axhline(_Zb_w, color="#FF6F00", lw=0.7, alpha=0.4)
                                         _ax.axhline(_bun_bot_F, color="#8B4513",
-                                                     linestyle=":", lw=0.7, alpha=0.4)
+                                                     linestyle=":", lw=0.6, alpha=0.4)
                                         _ax.axhline(_wlvl_F, color="cyan", lw=0.5, alpha=0.4)
-                                        _ax.axhline(_bot_pile_w, color="#444", lw=0.8, alpha=0.5)
-                                        if _cdm_thk_eff > 0:
-                                            _ax.axhline(_cdm_bot_w, color="green",
-                                                         linestyle="--", lw=0.7, alpha=0.4)
+                                        _ax.axhline(_bot_pile_w, color="#444", lw=0.7, alpha=0.5)
 
-                                    # Tính xmax cho mỗi panel để vừa khít
-                                    _xmax_u = max((max(abs(u) for u in _r["ux"])
-                                                    for _r in _comp_results.values()), default=10.0) * 1.1
-                                    _xmax_M = max((max(abs(m) for m in _r["Ms"])
-                                                    for _r in _comp_results.values()), default=10.0) * 1.1
-                                    _xmax_Q = max((max(abs(q) for q in _r.get("Qs", [0]))
-                                                    for _r in _comp_results.values()), default=10.0) * 1.1
+                                    # Panel 0: p(z) profile
+                                    _refs_dl(_ax_dl[0])
+                                    _el_zs = [_top_dl - z for z in _zs_load_dl]
+                                    for _nm_dl, _prof_dl in _comps_dist:
+                                        if _nm_dl not in _comp_dist_results:
+                                            continue
+                                        _color = _comp_colors_dl[_nm_dl]
+                                        _is_tot = (_nm_dl == "TỔNG")
+                                        _ax_dl[0].plot(
+                                            _prof_dl, _el_zs,
+                                            color=_color, lw=2.4 if _is_tot else 1.2,
+                                            ls="-" if _is_tot else ":",
+                                            label=_nm_dl, alpha=1.0 if _is_tot else 0.85,
+                                        )
+                                    _ax_dl[0].axvline(0, color="black", lw=0.5)
+                                    _ax_dl[0].set_xlabel("p (kN/m²)")
+                                    _ax_dl[0].set_ylabel("Cao độ (m)")
+                                    _ax_dl[0].set_title("Tải phân bố p(z)", fontsize=10)
+                                    _ax_dl[0].grid(alpha=0.3)
+                                    _ax_dl[0].legend(fontsize=7, loc="lower left", framealpha=0.85)
 
-                                    for _i_p, (_ax_p, _xmax_p, _key, _xlbl, _ymid_key) in enumerate([
-                                        (_axpl[0], _xmax_u, "ux", "u (mm)", "_zs"),
-                                        (_axpl[1], _xmax_M, "Ms", "M (kNm)", "_mid"),
-                                        (_axpl[2], _xmax_Q, "Qs", "Q (kN)", "_mid"),
+                                    # Panel 1-3: u, M, Q
+                                    for _i_p, (_ax_p, _key, _xlbl) in enumerate([
+                                        (_ax_dl[1], "ux", "u (mm)"),
+                                        (_ax_dl[2], "Ms", "M (kNm)"),
+                                        (_ax_dl[3], "Qs", "Q (kN)"),
                                     ]):
-                                        _refs_pl(_ax_p)
-                                        for _nm, _r in _comp_results.items():
-                                            _color = _comp_colors.get(_nm, "#666")
-                                            _zs_p = _r["zs"]
-                                            if _ymid_key == "_zs":
-                                                _ys = [float(_dpy_top_ke) - z for z in _zs_p]
+                                        _refs_dl(_ax_p)
+                                        _xmax_p = max(
+                                            (max(abs(v) for v in _r.get(_key, [0]) or [0])
+                                              for _r in _comp_dist_results.values()),
+                                            default=10.0,
+                                        ) * 1.1 or 10.0
+                                        for _nm_dl, _res_dl in _comp_dist_results.items():
+                                            _color = _comp_colors_dl[_nm_dl]
+                                            _is_tot = (_nm_dl == "TỔNG")
+                                            _zs_p = _res_dl["zs"]
+                                            if _key == "ux":
+                                                _ys = [_top_dl - z for z in _zs_p]
+                                                _xs = _res_dl["ux"]
                                             else:
-                                                _ys = [float(_dpy_top_ke) - (_zs_p[i] + _zs_p[i+1])/2
-                                                        for i in range(len(_zs_p)-1)]
-                                            _xs = _r.get(_key, [])
+                                                _ys = [_top_dl - (_zs_p[i] + _zs_p[i + 1]) / 2
+                                                        for i in range(len(_zs_p) - 1)]
+                                                _xs = _res_dl.get(_key, [])
                                             if not _xs:
                                                 continue
-                                            _is_total = (_nm == "TỔNG")
                                             _ax_p.plot(
-                                                _xs, _ys,
-                                                color=_color,
-                                                lw=2.5 if _is_total else 1.3,
-                                                ls="-" if _is_total else ":",
-                                                alpha=1.0 if _is_total else 0.85,
-                                                label=_nm,
+                                                _xs, _ys, color=_color,
+                                                lw=2.4 if _is_tot else 1.2,
+                                                ls="-" if _is_tot else ":",
+                                                alpha=1.0 if _is_tot else 0.85,
                                             )
                                         _ax_p.axvline(0, color="black", lw=0.5)
                                         _ax_p.set_xlim(-_xmax_p, _xmax_p)
                                         _ax_p.set_xlabel(_xlbl)
                                         _ax_p.grid(alpha=0.3)
-                                        # Cao độ chú thích bên phải
+                                        # text cao độ mép phải
                                         for _yv, _txt, _col in [
-                                            (_top_w,      f"top={_top_w:+.1f}",     "#1565C0"),
-                                            (_Z_w,        f"Z={_Z_w:+.1f}",         "#8B4513"),
-                                            (_bun_bot_F,  f"đáy bùn={_bun_bot_F:+.1f}", "#8B4513"),
-                                            (_Zb_w,       f"Zb={_Zb_w:+.1f}",       "#FF6F00"),
+                                            (_top_w, f"top={_top_w:+.1f}", "#1565C0"),
+                                            (_Z_w, f"Z={_Z_w:+.1f}", "#8B4513"),
+                                            (_bun_bot_F, f"đáy bùn={_bun_bot_F:+.1f}", "#8B4513"),
+                                            (_Zb_w, f"Zb={_Zb_w:+.1f}", "#FF6F00"),
                                             (_bot_pile_w, f"tip={_bot_pile_w:+.1f}", "#444"),
                                         ]:
-                                            _ax_p.text(_xmax_p * 0.98, _yv, _txt, fontsize=5.5,
-                                                        color=_col, ha="right", va="center", alpha=0.75,
+                                            _ax_p.text(_xmax_p * 0.98, _yv, _txt, fontsize=5,
+                                                        color=_col, ha="right", va="center",
+                                                        alpha=0.75,
                                                         bbox=dict(boxstyle="round,pad=0.1",
-                                                                  facecolor="white", edgecolor="none",
-                                                                  alpha=0.55))
+                                                                  facecolor="white",
+                                                                  edgecolor="none", alpha=0.55))
 
-                                    _axpl[0].set_ylabel("Cao độ (m)")
-                                    _axpl[0].set_title("Chuyển vị u(z)", fontsize=10)
-                                    _axpl[1].set_title("Moment M(z)", fontsize=10)
-                                    _axpl[2].set_title("Lực cắt Q(z)", fontsize=10)
-                                    # Mcr trên panel M
-                                    _Mcr_pl = _res_d1["Mcr_kNm"]
-                                    _axpl[1].axvline(_Mcr_pl, color="red", linestyle="--", lw=0.8, alpha=0.7)
-                                    _axpl[1].axvline(-_Mcr_pl, color="red", linestyle="--", lw=0.8, alpha=0.7)
-                                    # u=±25mm trên panel u
-                                    _axpl[0].axvline(25, color="red", linestyle="--", lw=0.8, alpha=0.7)
-                                    _axpl[0].axvline(-25, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    # Ngưỡng ±25mm + ±Mcr
+                                    _ax_dl[1].axvline(25, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    _ax_dl[1].axvline(-25, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    _Mcr_dl = _comp_dist_results["TỔNG"]["Mcr_kNm"] if "TỔNG" in _comp_dist_results else 0
+                                    if _Mcr_dl > 0:
+                                        _ax_dl[2].axvline(_Mcr_dl, color="red", linestyle="--",
+                                                            lw=0.8, alpha=0.7,
+                                                            label=f"Mcr={_Mcr_dl:.0f}")
+                                        _ax_dl[2].axvline(-_Mcr_dl, color="red", linestyle="--",
+                                                            lw=0.8, alpha=0.7)
+                                        _ax_dl[2].legend(fontsize=7, loc="lower left")
 
-                                    _axpl[0].legend(fontsize=7, loc="lower left", framealpha=0.85)
-                                    _fig_pl.suptitle(
-                                        f"Nội lực theo từng loại tải trọng — {_dpy_pile} L={_Lw:.0f}m",
-                                        fontsize=11, fontweight="bold",
+                                    _ax_dl[1].set_title("Chuyển vị u(z)", fontsize=10)
+                                    _ax_dl[2].set_title("Moment M(z)", fontsize=10)
+                                    _ax_dl[3].set_title("Lực cắt Q(z)", fontsize=10)
+                                    _fig_dl.suptitle(
+                                        f"Nội lực theo từng tải phân bố — {_dpy_pile} L={_L_dl:.0f}m "
+                                        f"(Hermite consistent load, N={_N_fem})",
+                                        fontsize=10, fontweight="bold",
                                     )
-                                    _plt_pl.tight_layout()
-                                    st.pyplot(_fig_pl, use_container_width=True)
-                                    _plt_pl.close(_fig_pl)
-                                except Exception as _e_pl_mpl:
-                                    st.caption(f"_(Không vẽ được biểu đồ per-tải mpl: {_e_pl_mpl})_")
+                                    _plt_dl_mpl.tight_layout()
+                                    st.pyplot(_fig_dl, use_container_width=True)
+                                    _plt_dl_mpl.close(_fig_dl)
+                                except Exception as _e_dl_mpl:
+                                    st.caption(f"_(Không vẽ được biểu đồ per-tải phân bố: {_e_dl_mpl})_")
                         except Exception as _e_per_load:
-                            st.caption(f"_(Không vẽ được phân tích per-tải: {_e_per_load})_")
+                            st.caption(f"_(Không vẽ được phân tích per-tải phân bố: {_e_per_load})_")
 
                         # ═══════════════════════════════════════════════════════════
                         # E. ỔN ĐỊNH TỔNG THỂ TƯỜNG SW + CDM (3 kiểm tra)
