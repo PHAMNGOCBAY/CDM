@@ -10313,38 +10313,157 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             for _w in _res_s.warnings:
                                 st.warning(_w)
 
-                        # Vẽ sơ đồ mặt trượt
+                        # Vẽ sơ đồ mặt trượt + lớp đất + bán kính
                         try:
                             import matplotlib.pyplot as _plt_s
                             from matplotlib.patches import Circle as _Circ_s, Rectangle as _Rect_s
-                            _fig_s, _ax_s = _plt_s.subplots(1, 1, figsize=(10, 7))
-                            # Mặt đất
-                            _ax_s.plot([-40, 0, 40], [_Z_s, _top_s, _Z_s - 1], "k-", lw=1.5)
-                            # Cừ
+
+                            # Scale dynamic theo bán kính cung trượt + chân cừ
+                            _R = float(_res_s.slip_R)
+                            _xc = float(_res_s.slip_xc)
+                            _yc = float(_res_s.slip_yc)
+                            _x_min = min(_xc - _R - 5, _pile_bot_s - 5, -40)
+                            _x_max = max(_xc + _R + 5, 30)
+                            _y_min = min(_yc - _R - 3, _pile_bot_s - 5)
+                            _y_max = max(_yc + _R + 3, _top_s + 5)
+
+                            _fig_s, _ax_s = _plt_s.subplots(1, 1, figsize=(12, 9))
+
+                            # ── Vẽ lớp đất Front + Back với màu theo symbol ────
+                            _layer_colors = {
+                                "F":   "#D7CCC8",   # cát san lấp
+                                "1":   "#8FB3D6",   # sét bùn yếu
+                                "XMD": "#90c890",   # CDM
+                                "2A":  "#FFE082",   # cát
+                                "2B":  "#FFE082",
+                                "2C":  "#FFE082",
+                                "3":   "#A1887F",   # sét dẻo
+                                "4":   "#FFB74D",
+                                "5":   "#D7846E",
+                                "5A":  "#D7846E",
+                                "5B":  "#D7846E",
+                                "6":   "#FFA000",
+                                "7":   "#FF8F00",
+                            }
+
+                            def _draw_layers_side(_layers, _x_left, _x_right, _ground_elev):
+                                """Vẽ các lớp đất từ ground xuống chân cừ theo elev."""
+                                _e_cur = _ground_elev
+                                for _i_l, _lay in enumerate(_layers):
+                                    _e_bot = _lay.tip_elev
+                                    if _e_bot >= _e_cur:
+                                        continue
+                                    _sym_l = _layers_log[_i_l]["Symbol"] if _i_l < len(_layers_log) else ""
+                                    _col_l = _layer_colors.get(_sym_l, "#CFD8DC")
+                                    _ax_s.add_patch(_Rect_s(
+                                        (_x_left, _e_bot), _x_right - _x_left, _e_cur - _e_bot,
+                                        facecolor=_col_l, edgecolor="#666", lw=0.4, alpha=0.6,
+                                    ))
+                                    # Label symbol ở giữa lớp
+                                    _y_mid = (_e_cur + _e_bot) / 2.0
+                                    if abs(_e_cur - _e_bot) > 0.8:
+                                        _ax_s.text((_x_left + _x_right) / 2.0, _y_mid,
+                                                    f"{_sym_l}\nγ={_layers_log[_i_l]['γ']}",
+                                                    fontsize=7, ha="center", va="center",
+                                                    color="#333",
+                                                    bbox=dict(boxstyle="round,pad=0.1",
+                                                              facecolor="white",
+                                                              edgecolor="none", alpha=0.7))
+                                    _e_cur = _e_bot
+
+                            # Front (trái cừ, từ mặt đất Z xuống)
+                            _draw_layers_side(_front_s, _x_min, -0.3, _Z_s)
+                            # Back (phải cừ, từ mặt đất Zb xuống)
+                            _draw_layers_side(_back_s, 0.3, _x_max, _Zb_s)
+
+                            # Đất đắp Fill (Front, từ Z lên đến đỉnh kè)
+                            if _top_s > _Z_s:
+                                _ax_s.add_patch(_Rect_s(
+                                    (_x_min, _Z_s), -0.3 - _x_min, _top_s - _Z_s,
+                                    facecolor="#D7CCC8", edgecolor="#8B4513",
+                                    hatch="..", lw=0.5, alpha=0.6,
+                                    label="Fill đắp"))
+
+                            # Mặt đất profile
+                            _ax_s.plot([_x_min, -0.3], [_Z_s, _Z_s], "k-", lw=1.5)
+                            _ax_s.plot([-0.3, 0.3], [_top_s, _top_s], "k-", lw=1.5)
+                            _ax_s.plot([0.3, _x_max], [_Zb_s, _Zb_s], "k-", lw=1.5)
+                            _ax_s.plot([-0.3, -0.3], [_Z_s, _top_s], "k-", lw=1.5)
+                            _ax_s.plot([0.3, 0.3], [_top_s, _Zb_s], "k-", lw=1.5)
+
+                            # MNN Front + Back
+                            _ax_s.plot([_x_min, -0.3], [_wlvl_s, _wlvl_s],
+                                        color="cyan", lw=1.0, alpha=0.6)
+                            _ax_s.plot([0.3, _x_max], [_wlvl_b_s, _wlvl_b_s],
+                                        color="cyan", lw=1.0, alpha=0.6)
+                            _ax_s.text(_x_min + 0.5, _wlvl_s + 0.2, "MNN_F", fontsize=7,
+                                        color="cyan")
+                            _ax_s.text(_x_max - 4, _wlvl_b_s + 0.2, "MNN_B", fontsize=7,
+                                        color="cyan")
+
+                            # Cừ SW
                             _ax_s.add_patch(_Rect_s((-0.3, _pile_bot_s), 0.6, _L_s,
-                                                     facecolor="#444444", edgecolor="black"))
+                                                     facecolor="#444444", edgecolor="black",
+                                                     label=f"Cừ SW L={_L_s:.1f}m"))
                             # CDM
                             if _cdm_s:
                                 _ax_s.add_patch(_Rect_s((-8, _cdm_s.bot_elev), 7.7,
                                                          _cdm_s.thickness,
                                                          facecolor="#90c890", alpha=0.5,
                                                          hatch="//", edgecolor="green",
-                                                         label=f"CDM Lc={_cdm_Lc_val:.1f}m"))
-                            # Mặt trượt
-                            _circ = _Circ_s((_res_s.slip_xc, _res_s.slip_yc),
-                                              _res_s.slip_R, fill=False,
-                                              edgecolor="red", linestyle="--", lw=1.8,
+                                                         label="Vùng CDM"))
+
+                            # Mặt trượt (cung trượt)
+                            _circ = _Circ_s((_xc, _yc), _R, fill=False,
+                                              edgecolor="red", linestyle="--", lw=2.2,
                                               label=f"Cung trượt Fs={_res_s.Fs_global_slip:.2f}")
                             _ax_s.add_patch(_circ)
-                            _ax_s.plot(_res_s.slip_xc, _res_s.slip_yc, "r+", markersize=10)
-                            _ax_s.set_xlim(-40, 30)
-                            _ax_s.set_ylim(_pile_bot_s - 5, _top_s + 5)
+                            # Tâm cung trượt
+                            _ax_s.plot(_xc, _yc, "r+", markersize=14, markeredgewidth=2.5)
+                            _ax_s.text(_xc + 0.5, _yc + 0.5,
+                                        f"O({_xc:+.1f}, {_yc:+.1f})",
+                                        fontsize=8, color="red", fontweight="bold")
+
+                            # Bán kính R: vẽ từ tâm xuống điểm tiếp tuyến dưới cừ
+                            # Điểm thấp nhất của cung trượt gần chân cừ
+                            _pt_x_r = _xc   # điểm thấp nhất tại x = xc
+                            _pt_y_r = _yc - _R
+                            _ax_s.plot([_xc, _pt_x_r], [_yc, _pt_y_r],
+                                        color="red", lw=1.5, alpha=0.7)
+                            _ax_s.annotate(
+                                f"R = {_R:.1f} m",
+                                xy=((_xc + _pt_x_r) / 2, (_yc + _pt_y_r) / 2),
+                                xytext=(_xc + _R * 0.35, (_yc + _pt_y_r) / 2),
+                                fontsize=10, color="red", fontweight="bold",
+                                bbox=dict(boxstyle="round,pad=0.3",
+                                          facecolor="white", edgecolor="red", lw=0.8),
+                            )
+                            _ax_s.plot(_pt_x_r, _pt_y_r, "ro", markersize=6)
+
+                            # Annotations cao độ trên trục y bên trái
+                            for _yv, _txt, _col in [
+                                (_top_s,      f"top = {_top_s:+.2f}",     "#1565C0"),
+                                (_Z_s,        f"Z = {_Z_s:+.2f}",         "#8B4513"),
+                                (_Zb_s,       f"Zb = {_Zb_s:+.2f}",       "#FF6F00"),
+                                (_pile_bot_s, f"tip = {_pile_bot_s:+.2f}", "#444"),
+                            ]:
+                                _ax_s.axhline(_yv, color=_col, lw=0.4, alpha=0.3)
+                                _ax_s.text(_x_min + 0.2, _yv + 0.15, _txt,
+                                            fontsize=7, color=_col, fontweight="bold")
+
+                            _ax_s.set_xlim(_x_min, _x_max)
+                            _ax_s.set_ylim(_y_min, _y_max)
                             _ax_s.set_aspect("equal")
                             _ax_s.set_xlabel("x (m)")
                             _ax_s.set_ylabel("Cao độ (m)")
-                            _ax_s.set_title("Mặt trượt nguy hiểm nhất + sơ đồ cừ SW + CDM")
+                            _ax_s.set_title(
+                                f"Mặt trượt nguy hiểm — Fs={_res_s.Fs_global_slip:.2f}  "
+                                f"({_res_s.slip_method})",
+                                fontsize=12, fontweight="bold",
+                            )
                             _ax_s.grid(alpha=0.3)
-                            _ax_s.legend(loc="lower right", fontsize=9)
+                            _ax_s.legend(loc="upper right", fontsize=8, framealpha=0.9)
+                            _plt_s.tight_layout()
                             st.pyplot(_fig_s, use_container_width=True)
                             _plt_s.close(_fig_s)
                         except Exception as _e_plot_s:
