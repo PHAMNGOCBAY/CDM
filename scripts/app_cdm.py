@@ -36,7 +36,9 @@ except ImportError:
 import sqlite3
 
 # ── Đường dẫn ────────────────────────────────────────────────────────────────
-_ROOT    = Path(__file__).parent.parent
+_THIS    = Path(__file__).resolve()
+# Hỗ trợ cả 2 cấu hình: chạy từ scripts/app_cdm.py (Cloud/local) hoặc root app_cdm.py
+_ROOT    = _THIS.parent.parent if _THIS.parent.name == "scripts" else _THIS.parent
 _DB      = _ROOT / "data" / "TTHC.sqlite"
 _CDM_SC  = _ROOT / "CDM" / "scripts"
 _THEORY  = _ROOT / "35-ly-thuyet-cdm.md"
