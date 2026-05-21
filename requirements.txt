@@ -1,5 +1,5 @@
 python-docx==1.2.0
-streamlit>=1.35.0
+streamlit>=1.35.0,<1.57
 numpy>=2.0,<3.0        # winkler_np.py + pandas/scipy cần numpy 2.x
 pandas>=2.2.2          # pandas <2.2.2 pin numpy<2
 plotly>=6.0

@@ -18,7 +18,7 @@ import streamlit as st
 try:
     import plotly.graph_objects as go
     _HAS_PLOTLY = True
-except ImportError:
+except Exception:
     _HAS_PLOTLY = False
 
 try:
