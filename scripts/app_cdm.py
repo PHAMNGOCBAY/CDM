@@ -10416,7 +10416,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _x_min = min(_arc_x_min - 2.5, _pile_bot_s - 2, -10)
                             _x_max = max(_arc_x_max + 2.5, 10)
                             _y_min = min(_arc_y_min - 1.5, _pile_bot_s - 1.5)
-                            _y_max = max(_top_s + 2.0, _yc + 1.5 if _yc > _top_s else _top_s + 2)
+                            # +3m phía trên top để chứa mũi tên surcharge q
+                            _y_max = max(_top_s + 3.5, _yc + 1.5 if _yc > _top_s else _top_s + 3.5)
 
                             _fig_s, _ax_s = _plt_s.subplots(1, 1, figsize=(9, 6.5))
 
@@ -10501,6 +10502,34 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                         color="cyan")
                             _ax_s.text(_x_max - 4, _wlvl_b_s + 0.2, "MNN_B", fontsize=7,
                                         color="cyan")
+
+                            # ── Tải khai thác q (surcharge) — mũi tên trên mặt Front ───
+                            if _q_s > 0:
+                                _q_y0 = _top_s   # đỉnh kè
+                                _q_y_arrow = _q_y0 + 1.5
+                                _q_x_start = max(_x_min + 1.0, -0.3 - 12)
+                                _q_x_end = -0.3
+                                # Khung tải (đường ngang trên + ngang dưới)
+                                _ax_s.plot([_q_x_start, _q_x_end],
+                                            [_q_y_arrow, _q_y_arrow],
+                                            color="#C62828", lw=1.5)
+                                # Mũi tên xuống cách đều
+                                _n_arrows = max(4, int((_q_x_end - _q_x_start) / 1.5))
+                                for _ka in range(_n_arrows + 1):
+                                    _xa = _q_x_start + _ka * (_q_x_end - _q_x_start) / _n_arrows
+                                    _ax_s.annotate(
+                                        "", xy=(_xa, _q_y0 + 0.05),
+                                        xytext=(_xa, _q_y_arrow - 0.05),
+                                        arrowprops=dict(arrowstyle="->",
+                                                         color="#C62828", lw=1.0))
+                                _ax_s.text((_q_x_start + _q_x_end) / 2,
+                                            _q_y_arrow + 0.4,
+                                            f"q = {_q_s:.0f} kN/m² (tải khai thác)",
+                                            fontsize=8, color="#C62828", fontweight="bold",
+                                            ha="center",
+                                            bbox=dict(boxstyle="round,pad=0.2",
+                                                      facecolor="white",
+                                                      edgecolor="#C62828", lw=0.6))
 
                             # Cừ SW
                             _ax_s.add_patch(_Rect_s((-0.3, _pile_bot_s), 0.6, _L_s,

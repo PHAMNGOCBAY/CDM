@@ -509,20 +509,27 @@ def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
                 # (đất bão hoà cũng có khối lượng → tạo driving moment)
                 W_total = gam * h * dxs
 
+                # Tải khai thác q (surcharge) — chỉ áp dụng trên mặt Front (x<0)
+                # khi slice nằm trên đất đắp Front (y_top ≥ Z_front).
+                # q tạo thêm driving moment + tăng σ'v → tăng resisting (tan φ effect).
+                _q_on_slice = 0.0
+                if x_i < 0 and geom.surcharge_front > 0:
+                    _q_on_slice = float(geom.surcharge_front) * dxs   # kN/m (per slice)
+
                 # Pore pressure tại đáy slice (effective stress correction cho resisting)
                 u_base = max(0.0, _water_x - y_cir) * _gw
-                # Hiệu chỉnh resisting: W_eff = W_total − u·b (theo effective N')
-                W_eff_resist = max(0.0, W_total - u_base * dxs)
+                # Hiệu chỉnh resisting: W_eff = (W_total + q·b) − u·b (effective N')
+                W_eff_resist = max(0.0, W_total + _q_on_slice - u_base * dxs)
 
                 sin_a = -(x_i - xc) / R
                 cos_a = math.sqrt(max(arg, 1e-9)) / R
                 if cos_a <= 0: continue
                 m_alpha = cos_a + sin_a * math.tan(math.radians(phi)) / Fs
                 if m_alpha <= 1e-6: continue
-                # Resisting: dùng W_eff (đã trừ buoyancy thông qua u·b)
+                # Resisting: dùng W_eff (đã trừ buoyancy + cộng q)
                 num += (c * dxs + W_eff_resist * math.tan(math.radians(phi))) / m_alpha
-                # Driving: dùng W_total
-                den += W_total * sin_a
+                # Driving: dùng W_total + q (tải khai thác kéo trượt)
+                den += (W_total + _q_on_slice) * sin_a
             if abs(den) < 1e-6: return None
             new_Fs = num / den
             if abs(new_Fs - Fs) < 0.001: return new_Fs
