@@ -9207,6 +9207,83 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         f"offset {_d_offset_md:.2f} m bỏ qua) · "
                         f"kh: **{_kh_min_v:.0f} → {_kh_max_v:.0f} kN/m³**"
                     )
+
+                    # Expander chi tiết công thức kh
+                    with st.expander("Công thức tính kh — chi tiết"):
+                        st.markdown("##### Mô hình Winkler — lò xo nền ngang p-y")
+                        st.markdown(
+                            "Cừ làm việc như **dầm Euler-Bernoulli** trên nền đất "
+                            "được thay thế bằng **lò xo độc lập** tại mỗi nút FEM. "
+                            "Độ cứng lò xo `k_spring` (kN/m/m) tỷ lệ với mô đun đất ngang "
+                            "kh (kN/m³), bề rộng tiếp xúc cừ D, và chiều dài đoạn lò xo dz."
+                        )
+                        st.latex(r"k_{\text{spring}} = k_h(z) \cdot D \cdot dz \quad [\text{kN/m}]")
+                        st.markdown(
+                            "Trong đó:\n"
+                            f"- $D$ — **0.5 × chu vi cừ = {_pile_md.D_m*1000:.0f} mm** "
+                            f"(do cừ chuyển vị về phía sông, chỉ 1 mặt tiếp xúc đất Back)\n"
+                            "- $dz$ — chiều dài phân tố FEM (L cọc / số nút − 1)"
+                        )
+
+                        st.markdown("##### 1. Đất sét (Matlock 1970) — áp dụng cho lớp bùn / xử lý CDM")
+                        st.latex(r"p_u = N_p \cdot S_u \cdot D \quad [\text{kN/m}]")
+                        st.latex(r"N_p = \min\left(3 + \dfrac{\gamma \cdot z}{S_u},\ 9\right)")
+                        st.latex(r"y_{50} = 2.5 \cdot \varepsilon_{50} \cdot D \quad [\text{m}]")
+                        st.latex(r"k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot S_u}{2.5 \cdot \varepsilon_{50}} \quad [\text{kN/m}^3]")
+                        st.markdown(
+                            "Ý nghĩa:\n"
+                            "- $p_u$ — áp lực giới hạn (ultimate lateral resistance)\n"
+                            "- $N_p$ — hệ số dung lượng Matlock, biến thiên 3 (đỉnh) → 9 (sâu)\n"
+                            "- $S_u$ — cường độ chống cắt không thoát nước "
+                            f"(**dùng Su Back = {float(_dpy_sub):.0f} kPa**)\n"
+                            "- $\\gamma$ — dung trọng đẩy nổi (γ' dưới MNN)\n"
+                            "- $z$ — độ sâu từ Ground B\n"
+                            f"- $\\varepsilon_{{50}}$ — biến dạng tại 50% phá hoại = "
+                            f"**{float(_dpy_eps50):.4f}** "
+                            f"({st.session_state.get(f'dpy_eps50_src_{_hk_iter}', 'lib')})\n"
+                            "- $y_{50}$ — chuyển vị tại 50% pu"
+                        )
+
+                        st.markdown("##### 2. Đất cát (API GoM) — kh tăng tuyến tính theo độ sâu")
+                        st.latex(r"k_h(z) = k_{\text{sand}} \cdot z \quad [\text{kN/m}^3]")
+                        st.markdown(
+                            "Trong đó:\n"
+                            "- $k_{\\text{sand}}$ — hệ số tăng kh theo độ sâu (mặc định **10 000 kN/m³**)\n"
+                            "- $z$ — độ sâu từ mặt đất (tăng theo chiều sâu)"
+                        )
+
+                        if _cdm_thk_eff > 0:
+                            st.markdown("##### 3. Vùng CDM gia cố — tăng cứng nền")
+                            st.latex(r"k_h^{\text{CDM}} = k_h \cdot f_{\text{CDM}}")
+                            st.markdown(
+                                f"- $f_{{\\text{{CDM}}}}$ — hệ số tăng cứng = "
+                                f"**{_k_cdm_fac:.1f}**\n"
+                                f"- Áp dụng cho đoạn cừ trong vùng CDM "
+                                f"(dày {_cdm_thk_eff:.1f} m từ đỉnh CDM)"
+                            )
+
+                        st.markdown("##### 4. Hiệu chỉnh dự án")
+                        st.markdown(
+                            "- **0.5 × chu vi cừ**: cừ chuyển vị về sông (Back) → "
+                            "chỉ 1 mặt tiếp xúc đất Back (không có 2 mặt như cọc tròn)\n"
+                            f"- **Bỏ qua đoạn trên Zb**: từ đỉnh cừ ({float(_dpy_top_ke):+.2f}m) "
+                            f"đến Zb ({float(_dpy_Zb):+.2f}m) — "
+                            f"chiều dài **{_d_offset_md:.2f} m** không có lò xo "
+                            f"(cừ trong không khí/nước, không tiếp xúc đất)\n"
+                            "- **Su Back** thay Su Front cho clay layers — "
+                            "vì cừ tựa vào đất Back tự nhiên (chưa xử lý)\n"
+                            "- Layer cát giữ kh API gốc (không phân biệt Front/Back vì cát không có Su)"
+                        )
+
+                        st.markdown(
+                            f"##### Kết quả kh hiện tại\n"
+                            f"- kh min = **{_kh_min_v:.0f} kN/m³** "
+                            f"(vị trí: trên Zb hoặc ngay tại Zb)\n"
+                            f"- kh max = **{_kh_max_v:.0f} kN/m³** "
+                            f"(vị trí: sâu nhất, hoặc tại đỉnh CDM × {_k_cdm_fac:.1f})\n"
+                            f"- $k_{{\\text{{spring}}}}$ trung bình ≈ "
+                            f"{(_kh_min_v + _kh_max_v) / 2 * _pile_md.D_m:.0f} kN/m/m"
+                        )
                     if _cdm_thk_eff > 0:
                         st.caption(
                             f"CDM gia cố từ tab Thiết kế: Lc={_cdm_Lc_val:.1f}m, "
