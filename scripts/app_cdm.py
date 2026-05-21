@@ -9383,49 +9383,68 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                        facecolor="white", edgecolor="none",
                                                        alpha=0.6))
 
-                            # Panel 1: u(z)
+                            # Auto-scale: ưu tiên DATA visible. Threshold không bắt
+                            # buộc phải nằm trong khung — nếu data << threshold thì
+                            # chỉ vẽ data, threshold ở ngoài (label vẫn hiện ở title).
+
+                            # Panel 1: u(z) — scale theo data, fallback nhỏ 10mm
                             _add_elev_refs(_axw[1])
                             _axw[1].plot(_res_d1["ux"], _el_pile, "b-", lw=2.0, label="u(z)")
-                            _axw[1].axvline(50, color="red", linestyle="--", lw=1.0, label="±50 mm (5cm)")
-                            _axw[1].axvline(-50, color="red", linestyle="--", lw=1.0)
+                            _u_data_max = max((abs(u) for u in _res_d1["ux"]), default=1.0)
+                            # Nếu u_data nhỏ hơn nhiều so 50mm → khung = data*1.4 (không ép 50mm vào);
+                            # nếu u_data lớn → khung gồm cả threshold 50mm.
+                            _u_xmax = max(_u_data_max * 1.4, 10.0)
+                            if _u_data_max > 25:    # khi gần ngưỡng → bao gồm 50mm threshold
+                                _u_xmax = max(_u_xmax, 55.0)
+                            # Vẽ ngưỡng ±50 nếu nằm trong khung
+                            if _u_xmax >= 50:
+                                _axw[1].axvline(50, color="red", linestyle="--",
+                                                  lw=1.0, label="±50 mm (5cm)")
+                                _axw[1].axvline(-50, color="red", linestyle="--", lw=1.0)
                             _axw[1].axvline(0, color="black", lw=0.5)
-                            _u_xmax = max(60, max(abs(u) for u in _res_d1["ux"]) * 1.1)
                             _axw[1].set_xlim(-_u_xmax, _u_xmax)
                             _add_elev_labels(_axw[1], _u_xmax)
                             _axw[1].set_xlabel("u (mm)")
+                            _gh_u = "Đạt" if _res_d1['u_max_mm'] < 50 else "Vượt 5cm"
                             _axw[1].set_title(
-                                f"Chuyển vị u(z)\nu_max = {_res_d1['u_max_mm']:.2f} mm",
+                                f"Chuyển vị u(z)\nu_max = {_res_d1['u_max_mm']:.2f} mm  ({_gh_u}, GH=50mm)",
                                 fontsize=10)
                             _axw[1].grid(alpha=0.3)
                             _axw[1].legend(fontsize=7, loc="lower left")
 
-                            # Panel 2: M(z)
+                            # Panel 2: M(z) — scale theo data, threshold Mcr ngoài nếu data nhỏ
                             _add_elev_refs(_axw[2])
                             _axw[2].plot(_res_d1["Ms"], _el_mid, "g-", lw=2.0, label="M(z)")
-                            _axw[2].axvline(_res_d1["Mcr_kNm"], color="red", linestyle="--",
-                                             lw=1.0, label=f"Mcr={_res_d1['Mcr_kNm']:.0f}")
-                            _axw[2].axvline(-_res_d1["Mcr_kNm"], color="red", linestyle="--", lw=1.0)
+                            _Mcr_w = _res_d1["Mcr_kNm"]
+                            _M_data_max = max((abs(m) for m in _res_d1["Ms"]), default=1.0)
+                            _M_xmax = max(_M_data_max * 1.4, 50.0)
+                            if _M_data_max > _Mcr_w * 0.5 and _Mcr_w > 0:
+                                _M_xmax = max(_M_xmax, _Mcr_w * 1.1)
+                            if _Mcr_w > 0 and _M_xmax >= _Mcr_w:
+                                _axw[2].axvline(_Mcr_w, color="red", linestyle="--",
+                                                 lw=1.0, label=f"±Mcr={_Mcr_w:.0f}")
+                                _axw[2].axvline(-_Mcr_w, color="red", linestyle="--", lw=1.0)
                             _axw[2].axvline(0, color="black", lw=0.5)
-                            _M_xmax = max(_res_d1["Mcr_kNm"] * 1.2,
-                                           max(abs(m) for m in _res_d1["Ms"]) * 1.1, 100.0)
                             _axw[2].set_xlim(-_M_xmax, _M_xmax)
                             _add_elev_labels(_axw[2], _M_xmax)
                             _axw[2].set_xlabel("M (kNm)")
-                            _ratio_w = _res_d1["M_max_kNm"] / _res_d1["Mcr_kNm"] if _res_d1["Mcr_kNm"] else 0
+                            _ratio_w = _res_d1["M_max_kNm"] / _Mcr_w if _Mcr_w else 0
+                            _gh_M = "Đạt" if _ratio_w < 1.0 else "Vượt Mcr"
                             _axw[2].set_title(
-                                f"Moment M(z)\nM_max={_res_d1['M_max_kNm']:.0f}  M/Mcr={_ratio_w:.2f}",
+                                f"Moment M(z)\nM_max={_res_d1['M_max_kNm']:.0f}  "
+                                f"M/Mcr={_ratio_w:.2f}  ({_gh_M})",
                                 fontsize=10)
                             _axw[2].grid(alpha=0.3)
                             _axw[2].legend(fontsize=7, loc="lower left")
 
-                            # Panel 3: Q(z)
+                            # Panel 3: Q(z) — scale chặt theo data
                             _Qs_w = _res_d1.get("Qs", [])
                             if _Qs_w:
                                 _add_elev_refs(_axw[3])
                                 _axw[3].plot(_Qs_w, _el_mid, "m-", lw=2.0, label="Q(z)")
                                 _axw[3].axvline(0, color="black", lw=0.5)
                                 _Qmax_w = _res_d1.get("Q_max_kN", max(abs(q) for q in _Qs_w))
-                                _Q_xmax = max(_Qmax_w * 1.2, 10.0)
+                                _Q_xmax = max(_Qmax_w * 1.4, 5.0)
                                 _axw[3].set_xlim(-_Q_xmax, _Q_xmax)
                                 _add_elev_labels(_axw[3], _Q_xmax)
                                 _axw[3].set_title(f"Lực cắt Q(z)\nQ_max={_Qmax_w:.0f} kN", fontsize=10)
@@ -9674,17 +9693,21 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                     _ax_dl[0].legend(fontsize=7, loc="lower left", framealpha=0.85)
 
                                     # Panel 1-3: u, M, Q
+                                    # Min ranges để hiển thị có chiều đẹp
+                                    _min_x_key = {"ux": 5.0, "Ms": 50.0, "Qs": 5.0}
                                     for _i_p, (_ax_p, _key, _xlbl) in enumerate([
                                         (_ax_dl[1], "ux", "u (mm)"),
                                         (_ax_dl[2], "Ms", "M (kNm)"),
                                         (_ax_dl[3], "Qs", "Q (kN)"),
                                     ]):
                                         _refs_dl(_ax_p)
-                                        _xmax_p = max(
+                                        _data_max = max(
                                             (max(abs(v) for v in _r.get(_key, [0]) or [0])
                                               for _r in _comp_dist_results.values()),
-                                            default=10.0,
-                                        ) * 1.1 or 10.0
+                                            default=1.0,
+                                        )
+                                        # Scale chặt theo data + margin 30%
+                                        _xmax_p = max(_data_max * 1.3, _min_x_key[_key])
                                         for _nm_dl, _res_dl in _comp_dist_results.items():
                                             _color = _comp_colors_dl[_nm_dl]
                                             _is_tot = (_nm_dl == "TỔNG")
@@ -9723,14 +9746,19 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                                   facecolor="white",
                                                                   edgecolor="none", alpha=0.55))
 
-                                    # Ngưỡng ±50mm (5cm) + ±Mcr
-                                    _ax_dl[1].axvline(50, color="red", linestyle="--", lw=0.8, alpha=0.7)
-                                    _ax_dl[1].axvline(-50, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    # Ngưỡng ±50mm + ±Mcr — chỉ vẽ khi nằm trong khung
+                                    _u_xlim_d = _ax_dl[1].get_xlim()
+                                    if abs(_u_xlim_d[1]) >= 50:
+                                        _ax_dl[1].axvline(50, color="red", linestyle="--", lw=0.8,
+                                                           alpha=0.7, label="±50 mm")
+                                        _ax_dl[1].axvline(-50, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                        _ax_dl[1].legend(fontsize=7, loc="lower left")
                                     _Mcr_dl = _comp_dist_results["TỔNG"]["Mcr_kNm"] if "TỔNG" in _comp_dist_results else 0
-                                    if _Mcr_dl > 0:
+                                    _M_xlim_d = _ax_dl[2].get_xlim()
+                                    if _Mcr_dl > 0 and abs(_M_xlim_d[1]) >= _Mcr_dl:
                                         _ax_dl[2].axvline(_Mcr_dl, color="red", linestyle="--",
                                                             lw=0.8, alpha=0.7,
-                                                            label=f"Mcr={_Mcr_dl:.0f}")
+                                                            label=f"±Mcr={_Mcr_dl:.0f}")
                                         _ax_dl[2].axvline(-_Mcr_dl, color="red", linestyle="--",
                                                             lw=0.8, alpha=0.7)
                                         _ax_dl[2].legend(fontsize=7, loc="lower left")
