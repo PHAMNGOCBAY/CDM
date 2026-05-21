@@ -21,7 +21,10 @@ try:
     _PLOTLY_ERR = ""
 except Exception as _e:
     _HAS_PLOTLY = False
-    _PLOTLY_ERR = str(_e)
+    import subprocess as _subp
+    _pip = _subp.run(["pip", "list", "--format=columns"], capture_output=True, text=True)
+    _installed = _pip.stdout or _pip.stderr
+    _PLOTLY_ERR = f"{_e} | pip list:\n{_installed[:2000]}"
 
 try:
     import matplotlib.pyplot as plt
