@@ -10152,18 +10152,110 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
                     _pile_bot_s = _top_s - _L_s
 
-                    # Front: lớp 1 sét bùn (Su lab) + lớp 2 cát (giả định φ=30°)
-                    # NOTE: lý tưởng lấy từ SQLite (như EP) nhưng đơn giản hoá
-                    # bằng cách dùng su từ user — đồng bộ với D.1 EP.
-                    _front_s = [
-                        _EL_S(_Z_s - _H1_s, 15.0, 5.0, 0.0, _su_F or 10.0),
-                        _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
-                    ]
-                    # Back: cùng lớp 1 chưa xử lý (Su Back) + lớp 2 cát
-                    _back_s = [
-                        _EL_S(_Zb_s - _H1_s, 15.0, 5.0, 0.0, _su_B or _su_F or 10.0),
-                        _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
-                    ]
+                    # ── Lấy địa tầng THỰC TẾ từ SQLite (HK đang phân tích) ────
+                    _front_s: list = []
+                    _back_s: list = []
+                    _bh_elev_e = _Z_s   # fallback
+                    _layers_log: list = []
+                    try:
+                        _con_e = sqlite3.connect(str(_DB))
+                        _con_e.row_factory = sqlite3.Row
+                        _bh_short_e = _hk_iter.replace("KE-", "")
+                        _rows_e = _con_e.execute("""
+                            SELECT l.symbol, l.depth_top_m, l.depth_bot_m,
+                                   ROUND(AVG(lt.gamma_kNm3), 2) AS gam,
+                                   ROUND(AVG(lt.phi_deg), 1) AS phi,
+                                   ROUND(AVG(lt.c_kPa), 1) AS c,
+                                   ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu,
+                                   b.elevation_m AS bh_elev
+                            FROM layers l
+                            JOIN boreholes b ON l.borehole_id = b.id
+                            LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
+                                AND lt.depth_from_m >= l.depth_top_m
+                                AND lt.depth_to_m <= l.depth_bot_m
+                            WHERE b.name = ?
+                            GROUP BY l.id ORDER BY l.depth_top_m
+                        """, (_bh_short_e,)).fetchall()
+                        _con_e.close()
+                        if _rows_e and _rows_e[0]["bh_elev"] is not None:
+                            _bh_elev_e = float(_rows_e[0]["bh_elev"])
+
+                        for _r in _rows_e:
+                            _sym = (_r["symbol"] or "").upper()
+                            _e_top_f = _bh_elev_e - float(_r["depth_top_m"] or 0)
+                            _e_bot_f = _bh_elev_e - float(_r["depth_bot_m"] or 0)
+                            # Bỏ lớp hoàn toàn trên đỉnh kè hoặc dưới chân cừ -2m
+                            if _e_top_f < _pile_bot_s - 2.0 or _e_bot_f > _top_s:
+                                continue
+                            _gam = float(_r["gam"]) if _r["gam"] else 18.0
+                            _gam_sub = max(_gam - 9.81, 5.0)
+                            # Phân loại theo SYMBOL TCVN
+                            if _sym in {"1", "XMD", "3", "5", "5A", "5B"}:   # Clay
+                                _phi_f = 0.0
+                                _c_f = float(_r["Cu"]) if _r["Cu"] else (float(_r["c"]) if _r["c"] else _su_F)
+                                _c_b = _su_B if _sym in {"1", "XMD"} else _c_f
+                            elif _sym in {"F", "2", "2A", "2B", "2C", "4", "6", "7"}:  # Sand
+                                _phi_f = float(_r["phi"]) if _r["phi"] else 30.0
+                                _c_f = 0.0
+                                _c_b = 0.0
+                            else:
+                                _phi_f = float(_r["phi"]) if _r["phi"] else 20.0
+                                _c_f = float(_r["c"]) if _r["c"] else 0.0
+                                _c_b = _c_f
+                            _front_s.append(_EL_S(_e_bot_f, _gam, _gam_sub, _phi_f, _c_f))
+                            # Back side: shift elev theo (Zb - Z)
+                            _shift = _Zb_s - _Z_s
+                            _back_s.append(_EL_S(_e_bot_f + _shift, _gam, _gam_sub, _phi_f, _c_b))
+                            _layers_log.append({
+                                "Symbol": _sym, "z_top (m)": f"{_e_top_f:+.2f}",
+                                "z_bot (m)": f"{_e_bot_f:+.2f}",
+                                "γ": f"{_gam:.1f}", "γ_sub": f"{_gam_sub:.1f}",
+                                "φ": f"{_phi_f:.1f}",
+                                "c Front (kPa)": f"{_c_f:.0f}",
+                                "c Back (kPa)":  f"{_c_b:.0f}",
+                            })
+                    except Exception as _e_load_e:
+                        st.caption(f"_(Không tải được lớp đất từ SQLite: {_e_load_e})_")
+
+                    # Fallback nếu SQLite không có data
+                    if not _front_s:
+                        _front_s = [
+                            _EL_S(_Z_s - _H1_s, 15.0, 5.0, 0.0, _su_F or 10.0),
+                            _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
+                        ]
+                        _back_s = [
+                            _EL_S(_Zb_s - _H1_s, 15.0, 5.0, 0.0, _su_B or _su_F or 10.0),
+                            _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
+                        ]
+                        st.caption("_(Dùng layers giả định — không có data SQLite cho HK này.)_")
+
+                    # ── Hiển thị thông tin tường + HK trước khi tính ──────
+                    _info_c1, _info_c2 = st.columns(2)
+                    with _info_c1:
+                        st.markdown("**Thông tin tường chắn (D.1):**")
+                        st.markdown(
+                            f"- Đỉnh kè: **{_top_s:+.2f} m** · Cao độ Front Z: **{_Z_s:+.2f} m** · "
+                            f"Back Zb: **{_Zb_s:+.2f} m**\n"
+                            f"- Cọc: **{_dpy_pile}** · L = **{_L_s:.1f} m** · "
+                            f"chân cừ: **{_pile_bot_s:+.2f} m**\n"
+                            f"- MNN Front: **{_wlvl_s:+.2f}** · Back: **{_wlvl_b_s:+.2f}** m\n"
+                            f"- Tải mặt q = **{_q_s:.0f} kN/m²**\n"
+                            f"- Fill: γ={float(_dpy_gamma_fill):.1f}, φ={float(_dpy_phi_fill):.1f}°, "
+                            f"c={float(_dpy_c_fill):.0f}, γ_sub={float(_dpy_gamma_sub_fill):.1f}"
+                        )
+                    with _info_c2:
+                        st.markdown(f"**Hố khoan {_hk_iter} (SQLite):**")
+                        st.markdown(
+                            f"- Cao độ cổ HK: **{_bh_elev_e:+.2f} m**\n"
+                            f"- Số lớp đất tải vào ổn định: **{len(_front_s)}**\n"
+                            f"- Su Front (Ctd CDM): **{_su_F:.0f} kPa**\n"
+                            f"- Su Back (tự nhiên): **{_su_B:.0f} kPa**\n"
+                            f"- ε₅₀ áp dụng: **{float(_dpy_eps50):.4f}**"
+                        )
+                    if _layers_log:
+                        with st.expander(f"Chi tiết {len(_layers_log)} lớp đất từ SQLite HK {_hk_iter}"):
+                            st.dataframe(pd.DataFrame(_layers_log),
+                                          use_container_width=True, hide_index=True)
 
                     # CDM từ tab Thiết kế CDM nếu có (TCVN 9403 Phụ lục C)
                     if _cdm_thk_eff > 0:
