@@ -18,8 +18,10 @@ import streamlit as st
 try:
     import plotly.graph_objects as go
     _HAS_PLOTLY = True
-except Exception:
+    _PLOTLY_ERR = ""
+except Exception as _e:
     _HAS_PLOTLY = False
+    _PLOTLY_ERR = str(_e)
 
 try:
     import matplotlib.pyplot as plt
@@ -3716,7 +3718,7 @@ if _page == "geology":
     # ── 3D / Map toggle ───────────────────────────────────────────────────────
     st.divider()
     if not _HAS_PLOTLY:
-        st.info("Biểu đồ 3D cần Plotly — vui lòng tải lại trang.")
+        st.warning(f"Plotly không load được. Lỗi: `{_PLOTLY_ERR}`")
     else:
         _bhs_all, _ = _load_borehole_3d_data()
         _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
