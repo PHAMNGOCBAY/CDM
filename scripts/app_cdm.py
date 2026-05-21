@@ -9065,14 +9065,35 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         if not _ly_raw_md:
                             _ly_raw_md = [{"symbol": "1", "thickness_m": float(_dpy_L) + 5.0,
                                             "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
-                        _layers_md = [
+                        # Cừ chuyển vị về phía sông (Back) → kh dùng thông số đất
+                        # phía Back. Override Su clay layers = _dpy_sub (Su Back tự nhiên)
+                        _Su_back_md = float(_dpy_sub) if _dpy_sub > 0 else 11.0
+                        _real_layers_md = [
                             _WIF_SoilLayer(
                                 symbol=str(lr["symbol"]),
                                 thickness_m=float(lr["thickness_m"] or 0),
-                                Su_kPa=float(lr["Su_kPa"]),
+                                Su_kPa=(_Su_back_md
+                                        if str(lr["symbol"]).upper() in {"1", "XMD", "3", "5", "5A", "5B"}
+                                        else float(lr["Su_kPa"])),
                                 gamma_kNm3=float(lr["gamma_kNm3"]),
                             ) for lr in _ly_raw_md
                         ]
+                        # Ground B (Zb) cao hơn chân cừ → khoảng từ top cừ → Zb
+                        # KHÔNG có tiếp xúc đất ở phía Back (cừ trong không khí / nước).
+                        # Thêm "ghost layer" trên đầu, Su≈0 → kh≈0 vùng này.
+                        _d_offset_md = max(0.0, float(_dpy_top_ke) - float(_dpy_Zb))
+                        if _d_offset_md > 0.01:
+                            _ghost_md = _WIF_SoilLayer(
+                                symbol="AIR", thickness_m=_d_offset_md,
+                                Su_kPa=0.001, gamma_kNm3=0.001, is_clay=True,
+                            )
+                            _layers_md = [_ghost_md] + _real_layers_md
+                        else:
+                            _layers_md = _real_layers_md
+
+                        # 0.5 chu vi cừ tham gia kh — override D_m = 0.5 × D
+                        # (kh × D × dz = lực lò xo per node — halve D = halve lực)
+                        _pile_md.D_m = _pile_md.D_m * 0.5
 
                         # Build p(z) TỔNG = Active − Passive + Nước + Surcharge
                         _L_md = float(_dpy_L)
@@ -9123,6 +9144,17 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             k_cdm_factor=_k_cdm_fac,
                         )
                         st.caption(f"_(Fallback point load — solve_numpy_dist lỗi: {_e_md})_")
+                    # Caption tham số kh
+                    _kh_min_v = min(_res_d1.get("k_h", [0])) if _res_d1.get("k_h") else 0
+                    _kh_max_v = max(_res_d1.get("k_h", [0])) if _res_d1.get("k_h") else 0
+                    st.caption(
+                        f"**Lò xo nền kh** (cừ chuyển vị về phía sông → dùng đất Back): "
+                        f"Su Back = {float(_dpy_sub):.0f} kPa · "
+                        f"0.5 chu vi cừ ({_pile_md.D_m*1000:.0f} mm) · "
+                        f"kh tính từ Ground B (Zb = {float(_dpy_Zb):+.2f} m, "
+                        f"offset {_d_offset_md:.2f} m bỏ qua) · "
+                        f"kh: **{_kh_min_v:.0f} → {_kh_max_v:.0f} kN/m³**"
+                    )
                     if _cdm_thk_eff > 0:
                         st.caption(
                             f"CDM gia cố từ tab Thiết kế: Lc={_cdm_Lc_val:.1f}m, "
@@ -9533,14 +9565,30 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             if not _ly_raw_dl:
                                 _ly_raw_dl = [{"symbol": "1", "thickness_m": float(_dpy_L) + 5.0,
                                                 "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
-                            _layers_kh_dl = [
+                            # Override Su clay layers = Su Back (cừ chuyển vị về sông)
+                            _Su_back_dl = float(_dpy_sub) if _dpy_sub > 0 else 11.0
+                            _real_layers_dl = [
                                 _WIF_SoilLayer(
                                     symbol=str(lr["symbol"]),
                                     thickness_m=float(lr["thickness_m"] or 0),
-                                    Su_kPa=float(lr["Su_kPa"]),
+                                    Su_kPa=(_Su_back_dl
+                                            if str(lr["symbol"]).upper() in {"1", "XMD", "3", "5", "5A", "5B"}
+                                            else float(lr["Su_kPa"])),
                                     gamma_kNm3=float(lr["gamma_kNm3"]),
                                 ) for lr in _ly_raw_dl
                             ]
+                            # Ghost air layer phần trên Zb (cừ không tiếp xúc đất Back)
+                            _d_offset_dl = max(0.0, float(_dpy_top_ke) - float(_dpy_Zb))
+                            if _d_offset_dl > 0.01:
+                                _ghost_dl = _WIF_SoilLayer(
+                                    symbol="AIR", thickness_m=_d_offset_dl,
+                                    Su_kPa=0.001, gamma_kNm3=0.001, is_clay=True,
+                                )
+                                _layers_kh_dl = [_ghost_dl] + _real_layers_dl
+                            else:
+                                _layers_kh_dl = _real_layers_dl
+                            # 0.5 chu vi cừ
+                            _pile_dl.D_m = _pile_dl.D_m * 0.5
 
                             # 3. Build p(z) profiles per component (z = độ sâu từ đỉnh cừ)
                             _L_dl = float(_dpy_L)
@@ -9671,9 +9719,23 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                         _ax.axhline(_wlvl_F, color="cyan", lw=0.5, alpha=0.4)
                                         _ax.axhline(_bot_pile_w, color="#444", lw=0.7, alpha=0.5)
 
-                                    # Panel 0: p(z) profile
+                                    # Panel 0: p(z) profile + kh secondary axis
                                     _refs_dl(_ax_dl[0])
                                     _el_zs = [_top_dl - z for z in _zs_load_dl]
+                                    # kh axis bên phải (twin)
+                                    if "TỔNG" in _comp_dist_results:
+                                        _kh_vals = _comp_dist_results["TỔNG"].get("k_h", [])
+                                        _kh_zs   = _comp_dist_results["TỔNG"].get("zs", [])
+                                        if _kh_vals and _kh_zs:
+                                            _ax_kh = _ax_dl[0].twiny()
+                                            _kh_el = [_top_dl - z for z in _kh_zs]
+                                            _ax_kh.plot(_kh_vals, _kh_el,
+                                                         color="#7B1FA2", lw=1.2, alpha=0.7,
+                                                         label="kh (kN/m³)")
+                                            _ax_kh.set_xlabel("kh (kN/m³)", fontsize=8, color="#7B1FA2")
+                                            _ax_kh.tick_params(axis="x", labelcolor="#7B1FA2",
+                                                                labelsize=7)
+                                            _ax_kh.set_xlim(0, max(_kh_vals) * 1.15 if max(_kh_vals) > 0 else 1)
                                     for _nm_dl, _prof_dl in _comps_dist:
                                         if _nm_dl not in _comp_dist_results:
                                             continue
