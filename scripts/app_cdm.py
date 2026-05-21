@@ -10428,11 +10428,21 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                          hatch="//", edgecolor="green",
                                                          label="Vùng CDM"))
 
-                            # Mặt trượt (cung trượt)
-                            _circ = _Circ_s((_xc, _yc), _R, fill=False,
-                                              edgecolor="red", linestyle="--", lw=2.2,
-                                              label=f"Cung trượt Fs={_res_s.Fs_global_slip:.2f}")
-                            _ax_s.add_patch(_circ)
+                            # Cung trượt — CHỈ vẽ phần dưới mặt đất (Front<top, Back<Zb)
+                            import numpy as _np_arc
+                            _theta = _np_arc.linspace(0, 2 * _np_arc.pi, 360)
+                            _xs_c = _xc + _R * _np_arc.cos(_theta)
+                            _ys_c = _yc + _R * _np_arc.sin(_theta)
+                            # Mask: trên cừ (x<0) phần thấp hơn top; bên Back (x>=0) thấp hơn Zb
+                            _mask_arc = (
+                                ((_xs_c < 0) & (_ys_c < _top_s))
+                                | ((_xs_c >= 0) & (_ys_c < _Zb_s))
+                            )
+                            _xs_plot = _np_arc.where(_mask_arc, _xs_c, _np_arc.nan)
+                            _ys_plot = _np_arc.where(_mask_arc, _ys_c, _np_arc.nan)
+                            _ax_s.plot(_xs_plot, _ys_plot,
+                                        color="red", linestyle="--", lw=2.2,
+                                        label=f"Cung trượt Fs={_res_s.Fs_global_slip:.2f}")
                             # Tâm cung trượt
                             _ax_s.plot(_xc, _yc, "r+", markersize=14, markeredgewidth=2.5)
                             _ax_s.text(_xc + 0.5, _yc + 0.5,
