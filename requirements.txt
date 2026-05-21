@@ -1,25 +1,24 @@
 python-docx==1.2.0
 streamlit>=1.35.0
-numpy>=2.0,<3.0        # PyNite 2.4 + geotech-staff-engineer cần numpy 2.x
+numpy>=2.0,<3.0        # winkler_np.py + pandas/scipy cần numpy 2.x
 pandas>=2.2.2          # pandas <2.2.2 pin numpy<2
 plotly>=6.0
+narwhals>=2.0          # required by plotly 6.x
 matplotlib>=3.9        # matplotlib <3.9 pin numpy<2
 openpyxl>=3.1
 xlrd>=2.0
 jinja2>=3.1
 sympy>=1.14
-pydeck>=0.9
-reportlab>=4.0           # PDF fallback (Windows không có GTK3)
-weasyprint>=68.0         # PDF primary (HTML/CSS) — Windows local cần GTK3 runtime
+reportlab>=4.0         # PDF fallback (Windows không có GTK3)
+weasyprint>=68.0       # PDF primary (HTML/CSS) — cần apt libs (xem packages.txt)
 fpdf2>=2.8
 ezdxf>=1.4
 unidecode>=1.4
 shapely>=2.1
 sqlalchemy>=2.0
-geopandas>=1.0
 geojson>=3.2
-scipy>=1.16            # scipy <1.16 pin numpy<2.3 → conflict PyNite 2.4 (numpy>=2.4)
-anastruct>=1.6
-PyNiteFEA>=2.0      # Solver Winkler chính (§20) — đồng bộ với cdm-deploy
-openseespy>=3.7
-gmsh>=4.13
+scipy>=1.13
+geotech-staff-engineer>=4.6   # slope_stability, sheet_pile, bearing_capacity
+# Chỉ dùng local (cần binary C++/GDAL/heavy) — KHÔNG đưa lên Cloud:
+# openseespy, gmsh, geopandas, PyNiteFEA, anastruct, kaleido, pdfplumber
+# Winkler solver dùng scripts/winkler_np.py (NumPy thuần) — Cloud Python 3.14 compatible
