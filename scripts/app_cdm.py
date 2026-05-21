@@ -7940,16 +7940,41 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
         _cdm_thk_a = max(0.0, _cdm_Lc_a - _cdm_Lng_a)
         _k_cdm_a   = float(st.session_state.get("dpy_k_cdm_factor", 3.0) or 3.0)
 
+        # Helper tính F_active đơn giản từ fill (Rankine) cho auto-summary
+        # Lấy thông số HK từ JSON _bhs_on_alignment
+        _bhs_for_auto = {b["name"]: b for b in (_bhs_on_alignment or [])}
+
+        def _quick_F_active(_hk_n: str) -> tuple[float, float]:
+            """Trả (F_active_Front [kN/m], tay_đòn_từ_đỉnh [m]) — Rankine Ka."""
+            _b = _bhs_for_auto.get(_hk_n, {})
+            _Z = float(_b.get("Z_m") or -0.8)
+            _H1 = float(_b.get("H_layer1_m") or 22.0)
+            _top = float(st.session_state.get(f"dpy_top_ke_{_hk_n}", 2.7) or 2.7)
+            _fill_h = max(0.0, _top - _Z)
+            _gam_f = 18.0; _phi_f = 25.0
+            import math as _m
+            _Ka = (_m.tan(_m.radians(45 - _phi_f / 2)) ** 2)
+            # Tải lan truyền: fill_h trên Z + ~5m sét yếu phía dưới
+            _h_eff = _fill_h + 5.0
+            _F = 0.5 * _Ka * _gam_f * _h_eff ** 2   # tam giác
+            # Tay đòn ≈ 1/3 chiều cao từ đáy → từ đỉnh = top - (Z - h_eff/3)
+            _arm = _top - (_Z - _h_eff / 3.0)
+            return _F, _arm
+
         _auto_rows: list = []
         for _hk_nm in _hk_d_list:
             _hk_pile = (st.session_state.get("ke_sw_rec_piles", {}) or {}).get(_hk_nm)
             _hk_L    = (st.session_state.get("ke_sw_L_thiet_ke", {}) or {}).get(_hk_nm)
             if not _hk_pile or not _hk_L:
                 continue
+            # Tính tải từ áp lực đất Front (Rankine đơn giản) thay vì dùng H=0
+            _F_a, _arm_a = _quick_F_active(_hk_nm)
+            _H_use = _H_auto + _F_a
+            _M_use = _M_auto + _F_a * _arm_a
             try:
                 _r_auto = _calc_py_winkler(
                     bh_name=f"KE-{_hk_nm}", pile_name=_hk_pile,
-                    L_m=float(_hk_L), H_kNm=_H_auto, M_kNm=_M_auto,
+                    L_m=float(_hk_L), H_kNm=_H_use, M_kNm=_M_use,
                     cdm_thk_m=_cdm_thk_a, eps50=_eps50_a,
                     k_cdm_factor=_k_cdm_a,
                 )
@@ -7981,9 +8006,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             st.caption("_(Chưa có HK nào ở Mục B để chạy auto Winkler.)_")
         else:
             st.caption(
-                f"Đang chạy với: H = {_H_auto:.0f} kN/m · M = {_M_auto:.0f} kNm/m · "
-                f"ε₅₀ = {_eps50_a:.3f} · CDM thk = {_cdm_thk_a:.1f} m × {_k_cdm_a:.1f}. "
-                f"Sửa params ở form chi tiết D.1 bên dưới rồi reload để cập nhật summary."
+                f"**Tổng quan nhanh** — tải đầu cọc = F_active (Rankine từ fill + 5m sét) "
+                f"+ H_user ({_H_auto:.0f}) · ε₅₀={_eps50_a:.3f} · "
+                f"CDM thk={_cdm_thk_a:.1f}m × {_k_cdm_a:.1f}.  \n"
+                f"_Kết quả chi tiết hơn (tải phân bố p(z) gồm Active + Nước + Surcharge) "
+                f"trong từng expander HK bên dưới — Phương pháp distributed load qua "
+                f"`solve_numpy_dist` (Hermite consistent load vector)._"
             )
             _auto_df = pd.DataFrame([{k: v for k, v in r.items() if k != "_res"}
                                        for r in _auto_rows])
@@ -8807,8 +8835,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 else:
                     st.info("Cần áp HK ở trên để có lớp đất tính áp lực đất (Ka/Kp theo từng lớp).")
 
-                # Nút quick-set: CDM ngàm vào lớp đất tốt 1.0 m
-                _btn_cd1, _btn_cd2 = st.columns([2, 5])
+                # Nút quick-set + Widget chiều rộng CDM (shared Mục D + Section E)
+                _btn_cd1, _btn_cd2, _btn_cd3 = st.columns([2, 3, 2])
                 with _btn_cd1:
                     if st.button("Đặt CDM ngàm 1.0m vào đất tốt",
                                   key=f"btn_cdm_ngam_1m_{_hk_iter}",
@@ -8822,9 +8850,17 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _cdm_Lng_cur = float(st.session_state.get("cdm_L_ngam", 0.0) or 0.0)
                     st.caption(
                         f"_CDM hiện tại: Lc = {_cdm_Lc_cur:.1f}m "
-                        f"(ngàm {_cdm_Lng_cur:.1f}m vào đất tốt). "
-                        f"Bấm nút trái → Lc = H₁ ({float(_dpy_H1):.1f}) + 1.0 = "
-                        f"{float(_dpy_H1) + 1.0:.1f}m._"
+                        f"(ngàm {_cdm_Lng_cur:.1f}m vào đất tốt)._"
+                    )
+                with _btn_cd3:
+                    # CDM width Front — dùng chung cho cả Mục D schematic + Section E
+                    _cdm_w_e = st.number_input(
+                        "Bề rộng CDM Front (m)",
+                        min_value=1.0, max_value=20.0,
+                        value=5.0, step=0.5,
+                        key=f"e_cdm_width_{_hk_iter}",
+                        help="Bề rộng vùng gia cố CDM phía Front kè (mặc định 5m). "
+                             "Áp dụng cho sơ đồ kích thước Mục D + tính ổn định Section E."
                     )
 
                 # Auto-run (bỏ nút) — mọi expander tự tính khi mở
@@ -9230,17 +9266,22 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _axw[0].add_patch(_RectW((-0.5, _bot_pile_w), 1.0, _Lw,
                                                       facecolor="#444444", edgecolor="black",
                                                       linewidth=1.2, label=f"Cừ SW L={_Lw:.1f}m"))
-                            # CDM
+                            # CDM — dùng width user nhập (chia sẻ với Section E)
+                            _cdm_w_d = float(st.session_state.get(f"e_cdm_width_{_hk_iter}", 5.0) or 5.0)
+                            _cdm_x_right_d = -0.5
+                            _cdm_x_left_d = _cdm_x_right_d - _cdm_w_d
                             if _cdm_thk_eff > 0:
-                                _axw[0].add_patch(_RectW((-3, _cdm_bot_w), 2.5, _cdm_thk_eff,
-                                                          facecolor="#90c890", edgecolor="green",
-                                                          alpha=0.7, hatch="//",
-                                                          label="Vùng CDM"))
-                            # Đất đắp Front
+                                _axw[0].add_patch(_RectW(
+                                    (_cdm_x_left_d, _cdm_bot_w), _cdm_w_d, _cdm_thk_eff,
+                                    facecolor="#90c890", edgecolor="green",
+                                    alpha=0.7, hatch="//",
+                                    label=f"CDM b={_cdm_w_d:.1f}m"))
+                            # Đất đắp Front — cùng width với CDM
                             if _top_w - _Z_w > 0:
-                                _axw[0].add_patch(_RectW((-3, _Z_w), 2.5, _top_w - _Z_w,
-                                                          facecolor="#d4a373", alpha=0.4,
-                                                          label=f"Đắp {(_top_w - _Z_w):.1f}m"))
+                                _axw[0].add_patch(_RectW(
+                                    (_cdm_x_left_d, _Z_w), _cdm_w_d, _top_w - _Z_w,
+                                    facecolor="#d4a373", alpha=0.4,
+                                    label=f"Đắp {(_top_w - _Z_w):.1f}m"))
                             # Mặt đất Back (đào sâu hơn)
                             _axw[0].plot([-3, -0.5], [_Z_w, _Z_w], "k-", lw=1.5)
                             _axw[0].plot([0.5, 3], [_Zb_w, _Zb_w], "k-", lw=1.5)
@@ -10136,14 +10177,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _cdm_top_e = _Z_s
                     _cdm_bot_e = _Z_s - _H1_s - 1.0   # đáy bùn + 1m
                     _cdm_thk_e = _cdm_top_e - _cdm_bot_e   # H1 + 1m
-                    _cdm_w_default = 5.0
-                    _cdm_w_e = st.number_input(
-                        f"Chiều rộng vùng CDM (m) — HK {_hk_iter}",
-                        min_value=1.0, max_value=20.0,
-                        value=_cdm_w_default, step=0.5,
-                        key=f"e_cdm_width_{_hk_iter}",
-                        help=f"Mặc định 5m. CDM từ Z={_Z_s:+.2f}m xuống "
-                             f"đáy bùn ({_Z_s-_H1_s:+.2f}m) + 1m = {_cdm_bot_e:+.2f}m"
+                    # _cdm_w_e đã được nhập ở đầu expander (chung Mục D + E)
+                    st.caption(
+                        f"_CDM Section E: width = {_cdm_w_e:.1f}m, "
+                        f"top={_cdm_top_e:+.2f}m, bot={_cdm_bot_e:+.2f}m, "
+                        f"thk={_cdm_thk_e:.1f}m._"
                     )
                     _cdm_a    = float(st.session_state.get("cdm_a_ratio", 0.20) or 0.20)
                     _cdm_qu   = float(st.session_state.get("cdm_qu_28", 0.0) or 150.0)
