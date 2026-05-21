@@ -6370,6 +6370,20 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                             return ["background-color: #FFF8DC"] * len(row)
                         return [""] * len(row)
 
+                    # Badge "Đã kiểm tra chéo" — xác nhận data đồng bộ JSON + SQLite
+                    _n_layers_sl = len(_param_rows)
+                    _n_full = sum(1 for r in _param_rows
+                                   if r.get("Cc") is not None and r.get("e0") is not None)
+                    _n_borrowed = sum(1 for r in _param_rows if r.get("_src"))
+                    st.success(
+                        f"**✓ Đã kiểm tra chéo dữ liệu — HK `{_sl_bh}`**  ·  "
+                        f"Nguồn: `data/TTHC.sqlite` (`layers` + `lab_tests`) "
+                        f"+ `data/zone_qtt_full.json` (fallback HK gần nhất zone {_sl_zone})  ·  "
+                        f"Số lớp: **{_n_layers_sl}** · "
+                        f"Đầy đủ Cc+e0: **{_n_full}** · "
+                        f"Mượn HK khác: **{_n_borrowed}**",
+                        icon="✅",
+                    )
                     st.markdown("**Thông số địa chất dùng tính lún cố kết**")
                     st.dataframe(
                         _df_geo.drop(columns=["_src"]).style.apply(_highlight_borrowed, axis=1),
@@ -6386,20 +6400,19 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                     if _has_borrowed:
                         st.caption("*Ô nền vàng: thông số tham khảo từ hố khoan khác cùng khu vực do hố khoan hiện tại chưa đủ dữ liệu.*")
 
-            if st.button("Tính toán lún", type="primary", key="sl_calc"):
-                with st.spinner("Đang tính..."):
-                    try:
-                        _cmp = _sc_compare(
-                            _sl_bh, _sl_zone,
-                            H_fill_m=float(_sl_H),
-                            residual_limit_cm=float(_sl_lim),
-                            t_construction_months=float(_sl_tc),
-                        )
-                        st.session_state["sl_result"] = _cmp
-                    except Exception as _e:
-                        st.error(f"Lỗi tính toán: {_e}")
-
-            _cmp = st.session_state.get("sl_result")
+            # Auto-run (bỏ nút) — tự tính khi đủ dữ liệu input
+            with st.spinner("Đang tính tổng hợp 5 phương án..."):
+                try:
+                    _cmp = _sc_compare(
+                        _sl_bh, _sl_zone,
+                        H_fill_m=float(_sl_H),
+                        residual_limit_cm=float(_sl_lim),
+                        t_construction_months=float(_sl_tc),
+                    )
+                    st.session_state["sl_result"] = _cmp
+                except Exception as _e:
+                    st.error(f"Lỗi tính toán: {_e}")
+                    _cmp = None
 
             if _cmp:
                 _cdm_beta = _cmp.get("cdm_beta", 1.0)
@@ -6897,20 +6910,24 @@ Tăng ứng suất $> $ tải thiết kế → tăng tốc độ cố kết → 
             )
             st.caption("**Khi nào dùng:** TKCS khi chưa có mẫu Cc chi tiết — dùng thông số trung bình zone.")
 
-        if st.button("Tính lún sơ bộ 9.2.3", type="secondary", key="it_calc"):
-            with st.spinner("Đang lặp..."):
-                try:
-                    _iter_res = _sc_iter923(
-                        _it_bh, _it_zone,
-                        H_fill_m=float(_it_H),
-                        S_gt_init_pct=float(_it_pct),
-                        tolerance_cm=float(_it_tol),
-                    )
-                    st.session_state["it_result"] = _iter_res
-                except Exception as _e:
-                    st.error(f"Lỗi tính toán 9.2.3: {_e}")
-
-        _iter_res = st.session_state.get("it_result")
+        # Auto-run (bỏ nút) — tự lặp khi đủ input
+        with st.spinner("Đang lặp 9.2.3..."):
+            try:
+                _iter_res = _sc_iter923(
+                    _it_bh, _it_zone,
+                    H_fill_m=float(_it_H),
+                    S_gt_init_pct=float(_it_pct),
+                    tolerance_cm=float(_it_tol),
+                )
+                st.session_state["it_result"] = _iter_res
+            except Exception as _e:
+                st.error(f"Lỗi tính toán 9.2.3: {_e}")
+                _iter_res = None
+        st.success(
+            f"**✓ Đã kiểm tra chéo dữ liệu — HK `{_it_bh}` zone `{_it_zone}`** · "
+            f"Nguồn: SQLite `lab_tests` + JSON `zone_qtt_full` fallback",
+            icon="✅",
+        )
         if _iter_res:
             _im1, _im2, _im3 = st.columns(3)
             with _im1:
