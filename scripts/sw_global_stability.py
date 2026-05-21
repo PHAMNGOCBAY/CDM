@@ -470,10 +470,19 @@ def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
         if x >= 0: return sf
         return te + (sf - te) * (x - slope_x) / (0 - slope_x or 1)
 
-    def _bishop_FoS(xc, yc, R, n_sl=30):
-        """Bishop simplified với hiệu chỉnh pore-water pressure (effective stress)."""
+    def _bishop_FoS(xc, yc, R, n_sl=None):
+        """Bishop simplified với effective stress + 1 lát/m.
+
+        Đúng vật lý:
+        - Driving (mẫu số): dùng W_total (trọng lượng đầy đủ, kể cả dưới nước)
+        - Resisting (tử số): dùng W_total − u·b (effective normal force)
+        - u (pore pressure tại đáy) = γ_w × max(0, MNN − y_cir)
+        """
         x_left, x_right = xc - R, xc + R
         if x_right - x_left <= 0: return None
+        # 1 lát / 1m (làm tròn lên)
+        if n_sl is None:
+            n_sl = max(30, int(math.ceil(x_right - x_left)))
         dxs = (x_right - x_left) / n_sl
         _gw = geom.gamma_w
         Fs = 1.5
@@ -491,29 +500,29 @@ def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
                 # MNN tại x_i: Front (x<0) vs Back (x≥0)
                 _water_x = (geom.water_elev_front if x_i < 0
                              else geom.water_elev_back)
-                # γ hiệu dụng trung bình slice — chia 2 phần trên/dưới MNN
-                if y_top <= _water_x:
-                    # Toàn slice dưới MNN → dùng γ_sub
-                    _h_dry, _h_wet = 0.0, h
-                elif y_cir >= _water_x:
-                    # Toàn slice trên MNN → dùng γ
-                    _h_dry, _h_wet = h, 0.0
-                else:
-                    _h_dry = y_top - _water_x
-                    _h_wet = _water_x - y_cir
-                y_mid_dry = (y_top + max(y_cir, _water_x)) / 2
-                y_mid_wet = (min(y_top, _water_x) + y_cir) / 2
-                gam_d, phi, c = _lay_at(y_mid_dry)
-                gam_w, _, _ = _lay_at(y_mid_wet, _water_e=_water_x)
-                # Trọng lượng slice = γ_dry × h_dry + γ_sub × h_wet (theo effective)
-                W_i = (gam_d * _h_dry + gam_w * _h_wet) * dxs
+
+                # Thuộc tính đất tại midpoint slice
+                y_mid = (y_top + y_cir) / 2
+                gam, phi, c = _lay_at(y_mid)
+
+                # Trọng lượng TOTAL (cho driving force) — luôn dùng γ đầy đủ
+                # (đất bão hoà cũng có khối lượng → tạo driving moment)
+                W_total = gam * h * dxs
+
+                # Pore pressure tại đáy slice (effective stress correction cho resisting)
+                u_base = max(0.0, _water_x - y_cir) * _gw
+                # Hiệu chỉnh resisting: W_eff = W_total − u·b (theo effective N')
+                W_eff_resist = max(0.0, W_total - u_base * dxs)
+
                 sin_a = -(x_i - xc) / R
                 cos_a = math.sqrt(max(arg, 1e-9)) / R
                 if cos_a <= 0: continue
                 m_alpha = cos_a + sin_a * math.tan(math.radians(phi)) / Fs
                 if m_alpha <= 1e-6: continue
-                num += (c * dxs + W_i * math.tan(math.radians(phi))) / m_alpha
-                den += W_i * sin_a
+                # Resisting: dùng W_eff (đã trừ buoyancy thông qua u·b)
+                num += (c * dxs + W_eff_resist * math.tan(math.radians(phi))) / m_alpha
+                # Driving: dùng W_total
+                den += W_total * sin_a
             if abs(den) < 1e-6: return None
             new_Fs = num / den
             if abs(new_Fs - Fs) < 0.001: return new_Fs
@@ -526,7 +535,8 @@ def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
             xc = xc_min + ix * dx
             yc = yc_min + iy * dy
             R = math.sqrt(xc * xc + (yc - pile_tip) ** 2)
-            f = _bishop_FoS(xc, yc, R, n_slices)
+            # n_sl=None → tự tính 1 lát/m (max 30 lát tối thiểu)
+            f = _bishop_FoS(xc, yc, R, None)
             if f is not None and 0 < f < best[0]:
                 best = (f, xc, yc, R)
     return best
