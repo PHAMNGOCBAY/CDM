@@ -186,3 +186,121 @@ def add_chart(doc, title, x_labels, datasets, ylabel,
     doc.add_picture(buf, width=Cm(width_cm))
     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     fig_caption(doc, title)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NÂNG CAO — Công thức LaTeX, biểu đồ matplotlib, bảng styled
+# ═══════════════════════════════════════════════════════════════════════════════
+def add_latex_formula(doc, latex_str: str, center=True, width_cm: float | None = None):
+    """Render công thức LaTeX qua matplotlib mathtext → embed PNG vào Word.
+    Sử dụng khi cần công thức chuyên nghiệp (vd phân số, tích phân, σ').
+
+    Ví dụ:
+        add_latex_formula(doc, r"S_1 = \\frac{q \\cdot H_{soft}}{a E_c + (1-a) E_s}")
+    """
+    fig = plt.figure(figsize=(6, 0.9))
+    fig.patch.set_alpha(0)
+    plt.axis('off')
+    # mathtext không cần TeX runtime — built-in matplotlib
+    plt.text(0.5, 0.5, f"${latex_str}$", fontsize=18, ha='center', va='center',
+             usetex=False)  # mathtext built-in
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=200, bbox_inches='tight',
+                transparent=True, pad_inches=0.05)
+    plt.close(fig)
+    buf.seek(0)
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER if center else WD_ALIGN_PARAGRAPH.LEFT
+    p.paragraph_format.space_before = Pt(4)
+    p.paragraph_format.space_after = Pt(4)
+    run = p.add_run()
+    run.add_picture(buf, width=Cm(width_cm) if width_cm else Cm(9))
+
+
+def add_mpl_figure(doc, mpl_fig, title: str | None = None, width_cm: float = 14):
+    """Embed matplotlib Figure → Word (dpi cao, có caption tự đánh số)."""
+    buf = io.BytesIO()
+    mpl_fig.savefig(buf, format='png', dpi=160, bbox_inches='tight',
+                    facecolor='white')
+    buf.seek(0)
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run()
+    run.add_picture(buf, width=Cm(width_cm))
+    if title:
+        fig_caption(doc, title)
+
+
+def styled_table(doc, headers, rows, highlight_rows=None,
+                 col_widths_cm: list | None = None,
+                 header_bg='1F4E79', header_color=(255, 255, 255),
+                 zebra=True):
+    """Bảng dữ liệu chuyên nghiệp:
+    - Header xanh đậm, chữ trắng
+    - Zebra (xen kẽ trắng/xám nhạt) khi zebra=True
+    - Hàng highlight nền vàng nhạt"""
+    n_col = len(headers)
+    t = doc.add_table(rows=len(rows) + 1, cols=n_col)
+    t.style = 'Table Grid'
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    if col_widths_cm:
+        for j, w in enumerate(col_widths_cm[:n_col]):
+            for r in range(len(rows) + 1):
+                t.rows[r].cells[j].width = Cm(w)
+    # Header
+    for j, h in enumerate(headers):
+        c = t.rows[0].cells[j]
+        c.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        p = c.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(str(h))
+        _fmt(run, bold=True, size=10, color=header_color)
+        _shd(c, header_bg)
+    # Data rows
+    for i, row in enumerate(rows):
+        is_hl = highlight_rows and i in highlight_rows
+        for j, val in enumerate(row):
+            c = t.rows[i + 1].cells[j]
+            c.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+            p = c.paragraphs[0]
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.add_run(str(val))
+            _fmt(run, bold=is_hl, size=10)
+            if is_hl:
+                _shd(c, 'FFF2CC')   # vàng nhạt cho hàng kiến nghị
+            elif zebra and i % 2 == 1:
+                _shd(c, 'F4F6F9')   # xám nhạt zebra
+    return t
+
+
+def list_bullet(doc, text: str, indent: float = 1.0, size: int = 11):
+    """Đoạn văn dấu gạch ngang đúng chuẩn báo cáo kỹ thuật VN."""
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = Cm(indent)
+    p.paragraph_format.space_before = Pt(1)
+    p.paragraph_format.space_after = Pt(1)
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    _fmt(p.add_run(f"— {text}"), size=size)
+
+
+def info_box(doc, title: str, lines: list[str], bg='E3F2FD'):
+    """Khung thông tin nổi bật (vd kết quả, kết luận)."""
+    t = doc.add_table(rows=1, cols=1)
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    c = t.rows[0].cells[0]
+    _shd(c, bg)
+    c.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
+    _fmt(c.paragraphs[0].add_run(title), bold=True, size=11)
+    for ln in lines:
+        p = c.add_paragraph()
+        p.paragraph_format.space_before = Pt(1)
+        p.paragraph_format.space_after = Pt(1)
+        _fmt(p.add_run(ln), size=10)
+    return t
+
+
+def conclusion_box(doc, ok: bool, text: str):
+    """Hộp kết luận xanh (đạt) hoặc đỏ (không đạt)."""
+    bg = 'E2EFDA' if ok else 'F8CBAD'
+    info_box(doc, ("KẾT LUẬN: ĐẠT" if ok else "KẾT LUẬN: KHÔNG ĐẠT"),
+             [text], bg=bg)

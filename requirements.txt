@@ -1,7 +1,25 @@
+python-docx==1.2.0
 streamlit>=1.35.0
-numpy>=1.26
-pandas>=2.0
-plotly>=5.0
+numpy>=2.0,<3.0        # PyNite 2.4 + geotech-staff-engineer cần numpy 2.x
+pandas>=2.2.2          # pandas <2.2.2 pin numpy<2
+plotly>=6.0
+matplotlib>=3.9        # matplotlib <3.9 pin numpy<2
 openpyxl>=3.1
-python-docx>=1.0
-matplotlib>=3.8
+xlrd>=2.0
+jinja2>=3.1
+sympy>=1.14
+pydeck>=0.9
+reportlab>=4.0           # PDF fallback (Windows không có GTK3)
+weasyprint>=68.0         # PDF primary (HTML/CSS) — Windows local cần GTK3 runtime
+fpdf2>=2.8
+ezdxf>=1.4
+unidecode>=1.4
+shapely>=2.1
+sqlalchemy>=2.0
+geopandas>=1.0
+geojson>=3.2
+scipy>=1.16            # scipy <1.16 pin numpy<2.3 → conflict PyNite 2.4 (numpy>=2.4)
+anastruct>=1.6
+PyNiteFEA>=2.0      # Solver Winkler chính (§20) — đồng bộ với cdm-deploy
+openseespy>=3.7
+gmsh>=4.13

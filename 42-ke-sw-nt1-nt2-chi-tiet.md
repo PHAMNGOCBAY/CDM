@@ -1,10 +1,59 @@
 # 42 — Tính toán Chi tiết NT1/NT2 Cọc ván SW Kè Công Viên (KE)
 
-**Tiêu chuẩn áp dụng:** TCVN 11823-10:2017, Điều 7.3.8.6.2  
-**Phương pháp:** Alpha (Tomlinson 1980) — sức kháng nhổ cọc bê tông trong đất dính  
-**File engine:** [scripts/ke_sw_nt_calc.py](scripts/ke_sw_nt_calc.py)  
-**Dữ liệu đầu ra:** [data/ke_sw_nt_results.json](data/ke_sw_nt_results.json)  
-**SQLite:** bảng `ke_sw_nt_detail` + `ke_sw_nt2_layers`
+**Tiêu chuẩn áp dụng:** TCVN 11823-10:2017, Điều 7.3.8.6.2 + Điều 7.3.8.6.7
+**Phương pháp đa lớp:**
+- **α-method** (Tomlinson 1980) — lớp sét, Điều 7.3.8.6.2, φ_stat = 0,35
+- **SPT-Meyerhof** (Điều 7.3.8.6.7) — lớp cát, φ_stat = 0,30
+
+**File engine:** [scripts/ke_sw_nt_calc.py](scripts/ke_sw_nt_calc.py)
+**Dữ liệu đầu ra:** [data/ke_sw_nt_results.json](data/ke_sw_nt_results.json)
+**SQLite:** bảng `ke_sw_nt_detail` (33 cột) + `ke_sw_nt2_layers` (14 cột)
+
+## 0. Cập nhật 2026-05-20 — Bổ sung SPT-Meyerhof cho lớp cát
+
+Engine xử lý đa phương pháp tự động theo `symbol`:
+- `SAND_SYMBOLS = {F, 2a, 2b, 2c, 4, 5a, 6, 7}` → SPT-Meyerhof
+- Còn lại (sét/bùn) → α-method
+
+**SPT công thức** (đổi MPa→kPa, ×1000):
+```
+qs[kPa] = 1.9·N₁₆₀   (cọc chiếm chỗ, SW)
+        = 0.96·N₁₆₀  (chữ H / ống hở)
+qp[kPa] = 38·N₁₆₀·(Db/D) ≤ λq = 3200·N₁₆₀ kPa (cát)
+                          ≤ λq = 1800·N₁₆₀ kPa (cát bột)
+Rs[kN] = qs[kPa] × P[m] × L[m]
+Rp[kN] = qp[kPa] × Ap[m²]
+```
+
+**N₁₆₀ hiệu chỉnh** (Điều 4.6.2.4): `CN = √(100/σ'v_kPa)`, clamp [0.5, 2.0]; `N₁₆₀ = CN · N`.
+
+**σ'v hiệu quả**: tích phân γ qua các lớp; dưới MNN dùng γ' = γ − γw; lớp cắt ngang MNN chia đôi tự động.
+
+**φ_stat dynamic** (Bảng 9): sét chiếm ưu thế (sand Rs < 10% & tip sét) → 0,35; cát chiếm ưu thế hoặc tip cát → 0,30.
+
+**Status KE TTHC**: SPT đã import 248 readings (12 HK), `_get_N160_for_layer` auto-activate.
+
+## 0.1 Đầy đủ 4 phương pháp NT2 (Phương án B)
+
+Engine `calc_nt2_all_methods()` so sánh đồng thời:
+
+| Method | Công thức qs | Áp dụng | φ_stat |
+|---|---|---|---|
+| **α** (Tomlinson 1980) | `qs = α(Su)·Su` | Sét — Điều 7.3.8.6.2 | 0,35 |
+| **β** (Esrig & Kirby 1979) | `qs = β(OCR)·σ'v` | Sét — Điều 7.3.8.6.3 | 0,25 |
+| **λ** (Vijayvergiya & Focht 1972) | `qs = λ(L)·(σ'v_avg + 2·Su_avg)` | Cọc ống sét — Điều 7.3.8.6.4 | 0,40 |
+| **SPT-Meyerhof** | `qs = 1.9·N₁₆₀` | Cát — Điều 7.3.8.6.7 | 0,30 |
+| **Auto** (mặc định) | α cho sét + SPT cho cát | TCVN khuyến nghị | dynamic |
+
+**β lookup (Esrig & Kirby Hình 19)**: nội suy theo OCR — β(OCR=1)=0.27 → β(OCR=8)=0.85 → β(OCR≥16)=1.15.
+OCR = PC / σ'v0 lấy từ `lab_tests.PC_kPa` trung bình mỗi lớp.
+
+**λ lookup (Vijayvergiya & Focht Hình 20)**: nội suy theo chiều dài cọc trong sét L —
+λ(L=0)=0.50 → λ(L=10m)=0.27 → λ(L=30m)=0.14 → λ(L≥50m)=0.12.
+
+**Section C.3 UI** (tab Cọc ván SW) cho phép chọn HK + cọc + L → bảng so sánh 5 cột (auto/α/β/λ/SPT) + bar chart RR. Khuyến nghị dùng `auto` cho thiết kế; α/β/λ chỉ tham khảo độ nhạy.
+
+---
 
 ---
 

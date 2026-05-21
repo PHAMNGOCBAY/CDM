@@ -24,9 +24,21 @@ GAMMA_W = 9.81  # kN/m³
 
 @dataclass
 class WaterGeometry:
+    """Hình học cho áp lực nước.
+
+    LƯU Ý quy ước nội bộ module này (legacy — không match CLAUDE.md §20):
+        `soil_level_front` trong module này = "mặt đất đào" (= soil_level_BACK của §20)
+        Back của module này = phía nước cao (= Back của §20 OK)
+        Front của module này = phía nước thấp + đào (= Front của §20 nhưng KHÔNG đắp)
+
+    Khi gọi từ wall_internal_force.py (§20), cần ánh xạ:
+        wall.soil_level_back  → water.soil_level_front (dredge line)
+        wall.water_elev_back  → water.water_elev_back
+        wall.water_elev_front → water.water_elev_front
+    """
     top_elev:          float          # cao độ đỉnh cừ [m]
     pile_length:       float          # chiều dài cừ [m]
-    soil_level_front:  float          # cao độ mặt đất phía Front [m]
+    soil_level_front:  float          # cao độ mặt đất đào (legacy = soil_level_back §20)
     water_elev_front:  float          # mực nước Front [m]
     water_elev_back:   float          # mực nước Back [m]
     gamma_w:           float = GAMMA_W

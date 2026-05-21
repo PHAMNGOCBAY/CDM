@@ -92,9 +92,10 @@ def _side_profile(
         strip_pressures[strip.label] = arr
         total += arr
 
-    F = float(np.trapz(total, -elevs))
+    _trap = getattr(np, "trapezoid", None) or np.trapz   # numpy<2 trapz, ≥2 trapezoid
+    F = float(_trap(total, -elevs))
     if F > 1e-6:
-        z_app = float(np.trapz(total * elevs, -elevs)) / F
+        z_app = float(_trap(total * elevs, -elevs)) / F
     else:
         z_app = soil_level
 

@@ -268,7 +268,7 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 | Zone | Tên BH trong DXF | Regex | SPT blow counts | N_value |
 |------|-----------------|-------|-----------------|---------|
 | NHC | `BH-03`, `BH-05`... | `^BH-\d+$` | 3 cột (N1,N2,N3) sorted+dedup | N2+N3 |
-| KE | `HK1`..`HK12` | `^HK\d+$` | **4 cột**: N_prep(skip),N1,N2,N3 ordered by x | N2+N3 |
+| KE | `HK1`..`HK12` | `^HK\d+$` | **4 cột**: N_prep(skip),N1,N2,N3 ordered by x | **N1+N2** (user 2026-05-20) |
 
 **KE DXF đặc điểm:**
 - Scale: 10 DXF/m (y giảm khi depth tăng), nhiều trang xếp dọc với page gap ~117 DXF
@@ -276,7 +276,121 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 - Layer depths: float ở x_col−35..x_col−5 (giá trị = độ sâu thực, không cần filter depth_y)
 - Descriptions: match MTEXT qua SPT-based depth_map (xử lý multi-page bằng scale≈10 filter)
 
-**File tham chiếu:** [37-ke-borehole-spt-import.md](37-ke-borehole-spt-import.md)
+**File tham chiếu:** [37-ke-borehole-spt-import.md](37-ke-borehole-spt-import.md) + [45-ke-spt-import.md](45-ke-spt-import.md)
+
+**KE SPT (cập nhật 2026-05-20):** dùng file `KE-1. TRỤ_260512 CVTT-TTHC. Tru DC.dxf` (file mới, không phải `BOKE-1...` cũ). Import qua `scripts/import_ke_spt.py`, lưu vào `spt_values`. Convention N: user yêu cầu `N = N1 + N2` (sum cột 2+3, KHÁC chuẩn ASTM N=N2+N3). JSON lưu cả 2 (`N` user + `N_astm` chuẩn). Có 248 readings cho 12 HK.
+
+### 14. Stack Thư viện — Quy tắc Áp dụng cho Mỗi Loại Việc
+
+| Thư viện | Phiên bản | Dùng cho | Đánh giá | Phạm vi áp dụng |
+|---|---|---|---|---|
+| **WeasyPrint** | ≥ 68.0 | **PDF từ HTML/CSS** | ★★★ PDF quality | `scripts/pdf_report.py` — primary engine cho PDF báo cáo (HTML/CSS/Jinja2 pipeline) |
+| **Plotly** | ≥ 6.0 | **Biểu đồ tương tác** | ★★★ professional charts | Biểu đồ trên web (drag/zoom/hover). Static PNG → embed PDF qua `kaleido` |
+| **Matplotlib** | ≥ 3.8 | **Biểu đồ đơn giản / fallback** | ★★ simple & fast | Sơ đồ CDM, soil column, mặt cắt. Fallback khi không có Plotly |
+| **Pandas** | ≥ 2.0 | **Xử lý dữ liệu + Bảng** | ★★★ easy data | `read_csv/read_excel`, `DataFrame.to_html()` cho table render |
+| **SymPy** | ≥ 1.14 | **Công thức symbolic** | ★★★ math symbolic | Derive công thức parametric ($\sigma = f(\epsilon)$), latex output |
+| **LaTeX (MathJax/KaTeX)** | — (built-in) | **Render công thức** | ★★★ standard | `$$...$$` trong `st.markdown` (web) + WeasyPrint MathML (PDF); chuẩn hoá tất cả công thức |
+| **ReportLab** | ≥ 4.0 | **PDF full control (fallback)** | ★★★ full control | `scripts/pdf_export.py` — fallback khi WeasyPrint thiếu native libs (Windows local) |
+| **Kaleido** | ≥ 1.0 | Plotly fig → PNG | — | `fig.to_image(format="png")` để embed vào PDF |
+| **Jinja2** | ≥ 3.1 | HTML template | — | `_REPORT_TEMPLATE` trong `pdf_report.py` |
+| **NumPy** | ≥ 1.26 | Tính toán array | — | Mọi tính toán số |
+| **openpyxl + xlrd** | — | Đọc Excel | — | `.xlsx` (openpyxl), `.xls` cũ (xlrd) |
+
+**Quy tắc bắt buộc**:
+
+1. **PDF báo cáo** → ưu tiên **WeasyPrint** (HTML/CSS render chuẩn web, multi-page, font Vietnamese OK). Fallback **ReportLab** chỉ khi WeasyPrint thiếu native libs (Windows local).
+
+2. **Biểu đồ tương tác trên web** → **Plotly** (drag/zoom/rotate/hover). KHÔNG dùng Matplotlib cho web charts trừ fallback.
+
+3. **Biểu đồ kỹ thuật cố định** (sơ đồ CDM, mặt cắt, soil column) → **Matplotlib** (đơn giản, kiểm soát chính xác layout).
+
+4. **Bảng** → **Pandas DataFrame** → render qua `st.dataframe()` trên web, `df.to_html()` trong PDF. KHÔNG xây bảng thủ công bằng list-of-lists.
+
+5. **Công thức — BẮT BUỘC dùng LaTeX MathJax** (chuẩn render thống nhất toàn dự án):
+
+   | Tình huống | Cú pháp | Ví dụ |
+   |---|---|---|
+   | Inline trong câu văn | `$...$` | `Hệ số $C_c = 0.45$` |
+   | Display block (1 dòng) | `$$...$$` | `$$E_c = 75 \cdot C_c$$` |
+   | Display block (Streamlit) | `st.latex(r"...")` | `st.latex(r"S = \frac{q H}{E}")` |
+   | Có giá trị động | f-string + `st.latex(rf"...")` | `st.latex(rf"q = {q:.1f} \text{{ kPa}}")` |
+   | Symbolic derivation | `sympy.latex(expr)` → embed `$$...$$` | `f"$${sp.latex(expr)}$$"` |
+   | Trong WeasyPrint PDF | LaTeX → MathML qua `latex2mathml` | (tự động trong `pdf_report.py`) |
+
+   **Quy ước ký hiệu**:
+   - Subscript: `\sigma'_{vf}`, `H_{\text{soft}}`, `E_{\text{composite}}` (text mode khi nhiều chữ)
+   - Phân số: `\frac{tử}{mẫu}` hoặc `\dfrac{}{}`(display lớn)
+   - Tích phân/Σ: `\sum_{i=1}^{n}`, `\int_{0}^{H}`
+   - Phẩy (effective stress): `\sigma'_v` (apostrophe sau ký tự)
+   - Đơn vị: `\text{kPa}` (text mode trong math) — KHÔNG ghi đơn vị thô `kPa`
+   - Tham chiếu: `\cdot` (nhân), `\leq`/`\geq` (≤/≥), `\Delta` (Δ)
+
+   **Pitfalls cần tránh**:
+   - **F-string + LaTeX brace conflict**: `\dfrac{X}{Y}` xung đột với f-string interpolation. Fix: tách `st.markdown(r"""...""")` cho LaTeX tĩnh + `st.markdown(f"...")` cho số.
+   - KHÔNG dùng ASCII math (`Si = Hi × Cc/(1+e0) × log(σvf/σv0)`) — chỉ LaTeX.
+   - KHÔNG render công thức bằng Matplotlib `usetex` (chậm + cần TeX runtime). Để LaTeX cho Streamlit/WeasyPrint xử lý.
+
+6. **Pipeline báo cáo PDF chuẩn**: `pandas` (input) → `numpy + sympy` (calc) → `plotly + matplotlib` (figs, → PNG qua kaleido) → `pandas.to_html + CSS` (tables) → `Jinja2` template → `WeasyPrint` HTML→PDF.
+
+**Yêu cầu Cloud**: `packages.txt` cài 7 apt libs cho WeasyPrint (libpango, libcairo, libharfbuzz, libgdk-pixbuf, libffi-dev, shared-mime-info).
+
+**Yêu cầu local Windows**: WeasyPrint cần GTK3 runtime (https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer). Nếu thiếu → tự fallback `pdf_export.py` (reportlab).
+
+### 15. Số liệu Giả định — Lấy từ HK Gần nhất (KHÔNG hardcode)
+
+**Quy tắc:** Mọi giá trị giả định (su, γ, Cc, Cs, e0, PC, Cv, ...) khi hố khoan hiện tại KHÔNG có thí nghiệm cho lớp đó → **BẮT BUỘC tra cứu từ HK gần nhất** cùng khu vực có dữ liệu, từ SQLite. **KHÔNG dùng hằng số hardcode** (`SU_BY_SYMBOL`, `GAMMA_DEFAULT_BY_SYMBOL`...).
+
+**Why:** Hằng số mặc định không phản ánh điều kiện thực địa. Số liệu HK gần nhất (cùng khu vực, cùng symbol đất) đại diện chính xác hơn — đặc biệt cho lớp '1b'/'XMD' thiếu thí nghiệm ở nhiều HK trên tuyến.
+
+**How to apply:**
+
+1. **Priority chain mới** cho mọi field:
+   ```
+   1. HK hiện tại (VST/lab có giá trị) — source = 'VST'/'lab'
+   2. HK gần nhất cùng zone có data (cùng symbol) — source = 'lab_from <BH-name> (d=<dist>m)'
+   3. Mặc định hardcode (CẢNH BÁO mạnh) — source = 'default (warn)'
+   ```
+
+2. **Helper bắt buộc** trong `scripts/ke_sw_nt_calc.py`:
+   ```python
+   def _find_nearest_bh_with_data(bh_name, symbol, field, db_path) -> tuple:
+       """Return (value, source_bh_name, distance_m) — None nếu không tìm thấy.
+       field: 'gamma_kNm3', 'Cu_UU_kPa', 'c_kPa', 'Cc', 'Cs', 'PC_kPa', ...
+       """
+   ```
+   Khoảng cách = √((x1-x2)² + (y1-y2)²) từ `boreholes.x_coord_m`, `y_coord_m`.
+
+3. **Hiển thị rõ trên UI**: warning + tooltip phải ghi:
+   - Tên HK gốc lấy giá trị (vd "KE-HK1")
+   - Khoảng cách (vd "d=85m")
+   - Giá trị + nguồn (vd "γ=15.4 kN/m³ from KE-HK1 (d=85m, lab)")
+
+4. **PDF báo cáo** ghi rõ cột "Nguồn dữ liệu" cho mỗi giá trị giả định.
+
+5. **Cấm**:
+   - Dùng `SU_BY_SYMBOL[symbol]` mà không tìm HK gần trước
+   - Báo cáo giá trị giả định mà không ghi rõ HK gốc
+   - Silent fallback (warning phải hiển thị nổi bật)
+
+### 13. NT2 Cọc đóng — Đa phương pháp TCVN 11823-10:2017
+
+Engine `scripts/ke_sw_nt_calc.py` tự động chọn phương pháp theo `symbol`:
+
+- **Lớp sét** (mặc định) → α-method (Tomlinson 1980), Điều 7.3.8.6.2, φ_stat = 0,35
+- **Lớp cát** (`SAND_SYMBOLS = {F, 2a, 2b, 2c, 4, 5a, 6, 7}`) → SPT-Meyerhof, Điều 7.3.8.6.7, φ_stat = 0,30
+
+**Đơn vị**: TCVN dùng MPa·mm² → engine đổi sang kPa·m² nhân ra kN.
+- `qs_kPa = 1.9·N₁₆₀` (cọc chiếm chỗ — SW); `0.96·N₁₆₀` (chữ H / ống hở)
+- `qp_kPa = 38·N₁₆₀·(Db/D) ≤ 3200·N₁₆₀` (cát) hoặc `≤ 1800·N₁₆₀` (cát bột)
+- `N₁₆₀ = N·CN`, với `CN = √(100/σ'v_kPa)` clamp [0.5, 2.0]
+
+**σ'v effective**: tích phân γ qua các lớp; phần dưới MNN dùng γ' = γ − γw; lớp cắt ngang MNN chia đôi tự động.
+
+**φ_stat dynamic**: sand Rs > 10% hoặc tip cát → 0,30; còn lại 0,35.
+
+Khi thiếu SPT cho lớp cát → Rs/Rp = 0 + warning trong `n2["warnings"]`. Khi import SPT, formula auto-activate.
+
+**File chi tiết:** [42-ke-sw-nt1-nt2-chi-tiet.md](42-ke-sw-nt1-nt2-chi-tiet.md) + [18-driven-pile-TCVN11823.md](18-driven-pile-TCVN11823.md)
 
 **NHC DXF — Tọa độ hố khoan (cập nhật 2026-05-19):**
 
@@ -707,6 +821,48 @@ Trong đó:
 #### Bảng ký hiệu cuối section
 
 Dùng bảng Markdown 3 cột: `$Ký hiệu$` | `Đơn vị` | `Mô tả`. Đặt sau nhóm công thức liên quan.
+
+---
+
+### 20. Quy ước Front / Back — Tường Cừ SW (BẮT BUỘC toàn dự án)
+
+Áp dụng cho mọi script, JSON, biểu đồ, app liên quan đến tường cừ SW / sheet pile / tường chắn.
+
+**Cừ SW là tâm sơ đồ.** Mặt đất + lớp đất hai bên thường khác nhau (Front có fill cao hơn, Back đào xuống thấp).
+
+| Phía | Vị trí trên sơ đồ | Bản chất vật lý | Áp lực chính | Có fill ? | Màu chuẩn |
+|---|---|---|---|---|---|
+| **Front** | **TRÁI** | Đất đắp / mặt đường / xe chạy / người đi / tải trọng công trình | **Active (Ka)** — đẩy cừ về phía Back | **Có** (fill cao hơn cừ) | Tomato / `#1a8cff` |
+| **Back** | **PHẢI** | Đào / sông / mặt nước hở | **Passive (Kp)** — chỉ phát triển dưới đáy đào, kháng lại chuyển vị cừ | Không | Green / `steelblue` |
+
+**Quy tắc đặt tên biến trong code:**
+
+| Biến / dataclass field | Ý nghĩa |
+| --- | --- |
+| `soil_level_front` | Cao độ mặt đất phía Front = cao độ chân đất đắp (THƯỜNG LÀ MẶT ĐẤT TỰ NHIÊN, cao) |
+| `soil_level_back` | Cao độ mặt đất phía Back = cao độ đáy đào (THẤP HƠN front) |
+| `water_elev_front` / `water_elev_back` | Mực nước 2 phía (có thể khác) |
+| `front_layers` | Danh sách lớp đất tự nhiên phía Front (dưới `soil_level_front`) |
+| `back_layers` | Danh sách lớp đất tự nhiên phía Back (dưới `soil_level_back`) |
+| `fill` | Lớp đất đắp phía Front, nằm từ `soil_level_front` lên đến `top_elev` |
+| `surcharge_front` | Tải mặt phân bố phía Front (kPa) — tải hoạt, xe, người |
+| `sv_front`, `sigma_h_active` | Ứng suất đứng + áp lực ngang Active phía Front |
+| `sv_back`, `sigma_h_passive` | Ứng suất đứng + áp lực ngang Passive phía Back |
+
+**Áp lực NET tổng hợp (kN/m²) — chọn theo mô hình:**
+
+| Mô hình | Công thức p_net | Ghi chú |
+| --- | --- | --- |
+| `mode='winkler'` (có lò xo nền) | `p_net = sigma_h_active + p_w_front − p_w_back` | Lò xo Winkler tự đảm nhiệm phản kháng bị động. KHÔNG được trừ `sigma_h_passive` ở đây — sẽ DOUBLE-COUNT. |
+| `mode='free_earth'` (không lò xo, tính D ngàm) | `p_net = (sigma_h_active + p_w_front) − (sigma_h_passive + p_w_back)` | Cổ điển, cân bằng tĩnh ΣM=0 quanh điểm xoay. |
+
+**Quy ước dấu:** Net dương → đẩy cừ từ Front sang Back (theo chiều tải trọng đất đắp + xe). Nội lực M dương khi sợi căng phía Front.
+
+**File tham chiếu:**
+- `scripts/wall_internal_force.py` — solver Winkler PyNiteFEA + tải phân bố
+- `scripts/earth_pressure.py` — engine áp lực đất Active/Passive
+- `scripts/water_pressure.py` — áp lực nước Hydrostatic/Seepage 2 phía
+- Memory: `memory/feedback_front_back_convention.md`
 
 ---
 
