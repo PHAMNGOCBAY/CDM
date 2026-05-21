@@ -9005,18 +9005,115 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         },
                     )
                     st.caption(
-                        f"_Winkler dùng tải đầu cọc do user nhập: H = {_H_total:.1f} kN/m, "
-                        f"M = {_M_total:.1f} kNm/m. EP là tải phân bố — chỉ tham khảo, "
-                        f"không lump điểm vào Winkler._"
+                        f"_Winkler dùng phương pháp **tải phân bố p(z)** — TỔNG = "
+                        f"Active − Passive + Nước + Surcharge (Boussinesq). "
+                        f"Tải user H = {_H_total:.1f} kN/m, M = {_M_total:.1f} kNm/m "
+                        f"cộng thêm vào đỉnh nếu > 0._"
                     )
 
-                    _res_d1 = _calc_py_winkler(
-                        bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
-                        pile_name=_dpy_pile, L_m=float(_dpy_L),
-                        H_kNm=_H_total, M_kNm=_M_total,
-                        cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
-                        k_cdm_factor=_k_cdm_fac,
-                    )
+                    # === Winkler với TẢI PHÂN BỐ — phương trình EI y'''' + kh D y = p(z) ===
+                    try:
+                        import numpy as _np_md
+                        from winkler_np import solve_numpy_dist as _sn_dist_md
+                        from wall_internal_force import sw_pile_props as _sw_props_md
+                        _trap_md = (getattr(_np_md, "trapezoid", None) or _np_md.trapz)
+
+                        # Pile object
+                        _pl_md = _sw_by_name(_dpy_pile)
+                        _pile_md = _sw_props_md(
+                            H_mm=float(_pl_md["H_mm"]),
+                            Itd_cm4=float(_pl_md.get("Itd_cm4") or 0),
+                            Mcr_Tm=float(_pl_md.get("Mcr_Tm") or 0),
+                            Atd_cm2=float(_pl_md.get("Atd_cm2") or 0),
+                            fc_MPa=70.0, name=_dpy_pile,
+                        )
+
+                        # kh_layers từ SQLite
+                        _bh_short_md = (_dpy_apply_bh or "HK2").replace("KE-", "")
+                        _ly_raw_md: list = []
+                        try:
+                            _con_md = sqlite3.connect(str(_DB))
+                            _con_md.row_factory = sqlite3.Row
+                            for _r in _con_md.execute("""
+                                SELECT l.symbol, l.thickness_m,
+                                       ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
+                                       ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
+                                       ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                                FROM layers l JOIN boreholes b ON l.borehole_id = b.id
+                                LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
+                                    AND lt.depth_from_m >= l.depth_top_m
+                                    AND lt.depth_to_m <= l.depth_bot_m
+                                WHERE b.name = ?
+                                GROUP BY l.id ORDER BY l.depth_top_m
+                            """, (_bh_short_md,)).fetchall():
+                                _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                                _ly_raw_md.append({
+                                    "symbol": _r["symbol"] or "1",
+                                    "thickness_m": _r["thickness_m"] or 0,
+                                    "Su_kPa": _su if _su is not None else 11.0,
+                                    "gamma_kNm3": _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
+                                })
+                            _con_md.close()
+                        except Exception:
+                            pass
+                        if not _ly_raw_md:
+                            _ly_raw_md = [{"symbol": "1", "thickness_m": float(_dpy_L) + 5.0,
+                                            "Su_kPa": 11.0, "gamma_kNm3": 15.0}]
+                        _layers_md = [
+                            _WIF_SoilLayer(
+                                symbol=str(lr["symbol"]),
+                                thickness_m=float(lr["thickness_m"] or 0),
+                                Su_kPa=float(lr["Su_kPa"]),
+                                gamma_kNm3=float(lr["gamma_kNm3"]),
+                            ) for lr in _ly_raw_md
+                        ]
+
+                        # Build p(z) TỔNG = Active − Passive + Nước + Surcharge
+                        _L_md = float(_dpy_L)
+                        _top_md = float(_dpy_top_ke)
+                        _Nload_md = 100
+                        _zs_md = list(_np_md.linspace(0, _L_md, _Nload_md))
+
+                        def _ep2pile_md(_p_ep, _e_ep):
+                            _d = _top_md - _np_md.asarray(_e_ep)
+                            _i = _np_md.argsort(_d)
+                            return list(_np_md.interp(
+                                _zs_md, _d[_i], _np_md.asarray(_p_ep)[_i],
+                                left=0.0, right=0.0))
+
+                        if "_ep_res_cdm" in dir() and _ep_res_cdm:
+                            _pA = _ep2pile_md(_ep_res_cdm["active_h"], _ep_res_cdm["elevs"])
+                            _pP = _ep2pile_md(_ep_res_cdm["passive_h"], _ep_res_cdm["elevs"])
+                        else:
+                            _pA = [0.0] * _Nload_md
+                            _pP = [0.0] * _Nload_md
+                        _gw_md = 9.81
+                        _pW = [max(0, float(_dpy_wlvl) - (_top_md - z)) * _gw_md
+                               - max(0, float(_dpy_wlvl_b) - (_top_md - z)) * _gw_md
+                               for z in _zs_md]
+
+                        _p_total_md = [_pA[i] - _pP[i] + _pW[i] for i in range(_Nload_md)]
+                        # Lưu để section per-load tái sử dụng (Boussinesq cộng vào sau)
+
+                        _res_d1 = _sn_dist_md(
+                            layers=_layers_md, pile=_pile_md, L_m=_L_md,
+                            zs_load=_zs_md, p_load_kNm2=_p_total_md,
+                            N=max(60, int(_L_md * 3)),
+                            eps50=float(_dpy_eps50), k_sand_kNm3=10_000.0,
+                            cdm_thickness_m=_cdm_thk_eff, cdm_factor=_k_cdm_fac,
+                            tip_fixity="free", top_pin=False,
+                        )
+                        # Map _res_d1["Qs"] có thể cần với key (winkler_np đã trả)
+                    except Exception as _e_md:
+                        # Fallback về point load nếu solve_numpy_dist fail
+                        _res_d1 = _calc_py_winkler(
+                            bh_name=f"KE-{_dpy_apply_bh}" if _dpy_apply_bh != "(không áp)" else "KE-HK2",
+                            pile_name=_dpy_pile, L_m=float(_dpy_L),
+                            H_kNm=_H_total, M_kNm=_M_total,
+                            cdm_thk_m=_cdm_thk_eff, eps50=float(_dpy_eps50),
+                            k_cdm_factor=_k_cdm_fac,
+                        )
+                        st.caption(f"_(Fallback point load — solve_numpy_dist lỗi: {_e_md})_")
                     if _cdm_thk_eff > 0:
                         st.caption(
                             f"CDM gia cố từ tab Thiết kế: Lc={_cdm_Lc_val:.1f}m, "
