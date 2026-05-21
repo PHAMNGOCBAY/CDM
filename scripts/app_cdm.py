@@ -8977,24 +8977,30 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     except Exception:
                         pass
                     _F_bs_v = float(locals().get("_F_bs", 0.0) or 0.0)
-                    _F_sum_check = _F_act_v - _F_pas_v + _F_water_v + _F_bs_v
+                    # TỔNG đưa vào Winkler = Active + Nước + Surcharge (KHÔNG có Passive)
+                    _F_sum_load = _F_act_v + _F_water_v + _F_bs_v
 
                     _ld_rows = [
                         {"Loại tải": "Áp lực chủ động Active (Front)",
                          "F (kN/m)": _F_act_v,
-                         "Chiều": "→ Back (đẩy cừ)"},
-                        {"Loại tải": "Áp lực bị động Passive (Back, kháng)",
+                         "Chiều": "→ Back (đẩy cừ)",
+                         "Đưa vào Winkler": "Có"},
+                        {"Loại tải": "Áp lực bị động Passive (Back)",
                          "F (kN/m)": _F_pas_v,
-                         "Chiều": "← Front (giữ cừ)"},
+                         "Chiều": "← Front (giữ cừ)",
+                         "Đưa vào Winkler": "Không (lò xo nền đã đảm nhận)"},
                         {"Loại tải": "Chênh lệch nước Front − Back",
                          "F (kN/m)": _F_water_v,
-                         "Chiều": "→ Back" if (_wlvl_s_v := float(_dpy_wlvl)) > float(_dpy_wlvl_b) else "← Front"},
+                         "Chiều": "→ Back" if (_wlvl_s_v := float(_dpy_wlvl)) > float(_dpy_wlvl_b) else "← Front",
+                         "Đưa vào Winkler": "Có"},
                         {"Loại tải": "Boussinesq từ tải khai thác q",
                          "F (kN/m)": _F_bs_v,
-                         "Chiều": "→ Back"},
-                        {"Loại tải": "TỔNG NET = Active − Passive + Nước + q",
-                         "F (kN/m)": _F_sum_check,
-                         "Chiều": "→ Back" if _F_sum_check > 0 else "← Front"},
+                         "Chiều": "→ Back",
+                         "Đưa vào Winkler": "Có"},
+                        {"Loại tải": "TỔNG TẢI WINKLER = Active + Nước + q",
+                         "F (kN/m)": _F_sum_load,
+                         "Chiều": "→ Back" if _F_sum_load > 0 else "← Front",
+                         "Đưa vào Winkler": "—"},
                     ]
                     st.markdown("**Chi tiết các loại tải trọng tác dụng lên cừ:**")
                     st.dataframe(
@@ -9092,7 +9098,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                - max(0, float(_dpy_wlvl_b) - (_top_md - z)) * _gw_md
                                for z in _zs_md]
 
-                        _p_total_md = [_pA[i] - _pP[i] + _pW[i] for i in range(_Nload_md)]
+                        # KHÔNG cộng Passive vào tải — lò xo Winkler đã đảm nhận
+                        # phản kháng bị động tự động (xem wall_internal_force.py:225-227).
+                        # Cộng Passive ở đây → double-count.
+                        _p_total_md = [_pA[i] + _pW[i] for i in range(_Nload_md)]
                         # Lưu để section per-load tái sử dụng (Boussinesq cộng vào sau)
 
                         _res_d1 = _sn_dist_md(
@@ -9557,21 +9566,21 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             else:
                                 _p_surch_z = [0.0] * _N_load
 
-                            # TỔNG = Active − Passive + Nước + Surcharge
-                            _p_total_z = [_p_act_z[i] - _p_pas_z[i] + _p_water_z[i] + _p_surch_z[i]
+                            # TỔNG = Active + Nước + Surcharge
+                            # KHÔNG cộng Passive — lò xo Winkler đã đảm nhận phản
+                            # kháng bị động tự động (double-count nếu cộng vào).
+                            _p_total_z = [_p_act_z[i] + _p_water_z[i] + _p_surch_z[i]
                                            for i in range(_N_load)]
 
-                            # 4. Chạy solve_numpy_dist cho từng thành phần
+                            # 4. Chạy solve_numpy_dist cho từng thành phần (KHÔNG Passive)
                             _comps_dist = [
                                 ("Active",    _p_act_z),
-                                ("Passive",   [-p for p in _p_pas_z]),  # kháng → âm
                                 ("Nước",      _p_water_z),
                                 ("Surcharge", _p_surch_z),
                                 ("TỔNG",      _p_total_z),
                             ]
                             _comp_colors_dl = {
                                 "Active":    "#C62828",
-                                "Passive":   "#1565C0",
                                 "Nước":      "#0277BD",
                                 "Surcharge": "#FF6F00",
                                 "TỔNG":      "#1B5E20",
