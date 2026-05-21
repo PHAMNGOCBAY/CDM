@@ -8059,9 +8059,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 Atd_cm2=float(_pl_obj.get("Atd_cm2") or 0),
                 fc_MPa=70.0, name=pile_name,
             )
-            # Layers từ DB — query trực tiếp, KHÔNG dùng _load_layers (cached)
-            # để tránh nested cache + lỗi sqlite trên Streamlit Cloud
-            _bh_short = bh_name.replace("KE-", "")
+            # Layers từ DB — SQLite lưu name = 'KE-HKx' (đầy đủ), KHÔNG strip prefix
+            _bh_short = bh_name if bh_name.startswith("KE-") else f"KE-{bh_name}"
             _ly_raw = []
             try:
                 _con_py = sqlite3.connect(str(_DB))
@@ -8271,7 +8270,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 try:
                     # ε₅₀ ≈ Cu / E (từ nén 3 trục UU — slope ban đầu đường ứng suất biến dạng)
                     _con_e = sqlite3.connect(str(_DB))
-                    _bh_e = _hk_iter.replace("KE-", "")
+                    _bh_e = (f"KE-{_hk_iter}" if not _hk_iter.startswith("KE-")
+                              else _hk_iter)
                     _row_e = _con_e.execute("""
                         SELECT AVG(E_kPa) AS E_avg, AVG(Cu_UU_kPa) AS Cu_avg
                         FROM lab_tests lt
@@ -9087,7 +9087,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         )
 
                         # kh_layers từ SQLite
-                        _bh_short_md = (_dpy_apply_bh or "HK2").replace("KE-", "")
+                        _bh_short_md = (f"KE-{_dpy_apply_bh}"
+                                         if _dpy_apply_bh and not _dpy_apply_bh.startswith("KE-")
+                                         else (_dpy_apply_bh or "KE-HK2"))
                         _ly_raw_md: list = []
                         try:
                             _con_md = sqlite3.connect(str(_DB))
@@ -9662,7 +9664,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             )
 
                             # 2. Build kh_layers (cùng query với _calc_py_winkler)
-                            _bh_short_dl = (_dpy_apply_bh or "HK2").replace("KE-", "")
+                            _bh_short_dl = (f"KE-{_dpy_apply_bh}"
+                                             if _dpy_apply_bh and not _dpy_apply_bh.startswith("KE-")
+                                             else (_dpy_apply_bh or "KE-HK2"))
                             _ly_raw_dl: list = []
                             try:
                                 _con_dl = sqlite3.connect(str(_DB))
@@ -10160,7 +10164,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     try:
                         _con_e = sqlite3.connect(str(_DB))
                         _con_e.row_factory = sqlite3.Row
-                        _bh_short_e = _hk_iter.replace("KE-", "")
+                        # SQLite lưu name = 'KE-HKx' (có prefix), không phải 'HKx'
+                        _bh_full_e = (f"KE-{_hk_iter}" if not _hk_iter.startswith("KE-")
+                                       else _hk_iter)
                         _rows_e = _con_e.execute("""
                             SELECT l.symbol, l.depth_top_m, l.depth_bot_m,
                                    ROUND(AVG(lt.gamma_kNm3), 2) AS gam,
@@ -10175,7 +10181,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 AND lt.depth_to_m <= l.depth_bot_m
                             WHERE b.name = ?
                             GROUP BY l.id ORDER BY l.depth_top_m
-                        """, (_bh_short_e,)).fetchall()
+                        """, (_bh_full_e,)).fetchall()
                         _con_e.close()
                         if _rows_e and _rows_e[0]["bh_elev"] is not None:
                             _bh_elev_e = float(_rows_e[0]["bh_elev"])
