@@ -10199,6 +10199,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         if _rows_e and _rows_e[0]["bh_elev"] is not None:
                             _bh_elev_e = float(_rows_e[0]["bh_elev"])
 
+                        # Back side: bắt đầu từ lớp BÙN (1, XMD) trở xuống.
+                        # Trên Zb đã đào hết — không có Fill / lớp F phía Back.
+                        _back_started = False
                         for _r in _rows_e:
                             _sym = (_r["symbol"] or "").upper()
                             _e_top_f = _bh_elev_e - float(_r["depth_top_m"] or 0)
@@ -10222,16 +10225,28 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 _c_f = float(_r["c"]) if _r["c"] else 0.0
                                 _c_b = _c_f
                             _front_s.append(_EL_S(_e_bot_f, _gam, _gam_sub, _phi_f, _c_f))
-                            # Back side: shift elev theo (Zb - Z)
-                            _shift = _Zb_s - _Z_s
-                            _back_s.append(_EL_S(_e_bot_f + _shift, _gam, _gam_sub, _phi_f, _c_b))
+
+                            # Back: BẮT ĐẦU từ lớp bùn ("1", "XMD") trở xuống
+                            # Skip Fill ("F") + lớp trên bùn (vd "2a" ở đỉnh nếu có)
+                            if _sym in {"1", "XMD"}:
+                                _back_started = True
+                            if _back_started:
+                                _shift = _Zb_s - _Z_s
+                                _back_s.append(_EL_S(_e_bot_f + _shift,
+                                                      _gam, _gam_sub, _phi_f, _c_b))
+                                _c_b_disp = f"{_c_b:.0f}"
+                                _on_back = "✓"
+                            else:
+                                _c_b_disp = "— (skip)"
+                                _on_back = "✗"
                             _layers_log.append({
                                 "Symbol": _sym, "z_top (m)": f"{_e_top_f:+.2f}",
                                 "z_bot (m)": f"{_e_bot_f:+.2f}",
                                 "γ": f"{_gam:.1f}", "γ_sub": f"{_gam_sub:.1f}",
                                 "φ": f"{_phi_f:.1f}",
                                 "c Front (kPa)": f"{_c_f:.0f}",
-                                "c Back (kPa)":  f"{_c_b:.0f}",
+                                "c Back (kPa)":  _c_b_disp,
+                                "Có ở Back?": _on_back,
                             })
                     except Exception as _e_load_e:
                         st.caption(f"_(Không tải được lớp đất từ SQLite: {_e_load_e})_")
@@ -10242,6 +10257,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _EL_S(_Z_s - _H1_s, 15.0, 5.0, 0.0, _su_F or 10.0),
                             _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
                         ]
+                        # Back: chỉ bùn + cát dưới — KHÔNG có Fill
                         _back_s = [
                             _EL_S(_Zb_s - _H1_s, 15.0, 5.0, 0.0, _su_B or _su_F or 10.0),
                             _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
@@ -10250,11 +10266,14 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             {"Symbol": "1", "z_top (m)": f"{_Z_s:+.2f}",
                              "z_bot (m)": f"{_Z_s - _H1_s:+.2f}",
                              "γ": "15.0", "γ_sub": "5.0", "φ": "0.0",
-                             "c Front (kPa)": f"{_su_F:.0f}", "c Back (kPa)": f"{_su_B:.0f}"},
+                             "c Front (kPa)": f"{_su_F:.0f}",
+                             "c Back (kPa)": f"{_su_B:.0f}",
+                             "Có ở Back?": "✓"},
                             {"Symbol": "2", "z_top (m)": f"{_Z_s - _H1_s:+.2f}",
                              "z_bot (m)": f"{_pile_bot_s - 1.0:+.2f}",
                              "γ": "18.0", "γ_sub": "8.0", "φ": "30.0",
-                             "c Front (kPa)": "0", "c Back (kPa)": "0"},
+                             "c Front (kPa)": "0", "c Back (kPa)": "0",
+                             "Có ở Back?": "✓"},
                         ]
                         st.caption("_(Dùng layers giả định — không có data SQLite cho HK này.)_")
 
@@ -10436,10 +10455,15 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                               edgecolor="none", alpha=0.7))
                                     _e_cur = _e_bot
 
-                            # Front (trái cừ, từ mặt đất Z xuống)
+                            # Front (trái cừ, từ mặt đất Z xuống) — dùng full _layers_log
                             _draw_layers_side(_front_s, _x_min, -0.3, _Z_s)
-                            # Back (phải cừ, từ mặt đất Zb xuống)
+                            # Back (phải cừ, từ Zb xuống) — chỉ bùn trở xuống
+                            # _back_s có thể ngắn hơn _front_s do skip Fill/F
+                            _back_log = [l for l in _layers_log if l.get("Có ở Back?") == "✓"]
+                            _layers_log_save = _layers_log
+                            _layers_log = _back_log
                             _draw_layers_side(_back_s, 0.3, _x_max, _Zb_s)
+                            _layers_log = _layers_log_save
 
                             # Đất đắp Fill (Front, từ Z lên đến đỉnh kè)
                             if _top_s > _Z_s:
