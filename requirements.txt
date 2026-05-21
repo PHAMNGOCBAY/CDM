@@ -11,7 +11,6 @@ jinja2>=3.1
 sympy>=1.14
 reportlab>=4.0         # PDF fallback (Windows không có GTK3)
 weasyprint>=68.0       # PDF primary (HTML/CSS) — cần apt libs (xem packages.txt)
-brotlicffi>=1.0        # WeasyPrint 68+ WOFF2 fonts — Linux-compatible vs brotli
 fpdf2>=2.8
 ezdxf>=1.4
 unidecode>=1.4
