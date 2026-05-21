@@ -9642,6 +9642,142 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                     _plt_dl_mpl.close(_fig_dl)
                                 except Exception as _e_dl_mpl:
                                     st.caption(f"_(Không vẽ được biểu đồ per-tải phân bố: {_e_dl_mpl})_")
+
+                                # ───────────────────────────────────────────────
+                                # So sánh 3 trường hợp BC chân cừ với TỔNG tải
+                                # ───────────────────────────────────────────────
+                                try:
+                                    st.markdown("##### So sánh 3 trường hợp liên kết đáy cọc")
+                                    st.caption(
+                                        "Cùng tổ hợp tải TỔNG p(z), chạy Winkler với "
+                                        "**Free** (đáy tự do — cừ thường), "
+                                        "**Fixed** (chân ngàm — vd vào CDM cứng), "
+                                        "**Cantilever** (đỉnh ngàm — có dầm mũ)."
+                                    )
+                                    _bc_cases = [
+                                        ("Free",       {"tip_fixity": "free",  "top_pin": False}),
+                                        ("Fixed",      {"tip_fixity": "fixed", "top_pin": False}),
+                                        ("Cantilever", {"tip_fixity": "free",  "top_pin": True}),
+                                    ]
+                                    _bc_colors = {"Free": "#1565C0",
+                                                   "Fixed": "#C62828",
+                                                   "Cantilever": "#2E7D32"}
+                                    _bc_results: dict = {}
+                                    for _bc_nm, _bc_kw in _bc_cases:
+                                        try:
+                                            _r_bc = _sn_dist(
+                                                layers=_layers_kh_dl, pile=_pile_dl,
+                                                L_m=_L_dl,
+                                                zs_load=_zs_load_dl, p_load_kNm2=_p_total_z,
+                                                N=_N_fem,
+                                                eps50=float(_dpy_eps50),
+                                                k_sand_kNm3=10_000.0,
+                                                cdm_thickness_m=_cdm_thk_eff,
+                                                cdm_factor=_k_cdm_fac,
+                                                **_bc_kw,
+                                            )
+                                            if "error" not in _r_bc:
+                                                _bc_results[_bc_nm] = _r_bc
+                                        except Exception as _e_bc:
+                                            st.caption(f"_({_bc_nm}: {_e_bc})_")
+
+                                    if _bc_results:
+                                        # Bảng so sánh 3 BC
+                                        _Mcr_bc = next(iter(_bc_results.values()))["Mcr_kNm"]
+                                        _rows_bc = []
+                                        for _bc_nm, _r_bc in _bc_results.items():
+                                            _u = _r_bc["u_max_mm"]
+                                            _M = _r_bc["M_max_kNm"]
+                                            _Q = _r_bc.get("Q_max_kN", 0.0)
+                                            _ok_u = abs(_u) < 25.0
+                                            _ok_M = _M < _Mcr_bc if _Mcr_bc > 0 else False
+                                            _rows_bc.append({
+                                                "Liên kết đáy": _bc_nm,
+                                                "u_top (mm)":   _r_bc["u_top_mm"],
+                                                "u_max (mm)":   _u,
+                                                "M_max (kNm)":  _M,
+                                                "M/Mcr":        _M / _Mcr_bc if _Mcr_bc else 0.0,
+                                                "Q_max (kN)":   _Q,
+                                                "Kết quả":      "Đạt" if (_ok_u and _ok_M) else "Không đạt",
+                                            })
+                                        def _hl_bc(val):
+                                            if val == "Đạt":      return "background-color:#d4edda; color:#155724"
+                                            if val == "Không đạt": return "background-color:#f8d7da; color:#721c24"
+                                            return ""
+                                        st.dataframe(
+                                            pd.DataFrame(_rows_bc).style.map(_hl_bc, subset=["Kết quả"]),
+                                            use_container_width=True, hide_index=True,
+                                            column_config={
+                                                "u_top (mm)":  st.column_config.NumberColumn(format="%.2f"),
+                                                "u_max (mm)":  st.column_config.NumberColumn(format="%.2f"),
+                                                "M_max (kNm)": st.column_config.NumberColumn(format="%.1f"),
+                                                "M/Mcr":       st.column_config.NumberColumn(format="%.2f"),
+                                                "Q_max (kN)":  st.column_config.NumberColumn(format="%.1f"),
+                                            },
+                                        )
+
+                                        # Chart 3 panel: u, M, Q — 3 đường BC chồng
+                                        try:
+                                            _fig_bc, _ax_bc = _plt_dl_mpl.subplots(
+                                                1, 3, figsize=(13, 6.0), sharey=True,
+                                            )
+                                            _xmax_u_bc = max((max(abs(u) for u in r["ux"])
+                                                                for r in _bc_results.values()),
+                                                              default=10.0) * 1.1
+                                            _xmax_M_bc = max((max(abs(m) for m in r["Ms"])
+                                                                for r in _bc_results.values()),
+                                                              default=10.0) * 1.1
+                                            _xmax_Q_bc = max((max(abs(q) for q in r.get("Qs", [0]))
+                                                                for r in _bc_results.values()),
+                                                              default=10.0) * 1.1
+                                            for _i_bc, (_ax_pp, _key, _xlbl, _xmax_bc) in enumerate([
+                                                (_ax_bc[0], "ux", "u (mm)", _xmax_u_bc),
+                                                (_ax_bc[1], "Ms", "M (kNm)", _xmax_M_bc),
+                                                (_ax_bc[2], "Qs", "Q (kN)", _xmax_Q_bc),
+                                            ]):
+                                                _refs_dl(_ax_pp)
+                                                for _bc_nm, _r_bc in _bc_results.items():
+                                                    _zs_b = _r_bc["zs"]
+                                                    if _key == "ux":
+                                                        _ys_b = [_top_dl - z for z in _zs_b]
+                                                        _xs_b = _r_bc["ux"]
+                                                    else:
+                                                        _ys_b = [_top_dl - (_zs_b[i] + _zs_b[i + 1]) / 2
+                                                                  for i in range(len(_zs_b) - 1)]
+                                                        _xs_b = _r_bc.get(_key, [])
+                                                    if not _xs_b:
+                                                        continue
+                                                    _ax_pp.plot(
+                                                        _xs_b, _ys_b,
+                                                        color=_bc_colors[_bc_nm], lw=2.0,
+                                                        label=_bc_nm,
+                                                    )
+                                                _ax_pp.axvline(0, color="black", lw=0.5)
+                                                _ax_pp.set_xlim(-_xmax_bc, _xmax_bc)
+                                                _ax_pp.set_xlabel(_xlbl)
+                                                _ax_pp.grid(alpha=0.3)
+                                            _ax_bc[0].set_ylabel("Cao độ (m)")
+                                            _ax_bc[0].set_title("u(z)", fontsize=10)
+                                            _ax_bc[1].set_title("M(z)", fontsize=10)
+                                            _ax_bc[2].set_title("Q(z)", fontsize=10)
+                                            _ax_bc[0].axvline(25, color="red", linestyle="--", lw=0.8, alpha=0.6)
+                                            _ax_bc[0].axvline(-25, color="red", linestyle="--", lw=0.8, alpha=0.6)
+                                            if _Mcr_bc > 0:
+                                                _ax_bc[1].axvline(_Mcr_bc, color="red", linestyle="--", lw=0.8, alpha=0.6)
+                                                _ax_bc[1].axvline(-_Mcr_bc, color="red", linestyle="--", lw=0.8, alpha=0.6)
+                                            _ax_bc[0].legend(fontsize=8, loc="lower left",
+                                                              framealpha=0.85, title="BC")
+                                            _fig_bc.suptitle(
+                                                f"So sánh BC chân cừ — {_dpy_pile} L={_L_dl:.0f}m (tải TỔNG p(z))",
+                                                fontsize=10, fontweight="bold",
+                                            )
+                                            _plt_dl_mpl.tight_layout()
+                                            st.pyplot(_fig_bc, use_container_width=True)
+                                            _plt_dl_mpl.close(_fig_bc)
+                                        except Exception as _e_bc_chart:
+                                            st.caption(f"_(Không vẽ được chart BC: {_e_bc_chart})_")
+                                except Exception as _e_bc_all:
+                                    st.caption(f"_(Không chạy được so sánh BC: {_e_bc_all})_")
                         except Exception as _e_per_load:
                             st.caption(f"_(Không vẽ được phân tích per-tải phân bố: {_e_per_load})_")
 
