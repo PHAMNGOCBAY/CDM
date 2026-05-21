@@ -8255,6 +8255,40 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 except Exception:
                     _dpy_su_default = 80.0
                 _dpy_apply_bh = _hk_iter
+
+                # ── Auto-fill ε₅₀ theo thí nghiệm 3 trục SQLite hoặc trạng thái đất ─
+                def _eps50_from_state(_su_kPa: float) -> float:
+                    """Matlock 1970 / API: ε₅₀ theo trạng thái sét (Su)."""
+                    if _su_kPa < 12.0:   return 0.020   # sét rất yếu
+                    if _su_kPa < 24.0:   return 0.020   # sét yếu
+                    if _su_kPa < 48.0:   return 0.010   # sét trung bình
+                    if _su_kPa < 96.0:   return 0.007   # sét chặt
+                    if _su_kPa < 192.0:  return 0.005   # sét rất chặt
+                    return 0.004                          # sét cứng
+
+                _eps50_default = _eps50_from_state(_dpy_su_default)
+                _eps50_source = "lib"   # "triaxial" hoặc "lib"
+                try:
+                    # ε₅₀ ≈ Cu / E (từ nén 3 trục UU — slope ban đầu đường ứng suất biến dạng)
+                    _con_e = sqlite3.connect(str(_DB))
+                    _bh_e = _hk_iter.replace("KE-", "")
+                    _row_e = _con_e.execute("""
+                        SELECT AVG(E_kPa) AS E_avg, AVG(Cu_UU_kPa) AS Cu_avg
+                        FROM lab_tests lt
+                        JOIN boreholes b ON lt.borehole_id = b.id
+                        WHERE b.name = ?
+                          AND lt.depth_from_m <= ?
+                          AND lt.E_kPa > 0 AND lt.Cu_UU_kPa > 0
+                    """, (_bh_e, _dpy_H1_default)).fetchone()
+                    _con_e.close()
+                    if _row_e and _row_e[0] and _row_e[1]:
+                        _eps_tri = float(_row_e[1]) / float(_row_e[0])
+                        if 0.001 < _eps_tri < 0.1:
+                            _eps50_default = _eps_tri
+                            _eps50_source = "triaxial"
+                except Exception:
+                    pass
+
                 for _k, _v in [
                     (f"dpy_pile_{_hk_iter}",    _dpy_pile_default),
                     (f"dpy_L_{_hk_iter}",       float(_dpy_L_default)),
@@ -8262,9 +8296,13 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     (f"dpy_H1_{_hk_iter}",      _dpy_H1_default),
                     (f"dpy_su_{_hk_iter}",      _dpy_su_default),
                     (f"dpy_su_back_{_hk_iter}", _dpy_su_default),
+                    (f"dpy_eps50_{_hk_iter}",   _eps50_default),
                 ]:
                     if _k not in st.session_state:
                         st.session_state[_k] = _v
+                # Lưu source để hiển thị nguồn ε₅₀
+                if f"dpy_eps50_src_{_hk_iter}" not in st.session_state:
+                    st.session_state[f"dpy_eps50_src_{_hk_iter}"] = _eps50_source
 
                 _dpy_applied = st.session_state.get("dpy_applied", {}) or {}
 
@@ -8322,8 +8360,22 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         "(Front có fill cao hơn, Back đào xuống thấp)."
                     )
                     _dpy_w1, _dpy_w2, _dpy_w3, _dpy_w4, _dpy_w5 = st.columns(5)
-                    _dpy_eps50 = _dpy_w1.number_input("ε₅₀ (sét yếu)", 0.005, 0.05, 0.02, 0.005,
-                                                         key=f"dpy_eps50_{_hk_iter}", format="%.3f")
+                    _eps_src_v = st.session_state.get(f"dpy_eps50_src_{_hk_iter}", "lib")
+                    _eps_lbl = ("ε₅₀ (3 trục SQLite)" if _eps_src_v == "triaxial"
+                                 else "ε₅₀ (theo Su)")
+                    _dpy_eps50 = _dpy_w1.number_input(
+                        _eps_lbl, 0.001, 0.05, step=0.005,
+                        key=f"dpy_eps50_{_hk_iter}", format="%.4f",
+                        help="ε₅₀ — biến dạng tại 50% phá hoại từ nén 3 trục UU.\n\n"
+                             "Tự lấy theo thứ tự:\n"
+                             "1. **3 trục SQLite**: ε₅₀ = Cu/E (từ lab_tests cùng HK + lớp bùn)\n"
+                             "2. **Thư viện trạng thái đất** (Matlock 1970 / API):\n"
+                             "   - Sét rất yếu/yếu (Su<24): 0.020\n"
+                             "   - Sét trung bình (24-48): 0.010\n"
+                             "   - Sét chặt (48-96): 0.007\n"
+                             "   - Sét rất chặt (96-192): 0.005\n"
+                             "   - Sét cứng (>192): 0.004",
+                    )
                     _dpy_q_a   = _dpy_w2.number_input("a — khoảng cách tải (m)", 0.0, 20.0, 0.0, 0.5,
                                                          key=f"dpy_q_a_{_hk_iter}",
                                                          help="a=0: tải sát tường; a>0: tải lùi ra xa")
