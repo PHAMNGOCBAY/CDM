@@ -430,29 +430,40 @@ def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
     dx = (xc_max - xc_min) / max(n_grid - 1, 1)
     dy = (yc_max - yc_min) / max(n_grid - 1, 1)
 
-    # Build all_front layers
+    # Build all_front layers — bổ sung γ_sub để xử lý đúng dưới MNN
     all_layers = []
     if fill_h > 0 and fill:
-        all_layers.append((te, sf, fill.gamma, fill.phi, fill.c))
+        all_layers.append((te, sf, fill.gamma, fill.gamma_sub, fill.phi, fill.c))
     cdm_used = False
     if cdm and front_layers:
         mid = (cdm.top_elev + cdm.bot_elev) / 2
         soil_at = _layer_at_elev(mid, sf, front_layers)
         if soil_at:
             comp = cdm.composite(soil_at)
-            all_layers.append((cdm.top_elev, cdm.bot_elev, comp.gamma, comp.phi, comp.c))
+            all_layers.append((cdm.top_elev, cdm.bot_elev,
+                                comp.gamma, comp.gamma_sub, comp.phi, comp.c))
             cdm_used = True
     prev_top = cdm.bot_elev if cdm_used else sf
     for lay in front_layers:
         if lay.tip_elev < prev_top:
-            all_layers.append((prev_top, lay.tip_elev, lay.gamma, lay.phi, lay.c))
+            all_layers.append((prev_top, lay.tip_elev,
+                                lay.gamma, lay.gamma_sub, lay.phi, lay.c))
             prev_top = lay.tip_elev
 
-    def _lay_at(z):
-        for top, bot, g, phi, c in all_layers:
+    def _lay_at(z, _water_e=None):
+        """Trả (γ_eff, φ, c). γ_eff = γ_sub nếu z dưới MNN, ngược lại γ."""
+        for top, bot, g, g_sub, phi, c in all_layers:
             if bot <= z <= top:
+                if _water_e is not None and z < _water_e:
+                    return g_sub, phi, c
                 return g, phi, c
-        return (all_layers[-1][2:] if all_layers else (18.0, 25.0, 0.0))
+        # fallback last layer
+        if all_layers:
+            top, bot, g, g_sub, phi, c = all_layers[-1]
+            if _water_e is not None and z < _water_e:
+                return g_sub, phi, c
+            return g, phi, c
+        return (18.0, 25.0, 0.0)
 
     def _y_surf(x):
         if x <= slope_x: return te
@@ -460,9 +471,11 @@ def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
         return te + (sf - te) * (x - slope_x) / (0 - slope_x or 1)
 
     def _bishop_FoS(xc, yc, R, n_sl=30):
+        """Bishop simplified với hiệu chỉnh pore-water pressure (effective stress)."""
         x_left, x_right = xc - R, xc + R
         if x_right - x_left <= 0: return None
         dxs = (x_right - x_left) / n_sl
+        _gw = geom.gamma_w
         Fs = 1.5
         for _ in range(50):
             num = 0.0; den = 0.0
@@ -475,9 +488,25 @@ def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
                 if y_cir >= y_top - 0.01: continue
                 h = y_top - y_cir
                 if h <= 0: continue
-                y_mid = (y_top + y_cir) / 2
-                gam, phi, c = _lay_at(y_mid)
-                W_i = gam * h * dxs
+                # MNN tại x_i: Front (x<0) vs Back (x≥0)
+                _water_x = (geom.water_elev_front if x_i < 0
+                             else geom.water_elev_back)
+                # γ hiệu dụng trung bình slice — chia 2 phần trên/dưới MNN
+                if y_top <= _water_x:
+                    # Toàn slice dưới MNN → dùng γ_sub
+                    _h_dry, _h_wet = 0.0, h
+                elif y_cir >= _water_x:
+                    # Toàn slice trên MNN → dùng γ
+                    _h_dry, _h_wet = h, 0.0
+                else:
+                    _h_dry = y_top - _water_x
+                    _h_wet = _water_x - y_cir
+                y_mid_dry = (y_top + max(y_cir, _water_x)) / 2
+                y_mid_wet = (min(y_top, _water_x) + y_cir) / 2
+                gam_d, phi, c = _lay_at(y_mid_dry)
+                gam_w, _, _ = _lay_at(y_mid_wet, _water_e=_water_x)
+                # Trọng lượng slice = γ_dry × h_dry + γ_sub × h_wet (theo effective)
+                W_i = (gam_d * _h_dry + gam_w * _h_wet) * dxs
                 sin_a = -(x_i - xc) / R
                 cos_a = math.sqrt(max(arg, 1e-9)) / R
                 if cos_a <= 0: continue
