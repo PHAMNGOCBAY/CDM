@@ -21,10 +21,12 @@ try:
     _PLOTLY_ERR = ""
 except Exception as _e:
     _HAS_PLOTLY = False
-    import subprocess as _subp
-    _pip = _subp.run(["pip", "list", "--format=columns"], capture_output=True, text=True)
+    import sys as _sys_d, subprocess as _subp
+    _pip = _subp.run([_sys_d.executable, "-m", "pip", "list", "--format=columns"],
+                     capture_output=True, text=True)
     _installed = _pip.stdout or _pip.stderr
-    _PLOTLY_ERR = f"{_e} | pip list:\n{_installed[:2000]}"
+    _PLOTLY_ERR = (f"{_e}\nPython: {_sys_d.executable} {_sys_d.version[:20]}"
+                   f"\npip list:\n{_installed[:3000]}")
 
 try:
     import matplotlib.pyplot as plt
