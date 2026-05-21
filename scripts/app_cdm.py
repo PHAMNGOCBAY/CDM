@@ -3266,6 +3266,11 @@ st.sidebar.caption(
     f"**Lc =** {_Lc:.1f} m  \n"
     f"**qu,tk =** {_qu:.0f} kPa"
 )
+st.sidebar.caption(
+    f"📊 Plotly={'OK' if _HAS_PLOTLY else 'N/A'} | "
+    f"MPL={'OK' if _HAS_MPL else 'N/A'} | "
+    f"Pydeck={'OK' if _HAS_PYDECK else 'N/A'}"
+)
 
 # ── Print-friendly CSS (Ctrl+P → Save as PDF) ───────────────────────────────
 # Streamlit dùng nhiều layer container có overflow/height ràng buộc → in 1 trang.
@@ -4037,14 +4042,17 @@ if _page == "geology":
                 # ── 3D chart (trái) ─────────────────────────────────────────
                 with _col3d:
                     if _sel_zones:
-                        st.plotly_chart(
-                            _draw_boreholes_3d(
-                                _sel_zones, _show_clay, _show_cdm, _cdm_top_z,
-                                focus_bh=_focus_bh,
-                                pair_highlight=_pair_sel,
-                            ),
-                            use_container_width=True, config={"displayModeBar": True},
-                        )
+                        try:
+                            st.plotly_chart(
+                                _draw_boreholes_3d(
+                                    _sel_zones, _show_clay, _show_cdm, _cdm_top_z,
+                                    focus_bh=_focus_bh,
+                                    pair_highlight=_pair_sel,
+                                ),
+                                use_container_width=True, config={"displayModeBar": True},
+                            )
+                        except Exception as _3d_err:
+                            st.error(f"Không vẽ được biểu đồ 3D: {_3d_err}")
                     else:
                         st.info(_t("no_zone"))
 
