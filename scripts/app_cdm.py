@@ -10341,16 +10341,34 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             import matplotlib.pyplot as _plt_s
                             from matplotlib.patches import Circle as _Circ_s, Rectangle as _Rect_s
 
-                            # Scale dynamic theo bán kính cung trượt + chân cừ
+                            # Scale dynamic — chỉ bao đoạn cung trượt thực sự
+                            # (dưới mặt đất), không lấy cả vòng tròn lớn.
                             _R = float(_res_s.slip_R)
                             _xc = float(_res_s.slip_xc)
                             _yc = float(_res_s.slip_yc)
-                            _x_min = min(_xc - _R - 5, _pile_bot_s - 5, -40)
-                            _x_max = max(_xc + _R + 5, 30)
-                            _y_min = min(_yc - _R - 3, _pile_bot_s - 5)
-                            _y_max = max(_yc + _R + 3, _top_s + 5)
 
-                            _fig_s, _ax_s = _plt_s.subplots(1, 1, figsize=(12, 9))
+                            import numpy as _np_lim
+                            _th_lim = _np_lim.linspace(0, 2 * _np_lim.pi, 360)
+                            _xs_lim = _xc + _R * _np_lim.cos(_th_lim)
+                            _ys_lim = _yc + _R * _np_lim.sin(_th_lim)
+                            _mk_lim = (
+                                ((_xs_lim < 0) & (_ys_lim < _top_s))
+                                | ((_xs_lim >= 0) & (_ys_lim < _Zb_s))
+                            )
+                            if _mk_lim.any():
+                                _arc_x_min = float(_xs_lim[_mk_lim].min())
+                                _arc_x_max = float(_xs_lim[_mk_lim].max())
+                                _arc_y_min = float(_ys_lim[_mk_lim].min())
+                            else:
+                                _arc_x_min, _arc_x_max = _xc - _R, _xc + _R
+                                _arc_y_min = _yc - _R
+                            # Khung gọn: vừa với arc + chân cừ + lề 2-3m
+                            _x_min = min(_arc_x_min - 2.5, _pile_bot_s - 2, -10)
+                            _x_max = max(_arc_x_max + 2.5, 10)
+                            _y_min = min(_arc_y_min - 1.5, _pile_bot_s - 1.5)
+                            _y_max = max(_top_s + 2.0, _yc + 1.5 if _yc > _top_s else _top_s + 2)
+
+                            _fig_s, _ax_s = _plt_s.subplots(1, 1, figsize=(9, 6.5))
 
                             # ── Vẽ lớp đất Front + Back với màu theo symbol ────
                             _layer_colors = {
@@ -10469,27 +10487,20 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _ax_s.plot(_xs_plot, _ys_plot,
                                         color="red", linestyle="--", lw=2.2,
                                         label=f"Cung trượt Fs={_res_s.Fs_global_slip:.2f}")
-                            # Tâm cung trượt
-                            _ax_s.plot(_xc, _yc, "r+", markersize=14, markeredgewidth=2.5)
-                            _ax_s.text(_xc + 0.5, _yc + 0.5,
-                                        f"O({_xc:+.1f}, {_yc:+.1f})",
-                                        fontsize=8, color="red", fontweight="bold")
-
-                            # Bán kính R: vẽ từ tâm xuống điểm tiếp tuyến dưới cừ
-                            # Điểm thấp nhất của cung trượt gần chân cừ
-                            _pt_x_r = _xc   # điểm thấp nhất tại x = xc
-                            _pt_y_r = _yc - _R
-                            _ax_s.plot([_xc, _pt_x_r], [_yc, _pt_y_r],
-                                        color="red", lw=1.5, alpha=0.7)
-                            _ax_s.annotate(
-                                f"R = {_R:.1f} m",
-                                xy=((_xc + _pt_x_r) / 2, (_yc + _pt_y_r) / 2),
-                                xytext=(_xc + _R * 0.35, (_yc + _pt_y_r) / 2),
-                                fontsize=10, color="red", fontweight="bold",
-                                bbox=dict(boxstyle="round,pad=0.3",
-                                          facecolor="white", edgecolor="red", lw=0.8),
-                            )
-                            _ax_s.plot(_pt_x_r, _pt_y_r, "ro", markersize=6)
+                            # Tâm O — chỉ vẽ nếu nằm trong khung; nếu không chú thích R ở góc
+                            if _x_min <= _xc <= _x_max and _y_min <= _yc <= _y_max:
+                                _ax_s.plot(_xc, _yc, "r+", markersize=12, markeredgewidth=2)
+                                _ax_s.text(_xc + 0.3, _yc + 0.3,
+                                            f"O({_xc:+.1f},{_yc:+.1f}) R={_R:.1f}m",
+                                            fontsize=7, color="red", fontweight="bold")
+                            else:
+                                _ax_s.text(0.98, 0.97,
+                                            f"O({_xc:+.1f},{_yc:+.1f})\nR = {_R:.1f} m",
+                                            transform=_ax_s.transAxes, fontsize=8,
+                                            color="red", fontweight="bold",
+                                            ha="right", va="top",
+                                            bbox=dict(boxstyle="round,pad=0.3",
+                                                      facecolor="white", edgecolor="red", lw=0.8))
 
                             # Annotations cao độ trên trục y bên trái
                             for _yv, _txt, _col in [
