@@ -6073,8 +6073,8 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                 ax[0].set_title("So do", fontsize=9); ax[0].grid(alpha=0.3)
                 ax[1].axhspan(cbe, cte, alpha=0.15, color="green")
                 ax[1].plot(res["ux"], el_pile, "b-", lw=1.8)
-                ax[1].axvline(25, color="red", linestyle="--", lw=0.8)
-                ax[1].axvline(-25, color="red", linestyle="--", lw=0.8)
+                ax[1].axvline(50, color="red", linestyle="--", lw=0.8)
+                ax[1].axvline(-50, color="red", linestyle="--", lw=0.8)
                 ax[1].axvline(0, color="black", lw=0.4)
                 ax[1].set_xlabel("u (mm)", fontsize=8)
                 ax[1].set_title("u_max = %.2f mm" % u, fontsize=9)
@@ -6093,7 +6093,7 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                 ax[3].set_xlabel("Q (kN)", fontsize=8)
                 ax[3].set_title("Q_max=%.0f kN" % Q, fontsize=9)
                 ax[3].grid(alpha=0.3); ax[3].tick_params(labelsize=7)
-                ok = (u < 25 and M < Mcr)
+                ok = (u < 50 and M < Mcr)   # 5cm = 50mm
                 stt = "DAT" if ok else "KHONG DAT"
                 fig.suptitle("%s + %s L=%dm + CDM Lc=%.1fm    [%s]" % (
                     hk["name"], hk.get("recommended_pile", "SW"),
@@ -6197,7 +6197,7 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                     row[3].text = "%.2f" % r["u"]
                     row[4].text = "%.0f" % r["M"]
                     row[5].text = "%.2f" % r["ratio"]
-                    row[6].text = "Đạt" if r["u"] < 25 and r["M"] < r["Mcr"] else "KHÔNG ĐẠT"
+                    row[6].text = "Đạt" if r["u"] < 50 and r["M"] < r["Mcr"] else "KHÔNG ĐẠT"
 
                 doc.add_heading("2. Biểu đồ nội lực từng HK", level=1)
                 for r, png in zip(_records7, _pngs7):
@@ -6249,7 +6249,7 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                             row[5].text = "—"
 
                 doc.add_heading("4. Kết luận", level=1)
-                n_ok = sum(1 for r in _records7 if r["u"] < 25 and r["M"] < r["Mcr"])
+                n_ok = sum(1 for r in _records7 if r["u"] < 50 and r["M"] < r["Mcr"])
                 p = doc.add_paragraph()
                 p.add_run("Tổng số HK đạt: %d / %d\n" % (n_ok, len(_records7))).bold = True
                 if _records7:
@@ -8150,7 +8150,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             _u    = _r_auto["u_top_mm"]
             _Mmax = _r_auto["M_max_kNm"]
             _Mcr  = _r_auto["Mcr_kNm"]
-            _ok_u = abs(_u) < 25.0
+            _ok_u = abs(_u) < 50.0   # 5cm = chuyển vị ngang cho phép
             _ok_M = _Mmax < _Mcr if _Mcr > 0 else False
             _ok   = _ok_u and _ok_M
             _auto_rows.append({
@@ -8206,12 +8206,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _ms_d1a = [r["M/Mcr"]     for r in _auto_rows]
                 _fig_d1a.add_trace(go.Bar(
                     x=_xs_d1a, y=_us_d1a, name="u_top",
-                    marker_color=["#1565C0" if abs(u) < 25 else "#E53935" for u in _us_d1a],
+                    marker_color=["#1565C0" if abs(u) < 50 else "#E53935" for u in _us_d1a],
                     text=[f"{u:.1f}" for u in _us_d1a], textposition="outside",
                 ), row=1, col=1)
-                _fig_d1a.add_hline(y=25, line_dash="dash", line_color="#666",
-                                    annotation_text="25 mm", row=1, col=1)
-                _fig_d1a.add_hline(y=-25, line_dash="dash", line_color="#666", row=1, col=1)
+                _fig_d1a.add_hline(y=50, line_dash="dash", line_color="#666",
+                                    annotation_text="50 mm (5cm)", row=1, col=1)
+                _fig_d1a.add_hline(y=-50, line_dash="dash", line_color="#666", row=1, col=1)
                 _fig_d1a.add_trace(go.Bar(
                     x=_xs_d1a, y=_ms_d1a, name="M/Mcr",
                     marker_color=["#2E7D32" if m < 1 else "#E53935" for m in _ms_d1a],
@@ -9057,8 +9057,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         _M_d1   = _res_d1["M_max_kNm"]
                         _Mcr_d1 = _res_d1["Mcr_kNm"]
                         _r1.metric("Chuyển vị đỉnh u (mm)", f"{_u_d1:.2f}",
-                                     "Đạt" if abs(_u_d1) < 25 else "Vượt 25mm",
-                                     delta_color="normal" if abs(_u_d1) < 25 else "inverse")
+                                     "Đạt" if abs(_u_d1) < 50 else "Vượt 5cm",
+                                     delta_color="normal" if abs(_u_d1) < 50 else "inverse")
                         _r2.metric("Mô-men max (kNm/m)", f"{_M_d1:.1f}",
                                      f"M_cr = {_Mcr_d1:.0f}",
                                      delta_color="normal" if _M_d1 < _Mcr_d1 else "inverse")
@@ -9280,10 +9280,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             # Panel 1: u(z)
                             _add_elev_refs(_axw[1])
                             _axw[1].plot(_res_d1["ux"], _el_pile, "b-", lw=2.0, label="u(z)")
-                            _axw[1].axvline(25, color="red", linestyle="--", lw=1.0, label="±25 mm")
-                            _axw[1].axvline(-25, color="red", linestyle="--", lw=1.0)
+                            _axw[1].axvline(50, color="red", linestyle="--", lw=1.0, label="±50 mm (5cm)")
+                            _axw[1].axvline(-50, color="red", linestyle="--", lw=1.0)
                             _axw[1].axvline(0, color="black", lw=0.5)
-                            _u_xmax = max(30, max(abs(u) for u in _res_d1["ux"]) * 1.1)
+                            _u_xmax = max(60, max(abs(u) for u in _res_d1["ux"]) * 1.1)
                             _axw[1].set_xlim(-_u_xmax, _u_xmax)
                             _add_elev_labels(_axw[1], _u_xmax)
                             _axw[1].set_xlabel("u (mm)")
@@ -9329,7 +9329,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             else:
                                 _axw[3].set_visible(False)
 
-                            _status_w = ("ĐẠT" if (_res_d1["u_max_mm"] < 25 and
+                            _status_w = ("ĐẠT" if (_res_d1["u_max_mm"] < 50 and
                                                     _res_d1["M_max_kNm"] < _res_d1["Mcr_kNm"])
                                           else "KHÔNG ĐẠT")
                             _fig_w.suptitle(
@@ -9617,9 +9617,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                                                   facecolor="white",
                                                                   edgecolor="none", alpha=0.55))
 
-                                    # Ngưỡng ±25mm + ±Mcr
-                                    _ax_dl[1].axvline(25, color="red", linestyle="--", lw=0.8, alpha=0.7)
-                                    _ax_dl[1].axvline(-25, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    # Ngưỡng ±50mm (5cm) + ±Mcr
+                                    _ax_dl[1].axvline(50, color="red", linestyle="--", lw=0.8, alpha=0.7)
+                                    _ax_dl[1].axvline(-50, color="red", linestyle="--", lw=0.8, alpha=0.7)
                                     _Mcr_dl = _comp_dist_results["TỔNG"]["Mcr_kNm"] if "TỔNG" in _comp_dist_results else 0
                                     if _Mcr_dl > 0:
                                         _ax_dl[2].axvline(_Mcr_dl, color="red", linestyle="--",
@@ -9644,24 +9644,19 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                     st.caption(f"_(Không vẽ được biểu đồ per-tải phân bố: {_e_dl_mpl})_")
 
                                 # ───────────────────────────────────────────────
-                                # So sánh 3 trường hợp BC chân cừ với TỔNG tải
+                                # Chỉ chạy BC = Free (đáy tự do, cừ thường)
                                 # ───────────────────────────────────────────────
                                 try:
-                                    st.markdown("##### So sánh 3 trường hợp liên kết đáy cọc")
+                                    st.markdown("##### Kiểm tra với BC = Free (đáy tự do, cừ thường)")
                                     st.caption(
-                                        "Cùng tổ hợp tải TỔNG p(z), chạy Winkler với "
-                                        "**Free** (đáy tự do — cừ thường), "
-                                        "**Fixed** (chân ngàm — vd vào CDM cứng), "
-                                        "**Cantilever** (đỉnh ngàm — có dầm mũ)."
+                                        "Tổ hợp tải TỔNG p(z), liên kết Free "
+                                        "(đáy + đỉnh tự do, chỉ chịu lò xo Winkler). "
+                                        "Giới hạn chuyển vị ngang: **5 cm = 50 mm**."
                                     )
                                     _bc_cases = [
-                                        ("Free",       {"tip_fixity": "free",  "top_pin": False}),
-                                        ("Fixed",      {"tip_fixity": "fixed", "top_pin": False}),
-                                        ("Cantilever", {"tip_fixity": "free",  "top_pin": True}),
+                                        ("Free", {"tip_fixity": "free", "top_pin": False}),
                                     ]
-                                    _bc_colors = {"Free": "#1565C0",
-                                                   "Fixed": "#C62828",
-                                                   "Cantilever": "#2E7D32"}
+                                    _bc_colors = {"Free": "#1565C0"}
                                     _bc_results: dict = {}
                                     for _bc_nm, _bc_kw in _bc_cases:
                                         try:
@@ -9689,7 +9684,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                             _u = _r_bc["u_max_mm"]
                                             _M = _r_bc["M_max_kNm"]
                                             _Q = _r_bc.get("Q_max_kN", 0.0)
-                                            _ok_u = abs(_u) < 25.0
+                                            _ok_u = abs(_u) < 50.0   # 5cm = chuyển vị ngang cho phép
                                             _ok_M = _M < _Mcr_bc if _Mcr_bc > 0 else False
                                             _rows_bc.append({
                                                 "Liên kết đáy": _bc_nm,
@@ -9760,8 +9755,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                             _ax_bc[0].set_title("u(z)", fontsize=10)
                                             _ax_bc[1].set_title("M(z)", fontsize=10)
                                             _ax_bc[2].set_title("Q(z)", fontsize=10)
-                                            _ax_bc[0].axvline(25, color="red", linestyle="--", lw=0.8, alpha=0.6)
-                                            _ax_bc[0].axvline(-25, color="red", linestyle="--", lw=0.8, alpha=0.6)
+                                            _ax_bc[0].axvline(50, color="red", linestyle="--", lw=0.8, alpha=0.6,
+                                                                label="±50mm (5cm)")
+                                            _ax_bc[0].axvline(-50, color="red", linestyle="--", lw=0.8, alpha=0.6)
                                             if _Mcr_bc > 0:
                                                 _ax_bc[1].axvline(_Mcr_bc, color="red", linestyle="--", lw=0.8, alpha=0.6)
                                                 _ax_bc[1].axvline(-_Mcr_bc, color="red", linestyle="--", lw=0.8, alpha=0.6)
