@@ -1,6 +1,6 @@
 python-docx==1.2.0
 streamlit>=1.35.0
-numpy>=2.0,<3.0        # winkler_np.py + pandas/scipy cần numpy 2.x
+numpy>=1.24             # Cloud có sẵn 1.26.4 (Python 3.14); local dùng 2.x cũng OK
 pandas>=2.2.2          # pandas <2.2.2 pin numpy<2
 plotly>=6.0
 narwhals>=2.0          # required by plotly 6.x
@@ -10,7 +10,7 @@ xlrd>=2.0
 jinja2>=3.1
 sympy>=1.14
 reportlab>=4.0         # PDF fallback (Windows không có GTK3)
-weasyprint>=68.0       # PDF primary (HTML/CSS) — cần apt libs (xem packages.txt)
+# weasyprint không cài được trên Python 3.14 (brotli/zopfli chưa có cp314 wheel)
 fpdf2>=2.8
 ezdxf>=1.4
 unidecode>=1.4
