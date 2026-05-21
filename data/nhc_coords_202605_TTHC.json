@@ -1,7 +1,7 @@
 {
   "_meta": {
     "source": "NHC-1. TRỤ_TTHC_Tru hien truong.dxf",
-    "updated": "2026-05-19",
+    "updated": "2026-05-21",
     "project": "202605-TTHC",
     "coord_system": "VN-2000 TP.HCM (CM=105°45', FE=500000)",
     "db_convention": "x_coord_m=Northing, y_coord_m=Easting (giống BXN/KE)",
@@ -13,112 +13,994 @@
       "bh_name_db": "NHC-BH-03",
       "northing_m": 1191418.751,
       "easting_m": 605614.653,
-      "elevation_m": 1.07
+      "elevation_m": 1.07,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 10.6,
+          "depth_bot_m": 29.1,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 29.1,
+          "depth_bot_m": 36.0,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 36.0,
+          "depth_bot_m": 39.8,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 39.8,
+          "depth_bot_m": 56.8,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 56.8,
+          "depth_bot_m": 70.0,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 70.0,
+          "depth_bot_m": 76.0,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 76.0,
+          "depth_bot_m": 99.3,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 99.3,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-05",
       "bh_name_db": "NHC-BH-05",
       "northing_m": 1191433.134,
       "easting_m": 605547.095,
-      "elevation_m": 1.39
+      "elevation_m": 1.39,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.7,
+          "depth_bot_m": 10.9,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.9,
+          "depth_bot_m": 25.5,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 25.5,
+          "depth_bot_m": 32.0,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 32.0,
+          "depth_bot_m": 39.0,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 39.0,
+          "depth_bot_m": 55.8,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 55.8,
+          "depth_bot_m": 71.0,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 71.0,
+          "depth_bot_m": 76.8,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 76.8,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-20",
       "bh_name_db": "NHC-BH-20",
       "northing_m": 1191607.482,
       "easting_m": 605547.002,
-      "elevation_m": 1.8
+      "elevation_m": 1.8,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.8,
+          "depth_bot_m": 11.0,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 11.0,
+          "depth_bot_m": 31.4,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 31.4,
+          "depth_bot_m": 37.0,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 37.0,
+          "depth_bot_m": 58.0,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 58.0,
+          "depth_bot_m": 61.0,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 61.0,
+          "depth_bot_m": 71.0,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 71.0,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-25",
       "bh_name_db": "NHC-BH-25",
       "northing_m": 1191720.772,
       "easting_m": 605564.919,
-      "elevation_m": 1.55
+      "elevation_m": 1.55,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 1.7,
+          "depth_bot_m": 11.3,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 11.3,
+          "depth_bot_m": 19.9,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 19.9,
+          "depth_bot_m": 28.4,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 28.4,
+          "depth_bot_m": 31.6,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 31.6,
+          "depth_bot_m": 37.1,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 37.1,
+          "depth_bot_m": 57.1,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 57.1,
+          "depth_bot_m": 99.7,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 99.7,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-26",
       "bh_name_db": "NHC-BH-26",
       "northing_m": 1191711.284,
       "easting_m": 605593.388,
-      "elevation_m": 2.45
+      "elevation_m": 2.45,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 1.4,
+          "depth_bot_m": 11.6,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 11.6,
+          "depth_bot_m": 26.1,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 26.1,
+          "depth_bot_m": 27.9,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 27.9,
+          "depth_bot_m": 31.9,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 31.9,
+          "depth_bot_m": 36.1,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 36.1,
+          "depth_bot_m": 38.9,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 38.9,
+          "depth_bot_m": 56.9,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 56.9,
+          "depth_bot_m": 59.9,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        },
+        {
+          "symbol": "9",
+          "depth_top_m": 59.9,
+          "depth_bot_m": 66.1,
+          "description": "Lớp 9"
+        },
+        {
+          "symbol": "10",
+          "depth_top_m": 66.1,
+          "depth_bot_m": 73.8,
+          "description": "Lớp 10"
+        },
+        {
+          "symbol": "11",
+          "depth_top_m": 73.8,
+          "depth_bot_m": 93.6,
+          "description": "Lớp 11"
+        },
+        {
+          "symbol": "12",
+          "depth_top_m": 93.6,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 12"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-28",
       "bh_name_db": "NHC-BH-28",
       "northing_m": 1191692.427,
       "easting_m": 605650.328,
-      "elevation_m": 2.52
+      "elevation_m": 2.52,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.7,
+          "depth_bot_m": 10.9,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.9,
+          "depth_bot_m": 29.8,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 29.8,
+          "depth_bot_m": 34.8,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 34.8,
+          "depth_bot_m": 39.0,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 39.0,
+          "depth_bot_m": 56.2,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 56.2,
+          "depth_bot_m": 58.9,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 58.9,
+          "depth_bot_m": 71.1,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 71.1,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-27",
       "bh_name_db": "NHC-BH-27",
       "northing_m": 1191701.826,
       "easting_m": 605621.838,
-      "elevation_m": 2.15
+      "elevation_m": 2.15,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.7,
+          "depth_bot_m": 10.9,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.9,
+          "depth_bot_m": 29.8,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 29.8,
+          "depth_bot_m": 34.8,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 34.8,
+          "depth_bot_m": 39.0,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 39.0,
+          "depth_bot_m": 56.2,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 56.2,
+          "depth_bot_m": 58.9,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 58.9,
+          "depth_bot_m": 71.1,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 71.1,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-29",
       "bh_name_db": "NHC-BH-29",
       "northing_m": 1191743.609,
       "easting_m": 605605.376,
-      "elevation_m": 1.87
+      "elevation_m": 1.87,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.7,
+          "depth_bot_m": 10.9,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.9,
+          "depth_bot_m": 29.1,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 29.1,
+          "depth_bot_m": 33.3,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 33.3,
+          "depth_bot_m": 38.0,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 38.0,
+          "depth_bot_m": 56.1,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 56.1,
+          "depth_bot_m": 58.1,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 58.1,
+          "depth_bot_m": 59.9,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 59.9,
+          "depth_bot_m": 70.8,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        },
+        {
+          "symbol": "9",
+          "depth_top_m": 70.8,
+          "depth_bot_m": 92.6,
+          "description": "Lớp 9"
+        },
+        {
+          "symbol": "10",
+          "depth_top_m": 92.6,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 10"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-30",
       "bh_name_db": "NHC-BH-30",
       "northing_m": 1191731.987,
       "easting_m": 605633.15,
-      "elevation_m": 2.12
+      "elevation_m": 2.12,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.7,
+          "depth_bot_m": 10.9,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.9,
+          "depth_bot_m": 34.2,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 34.2,
+          "depth_bot_m": 40.0,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 40.0,
+          "depth_bot_m": 54.1,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 54.1,
+          "depth_bot_m": 57.9,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 57.9,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-32",
       "bh_name_db": "NHC-BH-32",
       "northing_m": 1191774.814,
       "easting_m": 605619.784,
-      "elevation_m": 2.07
+      "elevation_m": 2.07,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.7,
+          "depth_bot_m": 10.9,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.9,
+          "depth_bot_m": 26.6,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 26.6,
+          "depth_bot_m": 34.2,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 34.2,
+          "depth_bot_m": 39.2,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 39.2,
+          "depth_bot_m": 41.9,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 41.9,
+          "depth_bot_m": 47.9,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 47.9,
+          "depth_bot_m": 54.1,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 54.1,
+          "depth_bot_m": 56.1,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        },
+        {
+          "symbol": "9",
+          "depth_top_m": 56.1,
+          "depth_bot_m": 57.9,
+          "description": "Lớp 9"
+        },
+        {
+          "symbol": "10",
+          "depth_top_m": 57.9,
+          "depth_bot_m": 59.6,
+          "description": "Lớp 10"
+        },
+        {
+          "symbol": "11",
+          "depth_top_m": 59.6,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 11"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-33",
       "bh_name_db": "NHC-BH-33",
       "northing_m": 1191761.315,
       "easting_m": 605646.602,
-      "elevation_m": 2.08
+      "elevation_m": 2.08,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 1.4,
+          "depth_bot_m": 7.0,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 7.0,
+          "depth_bot_m": 16.0,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 16.0,
+          "depth_bot_m": 26.9,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 26.9,
+          "depth_bot_m": 31.1,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 31.1,
+          "depth_bot_m": 35.4,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 35.4,
+          "depth_bot_m": 39.0,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 39.0,
+          "depth_bot_m": 49.1,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 49.1,
+          "depth_bot_m": 56.5,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        },
+        {
+          "symbol": "9",
+          "depth_top_m": 56.5,
+          "depth_bot_m": 59.0,
+          "description": "Lớp 9"
+        },
+        {
+          "symbol": "10",
+          "depth_top_m": 59.0,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 10"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-34",
       "bh_name_db": "NHC-BH-34",
       "northing_m": 1191747.761,
       "easting_m": 605673.231,
-      "elevation_m": 2.1
+      "elevation_m": 2.1,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.7,
+          "depth_bot_m": 10.9,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.9,
+          "depth_bot_m": 37.8,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 37.8,
+          "depth_bot_m": 49.0,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 49.0,
+          "depth_bot_m": 57.0,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 57.0,
+          "depth_bot_m": 59.9,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 59.9,
+          "depth_bot_m": 71.8,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 71.8,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-35",
       "bh_name_db": "NHC-BH-35",
       "northing_m": 1191804.992,
       "easting_m": 605636.461,
-      "elevation_m": 2.97
+      "elevation_m": 2.97,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.8,
+          "depth_bot_m": 11.1,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 11.1,
+          "depth_bot_m": 28.6,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 28.6,
+          "depth_bot_m": 38.8,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 38.8,
+          "depth_bot_m": 42.3,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 42.3,
+          "depth_bot_m": 50.0,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 50.0,
+          "depth_bot_m": 57.9,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 57.9,
+          "depth_bot_m": 59.9,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 59.9,
+          "depth_bot_m": 89.6,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        },
+        {
+          "symbol": "9",
+          "depth_top_m": 89.6,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 9"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-36",
       "bh_name_db": "NHC-BH-36",
       "northing_m": 1191789.373,
       "easting_m": 605662.216,
-      "elevation_m": 1.78
+      "elevation_m": 1.78,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.6,
+          "depth_bot_m": 10.8,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 10.8,
+          "depth_bot_m": 30.8,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 30.8,
+          "depth_bot_m": 33.8,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 33.8,
+          "depth_bot_m": 37.6,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 37.6,
+          "depth_bot_m": 48.0,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 48.0,
+          "depth_bot_m": 55.4,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 55.4,
+          "depth_bot_m": 58.4,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 58.4,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-37",
       "bh_name_db": "NHC-BH-37",
       "northing_m": 1191851.161,
       "easting_m": 605630.856,
-      "elevation_m": 1.34
+      "elevation_m": 1.34,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 0.8,
+          "depth_bot_m": 11.1,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 11.1,
+          "depth_bot_m": 27.6,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 27.6,
+          "depth_bot_m": 28.6,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 28.6,
+          "depth_bot_m": 29.6,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 29.6,
+          "depth_bot_m": 33.8,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 33.8,
+          "depth_bot_m": 39.0,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 39.0,
+          "depth_bot_m": 41.7,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        },
+        {
+          "symbol": "8",
+          "depth_top_m": 41.7,
+          "depth_bot_m": 48.5,
+          "description": "Lớp 8 — Đá phong hóa / đá cứng"
+        },
+        {
+          "symbol": "9",
+          "depth_top_m": 48.5,
+          "depth_bot_m": 57.6,
+          "description": "Lớp 9"
+        },
+        {
+          "symbol": "10",
+          "depth_top_m": 57.6,
+          "depth_bot_m": 89.2,
+          "description": "Lớp 10"
+        },
+        {
+          "symbol": "11",
+          "depth_top_m": 89.2,
+          "depth_bot_m": 89.8,
+          "description": "Lớp 11"
+        },
+        {
+          "symbol": "12",
+          "depth_top_m": 89.8,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 12"
+        }
+      ]
     },
     {
       "bh_name_raw": "BH-38",
       "bh_name_db": "NHC-BH-38",
       "northing_m": 1191833.798,
       "easting_m": 605655.33,
-      "elevation_m": 1.57
+      "elevation_m": 1.57,
+      "depth_m": 100.0,
+      "layers": [
+        {
+          "symbol": "1",
+          "depth_top_m": 1.1,
+          "depth_bot_m": 11.3,
+          "description": "Lớp 1 — Đất lấp / bùn sét yếu"
+        },
+        {
+          "symbol": "2",
+          "depth_top_m": 11.3,
+          "depth_bot_m": 31.1,
+          "description": "Lớp 2 — Sét / sét pha dẻo mềm"
+        },
+        {
+          "symbol": "3",
+          "depth_top_m": 31.1,
+          "depth_bot_m": 37.7,
+          "description": "Lớp 3 — Sét pha dẻo cứng"
+        },
+        {
+          "symbol": "4",
+          "depth_top_m": 37.7,
+          "depth_bot_m": 48.1,
+          "description": "Lớp 4 — Cát pha / cát mịn"
+        },
+        {
+          "symbol": "5",
+          "depth_top_m": 48.1,
+          "depth_bot_m": 50.4,
+          "description": "Lớp 5 — Sét / sét pha nửa cứng"
+        },
+        {
+          "symbol": "6",
+          "depth_top_m": 50.4,
+          "depth_bot_m": 56.0,
+          "description": "Lớp 6 — Cát vừa – thô chặt"
+        },
+        {
+          "symbol": "7",
+          "depth_top_m": 56.0,
+          "depth_bot_m": 100.0,
+          "description": "Lớp 7 — Sét cứng / cuội sỏi"
+        }
+      ]
     }
   ]
 }
