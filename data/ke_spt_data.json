@@ -1,0 +1,2517 @@
+{
+  "_meta": {
+    "generated": "2026-05-20",
+    "source_dxf": "DIA CHAT\\3. KÈ (CÔNG VIÊN)\\KE-1. TRỤ_260512 CVTT-TTHC. Tru DC.dxf",
+    "n_boreholes": 12,
+    "n_readings": 248,
+    "N_convention": "N = N1 + N2 (col2 + col3 trong DXF, theo user 2026-05-20)",
+    "N_alt": "N_astm = N2 + N3 (chuẩn ASTM, tham khảo)",
+    "columns": "col1=N_prep (seating, bỏ qua); col2=N1; col3=N2; col4=N3"
+  },
+  "boreholes": {
+    "KE-HK1": [
+      {
+        "depth_m": 2.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 4.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 6.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 8.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 10.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 12.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 14.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 16.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 18.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 3,
+        "N3": 6,
+        "N": 6,
+        "N_astm": 9
+      },
+      {
+        "depth_m": 20.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 4,
+        "N2": 5,
+        "N3": 9,
+        "N": 9,
+        "N_astm": 14
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 3,
+        "N2": 5,
+        "N3": 8,
+        "N": 8,
+        "N_astm": 13
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 8,
+        "N2": 9,
+        "N3": 17,
+        "N": 17,
+        "N_astm": 26
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 10,
+        "N2": 12,
+        "N3": 22,
+        "N": 22,
+        "N_astm": 34
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 9,
+        "N2": 16,
+        "N3": 25,
+        "N": 25,
+        "N_astm": 41
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 5,
+        "N2": 6,
+        "N3": 11,
+        "N": 11,
+        "N_astm": 17
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 6,
+        "N2": 6,
+        "N3": 12,
+        "N": 12,
+        "N_astm": 18
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 8,
+        "N2": 11,
+        "N3": 19,
+        "N": 19,
+        "N_astm": 30
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 9,
+        "N2": 13,
+        "N3": 22,
+        "N": 22,
+        "N_astm": 35
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 14,
+        "N2": 20,
+        "N3": 34,
+        "N": 34,
+        "N_astm": 54
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 16,
+        "N2": 22,
+        "N3": 38,
+        "N": 38,
+        "N_astm": 60
+      },
+      {
+        "depth_m": 42.45,
+        "depth_to_m": null,
+        "N_prep": 11,
+        "N1": 17,
+        "N2": 23,
+        "N3": 40,
+        "N": 40,
+        "N_astm": 63
+      },
+      {
+        "depth_m": 44.45,
+        "depth_to_m": null,
+        "N_prep": 12,
+        "N1": 18,
+        "N2": 25,
+        "N3": 43,
+        "N": 43,
+        "N_astm": 68
+      },
+      {
+        "depth_m": 46.45,
+        "depth_to_m": null,
+        "N_prep": 11,
+        "N1": 16,
+        "N2": 21,
+        "N3": 37,
+        "N": 37,
+        "N_astm": 58
+      },
+      {
+        "depth_m": 48.45,
+        "depth_to_m": null,
+        "N_prep": 14,
+        "N1": 23,
+        "N2": 30,
+        "N3": 53,
+        "N": 53,
+        "N_astm": 83
+      },
+      {
+        "depth_m": 50.45,
+        "depth_to_m": null,
+        "N_prep": 13,
+        "N1": 20,
+        "N2": 29,
+        "N3": 49,
+        "N": 49,
+        "N_astm": 78
+      }
+    ],
+    "KE-HK2": [
+      {
+        "depth_m": 2.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 2,
+        "N3": 3,
+        "N": 3,
+        "N_astm": 5
+      },
+      {
+        "depth_m": 4.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 6.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 8.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 10.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 12.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 14.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 16.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 18.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 20.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 5,
+        "N2": 6,
+        "N3": 11,
+        "N": 11,
+        "N_astm": 17
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 5,
+        "N2": 5,
+        "N3": 10,
+        "N": 10,
+        "N_astm": 15
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 2,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 7
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 9,
+        "N2": 10,
+        "N3": 19,
+        "N": 19,
+        "N_astm": 29
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 10,
+        "N2": 18,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 46
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 11,
+        "N2": 15,
+        "N3": 26,
+        "N": 26,
+        "N_astm": 41
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 11,
+        "N2": 19,
+        "N3": 30,
+        "N": 30,
+        "N_astm": 49
+      },
+      {
+        "depth_m": 42.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 5,
+        "N2": 6,
+        "N3": 11,
+        "N": 11,
+        "N_astm": 17
+      },
+      {
+        "depth_m": 44.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 9,
+        "N2": 11,
+        "N3": 20,
+        "N": 20,
+        "N_astm": 31
+      },
+      {
+        "depth_m": 46.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 11,
+        "N2": 15,
+        "N3": 26,
+        "N": 26,
+        "N_astm": 41
+      }
+    ],
+    "KE-HK3": [
+      {
+        "depth_m": 2.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 4.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 6.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 8.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 10.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 12.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 14.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 16.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 18.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 20.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 4,
+        "N2": 6,
+        "N3": 10,
+        "N": 10,
+        "N_astm": 16
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 4,
+        "N2": 6,
+        "N3": 10,
+        "N": 10,
+        "N_astm": 16
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 4,
+        "N2": 7,
+        "N3": 11,
+        "N": 11,
+        "N_astm": 18
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 12,
+        "N2": 16,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 44
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 2,
+        "N2": 11,
+        "N3": 13,
+        "N": 13,
+        "N_astm": 24
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 5,
+        "N2": 10,
+        "N3": 15,
+        "N": 15,
+        "N_astm": 25
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 9,
+        "N2": 15,
+        "N3": 24,
+        "N": 24,
+        "N_astm": 39
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 8,
+        "N2": 13,
+        "N3": 21,
+        "N": 21,
+        "N_astm": 34
+      },
+      {
+        "depth_m": 42.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 13,
+        "N2": 18,
+        "N3": 31,
+        "N": 31,
+        "N_astm": 49
+      },
+      {
+        "depth_m": 44.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 12,
+        "N2": 17,
+        "N3": 29,
+        "N": 29,
+        "N_astm": 46
+      },
+      {
+        "depth_m": 46.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 12,
+        "N2": 16,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 44
+      }
+    ],
+    "KE-HK4": [
+      {
+        "depth_m": 2.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 4.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 6.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 8.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 10.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 12.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 14.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 16.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 18.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 20.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 2,
+        "N3": 3,
+        "N": 3,
+        "N_astm": 5
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 6,
+        "N2": 7,
+        "N3": 13,
+        "N": 13,
+        "N_astm": 20
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 4,
+        "N2": 6,
+        "N3": 10,
+        "N": 10,
+        "N_astm": 16
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 4,
+        "N2": 5,
+        "N3": 9,
+        "N": 9,
+        "N_astm": 14
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 5,
+        "N2": 7,
+        "N3": 12,
+        "N": 12,
+        "N_astm": 19
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 9,
+        "N2": 12,
+        "N3": 21,
+        "N": 21,
+        "N_astm": 33
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 9,
+        "N2": 9,
+        "N3": 18,
+        "N": 18,
+        "N_astm": 27
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 12,
+        "N2": 16,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 44
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 14,
+        "N2": 20,
+        "N3": 34,
+        "N": 34,
+        "N_astm": 54
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 13,
+        "N2": 18,
+        "N3": 31,
+        "N": 31,
+        "N_astm": 49
+      }
+    ],
+    "KE-HK5": [
+      {
+        "depth_m": 2.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 4.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 6.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 8.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 10.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 12.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 14.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 16.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 18.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 20.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 2,
+        "N3": 3,
+        "N": 3,
+        "N_astm": 5
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 2,
+        "N2": 4,
+        "N3": 6,
+        "N": 6,
+        "N_astm": 10
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 3,
+        "N3": 6,
+        "N": 6,
+        "N_astm": 9
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 4,
+        "N2": 4,
+        "N3": 8,
+        "N": 8,
+        "N_astm": 12
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 4,
+        "N2": 5,
+        "N3": 9,
+        "N": 9,
+        "N_astm": 14
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 12,
+        "N2": 16,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 44
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 10,
+        "N2": 14,
+        "N3": 24,
+        "N": 24,
+        "N_astm": 38
+      },
+      {
+        "depth_m": 42.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 7,
+        "N2": 8,
+        "N3": 15,
+        "N": 15,
+        "N_astm": 23
+      },
+      {
+        "depth_m": 44.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 6,
+        "N2": 11,
+        "N3": 17,
+        "N": 17,
+        "N_astm": 28
+      },
+      {
+        "depth_m": 46.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 6,
+        "N2": 10,
+        "N3": 16,
+        "N": 16,
+        "N_astm": 26
+      },
+      {
+        "depth_m": 48.45,
+        "depth_to_m": null,
+        "N_prep": 12,
+        "N1": 16,
+        "N2": 20,
+        "N3": 36,
+        "N": 36,
+        "N_astm": 56
+      },
+      {
+        "depth_m": 50.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 15,
+        "N2": 21,
+        "N3": 36,
+        "N": 36,
+        "N_astm": 57
+      },
+      {
+        "depth_m": 52.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 7,
+        "N2": 11,
+        "N3": 18,
+        "N": 18,
+        "N_astm": 29
+      },
+      {
+        "depth_m": 54.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 10,
+        "N2": 13,
+        "N3": 23,
+        "N": 23,
+        "N_astm": 36
+      },
+      {
+        "depth_m": 56.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 13,
+        "N2": 18,
+        "N3": 31,
+        "N": 31,
+        "N_astm": 49
+      },
+      {
+        "depth_m": 58.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 12,
+        "N2": 16,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 44
+      },
+      {
+        "depth_m": 60.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 12,
+        "N2": 17,
+        "N3": 29,
+        "N": 29,
+        "N_astm": 46
+      },
+      {
+        "depth_m": 62.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 8,
+        "N2": 11,
+        "N3": 19,
+        "N": 19,
+        "N_astm": 30
+      },
+      {
+        "depth_m": 64.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 9,
+        "N2": 12,
+        "N3": 21,
+        "N": 21,
+        "N_astm": 33
+      },
+      {
+        "depth_m": 66.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 18,
+        "N2": 21,
+        "N3": 39,
+        "N": 39,
+        "N_astm": 60
+      },
+      {
+        "depth_m": 68.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 14,
+        "N2": 18,
+        "N3": 32,
+        "N": 32,
+        "N_astm": 50
+      },
+      {
+        "depth_m": 70.45,
+        "depth_to_m": null,
+        "N_prep": 11,
+        "N1": 17,
+        "N2": 21,
+        "N3": 38,
+        "N": 38,
+        "N_astm": 59
+      },
+      {
+        "depth_m": 72.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 17,
+        "N2": 24,
+        "N3": 41,
+        "N": 41,
+        "N_astm": 65
+      },
+      {
+        "depth_m": 74.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 18,
+        "N2": 25,
+        "N3": 43,
+        "N": 43,
+        "N_astm": 68
+      },
+      {
+        "depth_m": 76.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 18,
+        "N2": 26,
+        "N3": 44,
+        "N": 44,
+        "N_astm": 70
+      },
+      {
+        "depth_m": 78.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 19,
+        "N2": 26,
+        "N3": 45,
+        "N": 45,
+        "N_astm": 71
+      },
+      {
+        "depth_m": 80.45,
+        "depth_to_m": null,
+        "N_prep": 12,
+        "N1": 16,
+        "N2": 27,
+        "N3": 43,
+        "N": 43,
+        "N_astm": 70
+      }
+    ],
+    "KE-HK6": [
+      {
+        "depth_m": 2.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 4.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 6.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 8.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 10.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 12.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 14.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 16.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 18.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 3,
+        "N2": 5,
+        "N3": 8,
+        "N": 8,
+        "N_astm": 13
+      },
+      {
+        "depth_m": 20.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 5,
+        "N3": 8,
+        "N": 8,
+        "N_astm": 13
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 5,
+        "N2": 7,
+        "N3": 12,
+        "N": 12,
+        "N_astm": 19
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 13,
+        "N2": 22,
+        "N3": 35,
+        "N": 35,
+        "N_astm": 57
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 10,
+        "N2": 14,
+        "N3": 24,
+        "N": 24,
+        "N_astm": 38
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 14,
+        "N2": 17,
+        "N3": 31,
+        "N": 31,
+        "N_astm": 48
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 13,
+        "N2": 18,
+        "N3": 31,
+        "N": 31,
+        "N_astm": 49
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 8,
+        "N2": 10,
+        "N3": 18,
+        "N": 18,
+        "N_astm": 28
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 12,
+        "N2": 15,
+        "N3": 27,
+        "N": 27,
+        "N_astm": 42
+      }
+    ],
+    "KE-HK7": [
+      {
+        "depth_m": 2.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 4.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 6.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 8.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 10.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 12.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 14.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 16.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 18.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 20.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 1,
+        "N3": 2,
+        "N": 2,
+        "N_astm": 3
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 5,
+        "N3": 8,
+        "N": 8,
+        "N_astm": 13
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 5,
+        "N2": 6,
+        "N3": 11,
+        "N": 11,
+        "N_astm": 17
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 4,
+        "N2": 6,
+        "N3": 10,
+        "N": 10,
+        "N_astm": 16
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 1,
+        "N2": 0,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 1
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 4,
+        "N2": 5,
+        "N3": 9,
+        "N": 9,
+        "N_astm": 14
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 15,
+        "N2": 25,
+        "N3": 40,
+        "N": 40,
+        "N_astm": 65
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 11,
+        "N2": 17,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 45
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 11,
+        "N2": 16,
+        "N3": 27,
+        "N": 27,
+        "N_astm": 43
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 13,
+        "N2": 17,
+        "N3": 30,
+        "N": 30,
+        "N_astm": 47
+      }
+    ],
+    "KE-HK8": [
+      {
+        "depth_m": 2.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 1,
+        "N3": 2,
+        "N": 2,
+        "N_astm": 3
+      },
+      {
+        "depth_m": 4.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 6.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 0,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 4,
+        "N2": 6,
+        "N3": 10,
+        "N": 10,
+        "N_astm": 16
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 8,
+        "N2": 8,
+        "N3": 16,
+        "N": 16,
+        "N_astm": 24
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 10,
+        "N2": 14,
+        "N3": 24,
+        "N": 24,
+        "N_astm": 38
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 14,
+        "N1": 20,
+        "N2": 30,
+        "N3": 50,
+        "N": 50,
+        "N_astm": 80
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 15,
+        "N1": 23,
+        "N2": 32,
+        "N3": 55,
+        "N": 55,
+        "N_astm": 87
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 14,
+        "N2": 20,
+        "N3": 34,
+        "N": 34,
+        "N_astm": 54
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 11,
+        "N1": 16,
+        "N2": 22,
+        "N3": 38,
+        "N": 38,
+        "N_astm": 60
+      }
+    ],
+    "KE-HK9": [
+      {
+        "depth_m": 2.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 4.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 6.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 8.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 10.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 12.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 14.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 16.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 0,
+        "N3": 0,
+        "N": 0,
+        "N_astm": 0
+      },
+      {
+        "depth_m": 18.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 0,
+        "N2": 1,
+        "N3": 1,
+        "N": 1,
+        "N_astm": 2
+      },
+      {
+        "depth_m": 20.65,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 1,
+        "N3": 2,
+        "N": 2,
+        "N_astm": 3
+      },
+      {
+        "depth_m": 22.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 2,
+        "N2": 1,
+        "N3": 3,
+        "N": 3,
+        "N_astm": 4
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 16,
+        "N2": 21,
+        "N3": 37,
+        "N": 37,
+        "N_astm": 58
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 13,
+        "N2": 17,
+        "N3": 30,
+        "N": 30,
+        "N_astm": 47
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 10,
+        "N2": 14,
+        "N3": 24,
+        "N": 24,
+        "N_astm": 38
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 12,
+        "N2": 17,
+        "N3": 29,
+        "N": 29,
+        "N_astm": 46
+      },
+      {
+        "depth_m": 42.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 12,
+        "N2": 16,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 44
+      },
+      {
+        "depth_m": 44.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 12,
+        "N2": 16,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 44
+      },
+      {
+        "depth_m": 46.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 10,
+        "N2": 18,
+        "N3": 28,
+        "N": 28,
+        "N_astm": 46
+      },
+      {
+        "depth_m": 48.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 12,
+        "N2": 22,
+        "N3": 34,
+        "N": 34,
+        "N_astm": 56
+      },
+      {
+        "depth_m": 50.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 9,
+        "N2": 14,
+        "N3": 23,
+        "N": 23,
+        "N_astm": 37
+      },
+      {
+        "depth_m": 52.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 6,
+        "N2": 13,
+        "N3": 19,
+        "N": 19,
+        "N_astm": 32
+      },
+      {
+        "depth_m": 54.45,
+        "depth_to_m": null,
+        "N_prep": 13,
+        "N1": 22,
+        "N2": 34,
+        "N3": 56,
+        "N": 56,
+        "N_astm": 90
+      },
+      {
+        "depth_m": 56.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 13,
+        "N2": 25,
+        "N3": 38,
+        "N": 38,
+        "N_astm": 63
+      },
+      {
+        "depth_m": 58.45,
+        "depth_to_m": null,
+        "N_prep": 13,
+        "N1": 22,
+        "N2": 34,
+        "N3": 56,
+        "N": 56,
+        "N_astm": 90
+      },
+      {
+        "depth_m": 60.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 19,
+        "N2": 33,
+        "N3": 52,
+        "N": 52,
+        "N_astm": 85
+      },
+      {
+        "depth_m": 62.45,
+        "depth_to_m": null,
+        "N_prep": 11,
+        "N1": 18,
+        "N2": 35,
+        "N3": 53,
+        "N": 53,
+        "N_astm": 88
+      },
+      {
+        "depth_m": 64.45,
+        "depth_to_m": null,
+        "N_prep": 13,
+        "N1": 21,
+        "N2": 36,
+        "N3": 57,
+        "N": 57,
+        "N_astm": 93
+      },
+      {
+        "depth_m": 66.45,
+        "depth_to_m": null,
+        "N_prep": 11,
+        "N1": 19,
+        "N2": 29,
+        "N3": 48,
+        "N": 48,
+        "N_astm": 77
+      },
+      {
+        "depth_m": 68.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 12,
+        "N2": 21,
+        "N3": 33,
+        "N": 33,
+        "N_astm": 54
+      },
+      {
+        "depth_m": 70.45,
+        "depth_to_m": null,
+        "N_prep": 10,
+        "N1": 15,
+        "N2": 21,
+        "N3": 36,
+        "N": 36,
+        "N_astm": 57
+      }
+    ],
+    "KE-HK10": [
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 4,
+        "N3": 7,
+        "N": 7,
+        "N_astm": 11
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 4,
+        "N2": 4,
+        "N3": 8,
+        "N": 8,
+        "N_astm": 12
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 1,
+        "N2": 2,
+        "N3": 3,
+        "N": 3,
+        "N_astm": 5
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 4,
+        "N2": 5,
+        "N3": 9,
+        "N": 9,
+        "N_astm": 14
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 3,
+        "N2": 2,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 7
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 9,
+        "N1": 10,
+        "N2": 12,
+        "N3": 22,
+        "N": 22,
+        "N_astm": 34
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 8,
+        "N2": 13,
+        "N3": 21,
+        "N": 21,
+        "N_astm": 34
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 7,
+        "N2": 9,
+        "N3": 16,
+        "N": 16,
+        "N_astm": 25
+      },
+      {
+        "depth_m": 42.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 16,
+        "N2": 25,
+        "N3": 41,
+        "N": 41,
+        "N_astm": 66
+      },
+      {
+        "depth_m": 44.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 10,
+        "N2": 12,
+        "N3": 22,
+        "N": 22,
+        "N_astm": 34
+      },
+      {
+        "depth_m": 46.45,
+        "depth_to_m": null,
+        "N_prep": 11,
+        "N1": 18,
+        "N2": 29,
+        "N3": 47,
+        "N": 47,
+        "N_astm": 76
+      }
+    ],
+    "KE-HK11": [
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 6,
+        "N2": 8,
+        "N3": 14,
+        "N": 14,
+        "N_astm": 22
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 4,
+        "N2": 6,
+        "N3": 10,
+        "N": 10,
+        "N_astm": 16
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 5,
+        "N2": 7,
+        "N3": 12,
+        "N": 12,
+        "N_astm": 19
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 3,
+        "N3": 6,
+        "N": 6,
+        "N_astm": 9
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 2,
+        "N2": 2,
+        "N3": 4,
+        "N": 4,
+        "N_astm": 6
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 8,
+        "N2": 12,
+        "N3": 20,
+        "N": 20,
+        "N_astm": 32
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 4,
+        "N1": 8,
+        "N2": 11,
+        "N3": 19,
+        "N": 19,
+        "N_astm": 30
+      },
+      {
+        "depth_m": 38.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 8,
+        "N2": 11,
+        "N3": 19,
+        "N": 19,
+        "N_astm": 30
+      },
+      {
+        "depth_m": 40.45,
+        "depth_to_m": null,
+        "N_prep": 5,
+        "N1": 9,
+        "N2": 12,
+        "N3": 21,
+        "N": 21,
+        "N_astm": 33
+      },
+      {
+        "depth_m": 42.45,
+        "depth_to_m": null,
+        "N_prep": 8,
+        "N1": 13,
+        "N2": 17,
+        "N3": 30,
+        "N": 30,
+        "N_astm": 47
+      },
+      {
+        "depth_m": 44.45,
+        "depth_to_m": null,
+        "N_prep": 15,
+        "N1": 24,
+        "N2": 34,
+        "N3": 58,
+        "N": 58,
+        "N_astm": 92
+      },
+      {
+        "depth_m": 46.45,
+        "depth_to_m": null,
+        "N_prep": 7,
+        "N1": 13,
+        "N2": 18,
+        "N3": 31,
+        "N": 31,
+        "N_astm": 49
+      }
+    ],
+    "KE-HK12": [
+      {
+        "depth_m": 24.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 3,
+        "N3": 4,
+        "N": 4,
+        "N_astm": 7
+      },
+      {
+        "depth_m": 26.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 2,
+        "N2": 3,
+        "N3": 5,
+        "N": 5,
+        "N_astm": 8
+      },
+      {
+        "depth_m": 28.45,
+        "depth_to_m": null,
+        "N_prep": 2,
+        "N1": 3,
+        "N2": 3,
+        "N3": 6,
+        "N": 6,
+        "N_astm": 9
+      },
+      {
+        "depth_m": 30.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 2,
+        "N3": 3,
+        "N": 3,
+        "N_astm": 5
+      },
+      {
+        "depth_m": 32.45,
+        "depth_to_m": null,
+        "N_prep": 1,
+        "N1": 1,
+        "N2": 1,
+        "N3": 2,
+        "N": 2,
+        "N_astm": 3
+      },
+      {
+        "depth_m": 34.45,
+        "depth_to_m": null,
+        "N_prep": 3,
+        "N1": 5,
+        "N2": 6,
+        "N3": 11,
+        "N": 11,
+        "N_astm": 17
+      },
+      {
+        "depth_m": 36.45,
+        "depth_to_m": null,
+        "N_prep": 6,
+        "N1": 8,
+        "N2": 12,
+        "N3": 20,
+        "N": 20,
+        "N_astm": 32
+      }
+    ]
+  }
+}

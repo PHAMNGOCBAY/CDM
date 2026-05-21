@@ -1,0 +1,49 @@
+{
+  "_meta": {
+    "description": "Tham so mac dinh cho mo hinh p-y Winkler (Stage 1) trong Muc D tab Coc van SW",
+    "version": "1.0",
+    "created": "2026-05-20",
+    "source": "TCVN 11823-10:2017 + API RP2GEO + Matlock (1970)",
+    "implemented_in": "scripts/app_cdm.py function _calc_py_winkler"
+  },
+  "load": {
+    "H_kNm": 30.0,
+    "M_kNm": 0.0,
+    "description": "H = tai ngang dau coc (kN/m dai tuong); M = mo-men dau coc (kNm/m)"
+  },
+  "cdm": {
+    "thickness_m": 3.0,
+    "k_h_factor": 4.0,
+    "factor_range": [3.0, 5.0],
+    "description": "Be day khoi CDM tang cuong + he so nhan k_h. Range 3-5 theo nghien cuu."
+  },
+  "matlock_clay": {
+    "eps_50_soft": 0.02,
+    "eps_50_stiff": 0.01,
+    "N_p_min": 3.0,
+    "N_p_max": 9.0,
+    "y_50_factor": 2.5,
+    "description": "Matlock (1970) soft clay p-y curves. eps50=0.02 cho but set yeu, 0.01 cho set deo cung."
+  },
+  "api_sand": {
+    "k_init_kNm3": 10000,
+    "k_range_MNm3": [5, 25],
+    "description": "API RP2GEO sand: k_h = k * z. k=10 MN/m3 cho cat chat vua."
+  },
+  "pile_material": {
+    "E_concrete_fc40_kNm2": 31600000,
+    "E_concrete_fc60_kNm2": 38730000,
+    "description": "Mo dun dan hoi be tong DUL theo cuong do fc"
+  },
+  "design_limits": {
+    "u_top_max_mm": 25,
+    "u_top_max_source": "TCVN 11823-10 cho tuong chan tam thoi",
+    "M_max_factor_of_Mcr": 1.0,
+    "description": "Gioi han thiet ke: u_top <= 25mm; M_max <= M_cr (cat Mcr trong sw_pile_catalog.json)"
+  },
+  "discretization": {
+    "nodes_per_m": 2.0,
+    "min_nodes": 20,
+    "description": "1 node moi 0.5m doc theo coc, toi thieu 20 node"
+  }
+}
