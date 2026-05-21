@@ -10267,19 +10267,31 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             st.dataframe(pd.DataFrame(_layers_log),
                                           use_container_width=True, hide_index=True)
 
-                    # CDM từ tab Thiết kế CDM nếu có (TCVN 9403 Phụ lục C)
-                    if _cdm_thk_eff > 0:
-                        _cdm_a    = float(st.session_state.get("cdm_a_ratio", 0.20) or 0.20)
-                        _cdm_qu   = float(st.session_state.get("cdm_qu_28", 0.0) or 150.0)
-                        _cdm_phi  = float(st.session_state.get("cdm_phi_col", 30.0) or 30.0)
-                        _cdm_gam  = float(st.session_state.get("cdm_gamma_col", 19.0) or 19.0)
-                        # c_col = qu/2 (Su_undrained = qu/2 cho mẫu CDM 28 ngày)
-                        _cdm_c_col = _cdm_qu / 2.0
-                        _cdm_s = _CDMB(top_elev=_Z_s, bot_elev=_Z_s - _cdm_thk_eff,
-                                        area_ratio_a=_cdm_a, c_col_kPa=_cdm_c_col,
-                                        phi_col_deg=_cdm_phi, gamma_col_kNm3=_cdm_gam)
-                    else:
-                        _cdm_s = None
+                    # CDM block — Geometry tự động:
+                    #   top = Z_s (đáy fill / mặt đất tự nhiên Front)
+                    #   bot = Z_s − H1 − 1m (đáy lớp bùn + 1m vào lớp tốt)
+                    #   width = 5m mặc định (user override được)
+                    _cdm_top_e = _Z_s
+                    _cdm_bot_e = _Z_s - _H1_s - 1.0   # đáy bùn + 1m
+                    _cdm_thk_e = _cdm_top_e - _cdm_bot_e   # H1 + 1m
+                    _cdm_w_default = 5.0
+                    _cdm_w_e = st.number_input(
+                        f"Chiều rộng vùng CDM (m) — HK {_hk_iter}",
+                        min_value=1.0, max_value=20.0,
+                        value=_cdm_w_default, step=0.5,
+                        key=f"e_cdm_width_{_hk_iter}",
+                        help=f"Mặc định 5m. CDM từ Z={_Z_s:+.2f}m xuống "
+                             f"đáy bùn ({_Z_s-_H1_s:+.2f}m) + 1m = {_cdm_bot_e:+.2f}m"
+                    )
+                    _cdm_a    = float(st.session_state.get("cdm_a_ratio", 0.20) or 0.20)
+                    _cdm_qu   = float(st.session_state.get("cdm_qu_28", 0.0) or 150.0)
+                    _cdm_phi  = float(st.session_state.get("cdm_phi_col", 30.0) or 30.0)
+                    _cdm_gam  = float(st.session_state.get("cdm_gamma_col", 19.0) or 19.0)
+                    # c_col = qu/2 (Su_undrained = qu/2 cho mẫu CDM 28 ngày)
+                    _cdm_c_col = _cdm_qu / 2.0
+                    _cdm_s = _CDMB(top_elev=_cdm_top_e, bot_elev=_cdm_bot_e,
+                                    area_ratio_a=_cdm_a, c_col_kPa=_cdm_c_col,
+                                    phi_col_deg=_cdm_phi, gamma_col_kNm3=_cdm_gam)
 
                     with st.spinner("Đang chạy 3 kiểm tra ổn định tổng thể..."):
                         _res_s = _sw_check_all(_geom_s, _front_s, _back_s,
@@ -10307,8 +10319,9 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         delta_color="normal" if _res_s.Fs_toe_kickout >= 1.50 else "inverse",
                     )
 
-                    # Chi tiết
-                    with st.expander("Chi tiết tính toán + mặt trượt nguy hiểm"):
+                    # Chi tiết tính toán + mặt trượt nguy hiểm (trải phẳng)
+                    st.markdown("#### Chi tiết tính toán + mặt trượt nguy hiểm")
+                    if True:
                         st.markdown(f"**Phương pháp:** `{_res_s.slip_method}`")
                         st.markdown(
                             f"- Tâm mặt trượt: ({_res_s.slip_xc:+.1f}, {_res_s.slip_yc:+.1f}) m, "
@@ -10420,13 +10433,26 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _ax_s.add_patch(_Rect_s((-0.3, _pile_bot_s), 0.6, _L_s,
                                                      facecolor="#444444", edgecolor="black",
                                                      label=f"Cừ SW L={_L_s:.1f}m"))
-                            # CDM
+                            # CDM — Front: từ cừ ra phía trái width = _cdm_w_e
                             if _cdm_s:
-                                _ax_s.add_patch(_Rect_s((-8, _cdm_s.bot_elev), 7.7,
-                                                         _cdm_s.thickness,
-                                                         facecolor="#90c890", alpha=0.5,
-                                                         hatch="//", edgecolor="green",
-                                                         label="Vùng CDM"))
+                                _cdm_x_right = -0.3   # sát cừ
+                                _cdm_x_left = _cdm_x_right - _cdm_w_e
+                                _ax_s.add_patch(_Rect_s(
+                                    (_cdm_x_left, _cdm_s.bot_elev),
+                                    _cdm_w_e, _cdm_s.thickness,
+                                    facecolor="#90c890", alpha=0.55,
+                                    hatch="//", edgecolor="green", lw=1.0,
+                                    label=f"Vùng CDM (b={_cdm_w_e:.1f}m, dày={_cdm_s.thickness:.1f}m)"))
+                                # Annotation chiều rộng CDM
+                                _ax_s.annotate(
+                                    "", xy=(_cdm_x_right, _cdm_s.bot_elev - 0.6),
+                                    xytext=(_cdm_x_left, _cdm_s.bot_elev - 0.6),
+                                    arrowprops=dict(arrowstyle="<->", color="green", lw=1.0))
+                                _ax_s.text((_cdm_x_left + _cdm_x_right) / 2,
+                                            _cdm_s.bot_elev - 0.9,
+                                            f"b = {_cdm_w_e:.1f} m",
+                                            fontsize=8, color="green", fontweight="bold",
+                                            ha="center")
 
                             # Cung trượt — CHỈ vẽ phần dưới mặt đất (Front<top, Back<Zb)
                             import numpy as _np_arc
