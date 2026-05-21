@@ -8289,7 +8289,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 except Exception:
                     pass
 
-                for _k, _v in [
+                _defaults_map = [
                     (f"dpy_pile_{_hk_iter}",    _dpy_pile_default),
                     (f"dpy_L_{_hk_iter}",       float(_dpy_L_default)),
                     (f"dpy_Z_{_hk_iter}",       _dpy_Z_default),
@@ -8297,12 +8297,34 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     (f"dpy_su_{_hk_iter}",      _dpy_su_default),
                     (f"dpy_su_back_{_hk_iter}", _dpy_su_default),
                     (f"dpy_eps50_{_hk_iter}",   _eps50_default),
-                ]:
+                ]
+                for _k, _v in _defaults_map:
                     if _k not in st.session_state:
                         st.session_state[_k] = _v
                 # Lưu source để hiển thị nguồn ε₅₀
                 if f"dpy_eps50_src_{_hk_iter}" not in st.session_state:
                     st.session_state[f"dpy_eps50_src_{_hk_iter}"] = _eps50_source
+
+                # Nút Reset về JSON defaults — buộc đè session_state cũ
+                _rcol1, _rcol2 = st.columns([2, 5])
+                with _rcol1:
+                    if st.button(f"↻ Reset về JSON ({_hk_iter})",
+                                  key=f"btn_reset_def_{_hk_iter}",
+                                  help="Đè session_state về giá trị JSON gốc của HK "
+                                       "(pile, L, Z, H1, Su từ ke_sw_202605_TTHC.json + SQLite)"):
+                        for _k, _v in _defaults_map:
+                            st.session_state[_k] = _v
+                        st.session_state[f"dpy_eps50_src_{_hk_iter}"] = _eps50_source
+                        st.rerun()
+                with _rcol2:
+                    st.caption(
+                        f"_JSON defaults: pile=**{_dpy_pile_default}**, "
+                        f"L=**{_dpy_L_default:.1f}m**, "
+                        f"Z=**{_dpy_Z_default:+.2f}m**, "
+                        f"H1=**{_dpy_H1_default:.1f}m**, "
+                        f"Su={_dpy_su_default:.0f} kPa, "
+                        f"ε₅₀={_eps50_default:.4f}_"
+                    )
 
                 _dpy_applied = st.session_state.get("dpy_applied", {}) or {}
 
