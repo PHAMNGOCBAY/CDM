@@ -10227,6 +10227,16 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _EL_S(_Zb_s - _H1_s, 15.0, 5.0, 0.0, _su_B or _su_F or 10.0),
                             _EL_S(_pile_bot_s - 1.0, 18.0, 8.0, 30.0, 0.0),
                         ]
+                        _layers_log = [
+                            {"Symbol": "1", "z_top (m)": f"{_Z_s:+.2f}",
+                             "z_bot (m)": f"{_Z_s - _H1_s:+.2f}",
+                             "γ": "15.0", "γ_sub": "5.0", "φ": "0.0",
+                             "c Front (kPa)": f"{_su_F:.0f}", "c Back (kPa)": f"{_su_B:.0f}"},
+                            {"Symbol": "2", "z_top (m)": f"{_Z_s - _H1_s:+.2f}",
+                             "z_bot (m)": f"{_pile_bot_s - 1.0:+.2f}",
+                             "γ": "18.0", "γ_sub": "8.0", "φ": "30.0",
+                             "c Front (kPa)": "0", "c Back (kPa)": "0"},
+                        ]
                         st.caption("_(Dùng layers giả định — không có data SQLite cho HK này.)_")
 
                     # ── Hiển thị thông tin tường + HK trước khi tính ──────
@@ -10353,17 +10363,22 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                     _e_bot = _lay.tip_elev
                                     if _e_bot >= _e_cur:
                                         continue
-                                    _sym_l = _layers_log[_i_l]["Symbol"] if _i_l < len(_layers_log) else ""
+                                    # Safe access _layers_log (có thể ngắn hơn nếu shift)
+                                    if _i_l < len(_layers_log):
+                                        _sym_l = _layers_log[_i_l].get("Symbol", "")
+                                        _gam_str = _layers_log[_i_l].get("γ", f"{_lay.gamma:.1f}")
+                                    else:
+                                        _sym_l = ""
+                                        _gam_str = f"{_lay.gamma:.1f}"
                                     _col_l = _layer_colors.get(_sym_l, "#CFD8DC")
                                     _ax_s.add_patch(_Rect_s(
                                         (_x_left, _e_bot), _x_right - _x_left, _e_cur - _e_bot,
                                         facecolor=_col_l, edgecolor="#666", lw=0.4, alpha=0.6,
                                     ))
-                                    # Label symbol ở giữa lớp
                                     _y_mid = (_e_cur + _e_bot) / 2.0
                                     if abs(_e_cur - _e_bot) > 0.8:
                                         _ax_s.text((_x_left + _x_right) / 2.0, _y_mid,
-                                                    f"{_sym_l}\nγ={_layers_log[_i_l]['γ']}",
+                                                    f"{_sym_l}\nγ={_gam_str}",
                                                     fontsize=7, ha="center", va="center",
                                                     color="#333",
                                                     bbox=dict(boxstyle="round,pad=0.1",
