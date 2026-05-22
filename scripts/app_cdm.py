@@ -209,6 +209,29 @@ div[data-testid="stMetricValue"] { font-size: 1.1rem; }
 [data-testid="stDecoration"] { display: none; }
 footer { visibility: hidden; }
 
+/* ── iframe height=0 (JS handler): ẩn hẳn trên mọi tab, không chiếm chỗ ──
+   Áp dụng screen mode — hiệu lực cho tất cả tab, không chỉ khi in.
+   Plotly SVG inline không qua iframe → không bị ảnh hưởng. */
+iframe[height="0"] {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+}
+[data-testid="stCustomComponentV1"]:has(iframe[height="0"]),
+[data-testid="stIFrame"]:has(iframe[height="0"]) {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
+
 /* ── Nội dung lý thuyết trong expander: font rõ hơn trên màn hình ── */
 [data-testid="stExpander"] [data-testid="stMarkdownContainer"] p,
 [data-testid="stExpander"] [data-testid="stMarkdownContainer"] li,
@@ -3537,6 +3560,16 @@ st.markdown("""
   [data-testid="stPlotlyChart"] .js-plotly-plot ~ .js-plotly-plot {
     display: none !important;
   }
+  /* Streamlit đánh dấu stale element bằng data-stale="true" khi
+     re-run mà DOM cũ chưa được clean → ẩn hẳn khi in */
+  [data-stale="true"],
+  [data-testid="stElementContainer"][data-stale="true"],
+  [data-stale="true"] * {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
   /* SVG vừa khít container, không co dãn quá khổ */
   .stPlotlyChart svg.main-svg, .js-plotly-plot svg.main-svg {
     max-width: 100% !important;
@@ -3544,12 +3577,29 @@ st.markdown("""
   }
   /* Ẩn modebar (toolbar Plotly) khi in */
   .modebar, .modebar-container { display: none !important; }
-  /* iframe Streamlit (component html): giữ chiều cao */
+  /* iframe Streamlit: KHÔNG đặt min-height toàn cục — iframe ẩn của
+     components.html(height=0) sẽ bị thổi lên 380px → tạo khoảng trống
+     lớn ở đầu mọi trang. Chỉ giữ max-width + page-break. */
   iframe {
     max-width: 100% !important;
     width: 100% !important;
-    min-height: 380px !important;
     page-break-inside: avoid;
+  }
+  /* Iframe height=0 (JS handler beforeprint): ẨN HẲN khi in để không
+     chiếm khoảng trống đầu trang */
+  iframe[height="0"],
+  iframe[srcdoc*="beforeprint"] {
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    display: none !important;
+    visibility: hidden !important;
+  }
+  /* Streamlit iframe wrapper element cũng ẩn hẳn khi iframe rỗng */
+  [data-testid="stIFrame"]:has(iframe[height="0"]),
+  [data-testid="stCustomComponentV1"]:has(iframe[height="0"]) {
+    display: none !important;
+    height: 0 !important;
   }
   /* Matplotlib pyplot + ảnh: luôn hiện, không bị wildcard ẩn */
   .stPyplot, [data-testid="stPyplot"],
@@ -3569,6 +3619,18 @@ st.markdown("""
 }
 /* Ẩn print-only trên màn hình bình thường */
 .print-only { display: none; }
+/* iframe height=0: screen-mode fallback (CSS khối 1 đã cover, giữ đây để override
+   bất kỳ Streamlit style nào đặt min-height sau) */
+iframe[height="0"],
+[data-testid="stCustomComponentV1"]:has(iframe[height="0"]),
+[data-testid="stIFrame"]:has(iframe[height="0"]) {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
 @page { size: A4; margin: 12mm 10mm; }
 </style>
 """, unsafe_allow_html=True)
@@ -3591,8 +3653,8 @@ _components_pdf.html("""
 (function() {
   try {
     const W = window.parent;
-    if (!W || W._printV3) return;
-    W._printV3 = true;
+    if (!W || W._printV4) return;
+    W._printV4 = true;
 
     const OA = 'data-po';           // overlay attribute
     const cache = new Map();        // plotEl → dataUrl
@@ -3660,16 +3722,25 @@ _components_pdf.html("""
       if (d.getAttribute('_pw') === '0') d.open = false; d.removeAttribute('_pw');
     });
 
+    /* Xoá DOM stale: Streamlit đánh dấu element cũ với data-stale="true"
+       khi re-run mà DOM cũ chưa GC → 1 chart hiện thành 2-3 copies khi in */
+    const removeStale = () => {
+      const stale = W.document.querySelectorAll('[data-stale="true"]');
+      stale.forEach(n => n.remove());
+      if (stale.length) console.log('[PrintV4] removed', stale.length, 'stale nodes');
+    };
+
     /* beforeprint: dùng cache đã có (đồng bộ) */
-    W.addEventListener('beforeprint', () => { openD(); injectOverlays(); });
+    W.addEventListener('beforeprint', () => { openD(); removeStale(); injectOverlays(); });
     W.addEventListener('afterprint',  () => { closeD(); removeOverlays(); });
 
-    /* Ctrl+P: snapshot mới → inject → print */
+    /* Ctrl+P: snapshot mới → remove stale → inject → print */
     W.document.addEventListener('keydown', async e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
         openD();
         removeOverlays();
+        removeStale();
         await refreshCache();
         injectOverlays();
         setTimeout(() => W.print(), 80);
@@ -3679,12 +3750,12 @@ _components_pdf.html("""
     /* Pre-cache: chạy sau 2s, sau đó mỗi 4s */
     setTimeout(async () => {
       const n = await refreshCache();
-      console.log('[PrintV3] initial cache:', n, 'charts');
+      console.log('[PrintV4] initial cache:', n, 'charts');
       setInterval(refreshCache, 4000);
     }, 2000);
 
-    console.log('[PrintV3] attached');
-  } catch(e) { console.error('[PrintV3]', e); }
+    console.log('[PrintV4] attached');
+  } catch(e) { console.error('[PrintV4]', e); }
 })();
 </script>
 """, height=0)
@@ -4077,7 +4148,9 @@ if _page == "geology":
                                     focus_bh=_focus_bh,
                                     pair_highlight=_pair_sel,
                                 ),
-                                use_container_width=True, config={"displayModeBar": True},
+                                use_container_width=True,
+                                config={"displayModeBar": True},
+                                key="geo_3d_bhmap",
                             )
                         except Exception as _3d_err:
                             st.error(f"Không vẽ được biểu đồ 3D: {_3d_err}")
