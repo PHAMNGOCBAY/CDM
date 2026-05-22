@@ -252,6 +252,27 @@ iframe[height="0"] {
     [data-testid="stDecoration"],
     footer { display: none !important; }
 
+    /* Ẩn mọi interactive control khi in — không hữu ích + gây chồng chéo lên bảng/biểu đồ.
+       Áp dụng toàn bộ tab: Địa chất, Kè SW, Lún nền, Thông số...
+       Radio "Chế độ xem" + multiselect Zone + checkbox 3D là nguồn gây chồng chéo chính. */
+    [data-testid="stRadio"],
+    [data-testid="stMultiSelect"],
+    [data-testid="stSelectbox"],
+    [data-testid="stSlider"],
+    [data-testid="stNumberInput"],
+    [data-testid="stTextInput"],
+    [data-testid="stTextArea"],
+    [data-testid="stDateInput"],
+    [data-testid="stFileUploader"],
+    [data-testid="stColorPicker"],
+    [data-testid="stToggle"],
+    [data-testid="stCheckbox"],
+    [data-testid="stButton"],
+    /* Nút bấm Streamlit (không phải download) */
+    button[kind="secondary"], button[kind="primary"] { display: none !important; }
+    /* Download button giữ lại (có thể hữu ích khi in) */
+    [data-testid="stDownloadButton"] { display: block !important; }
+
     /* Mở rộng vùng nội dung ra full trang */
     [data-testid="stAppViewContainer"] > section { padding: 0 !important; }
     .block-container { max-width: 100% !important; padding: 0 1cm !important; }
@@ -3371,6 +3392,24 @@ st.markdown("""
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  /* Interactive controls — ẩn khi in, không hữu ích và gây chồng chéo lên bảng/chart.
+     Đặc biệt: radio "Chế độ xem" + multiselect Zone + checkbox 3D trong tab Địa chất. */
+  [data-testid="stRadio"],
+  [data-testid="stMultiSelect"],
+  [data-testid="stSelectbox"],
+  [data-testid="stSlider"],
+  [data-testid="stNumberInput"],
+  [data-testid="stTextInput"],
+  [data-testid="stTextArea"],
+  [data-testid="stDateInput"],
+  [data-testid="stFileUploader"],
+  [data-testid="stColorPicker"],
+  [data-testid="stToggle"],
+  [data-testid="stCheckbox"],
+  [data-testid="stButton"],
+  button[kind="secondary"], button[kind="primary"] { display: none !important; }
+  [data-testid="stDownloadButton"] { display: block !important; }
+
   /* height:auto CHỈ cho Streamlit layout containers (không đụng MathJax/Plotly) */
   .element-container,
   [data-testid="stVerticalBlock"],
@@ -3730,17 +3769,52 @@ _components_pdf.html("""
       if (stale.length) console.log('[PrintV4] removed', stale.length, 'stale nodes');
     };
 
+    /* Dedupe Plotly + Pyplot: nếu cùng 1 parent có ≥2 stElementContainer
+       cùng key chứa chart → chỉ giữ container CUỐI (mới nhất), xoá các
+       container cũ. Áp dụng cho cả Plotly + matplotlib pyplot. */
+    const dedupeCharts = () => {
+      const findDups = (selector) => {
+        const byParent = new Map();
+        W.document.querySelectorAll(selector).forEach(el => {
+          const wrap = el.closest('[data-testid="stElementContainer"]') || el;
+          const p = wrap.parentElement;
+          if (!p) return;
+          const key = wrap.getAttribute('data-stale-key')
+                    || wrap.getAttribute('data-element-key')
+                    || wrap.className;
+          const k = p.dataset._stbl || (p.dataset._stbl = Math.random().toString(36).slice(2,8));
+          const mapKey = k + '|' + key;
+          if (!byParent.has(mapKey)) byParent.set(mapKey, []);
+          byParent.get(mapKey).push(wrap);
+        });
+        let removed = 0;
+        byParent.forEach((wraps) => {
+          if (wraps.length > 1) {
+            wraps.slice(0, -1).forEach(w => { w.remove(); removed++; });
+          }
+        });
+        return removed;
+      };
+      const n1 = findDups('[data-testid="stPlotlyChart"]');
+      const n2 = findDups('[data-testid="stPyplot"]');
+      const n3 = findDups('[data-testid="stImage"]');
+      if (n1 + n2 + n3) console.log('[PrintV4] dedupe:', n1, 'Plotly +', n2, 'Pyplot +', n3, 'Image');
+    };
+
     /* beforeprint: dùng cache đã có (đồng bộ) */
-    W.addEventListener('beforeprint', () => { openD(); removeStale(); injectOverlays(); });
+    W.addEventListener('beforeprint', () => {
+      openD(); removeStale(); dedupeCharts(); injectOverlays();
+    });
     W.addEventListener('afterprint',  () => { closeD(); removeOverlays(); });
 
-    /* Ctrl+P: snapshot mới → remove stale → inject → print */
+    /* Ctrl+P: snapshot mới → remove stale + dedupe → inject → print */
     W.document.addEventListener('keydown', async e => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
         openD();
         removeOverlays();
         removeStale();
+        dedupeCharts();
         await refreshCache();
         injectOverlays();
         setTimeout(() => W.print(), 80);
