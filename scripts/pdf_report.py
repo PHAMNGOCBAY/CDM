@@ -17,7 +17,9 @@ Public API:
 from __future__ import annotations
 import base64
 import io
+import re
 import sqlite3
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,116 +27,594 @@ from typing import Any
 import pandas as pd
 import numpy as np
 from jinja2 import Template
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
+
+# ─── PDF engine auto-detect (tier-1 → tier-2 → tier-3) ──────────────────────
+# tier-1: weasyprint  — best HTML/CSS, cần GTK3 (Windows) hoặc apt libs (Cloud)
+# tier-2: xhtml2pdf   — pure Python, CSS cơ bản, chạy được Cloud Python 3.14
+# tier-3: reportlab   — programmatic PDF, fallback cuối nếu HTML→PDF fail
+_HAS_WEASYPRINT = False
+_HAS_XHTML2PDF = False
+_HAS_REPORTLAB = False
+try:
+    from weasyprint import HTML as _WP_HTML  # noqa: F401
+    from weasyprint.text.fonts import FontConfiguration as _WP_FontConfig  # noqa: F401
+    _HAS_WEASYPRINT = True
+except Exception:
+    pass
+try:
+    from xhtml2pdf import pisa as _pisa  # noqa: F401
+    _HAS_XHTML2PDF = True
+except Exception:
+    pass
+try:
+    from reportlab.lib.pagesizes import A4 as _RL_A4  # noqa: F401
+    from reportlab.lib.styles import getSampleStyleSheet as _rl_styles  # noqa: F401
+    from reportlab.platypus import (  # noqa: F401
+        SimpleDocTemplate as _RL_Doc,
+        Paragraph as _RL_Para,
+        Spacer as _RL_Spacer,
+        PageBreak as _RL_PageBreak,
+    )
+    _HAS_REPORTLAB = True
+except Exception:
+    pass
 
 _ROOT = Path(__file__).resolve().parent.parent
 
-# ─── CSS chung cho mọi báo cáo ──────────────────────────────────────────────
+# ─── CSS A4 cao cấp — typography + palette + paged-media ────────────────────
+# Thiết kế (2026-05-22): bookish + technical document
+#   - Palette: navy #1F4E79 + gold accent #B7892C + neutrals (cream/cream-dark)
+#   - Typography: DejaVu Serif (heading) + DejaVu Sans (body), Unicode full
+#   - Paged media: 3 page kinds — @page :cover / @page toc / @page (content)
+#       cover: không header/footer
+#       toc:   header tối giản
+#       content: header section-title (right) + page x/total (bottom)
+#   - Auto-numbering: figure / table qua CSS counter
+#   - Status pills: .badge.pass / .badge.fail / .badge.warn
+#   - Print-safe: page-break-inside: avoid cho table / .fig-block / .card
 _REPORT_CSS = """
+/* ── PALETTE ── */
+:root {
+  --navy: #1F4E79;
+  --navy-dark: #163A5A;
+  --navy-light: #2E6BA5;
+  --gold: #B7892C;
+  --gold-light: #E5C870;
+  --ink: #1A1A1A;
+  --ink-soft: #4A4A4A;
+  --rule: #C9D4E0;
+  --rule-soft: #E6ECF2;
+  --bg-tint: #F5F8FB;
+  --bg-cream: #FAF7EE;
+  --pass-bg: #E6F4EA;
+  --pass-fg: #1E6F3D;
+  --fail-bg: #FCE8E8;
+  --fail-fg: #B71C1C;
+  --warn-bg: #FFF6D6;
+  --warn-fg: #8B6914;
+  --info-bg: #E7F0FA;
+  --info-fg: #1F4E79;
+}
+
+/* ── PAGE GEOMETRY ── */
 @page {
   size: A4;
-  margin: 15mm 12mm 18mm 12mm;
-  @top-right {
-    content: "PLAXIS AI Copilot — Báo cáo TTHC";
-    font-size: 8pt;
-    color: #888;
+  margin: 22mm 18mm 22mm 22mm;  /* top right bottom left (left wider for binding) */
+
+  @top-left {
+    content: string(doc-title);
+    font-family: "DejaVu Serif", "Times New Roman", serif;
+    font-size: 8.5pt;
+    color: #777;
+    border-bottom: 0.3pt solid var(--rule);
+    padding-bottom: 2mm;
+    vertical-align: bottom;
   }
-  @bottom-center {
-    content: "Trang " counter(page) " / " counter(pages);
-    font-size: 8pt;
-    color: #555;
+  @top-right {
+    content: string(section-title);
+    font-family: "DejaVu Sans", "Arial", sans-serif;
+    font-size: 8.5pt;
+    color: var(--navy);
+    font-weight: 600;
+    border-bottom: 0.3pt solid var(--rule);
+    padding-bottom: 2mm;
+    vertical-align: bottom;
+    text-align: right;
   }
   @bottom-left {
-    content: string(report-date);
-    font-size: 7pt;
+    content: string(doc-meta);
+    font-family: "DejaVu Sans", sans-serif;
+    font-size: 8pt;
     color: #888;
+    padding-top: 2mm;
+    border-top: 0.3pt solid var(--rule);
+  }
+  @bottom-right {
+    content: "Trang " counter(page) " / " counter(pages);
+    font-family: "DejaVu Sans", sans-serif;
+    font-size: 8pt;
+    color: var(--navy);
+    font-weight: 600;
+    padding-top: 2mm;
+    border-top: 0.3pt solid var(--rule);
+    text-align: right;
   }
 }
+
+/* Cover page: KHÔNG header/footer */
+@page :first {
+  margin: 0;
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-left { content: none; }
+  @bottom-right { content: none; }
+}
+
+@page toc {
+  @top-right { content: "Mục lục"; }
+}
+
+/* ── BASE TYPOGRAPHY ── */
 body {
   font-family: "DejaVu Sans", "Arial", "Helvetica", sans-serif;
-  font-size: 10pt;
-  line-height: 1.45;
-  color: #1A1A1A;
+  font-size: 10.5pt;
+  line-height: 1.55;
+  color: var(--ink);
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
-.report-date {
-  string-set: report-date content();
+
+.doc-title {
+  string-set: doc-title content();
   display: none;
 }
+.doc-meta {
+  string-set: doc-meta content();
+  display: none;
+}
+.section-marker {
+  string-set: section-title content();
+  display: none;
+}
+
+/* ── COVER PAGE ── */
 .cover {
-  text-align: center;
-  margin-top: 5cm;
+  page: first;
+  page-break-after: always;
+  width: 210mm;
+  height: 297mm;
+  margin: 0;
+  padding: 28mm 22mm;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 55%, #F5F8FB 100%);
+  color: var(--ink);
+  position: relative;
+}
+.cover .brand-bar {
+  width: 60mm;
+  height: 6mm;
+  background: var(--navy);
+  margin-bottom: 14mm;
+  position: relative;
+}
+.cover .brand-bar::after {
+  content: "";
+  position: absolute;
+  left: 60mm;
+  top: 0;
+  width: 18mm;
+  height: 6mm;
+  background: var(--gold);
+}
+.cover .eyebrow {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: 9.5pt;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 700;
+  margin-bottom: 6mm;
+}
+.cover h1.cover-title {
+  font-family: "DejaVu Serif", "Times New Roman", serif;
+  font-size: 28pt;
+  line-height: 1.15;
+  color: var(--navy-dark);
+  font-weight: 700;
+  margin: 0 0 6mm 0;
+  border: 0;
+  padding: 0;
+}
+.cover .cover-subtitle {
+  font-size: 13pt;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  margin-bottom: 28mm;
+  max-width: 150mm;
+}
+.cover .cover-meta {
+  border-top: 0.5pt solid var(--rule);
+  padding-top: 6mm;
+  font-size: 10.5pt;
+  line-height: 1.85;
+  color: var(--ink-soft);
+}
+.cover .cover-meta .row {
+  display: flex;
+  border-bottom: 0.3pt solid var(--rule-soft);
+  padding: 2mm 0;
+}
+.cover .cover-meta .row .k {
+  width: 55mm;
+  font-weight: 600;
+  color: var(--navy);
+  letter-spacing: 0.02em;
+}
+.cover .cover-meta .row .v { flex: 1; }
+.cover .footer-strip {
+  position: absolute;
+  left: 22mm; right: 22mm; bottom: 18mm;
+  border-top: 0.5pt solid var(--rule);
+  padding-top: 4mm;
+  font-size: 9pt;
+  color: #888;
+  display: flex;
+  justify-content: space-between;
+}
+.cover .footer-strip .accent { color: var(--gold); font-weight: 700; }
+
+/* ── TABLE OF CONTENTS ── */
+.toc {
+  page: toc;
   page-break-after: always;
 }
-.cover h1 {
-  font-size: 22pt;
-  color: #1F4E79;
-  margin-bottom: 1cm;
+.toc h1 {
+  border: 0;
+  margin-bottom: 8mm;
 }
-.cover .subtitle {
-  font-size: 13pt;
-  color: #555;
-  margin-bottom: 2cm;
+.toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
-.cover .meta {
-  font-size: 10pt;
-  color: #666;
-  line-height: 1.8;
-}
-h1 {
-  font-size: 14pt;
-  color: #1F4E79;
-  border-bottom: 2px solid #1F4E79;
-  padding-bottom: 4px;
-  margin-top: 18pt;
-  page-break-after: avoid;
-}
-h2 {
-  font-size: 11.5pt;
-  color: #1F4E79;
-  margin-top: 12pt;
-  page-break-after: avoid;
-}
-h3 {
+.toc li {
+  display: flex;
+  align-items: baseline;
   font-size: 10.5pt;
-  color: #444;
-  margin-top: 8pt;
+  padding: 1.6mm 0;
+  border-bottom: 0.2pt dotted var(--rule);
+}
+.toc li.lv1 {
+  font-weight: 700;
+  color: var(--navy);
+  font-size: 11pt;
+  padding-top: 3mm;
+  border-bottom: 0.3pt solid var(--navy);
+}
+.toc li.lv2 { padding-left: 6mm; }
+.toc li.lv3 { padding-left: 12mm; color: var(--ink-soft); font-size: 9.5pt; }
+.toc li .ttl { flex: 1; }
+.toc li .dots {
+  flex: 0 0 auto;
+  border-bottom: 0.5pt dotted #999;
+  margin: 0 4mm;
+  height: 0.5em;
+  min-width: 10mm;
+  flex-grow: 1;
+}
+.toc li .pg { flex: 0 0 auto; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+
+/* ── CHAPTER DIVIDER PAGE ── */
+.chapter-divider {
+  page-break-before: always;
+  page-break-after: always;
+  text-align: left;
+  padding-top: 70mm;
+}
+.chapter-divider .chap-num {
+  font-family: "DejaVu Serif", serif;
+  font-size: 72pt;
+  font-weight: 700;
+  color: var(--gold-light);
+  line-height: 1;
+  margin: 0;
+}
+.chapter-divider .chap-title {
+  font-family: "DejaVu Serif", serif;
+  font-size: 26pt;
+  font-weight: 700;
+  color: var(--navy-dark);
+  margin-top: 4mm;
+  border-bottom: 1.5pt solid var(--navy);
+  padding-bottom: 4mm;
+  display: inline-block;
+}
+.chapter-divider .chap-lead {
+  font-size: 11pt;
+  color: var(--ink-soft);
+  margin-top: 6mm;
+  max-width: 140mm;
+  line-height: 1.55;
+}
+
+/* ── HEADINGS (content) ── */
+h1 {
+  font-family: "DejaVu Serif", "Times New Roman", serif;
+  font-size: 16pt;
+  color: var(--navy-dark);
+  border-bottom: 1.5pt solid var(--navy);
+  padding-bottom: 3pt;
+  margin: 18pt 0 8pt 0;
+  page-break-after: avoid;
+  letter-spacing: -0.005em;
+}
+h1.chapter { page-break-before: always; margin-top: 0; }
+h1.no-break { page-break-before: avoid; }
+h1 .h-num {
+  color: var(--gold);
+  margin-right: 6pt;
+  font-family: "DejaVu Serif", serif;
+}
+
+h2 {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: 12pt;
+  color: var(--navy);
+  margin-top: 14pt;
+  margin-bottom: 4pt;
+  padding-left: 6pt;
+  border-left: 2pt solid var(--gold);
   page-break-after: avoid;
 }
-p { margin: 4pt 0; }
+
+h3 {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: 10.5pt;
+  color: var(--navy-dark);
+  font-weight: 700;
+  margin: 10pt 0 3pt 0;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  page-break-after: avoid;
+}
+h3::before { content: "▸ "; color: var(--gold); }
+
+p {
+  margin: 4pt 0;
+  text-align: justify;
+  hyphens: auto;
+  orphans: 3;
+  widows: 3;
+}
+p.lead {
+  font-size: 11pt;
+  color: var(--ink-soft);
+  margin: 6pt 0 10pt 0;
+  border-left: 3pt solid var(--gold);
+  padding-left: 10pt;
+}
+ul, ol { margin: 4pt 0 4pt 6mm; padding: 0; }
+li { margin: 2pt 0; }
+strong { color: var(--navy-dark); }
+em { color: var(--ink-soft); }
+
+/* ── CAPTIONS — auto numbering ── */
+body { counter-reset: fig tbl section; }
+h1 { counter-reset: subsection; counter-increment: section; }
+h2 { counter-increment: subsection; }
+
 .caption {
-  font-size: 8.5pt;
-  color: #666;
+  font-size: 9pt;
+  color: var(--ink-soft);
   font-style: italic;
   text-align: center;
   margin: 2pt 0 8pt 0;
+  line-height: 1.35;
 }
+figure {
+  margin: 8pt 0;
+  page-break-inside: avoid;
+  text-align: center;
+}
+figure img {
+  max-width: 100%;
+  max-height: 14cm;
+  object-fit: contain;
+}
+figure figcaption {
+  font-size: 9pt;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin-top: 3pt;
+  text-align: center;
+  counter-increment: fig;
+}
+figure figcaption::before {
+  content: "Hình " counter(section) "." counter(fig) ". ";
+  font-style: normal;
+  font-weight: 700;
+  color: var(--navy);
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
   margin: 6pt 0;
-  page-break-inside: avoid;
-  font-size: 8.5pt;
+  page-break-inside: auto;
+  font-size: 9pt;
+  font-variant-numeric: tabular-nums;
+}
+table.no-break { page-break-inside: avoid; }
+table thead { display: table-header-group; }     /* lặp header khi tách trang */
+table tfoot { display: table-footer-group; }
+table tr { page-break-inside: avoid; }           /* không tách giữa 1 hàng */
+table caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 9pt;
+  color: var(--navy);
+  font-weight: 700;
+  padding: 2pt 0;
+  counter-increment: tbl;
+}
+table caption::before {
+  content: "Bảng " counter(section) "." counter(tbl) ". ";
+  color: var(--gold);
 }
 table th {
-  background-color: #1F4E79;
+  background-color: var(--navy);
   color: white;
   font-weight: 600;
-  padding: 5px 6px;
+  padding: 5pt 6pt;
   text-align: center;
-  border: 0.5px solid #888;
+  border: 0.4pt solid var(--navy-dark);
+  letter-spacing: 0.01em;
+  font-size: 9pt;
+}
+table th.subhead {
+  background-color: var(--navy-light);
+  font-weight: 500;
+  font-size: 8.5pt;
 }
 table td {
-  padding: 4px 6px;
-  border: 0.5px solid #BBB;
+  padding: 3.5pt 6pt;
+  border: 0.3pt solid var(--rule);
+  vertical-align: middle;
   text-align: center;
+}
+table td.left { text-align: left; }
+table td.right { text-align: right; }
+table tr:nth-child(even) td { background-color: var(--bg-tint); }
+table tr.pass td {
+  background-color: var(--pass-bg);
+  color: var(--pass-fg);
+}
+table tr.fail td {
+  background-color: var(--fail-bg);
+  color: var(--fail-fg);
+  font-weight: 600;
+}
+table tr.total td {
+  background-color: var(--navy);
+  color: white;
+  font-weight: 700;
+  border-top: 1pt solid var(--navy-dark);
+}
+
+/* ── STATUS BADGES ── */
+.badge {
+  display: inline-block;
+  padding: 1.5pt 6pt;
+  border-radius: 8pt;
+  font-size: 8.5pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
   vertical-align: middle;
 }
-table tr:nth-child(even) td {
-  background-color: #F5F8FB;
+.badge.pass { background: var(--pass-bg); color: var(--pass-fg); }
+.badge.fail { background: var(--fail-bg); color: var(--fail-fg); }
+.badge.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.badge.info { background: var(--info-bg); color: var(--info-fg); }
+.badge.neutral { background: #ECEFF1; color: #455A64; }
+
+/* ── METRIC CARDS ── */
+.metric-row {
+  display: flex;
+  gap: 6pt;
+  margin: 8pt 0 10pt 0;
+  page-break-inside: avoid;
 }
-table tr.pass td { background-color: #E8F5E9; }
-table tr.fail td { background-color: #FFEBEE; }
+.metric-card {
+  flex: 1;
+  border-left: 3pt solid var(--navy);
+  background: var(--bg-tint);
+  padding: 6pt 8pt 7pt 9pt;
+  border-radius: 0 2pt 2pt 0;
+}
+.metric-card.accent { border-left-color: var(--gold); }
+.metric-card.pass { border-left-color: var(--pass-fg); background: var(--pass-bg); }
+.metric-card.fail { border-left-color: var(--fail-fg); background: var(--fail-bg); }
+.metric-card .label {
+  font-size: 7.5pt;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.metric-card .value {
+  font-family: "DejaVu Serif", serif;
+  font-size: 16pt;
+  color: var(--navy-dark);
+  font-weight: 700;
+  line-height: 1.15;
+  margin-top: 1pt;
+}
+.metric-card .unit {
+  font-size: 8.5pt;
+  color: var(--ink-soft);
+  font-weight: 400;
+  margin-left: 2pt;
+}
+.metric-card .delta {
+  font-size: 8.5pt;
+  color: var(--pass-fg);
+  margin-top: 1pt;
+}
+.metric-card .delta.neg { color: var(--fail-fg); }
+
+/* ── CALLOUT BLOCKS ── */
+.callout {
+  margin: 8pt 0;
+  padding: 6pt 10pt 6pt 12pt;
+  border-radius: 3pt;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+.callout .ttl {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 2pt;
+  font-size: 9.5pt;
+}
+.callout.info {
+  background: var(--info-bg);
+  border-left: 3pt solid var(--info-fg);
+  color: var(--info-fg);
+}
+.callout.warning {
+  background: var(--warn-bg);
+  border-left: 3pt solid var(--warn-fg);
+  color: var(--warn-fg);
+}
+.callout.success {
+  background: var(--pass-bg);
+  border-left: 3pt solid var(--pass-fg);
+  color: var(--pass-fg);
+}
+.callout.danger {
+  background: var(--fail-bg);
+  border-left: 3pt solid var(--fail-fg);
+  color: var(--fail-fg);
+}
+
+/* Backwards compat */
+.info { background: var(--info-bg); border-left: 3pt solid var(--info-fg); padding: 6pt 8pt; margin: 6pt 0; font-size: 9.5pt; color: var(--info-fg); }
+.warning { background: var(--warn-bg); border-left: 3pt solid var(--warn-fg); padding: 6pt 8pt; margin: 6pt 0; font-size: 9.5pt; color: var(--warn-fg); }
+
+/* ── PULL QUOTE / KEY-POINT ── */
+.pull-quote {
+  margin: 10pt 4mm;
+  padding: 6pt 10pt;
+  border-left: 4pt solid var(--gold);
+  font-family: "DejaVu Serif", serif;
+  font-size: 12pt;
+  font-style: italic;
+  color: var(--navy);
+  background: var(--bg-cream);
+}
+
+/* ── FIG-BLOCK (legacy alias) ── */
 .fig-block {
   text-align: center;
   margin: 8pt 0;
@@ -145,58 +625,72 @@ table tr.fail td { background-color: #FFEBEE; }
   max-height: 14cm;
   object-fit: contain;
 }
-.metric-row {
-  display: flex;
-  gap: 8pt;
-  margin: 8pt 0;
-  page-break-inside: avoid;
+.fig-block .caption {
+  margin-top: 3pt;
 }
-.metric-card {
-  flex: 1;
-  border: 1px solid #BBDEFB;
-  border-radius: 4px;
-  padding: 6pt;
-  background: #F5F8FB;
-}
-.metric-card .label {
-  font-size: 8pt;
-  color: #555;
-  text-transform: uppercase;
-}
-.metric-card .value {
-  font-size: 14pt;
-  color: #1F4E79;
-  font-weight: 700;
-}
-.metric-card .delta {
-  font-size: 8.5pt;
-  color: #2E7D32;
-}
-.metric-card .delta.neg { color: #C62828; }
-.warning {
-  background: #FFF8E1;
-  border-left: 3px solid #F9A825;
-  padding: 6pt 8pt;
-  margin: 6pt 0;
-  font-size: 9pt;
-}
-.info {
-  background: #E3F2FD;
-  border-left: 3px solid #1565C0;
-  padding: 6pt 8pt;
-  margin: 6pt 0;
-  font-size: 9pt;
-}
+
+/* ── FORMULA / CODE ── */
 .formula {
   font-family: "DejaVu Sans Mono", "Courier New", monospace;
-  background: #F5F5F5;
-  padding: 6pt;
-  margin: 4pt 0;
-  border-left: 2px solid #888;
-  font-size: 9pt;
+  background: var(--bg-cream);
+  padding: 8pt 10pt;
+  margin: 6pt 0;
+  border-left: 2pt solid var(--gold);
+  font-size: 9.5pt;
+  line-height: 1.65;
   page-break-inside: avoid;
 }
+
+/* ── SIGNATURE BLOCK ── */
+.signature-block {
+  page-break-inside: avoid;
+  margin-top: 18mm;
+  display: table;
+  width: 100%;
+}
+.signature-block .sig {
+  display: table-cell;
+  width: 33%;
+  text-align: center;
+  padding: 0 6mm;
+  vertical-align: top;
+}
+.signature-block .sig .role {
+  font-size: 9pt;
+  color: var(--ink-soft);
+  margin-bottom: 24mm;
+}
+.signature-block .sig .line {
+  border-top: 0.6pt solid var(--ink);
+  padding-top: 1.5mm;
+  font-weight: 700;
+  font-size: 10pt;
+  color: var(--navy-dark);
+}
+.signature-block .sig .name-hint {
+  font-size: 8.5pt;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+/* ── UTILITY ── */
 .page-break { page-break-after: always; }
+/* Tránh blank page khi page-break đứng ngay sau cover/toc đã break sẵn */
+.cover + .page-break,
+.toc + .page-break,
+section + .page-break,
+.page-break + .page-break,
+.page-break:first-child { display: none; }
+.no-break { page-break-inside: avoid; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.small { font-size: 9pt; color: var(--ink-soft); }
+.muted { color: var(--ink-soft); }
+.rule {
+  border: 0;
+  border-top: 0.5pt solid var(--rule);
+  margin: 8pt 0;
+}
 """
 
 # ─── Helpers: figures → base64 ──────────────────────────────────────────────
@@ -209,12 +703,23 @@ def mpl_to_b64(fig, dpi: int = 130) -> str:
 
 
 def plotly_to_b64(fig, width: int = 1000, height: int = 500) -> str:
-    """Plotly Figure → data URI (cần kaleido)."""
+    """Plotly Figure → data URI (cần kaleido).
+
+    LƯU Ý: kaleido KHÔNG có wheel cp314 → không chạy được trên Streamlit Cloud.
+    Quy tắc dự án (CLAUDE.md): mọi chart embed PDF phải vẽ lại bằng Matplotlib
+    qua `mpl_to_b64()`. Hàm này chỉ dùng cho local Windows có kaleido cài sẵn.
+    """
     try:
         png_bytes = fig.to_image(format="png", width=width, height=height, scale=2)
         return "data:image/png;base64," + base64.b64encode(png_bytes).decode()
     except Exception as e:
-        return ""  # fallback: skip image silently
+        warnings.warn(
+            f"plotly_to_b64 fail ({type(e).__name__}: {e}). "
+            "Trên Cloud Python 3.14 không có kaleido → vẽ lại bằng Matplotlib "
+            "qua mpl_to_b64(). Chart sẽ bị BỎ QUA trong PDF.",
+            RuntimeWarning, stacklevel=2,
+        )
+        return ""
 
 
 def df_to_html(df: pd.DataFrame, caption: str | None = None,
@@ -240,15 +745,23 @@ def df_to_html(df: pd.DataFrame, caption: str | None = None,
     return html
 
 
-def metric_card(label: str, value: str, delta: str | None = None,
-                positive: bool = True) -> str:
+def metric_card(label: str, value: str, *,
+                unit: str = "", delta: str | None = None,
+                positive: bool = True, variant: str = "") -> str:
+    """Metric card khối thông số nổi bật.
+
+    variant ∈ "" / "accent" / "pass" / "fail" — đổi màu border + background.
+    unit  — hậu tố nhỏ sau value (ví dụ "kPa", "cm").
+    """
     delta_html = (
         f'<div class="delta {"" if positive else "neg"}">{delta}</div>'
         if delta else ""
     )
-    return (f'<div class="metric-card">'
+    unit_html = f'<span class="unit">{unit}</span>' if unit else ""
+    cls = f"metric-card {variant}".strip()
+    return (f'<div class="{cls}">'
             f'<div class="label">{label}</div>'
-            f'<div class="value">{value}</div>'
+            f'<div class="value">{value}{unit_html}</div>'
             f'{delta_html}</div>')
 
 
@@ -262,22 +775,209 @@ _REPORT_TEMPLATE = Template("""
 <style>{{ css }}</style>
 </head>
 <body>
-<span class="report-date">{{ date }}</span>
+<span class="doc-title">{{ doc_title_running }}</span>
+<span class="doc-meta">{{ doc_meta_running }}</span>
+
 {% if cover %}
 <div class="cover">
-  <h1>{{ title }}</h1>
-  <div class="subtitle">{{ subtitle }}</div>
-  <div class="meta">
+  <div class="brand-bar"></div>
+  <div class="eyebrow">{{ eyebrow or "Báo cáo kỹ thuật" }}</div>
+  <h1 class="cover-title">{{ title }}</h1>
+  {% if subtitle %}<div class="cover-subtitle">{{ subtitle }}</div>{% endif %}
+
+  <div class="cover-meta">
     {% for k, v in meta.items() %}
-      <div><strong>{{ k }}:</strong> {{ v }}</div>
+      <div class="row"><div class="k">{{ k }}</div><div class="v">{{ v }}</div></div>
     {% endfor %}
+  </div>
+
+  <div class="footer-strip">
+    <div>Sinh tự động ngày <span class="accent">{{ date }}</span></div>
+    <div>{{ doc_meta_running }}</div>
   </div>
 </div>
 {% endif %}
+
+{% if toc and toc_items %}
+<section class="toc">
+  <h1 class="no-break">Mục lục</h1>
+  <ul>
+    {% for item in toc_items %}
+      <li class="lv{{ item.level }}">
+        <span class="ttl">{{ item.title }}</span>
+        <span class="dots"></span>
+        <span class="pg">{{ item.page or '' }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
 {{ content | safe }}
+
+{% if signatures %}
+<div class="signature-block">
+  {% for s in signatures %}
+    <div class="sig">
+      <div class="role">{{ s.role }}</div>
+      <div class="line">{{ s.name or "(ký, họ tên)" }}</div>
+      {% if s.title %}<div class="name-hint">{{ s.title }}</div>{% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
 </body>
 </html>
 """)
+
+
+# ─── Helpers v2: figure / table / badge / callout / quote ──────────────────────
+def section_marker(title: str) -> str:
+    """Đặt section title cho running header (CSS string-set).
+
+    Chèn ngay sau mở h1 để CSS @page :top-right tự lấy.
+    """
+    return f'<span class="section-marker">{title}</span>'
+
+
+def figure(img_b64: str, caption: str = "") -> str:
+    """<figure> với auto-numbered caption (Hình X.Y)."""
+    cap_html = f"<figcaption>{caption}</figcaption>" if caption else ""
+    return f'<figure><img src="{img_b64}" />{cap_html}</figure>'
+
+
+def badge(text: str, kind: str = "neutral") -> str:
+    """Pill badge — kind ∈ pass/fail/warn/info/neutral."""
+    return f'<span class="badge {kind}">{text}</span>'
+
+
+def callout(body: str, kind: str = "info", title: str = "") -> str:
+    """Box thông báo. kind ∈ info/warning/success/danger."""
+    ttl = f'<span class="ttl">{title}</span>' if title else ""
+    return f'<div class="callout {kind}">{ttl}{body}</div>'
+
+
+def pull_quote(text: str) -> str:
+    """Khối trích dẫn nổi bật (italic + gold accent)."""
+    return f'<div class="pull-quote">{text}</div>'
+
+
+def metric_row(*cards: str) -> str:
+    """Hàng 2-4 metric cards. Gọi: metric_row(metric_card(...), metric_card(...))"""
+    return '<div class="metric-row">' + "".join(cards) + "</div>"
+
+
+def _render_pdf_weasyprint(html_str: str) -> bytes:
+    """Tier-1: WeasyPrint — chất lượng HTML/CSS cao nhất."""
+    font_config = _WP_FontConfig()
+    return _WP_HTML(string=html_str).write_pdf(font_config=font_config)
+
+
+def _render_pdf_xhtml2pdf(html_str: str) -> bytes:
+    """Tier-2: xhtml2pdf (pisa) — pure Python, hỗ trợ CSS cơ bản.
+
+    Lưu ý so với weasyprint:
+    - Không hỗ trợ CSS Paged Media @page với @top-right/@bottom-center →
+      đã được _strip_unsupported_css() loại bỏ trước khi render.
+    - Hỗ trợ font Unicode qua @font-face nếu file TTF tồn tại.
+    """
+    buf = io.BytesIO()
+    html_clean = _strip_unsupported_css(html_str)
+    result = _pisa.CreatePDF(src=html_clean, dest=buf, encoding="utf-8")
+    if result.err:
+        raise RuntimeError(f"xhtml2pdf render failed ({result.err} errors)")
+    return buf.getvalue()
+
+
+def _render_pdf_reportlab(title: str, content_html: str,
+                          subtitle: str, meta: dict, cover: bool) -> bytes:
+    """Tier-3: ReportLab — fallback cuối, dựng PDF từ HTML thô.
+
+    Strip tag HTML, giữ text + heading + bảng tối giản. Không render được
+    figure base64 (ảnh) và CSS — chỉ đảm bảo nội dung text không mất.
+    """
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                     PageBreak)
+    from reportlab.lib.pagesizes import A4
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=1.2*cm, rightMargin=1.2*cm,
+                            topMargin=1.5*cm, bottomMargin=1.8*cm)
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=14,
+                        textColor="#1F4E79", spaceAfter=8)
+    h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12,
+                        textColor="#2E5C8A", spaceAfter=6)
+    body = ParagraphStyle("Body", parent=styles["BodyText"], fontSize=10,
+                          leading=14)
+
+    flow = []
+    if cover:
+        flow.append(Paragraph(title, ParagraphStyle(
+            "Cover", parent=styles["Title"], fontSize=22,
+            textColor="#1F4E79", alignment=1)))
+        if subtitle:
+            flow.append(Spacer(1, 0.5*cm))
+            flow.append(Paragraph(subtitle, ParagraphStyle(
+                "Sub", parent=styles["BodyText"], fontSize=12,
+                textColor="#555", alignment=1)))
+        flow.append(Spacer(1, 1*cm))
+        for k, v in (meta or {}).items():
+            flow.append(Paragraph(f"<b>{k}:</b> {v}", body))
+        flow.append(PageBreak())
+
+    # Strip HTML thô: thay <h1>/<h2>/<p>/<table> bằng paragraph riêng
+    blocks = re.split(r"(<h[12][^>]*>.*?</h[12]>|<table.*?</table>|<p>.*?</p>)",
+                      content_html, flags=re.DOTALL | re.IGNORECASE)
+    for blk in blocks:
+        if not blk or not blk.strip():
+            continue
+        if re.match(r"<h1", blk, re.I):
+            txt = re.sub(r"<[^>]+>", "", blk).strip()
+            flow.append(Paragraph(txt, h1))
+        elif re.match(r"<h2", blk, re.I):
+            txt = re.sub(r"<[^>]+>", "", blk).strip()
+            flow.append(Paragraph(txt, h2))
+        elif re.match(r"<table", blk, re.I):
+            # Render bảng đơn giản từ thẻ <tr>/<td>
+            rows = re.findall(r"<tr.*?>(.*?)</tr>", blk, re.DOTALL | re.I)
+            for r in rows:
+                cells = re.findall(r"<t[hd].*?>(.*?)</t[hd]>", r, re.DOTALL | re.I)
+                line = " | ".join(re.sub(r"<[^>]+>", "", c).strip() for c in cells)
+                if line:
+                    flow.append(Paragraph(line, body))
+            flow.append(Spacer(1, 0.3*cm))
+        else:
+            txt = re.sub(r"<[^>]+>", "", blk).strip()
+            if txt:
+                flow.append(Paragraph(txt, body))
+                flow.append(Spacer(1, 0.2*cm))
+
+    doc.build(flow)
+    return buf.getvalue()
+
+
+def _strip_unsupported_css(html_str: str) -> str:
+    """Loại bỏ CSS Paged Media advanced không được xhtml2pdf hỗ trợ.
+
+    - @top-right / @bottom-center / @bottom-left blocks (CSS3 paged media)
+    - string-set declarations
+    Giữ lại @page { size + margin } cơ bản — xhtml2pdf hiểu được.
+    """
+    # Bỏ các block @top-*/@bottom-* lồng trong @page
+    out = re.sub(r"@(top|bottom|left|right)-[a-z]+\s*\{[^}]*\}", "",
+                 html_str, flags=re.IGNORECASE)
+    # Bỏ string-set
+    out = re.sub(r"string-set\s*:[^;]+;", "", out, flags=re.IGNORECASE)
+    # Bỏ content: counter()/string() (xhtml2pdf không hỗ trợ counter advanced)
+    out = re.sub(r"content\s*:\s*[^;}]*counter\([^)]*\)[^;}]*;", "", out,
+                 flags=re.IGNORECASE)
+    out = re.sub(r"content\s*:\s*string\([^)]*\)\s*;", "", out,
+                 flags=re.IGNORECASE)
+    return out
 
 
 def build_report_pdf(
@@ -286,8 +986,31 @@ def build_report_pdf(
     subtitle: str = "",
     meta: dict | None = None,
     cover: bool = True,
+    engine: str = "auto",
+    *,
+    eyebrow: str = "",
+    toc: bool = False,
+    toc_items: list[dict] | None = None,
+    signatures: list[dict] | None = None,
+    doc_title_running: str = "",
+    doc_meta_running: str = "",
 ) -> bytes:
-    """Compose HTML từ template + render qua WeasyPrint."""
+    """Compose HTML từ template + render PDF với 3-tier fallback.
+
+    Args mới (đẹp hơn):
+      eyebrow            — nhãn nhỏ phía trên title trên cover (vd "Báo cáo tổng hợp")
+      toc                — True để chèn mục lục (cần toc_items)
+      toc_items          — [{level: 1|2|3, title: str, page: str?}]
+      signatures         — [{role: "Người lập", name: ".......", title: "KS"}]
+      doc_title_running  — chuỗi hiển thị ở @top-left mọi trang (mặc định = title)
+      doc_meta_running   — chuỗi hiển thị ở @bottom-left (vd "Dự án 202605 TTHC")
+
+    engine:
+      - "auto"        — thử weasyprint → xhtml2pdf → reportlab
+      - "weasyprint"  — bắt buộc tier-1 (raise nếu không có)
+      - "xhtml2pdf"   — bắt buộc tier-2
+      - "reportlab"   — bắt buộc tier-3 (text-only)
+    """
     html_str = _REPORT_TEMPLATE.render(
         title=title,
         subtitle=subtitle,
@@ -296,10 +1019,48 @@ def build_report_pdf(
         css=_REPORT_CSS,
         content=content_html,
         cover=cover,
+        eyebrow=eyebrow,
+        toc=toc,
+        toc_items=toc_items or [],
+        signatures=signatures or [],
+        doc_title_running=doc_title_running or title,
+        doc_meta_running=doc_meta_running or (meta.get("Dự án", "") if meta else ""),
     )
-    font_config = FontConfiguration()
-    pdf_bytes = HTML(string=html_str).write_pdf(font_config=font_config)
-    return pdf_bytes
+
+    chain: list[str]
+    if engine == "auto":
+        chain = ["weasyprint", "xhtml2pdf", "reportlab"]
+    else:
+        chain = [engine]
+
+    errors: list[str] = []
+    for eng in chain:
+        try:
+            if eng == "weasyprint":
+                if not _HAS_WEASYPRINT:
+                    raise ImportError("weasyprint không khả dụng")
+                return _render_pdf_weasyprint(html_str)
+            if eng == "xhtml2pdf":
+                if not _HAS_XHTML2PDF:
+                    raise ImportError("xhtml2pdf không khả dụng")
+                return _render_pdf_xhtml2pdf(html_str)
+            if eng == "reportlab":
+                if not _HAS_REPORTLAB:
+                    raise ImportError("reportlab không khả dụng")
+                return _render_pdf_reportlab(title, content_html,
+                                             subtitle, meta or {}, cover)
+            raise ValueError(f"Engine không hỗ trợ: {eng}")
+        except Exception as e:
+            errors.append(f"{eng}: {e}")
+            warnings.warn(f"PDF engine '{eng}' fail → fallback. ({e})",
+                          RuntimeWarning, stacklevel=2)
+            continue
+
+    raise RuntimeError(
+        "Không engine PDF nào khả dụng. Lỗi:\n  - "
+        + "\n  - ".join(errors)
+        + "\nCài 1 trong: weasyprint / xhtml2pdf / reportlab."
+    )
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -376,13 +1137,22 @@ S1 = q × H_soft / E_composite  (m) — lún đàn hồi</div>
 
     return build_report_pdf(
         title="BÁO CÁO THÔNG SỐ CDM",
-        subtitle="Cọc đất xi măng — Dự án 202605 TTHC",
+        eyebrow="Báo cáo thiết kế",
+        subtitle="Cọc đất xi măng (Cement Deep Mixing) — Dự án 202605 TTHC",
         content_html="\n".join(parts),
         meta={
-            "Khu vực": state.get("cdm_zone", "—"),
-            "Hố khoan": state.get("cdm_bh", "—"),
-            "Tiêu chuẩn": "TCVN 9403:2012 + TCCS 41:2022",
+            "Dự án":        "202605 — Trung tâm Hành chính TP.HCM",
+            "Khu vực":      state.get("cdm_zone", "—"),
+            "Hố khoan":     state.get("cdm_bh", "—"),
+            "Tiêu chuẩn":   "TCVN 9403:2012 · TCCS 41:2022",
+            "Ngày xuất":    datetime.now().strftime("%d/%m/%Y %H:%M"),
         },
+        doc_meta_running="202605 TTHC · " + state.get("cdm_zone", ""),
+        signatures=[
+            {"role": "Người lập",   "name": state.get("export_co_staff", ""), "title": "Kỹ sư địa kỹ thuật"},
+            {"role": "Kiểm tra",    "name": "",                                "title": "Chủ nhiệm thiết kế"},
+            {"role": "Phê duyệt",   "name": "",                                "title": "Lãnh đạo đơn vị"},
+        ],
     )
 
 
@@ -445,14 +1215,23 @@ S_total = Σ Si  (cm)
 """)
 
     return build_report_pdf(
-        title="BÁO CÁO DỰ BÁO LÚN",
+        title="BÁO CÁO DỰ BÁO LÚN NỀN",
+        eyebrow="Báo cáo phân tích",
         subtitle="TCCS 41:2022 — So sánh phương án xử lý đất yếu",
         content_html="\n".join(parts),
         meta={
-            "Khu vực": state.get("sl_zone", "—"),
-            "Hố khoan": state.get("sl_bh", "—"),
-            "Tiêu chuẩn": "TCCS 41:2022 + TCVN 9403:2012",
+            "Dự án":      "202605 — Trung tâm Hành chính TP.HCM",
+            "Khu vực":    state.get("sl_zone", "—"),
+            "Hố khoan":   state.get("sl_bh", "—"),
+            "Tiêu chuẩn": "TCCS 41:2022 · TCVN 9403:2012",
+            "Ngày xuất":  datetime.now().strftime("%d/%m/%Y %H:%M"),
         },
+        doc_meta_running="202605 TTHC · " + state.get("sl_zone", ""),
+        signatures=[
+            {"role": "Người lập",  "name": state.get("export_co_staff", ""), "title": "Kỹ sư địa kỹ thuật"},
+            {"role": "Kiểm tra",   "name": "",                                "title": "Chủ nhiệm thiết kế"},
+            {"role": "Phê duyệt",  "name": "",                                "title": "Lãnh đạo đơn vị"},
+        ],
     )
 
 
@@ -512,14 +1291,23 @@ Cát (SPT-Meyerhof, Điều 7.3.8.6.7):<br>
 """)
 
     return build_report_pdf(
-        title="BÁO CÁO CỌC VÁN SW KÈ TTHC",
-        subtitle="NT1 / NT2 theo TCVN 11823-10:2017 — Đa phương pháp",
+        title="BÁO CÁO CỌC VÁN SW — KÈ TTHC",
+        eyebrow="Báo cáo thiết kế",
+        subtitle="Kiểm tra NT1 / NT2 — TCVN 11823-10:2017 (đa phương pháp)",
         content_html="\n".join(parts),
         meta={
-            "Dự án": "202605-TTHC",
-            "Cọc": "SW-840 / SW-940 BETON 6",
-            "Tiêu chuẩn": "TCVN 11823-10:2017 + 4 phương pháp",
+            "Dự án":      "202605 — Trung tâm Hành chính TP.HCM",
+            "Khu vực":    "KE — Kè Công viên",
+            "Loại cọc":   "SW (BTCT DUL chữ U lõi đặc)",
+            "Tiêu chuẩn": "TCVN 11823-10:2017 · α-Tomlinson · SPT-Meyerhof",
+            "Ngày xuất":  datetime.now().strftime("%d/%m/%Y %H:%M"),
         },
+        doc_meta_running="202605 TTHC · Kè KE",
+        signatures=[
+            {"role": "Người lập",  "name": "", "title": "Kỹ sư địa kỹ thuật"},
+            {"role": "Kiểm tra",   "name": "", "title": "Chủ nhiệm thiết kế"},
+            {"role": "Phê duyệt",  "name": "", "title": "Lãnh đạo đơn vị"},
+        ],
     )
 
 
@@ -926,17 +1714,41 @@ def report_all(state: dict, db_path: Path,
     # ── Phần 8: Tổng kết & khuyến nghị (mới) ────────────────────────────────
     parts.append(_section_summary(state, db_path, settlement_result))
 
+    # TOC tĩnh — tên 8 phần theo cấu trúc report_all
+    _toc = [
+        {"level": 1, "title": "Phần 1 — Tổng quan địa chất"},
+        {"level": 2, "title": "1.1 Hố khoan và lớp đất"},
+        {"level": 2, "title": "1.2 Thí nghiệm phòng & VST"},
+        {"level": 1, "title": "Phần 2 — Kiểm tra mẫu vs TCCS 41:2022"},
+        {"level": 1, "title": "Phần 3 — Thông số CDM"},
+        {"level": 1, "title": "Phần 4 — So sánh 5 phương án xử lý"},
+        {"level": 1, "title": "Phần 5 — Dự báo lún chi tiết"},
+        {"level": 2, "title": "5.1 Chi tiết lún từng lớp"},
+        {"level": 1, "title": "Phần 6 — Cọc ván SW (NT1 + NT2)"},
+        {"level": 1, "title": "Phần 7 — Nội lực cừ Winkler 7 HK"},
+        {"level": 1, "title": "Phần 8 — Tổng kết & khuyến nghị"},
+    ]
     return build_report_pdf(
-        title="BÁO CÁO TỔNG HỢP — TOÀN BỘ DỮ LIỆU",
-        subtitle=("Địa chất · Mẫu TN · CDM · Lún · Cọc ván SW · Nội lực cừ "
+        title="BÁO CÁO TỔNG HỢP",
+        eyebrow="Báo cáo kỹ thuật tổng hợp",
+        subtitle=("Địa chất · Thí nghiệm · CDM · Lún · Cọc ván SW · Nội lực cừ "
                   "— Dự án 202605 TTHC"),
         content_html="\n".join(parts),
         meta={
-            "Dự án":     "202605-TTHC",
-            "Khu vực":   state.get("cdm_zone", "—"),
-            "Hố khoan":  state.get("cdm_bh", "—"),
+            "Dự án":      "202605 — Trung tâm Hành chính TP.HCM",
+            "Khu vực":    state.get("cdm_zone", "—"),
+            "Hố khoan":   state.get("cdm_bh", "—"),
             "Tiêu chuẩn": ("TCVN 9403:2012 · TCCS 41:2022 · "
                           "TCVN 11823-10:2017 · Eurocode 7"),
-            "Số phần":   "8 phần · ~30–60 trang",
+            "Phạm vi":    "8 phần · ~30–60 trang A4",
+            "Ngày xuất":  datetime.now().strftime("%d/%m/%Y %H:%M"),
         },
+        toc=True,
+        toc_items=_toc,
+        doc_meta_running="202605 TTHC · " + state.get("cdm_zone", ""),
+        signatures=[
+            {"role": "Người lập",  "name": state.get("export_co_staff", ""), "title": "Kỹ sư địa kỹ thuật"},
+            {"role": "Kiểm tra",   "name": "",                                "title": "Chủ nhiệm thiết kế"},
+            {"role": "Phê duyệt",  "name": "",                                "title": "Lãnh đạo đơn vị"},
+        ],
     )

@@ -1,4 +1,6 @@
 python-docx==1.2.0
+latex2mathml>=3.81      # LaTeX → MathML (W3C) — bước 1 của Word export công thức
+math2docx>=3.1          # LaTeX → MathML → OMML embed vào python-docx (Word native equation)
 streamlit>=1.35.0
 numpy>=1.24             # Cloud có sẵn 1.26.4 (Python 3.14); local dùng 2.x cũng OK
 pandas>=2.2.2          # pandas <2.2.2 pin numpy<2

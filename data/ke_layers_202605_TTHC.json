@@ -1,0 +1,687 @@
+{
+  "_meta": {
+    "project": "260512 CVTT-TTHC — Trung tâm Hành chính TP.HCM",
+    "zone": "KE — Kè Công Viên",
+    "source": "Hồ sơ khảo sát địa chất công trình TTHC (user nhập)",
+    "updated": "2026-05-22",
+    "n_boreholes": 12,
+    "note_hk12": "XMD đáy 23.9→23.902m (elev -24.96m, 2026-05-22)"
+  },
+  "boreholes": [
+    {
+      "name": "KE-HK1",
+      "name_raw": "HK1",
+      "x_coord_m": 1191494.989,
+      "y_coord_m": 605877.216,
+      "elevation_m": 1.83,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 24.8,
+          "thickness_m": 24.8
+        },
+        {
+          "symbol": "2a",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 24.8,
+          "depth_bot_m": 29.2,
+          "thickness_m": 4.4
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 29.2,
+          "depth_bot_m": 37.0,
+          "thickness_m": 7.8
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 37.0,
+          "depth_bot_m": 50.0,
+          "thickness_m": 13.0
+        }
+      ]
+    },
+    {
+      "name": "KE-HK2",
+      "name_raw": "HK2",
+      "x_coord_m": 1191606.808,
+      "y_coord_m": 605941.494,
+      "elevation_m": 2.034,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Lớp san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.1,
+          "thickness_m": 2.1
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.1,
+          "depth_bot_m": 22.1,
+          "thickness_m": 20.0
+        },
+        {
+          "symbol": "2a",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 22.1,
+          "depth_bot_m": 27.7,
+          "thickness_m": 5.6
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 27.7,
+          "depth_bot_m": 33.6,
+          "thickness_m": 5.9
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 33.6,
+          "depth_bot_m": 42.6,
+          "thickness_m": 9.0
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 42.6,
+          "depth_bot_m": 46.0,
+          "thickness_m": 3.4
+        }
+      ]
+    },
+    {
+      "name": "KE-HK3",
+      "name_raw": "HK3",
+      "x_coord_m": 1191735.67,
+      "y_coord_m": 606027.68,
+      "elevation_m": 1.256,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Lớp san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 1.0,
+          "thickness_m": 1.0
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 1.0,
+          "depth_bot_m": 20.2,
+          "thickness_m": 19.2
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 20.2,
+          "depth_bot_m": 29.0,
+          "thickness_m": 8.8
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 29.0,
+          "depth_bot_m": 31.0,
+          "thickness_m": 2.0
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 35.0,
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 40.3,
+          "thickness_m": 5.3
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 40.3,
+          "depth_bot_m": 46.0,
+          "thickness_m": 5.7
+        }
+      ]
+    },
+    {
+      "name": "KE-HK4",
+      "name_raw": "HK4",
+      "x_coord_m": 1191862.312,
+      "y_coord_m": 606118.657,
+      "elevation_m": 1.824,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 21.3,
+          "thickness_m": 21.3
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 21.3,
+          "depth_bot_m": 29.0,
+          "thickness_m": 7.7
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 29.0,
+          "depth_bot_m": 37.7,
+          "thickness_m": 8.7
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 37.7,
+          "depth_bot_m": 40.0,
+          "thickness_m": 2.3
+        }
+      ]
+    },
+    {
+      "name": "KE-HK5",
+      "name_raw": "HK5",
+      "x_coord_m": 1191991.551,
+      "y_coord_m": 606111.803,
+      "elevation_m": 0.883,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Lớp san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 1.1,
+          "thickness_m": 1.1
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 1.1,
+          "depth_bot_m": 21.2,
+          "thickness_m": 20.1
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 21.2,
+          "depth_bot_m": 23.0,
+          "thickness_m": 1.8
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 23.0,
+          "depth_bot_m": 29.3,
+          "thickness_m": 6.3
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 29.3,
+          "depth_bot_m": 36.8,
+          "thickness_m": 7.5
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 36.8,
+          "depth_bot_m": 41.7,
+          "thickness_m": 4.9
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 41.7,
+          "depth_bot_m": 43.4,
+          "thickness_m": 1.7
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn bụi, màu xám nâu, kết cấu chặt",
+          "depth_top_m": 43.4,
+          "depth_bot_m": 51.5,
+          "thickness_m": 8.1
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn bụi, màu xám nâu, kết cấu chặt",
+          "depth_top_m": 51.5,
+          "depth_bot_m": 55.6,
+          "thickness_m": 4.1
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 55.6,
+          "depth_bot_m": 57.2,
+          "thickness_m": 1.6
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 57.2,
+          "depth_bot_m": 61.2,
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 61.2,
+          "depth_bot_m": 71.5,
+          "thickness_m": 10.3
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 71.5,
+          "depth_bot_m": 85.0,
+          "thickness_m": 13.5
+        }
+      ]
+    },
+    {
+      "name": "KE-HK6",
+      "name_raw": "HK6",
+      "x_coord_m": 1191971.117,
+      "y_coord_m": 606004.52,
+      "elevation_m": -0.16,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 17.0,
+          "thickness_m": 17.0
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, xám ghi, trạng thái dẻo chảy - dẻo mềm",
+          "depth_top_m": 17.0,
+          "depth_bot_m": 19.0,
+          "thickness_m": 2.0
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, xám ghi, trạng thái dẻo chảy - dẻo mềm",
+          "depth_top_m": 19.0,
+          "depth_bot_m": 23.5,
+          "thickness_m": 4.5
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 23.5,
+          "depth_bot_m": 31.0,
+          "thickness_m": 7.5
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 33.6,
+          "thickness_m": 2.6
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 33.6,
+          "depth_bot_m": 40.0,
+          "thickness_m": 6.4
+        }
+      ]
+    },
+    {
+      "name": "KE-HK7",
+      "name_raw": "HK7",
+      "x_coord_m": 1191886.862,
+      "y_coord_m": 605868.54,
+      "elevation_m": -0.561,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 21.0,
+          "thickness_m": 21.0
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 21.0,
+          "depth_bot_m": 30.8,
+          "thickness_m": 9.8
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 30.8,
+          "depth_bot_m": 33.0,
+          "thickness_m": 2.2
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 33.0,
+          "depth_bot_m": 35.0,
+          "thickness_m": 2.0
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 40.0,
+          "thickness_m": 5.0
+        }
+      ]
+    },
+    {
+      "name": "KE-HK8",
+      "name_raw": "HK8",
+      "x_coord_m": 1191979.459,
+      "y_coord_m": 605751.412,
+      "elevation_m": 2.579,
+      "layers": [
+        {
+          "symbol": "F",
+          "description": "Lớp san lấp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.9,
+          "thickness_m": 2.9
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 2.9,
+          "depth_bot_m": 6.7,
+          "thickness_m": 3.8
+        },
+        {
+          "symbol": "XMD",
+          "description": "Xi măng đất",
+          "depth_top_m": 6.7,
+          "depth_bot_m": 22.4,
+          "thickness_m": 15.7
+        },
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 22.4,
+          "depth_bot_m": 27.0,
+          "thickness_m": 4.6
+        },
+        {
+          "symbol": "1b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 28.8,
+          "thickness_m": 1.8
+        },
+        {
+          "symbol": "2c",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 28.8,
+          "depth_bot_m": 32.0,
+          "thickness_m": 3.2
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 32.0,
+          "depth_bot_m": 40.0,
+          "thickness_m": 8.0
+        }
+      ]
+    },
+    {
+      "name": "KE-HK9",
+      "name_raw": "HK9",
+      "x_coord_m": 1191863.956,
+      "y_coord_m": 605805.575,
+      "elevation_m": -2.25,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 21.0,
+          "thickness_m": 21.0
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",
+          "depth_top_m": 21.0,
+          "depth_bot_m": 23.5,
+          "thickness_m": 2.5
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 23.5,
+          "depth_bot_m": 27.0,
+          "thickness_m": 3.5
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 29.5,
+          "thickness_m": 2.5
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 29.5,
+          "depth_bot_m": 31.5,
+          "thickness_m": 2.0
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 31.5,
+          "depth_bot_m": 36.6,
+          "thickness_m": 5.1
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 36.6,
+          "depth_bot_m": 47.0,
+          "thickness_m": 10.4
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 47.0,
+          "depth_bot_m": 53.0,
+          "thickness_m": 6.0
+        },
+        {
+          "symbol": "6",
+          "description": "Cát lẫn sét, màu nâu vàng, kết cấu chặt",
+          "depth_top_m": 53.0,
+          "depth_bot_m": 62.1,
+          "thickness_m": 9.1
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 62.1,
+          "depth_bot_m": 63.1,
+          "thickness_m": 1.0
+        },
+        {
+          "symbol": "7",
+          "description": "Cát lẫn bụi màu xám nâu, kết cấu chặt",
+          "depth_top_m": 63.1,
+          "depth_bot_m": 70.0,
+          "thickness_m": 6.9
+        }
+      ]
+    },
+    {
+      "name": "KE-HK10",
+      "name_raw": "HK10",
+      "x_coord_m": 1191728.126,
+      "y_coord_m": 605742.279,
+      "elevation_m": -0.381,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 25.0,
+          "thickness_m": 25.0
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",
+          "depth_top_m": 25.0,
+          "depth_bot_m": 27.0,
+          "thickness_m": 2.0
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 28.8,
+          "thickness_m": 1.8
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 28.8,
+          "depth_bot_m": 30.1,
+          "thickness_m": 1.3
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 30.1,
+          "depth_bot_m": 34.1,
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 34.1,
+          "depth_bot_m": 41.0,
+          "thickness_m": 6.9
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 41.0,
+          "depth_bot_m": 46.0,
+          "thickness_m": 5.0
+        }
+      ]
+    },
+    {
+      "name": "KE-HK11",
+      "name_raw": "HK11",
+      "x_coord_m": 1191580.576,
+      "y_coord_m": 605751.153,
+      "elevation_m": -0.22,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 24.2,
+          "thickness_m": 24.2
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",
+          "depth_top_m": 24.2,
+          "depth_bot_m": 25.2,
+          "thickness_m": 1.0
+        },
+        {
+          "symbol": "2b",
+          "description": "Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",
+          "depth_top_m": 25.2,
+          "depth_bot_m": 29.0,
+          "thickness_m": 3.8
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 29.0,
+          "depth_bot_m": 30.1,
+          "thickness_m": 1.1
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 30.1,
+          "depth_bot_m": 41.2,
+          "thickness_m": 11.1
+        },
+        {
+          "symbol": "5",
+          "description": "Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",
+          "depth_top_m": 41.2,
+          "depth_bot_m": 46.0,
+          "thickness_m": 4.8
+        }
+      ]
+    },
+    {
+      "name": "KE-HK12",
+      "name_raw": "HK12",
+      "x_coord_m": 1192085.504,
+      "y_coord_m": 606075.287,
+      "elevation_m": -1.058,
+      "layers": [
+        {
+          "symbol": "1",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái chảy",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 23.902,
+          "thickness_m": 23.902
+        },
+        {
+          "symbol": "1b",
+          "description": "Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",
+          "depth_top_m": 23.902,
+          "depth_bot_m": 27.0,
+          "thickness_m": 3.098
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 27.0,
+          "depth_bot_m": 31.0,
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "3",
+          "description": "Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 35.0,
+          "thickness_m": 4.0
+        },
+        {
+          "symbol": "4",
+          "description": "Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",
+          "depth_top_m": 35.0,
+          "depth_bot_m": 36.0,
+          "thickness_m": 1.0
+        }
+      ]
+    }
+  ]
+}

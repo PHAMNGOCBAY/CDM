@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "generated": "2026-05-20",
+    "generated": "2026-05-22",
     "standard": "TCVN 11823-10:2017 Dieu 7.3.8.6.2 — alpha method (Tomlinson 1980)",
     "phi_stat": 0.35,
     "top_ke_m": 2.7,
@@ -11,7 +11,7 @@
   "boreholes": [
     {
       "bh_name": "KE-HK2",
-      "Z_m": 2.03,
+      "Z_m": 2.034,
       "Z_source": "SQLite",
       "D_bottom_soft_m": 22.1,
       "D_source": "layer=22.1 | SPT=18.4 → max",
@@ -20,8 +20,8 @@
         "pile_name": "SW-840",
         "L_design_m": 29.0,
         "top_ke_m": 2.7,
-        "Z_m": 2.03,
-        "fill_m": 0.67,
+        "Z_m": 2.034,
+        "fill_m": 0.666,
         "D_bottom_soft_m": 22.1,
         "D_source": "layer=22.1 | SPT=18.4 → max",
         "min_pen_m": 1.0,
@@ -33,9 +33,9 @@
         "bh_name": "KE-HK2",
         "pile_name": "SW-840",
         "L_design_m": 29.0,
-        "fill_m": 0.67,
-        "L_soil_m": 28.33,
-        "tip_depth_m": 28.33,
+        "fill_m": 0.666,
+        "L_soil_m": 28.334,
+        "tip_depth_m": 28.334,
         "perimeter_m": 4.5949,
         "Ap_cm2": 3107.0,
         "D_m": 0.84,
@@ -55,8 +55,8 @@
             "Rs_lyr_kN": 0.0,
             "method": "SPT",
             "N160": 0.0,
-            "sigma_v_eff_kPa": 14.95,
-            "gamma_kNm3": 14.24
+            "sigma_v_eff_kPa": 16.1,
+            "gamma_kNm3": 15.33
           },
           {
             "symbol": "1",
@@ -71,54 +71,54 @@
             "Rs_lyr_kN": 1185.5,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 97.13,
+            "sigma_v_eff_kPa": 99.46,
             "gamma_kNm3": 15.62
           },
           {
             "symbol": "2a",
             "depth_top_m": 22.1,
-            "depth_bot_m": 27.700000000000003,
+            "depth_bot_m": 27.7,
             "eff_top_m": 22.1,
             "eff_bot_m": 27.7,
             "L_lyr_m": 5.6,
             "su_kNm2": 0.0,
             "su_source": "SPT",
             "alpha": 0.0,
-            "Rs_lyr_kN": 352.0,
+            "Rs_lyr_kN": 342.2,
             "method": "SPT",
-            "N160": 7.2,
-            "sigma_v_eff_kPa": 169.31,
-            "gamma_kNm3": 14.84
+            "N160": 7.0,
+            "sigma_v_eff_kPa": 182.28,
+            "gamma_kNm3": 18.64
           },
           {
             "symbol": "3",
-            "depth_top_m": 27.700000000000003,
+            "depth_top_m": 27.7,
             "depth_bot_m": 33.6,
             "eff_top_m": 27.7,
             "eff_bot_m": 28.33,
-            "L_lyr_m": 0.63,
-            "su_kNm2": 16.5,
+            "L_lyr_m": 0.634,
+            "su_kNm2": 16.8,
             "su_source": "lab",
             "alpha": 1.0,
-            "Rs_lyr_kN": 47.8,
+            "Rs_lyr_kN": 48.9,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 207.76,
-            "gamma_kNm3": 18.07
+            "sigma_v_eff_kPa": 231.4,
+            "gamma_kNm3": 18.08
           }
         ],
-        "Rs_clay_kN": 1233.3,
-        "Rs_sand_kN": 352.0,
-        "Rs_kN": 1585.3,
+        "Rs_clay_kN": 1234.4,
+        "Rs_sand_kN": 342.2,
+        "Rs_kN": 1576.6,
         "tip_symbol": "3",
         "tip_method": "alpha",
-        "tip_su_kNm2": 16.5,
+        "tip_su_kNm2": 16.8,
         "tip_N160": null,
-        "Rp_kN": 46.1,
+        "Rp_kN": 47.0,
         "phi_stat": 0.3,
         "phi_basis": "SPT dominant (sand Rs=22% / tip=alpha)",
-        "RR_kN": 489.4,
-        "ratio": 2.32,
+        "RR_kN": 487.1,
+        "ratio": 2.3,
         "result": "Đạt",
         "warnings": [
           "Lớp cát 'F' (0.0–2.1 m): không có SPT → bỏ qua ma sát thành bên"
@@ -171,8 +171,8 @@
             "Rs_lyr_kN": 0.0,
             "method": "SPT",
             "N160": 0.0,
-            "sigma_v_eff_kPa": 7.39,
-            "gamma_kNm3": 14.79
+            "sigma_v_eff_kPa": 7.29,
+            "gamma_kNm3": 14.57
           },
           {
             "symbol": "1",
@@ -187,7 +187,7 @@
             "Rs_lyr_kN": 1473.3,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 73.58,
+            "sigma_v_eff_kPa": 73.36,
             "gamma_kNm3": 14.65
           },
           {
@@ -203,7 +203,7 @@
             "Rs_lyr_kN": 468.8,
             "method": "SPT",
             "N160": 7.3,
-            "sigma_v_eff_kPa": 156.65,
+            "sigma_v_eff_kPa": 156.43,
             "gamma_kNm3": 18.13
           }
         ],
@@ -271,8 +271,8 @@
             "Rs_lyr_kN": 1186.9,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 55.13,
-            "gamma_kNm3": 14.65
+            "sigma_v_eff_kPa": 54.5,
+            "gamma_kNm3": 14.59
           },
           {
             "symbol": "2b",
@@ -284,25 +284,25 @@
             "su_kNm2": 0.0,
             "su_source": "SPT",
             "alpha": 0.0,
-            "Rs_lyr_kN": 268.9,
+            "Rs_lyr_kN": 252.4,
             "method": "SPT",
-            "N160": 6.5,
-            "sigma_v_eff_kPa": 130.59,
-            "gamma_kNm3": 14.84
+            "N160": 6.1,
+            "sigma_v_eff_kPa": 147.71,
+            "gamma_kNm3": 18.59
           }
         ],
         "Rs_clay_kN": 1186.9,
-        "Rs_sand_kN": 268.9,
-        "Rs_kN": 1455.8,
+        "Rs_sand_kN": 252.4,
+        "Rs_kN": 1439.3,
         "tip_symbol": "2b",
         "tip_method": "SPT",
         "tip_su_kNm2": 0.0,
-        "tip_N160": 6.5,
-        "Rp_kN": 433.0,
+        "tip_N160": 6.1,
+        "Rp_kN": 406.3,
         "phi_stat": 0.3,
         "phi_basis": "SPT dominant (sand Rs=18% / tip=SPT)",
-        "RR_kN": 566.6,
-        "ratio": 2.68,
+        "RR_kN": 553.7,
+        "ratio": 2.62,
         "result": "Đạt",
         "warnings": []
       }
@@ -353,13 +353,13 @@
             "Rs_lyr_kN": 86.1,
             "method": "SPT",
             "N160": 3.4,
-            "sigma_v_eff_kPa": 20.65,
-            "gamma_kNm3": 14.24
+            "sigma_v_eff_kPa": 20.81,
+            "gamma_kNm3": 14.35
           },
           {
             "symbol": "1",
             "depth_top_m": 2.9,
-            "depth_bot_m": 6.699999999999999,
+            "depth_bot_m": 6.7,
             "eff_top_m": 2.9,
             "eff_bot_m": 6.7,
             "L_lyr_m": 3.8,
@@ -369,24 +369,24 @@
             "Rs_lyr_kN": 134.4,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 57.3,
-            "gamma_kNm3": 14.73
+            "sigma_v_eff_kPa": 57.09,
+            "gamma_kNm3": 14.45
           },
           {
             "symbol": "XMD",
-            "depth_top_m": 6.699999999999999,
+            "depth_top_m": 6.7,
             "depth_bot_m": 22.4,
             "eff_top_m": 6.7,
             "eff_bot_m": 22.4,
             "L_lyr_m": 15.7,
-            "su_kNm2": 6.3,
-            "su_source": "nearest:KE-HK3(368m,c_)",
+            "su_kNm2": 10.3,
+            "su_source": "nearest:KE-HK9(128m,Cu)",
             "alpha": 1.0,
-            "Rs_lyr_kN": 454.5,
+            "Rs_lyr_kN": 743.0,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 105.27,
-            "gamma_kNm3": 14.73
+            "sigma_v_eff_kPa": 109.79,
+            "gamma_kNm3": 15.4
           },
           {
             "symbol": "1",
@@ -401,8 +401,8 @@
             "Rs_lyr_kN": 739.5,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 163.03,
-            "gamma_kNm3": 18.13
+            "sigma_v_eff_kPa": 165.68,
+            "gamma_kNm3": 15.03
           },
           {
             "symbol": "1b",
@@ -411,14 +411,14 @@
             "eff_top_m": 27.0,
             "eff_bot_m": 28.8,
             "L_lyr_m": 1.8,
-            "su_kNm2": 17.0,
-            "su_source": "nearest:KE-HK2(418m,c_)",
+            "su_kNm2": 22.1,
+            "su_source": "lab",
             "alpha": 1.0,
-            "Rs_lyr_kN": 140.6,
+            "Rs_lyr_kN": 182.8,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 189.71,
-            "gamma_kNm3": 18.19
+            "sigma_v_eff_kPa": 185.25,
+            "gamma_kNm3": 18.22
           },
           {
             "symbol": "2c",
@@ -433,26 +433,25 @@
             "Rs_lyr_kN": 7.7,
             "method": "SPT",
             "N160": 11.1,
-            "sigma_v_eff_kPa": 209.12,
-            "gamma_kNm3": 17.23
+            "sigma_v_eff_kPa": 207.19,
+            "gamma_kNm3": 18.79
           }
         ],
-        "Rs_clay_kN": 1469.0,
+        "Rs_clay_kN": 1799.7,
         "Rs_sand_kN": 93.8,
-        "Rs_kN": 1562.8,
+        "Rs_kN": 1893.5,
         "tip_symbol": "2c",
         "tip_method": "SPT",
         "tip_su_kNm2": 0.0,
         "tip_N160": 11.1,
         "Rp_kN": 12.3,
         "phi_stat": 0.3,
-        "phi_basis": "SPT dominant (sand Rs=6% / tip=SPT)",
-        "RR_kN": 472.5,
-        "ratio": 2.24,
+        "phi_basis": "SPT dominant (sand Rs=5% / tip=SPT)",
+        "RR_kN": 571.7,
+        "ratio": 2.7,
         "result": "Đạt",
         "warnings": [
-          "Lớp 'XMD' (6.7–22.4 m): HK hiện tại không có VST/lab → lấy su=6 kPa từ KE-HK3(368m,c_)",
-          "Lớp '1b' (27.0–28.8 m): HK hiện tại không có VST/lab → lấy su=17 kPa từ KE-HK2(418m,c_)"
+          "Lớp 'XMD' (6.7–22.4 m): HK hiện tại không có VST/lab → lấy su=10 kPa từ KE-HK9(128m,Cu)"
         ]
       }
     },
@@ -502,8 +501,8 @@
             "Rs_lyr_kN": 1302.7,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 50.82,
-            "gamma_kNm3": 14.65
+            "sigma_v_eff_kPa": 48.72,
+            "gamma_kNm3": 14.45
           },
           {
             "symbol": "1b",
@@ -512,14 +511,14 @@
             "eff_top_m": 21.0,
             "eff_bot_m": 23.5,
             "L_lyr_m": 2.5,
-            "su_kNm2": 14.4,
-            "su_source": "nearest:KE-HK2(291m,c_)",
+            "su_kNm2": 11.0,
+            "su_source": "lab",
             "alpha": 1.0,
-            "Rs_lyr_kN": 165.4,
+            "Rs_lyr_kN": 126.4,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 111.97,
-            "gamma_kNm3": 18.07
+            "sigma_v_eff_kPa": 108.58,
+            "gamma_kNm3": 18.72
           },
           {
             "symbol": "2b",
@@ -534,13 +533,13 @@
             "Rs_lyr_kN": 20.6,
             "method": "SPT",
             "N160": 4.3,
-            "sigma_v_eff_kPa": 136.85,
-            "gamma_kNm3": 18.13
+            "sigma_v_eff_kPa": 134.33,
+            "gamma_kNm3": 18.16
           }
         ],
-        "Rs_clay_kN": 1468.1,
+        "Rs_clay_kN": 1429.1,
         "Rs_sand_kN": 20.6,
-        "Rs_kN": 1488.7,
+        "Rs_kN": 1449.7,
         "tip_symbol": "2b",
         "tip_method": "SPT",
         "tip_su_kNm2": 0.0,
@@ -548,12 +547,10 @@
         "Rp_kN": 33.2,
         "phi_stat": 0.3,
         "phi_basis": "SPT dominant (sand Rs=1% / tip=SPT)",
-        "RR_kN": 456.6,
-        "ratio": 2.16,
+        "RR_kN": 444.9,
+        "ratio": 2.1,
         "result": "Đạt",
-        "warnings": [
-          "Lớp '1b' (21.0–23.5 m): HK hiện tại không có VST/lab → lấy su=14 kPa từ KE-HK2(291m,c_)"
-        ]
+        "warnings": []
       }
     },
     {
@@ -602,8 +599,8 @@
             "Rs_lyr_kN": 1632.3,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 78.7,
-            "gamma_kNm3": 15.62
+            "sigma_v_eff_kPa": 69.2,
+            "gamma_kNm3": 14.86
           },
           {
             "symbol": "1b",
@@ -612,32 +609,30 @@
             "eff_top_m": 25.0,
             "eff_bot_m": 25.92,
             "L_lyr_m": 0.919,
-            "su_kNm2": 17.0,
-            "su_source": "nearest:KE-HK2(233m,c_)",
-            "alpha": 1.0,
-            "Rs_lyr_kN": 77.9,
+            "su_kNm2": 40.7,
+            "su_source": "lab",
+            "alpha": 0.95,
+            "Rs_lyr_kN": 177.1,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 159.7,
-            "gamma_kNm3": 18.19
+            "sigma_v_eff_kPa": 141.59,
+            "gamma_kNm3": 19.08
           }
         ],
-        "Rs_clay_kN": 1710.2,
+        "Rs_clay_kN": 1809.4,
         "Rs_sand_kN": 0.0,
-        "Rs_kN": 1710.2,
+        "Rs_kN": 1809.4,
         "tip_symbol": "1b",
         "tip_method": "alpha",
-        "tip_su_kNm2": 17.0,
+        "tip_su_kNm2": 40.7,
         "tip_N160": null,
-        "Rp_kN": 54.2,
+        "Rp_kN": 129.8,
         "phi_stat": 0.35,
         "phi_basis": "α dominant (sét chiếm ưu thế)",
-        "RR_kN": 617.5,
-        "ratio": 2.73,
+        "RR_kN": 678.7,
+        "ratio": 3.0,
         "result": "Đạt",
-        "warnings": [
-          "Lớp '1b' (25.0–27.0 m): HK hiện tại không có VST/lab → lấy su=17 kPa từ KE-HK2(233m,c_)"
-        ]
+        "warnings": []
       }
     },
     {
@@ -686,8 +681,8 @@
             "Rs_lyr_kN": 1556.8,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 77.95,
-            "gamma_kNm3": 15.62
+            "sigma_v_eff_kPa": 69.97,
+            "gamma_kNm3": 14.96
           },
           {
             "symbol": "1b",
@@ -696,14 +691,14 @@
             "eff_top_m": 24.2,
             "eff_bot_m": 25.2,
             "L_lyr_m": 1.0,
-            "su_kNm2": 16.3,
-            "su_source": "nearest:KE-HK2(192m,c_)",
-            "alpha": 1.0,
-            "Rs_lyr_kN": 74.9,
+            "su_kNm2": 40.7,
+            "su_source": "nearest:KE-HK10(148m,Cu)",
+            "alpha": 0.95,
+            "Rs_lyr_kN": 177.6,
             "method": "alpha",
             "N160": null,
-            "sigma_v_eff_kPa": 152.21,
-            "gamma_kNm3": 17.73
+            "sigma_v_eff_kPa": 136.12,
+            "gamma_kNm3": 17.48
           },
           {
             "symbol": "2b",
@@ -715,28 +710,28 @@
             "su_kNm2": 0.0,
             "su_source": "SPT",
             "alpha": 0.0,
-            "Rs_lyr_kN": 63.8,
+            "Rs_lyr_kN": 66.8,
             "method": "SPT",
-            "N160": 8.3,
-            "sigma_v_eff_kPa": 172.1,
-            "gamma_kNm3": 18.19
+            "N160": 8.7,
+            "sigma_v_eff_kPa": 157.56,
+            "gamma_kNm3": 19.08
           }
         ],
-        "Rs_clay_kN": 1631.7,
-        "Rs_sand_kN": 63.8,
-        "Rs_kN": 1695.5,
+        "Rs_clay_kN": 1734.4,
+        "Rs_sand_kN": 66.8,
+        "Rs_kN": 1801.2,
         "tip_symbol": "2b",
         "tip_method": "SPT",
         "tip_su_kNm2": 0.0,
-        "tip_N160": 8.3,
-        "Rp_kN": 102.7,
+        "tip_N160": 8.7,
+        "Rp_kN": 107.6,
         "phi_stat": 0.3,
         "phi_basis": "SPT dominant (sand Rs=4% / tip=SPT)",
-        "RR_kN": 539.5,
-        "ratio": 2.55,
+        "RR_kN": 572.6,
+        "ratio": 2.71,
         "result": "Đạt",
         "warnings": [
-          "Lớp '1b' (24.2–25.2 m): HK hiện tại không có VST/lab → lấy su=16 kPa từ KE-HK2(192m,c_)"
+          "Lớp '1b' (24.2–25.2 m): HK hiện tại không có VST/lab → lấy su=41 kPa từ KE-HK10(148m,Cu)"
         ]
       }
     }
