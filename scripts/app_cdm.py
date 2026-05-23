@@ -3991,7 +3991,7 @@ if _page == "geology":
                         )
                     _crs_code = _GEO_MAP_CRS[_crs_lbl]
 
-                    _map_c1, _map_c2, _map_c3, _map_c4 = st.columns([2, 2, 2, 2])
+                    _map_c1, _map_c2, _map_c3, _map_c4, _map_c5 = st.columns([3, 2, 2, 2, 2])
                     with _map_c1:
                         _map_zone_default = [z for z in _zones_with_coords if z != "QTT"]
                         _map_zones = st.multiselect(
@@ -4020,6 +4020,13 @@ if _page == "geology":
                             value=True,
                             key="_geo_map_show_test_piles",
                             help="Vẽ 18 cọc CDM thử (CỌC-01..18) — marker tròn cam đậm + nhãn số thứ tự.",
+                        )
+                    with _map_c5:
+                        _show_metro = st.checkbox(
+                            "Hiện tuyến metro",
+                            value=True,
+                            key="_geo_map_show_metro",
+                            help="Tuyến chính metro (đỏ đậm), ranh kiểm soát XD (cam đứt), ranh GPMB (xám đứt), tường tunnel/panel (xanh/tím nhạt).",
                         )
 
                     @st.cache_data(show_spinner=False)
@@ -4150,6 +4157,73 @@ if _page == "geology":
                                     ).add_to(_fg_tp)
                                 _fg_tp.add_to(_fmap)
 
+                        # Tuyến metro (bảng metro_lines)
+                        if _show_metro:
+                            _METRO_STYLE = {
+                                "centerline":       {"color": "#D32F2F", "weight": 4, "opacity": 0.95, "dash": None,  "label": "Tuyến chính metro"},
+                                "boundary_control": {"color": "#FB8C00", "weight": 2, "opacity": 0.85, "dash": "8,4", "label": "Ranh kiểm soát XD"},
+                                "boundary_land":    {"color": "#616161", "weight": 2, "opacity": 0.80, "dash": "4,4", "label": "Ranh GPMB"},
+                                "boundary_station": {"color": "#9E9E9E", "weight": 2, "opacity": 0.80, "dash": "2,4", "label": "Ranh ga (Xref)"},
+                                "aux_tunnel":       {"color": "#1976D2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường tunnel"},
+                                "aux_panel":        {"color": "#7B1FA2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường panel"},
+                                "other":            {"color": "#000000", "weight": 1, "opacity": 0.50, "dash": None,  "label": "Khác"},
+                            }
+                            try:
+                                _con_mt = sqlite3.connect(_DB)
+                                _mt_rows = _con_mt.execute(
+                                    "SELECT polyline_id, vertex_idx, x_m, y_m, category "
+                                    "FROM metro_lines ORDER BY category, polyline_id, vertex_idx"
+                                ).fetchall()
+                                _con_mt.close()
+                            except Exception:
+                                _mt_rows = []
+                            if _mt_rows:
+                                # Group vertex theo polyline_id, giữ thứ tự category để vẽ
+                                _polys_by_cat: dict = {}
+                                _cur_key = (None, None)
+                                _cur_pts: list = []
+                                _cur_cat = None
+                                for _pl, _vi, _bx, _by, _cat in _mt_rows:
+                                    _key = (_cat, _pl)
+                                    if _cur_key != _key and _cur_pts:
+                                        _polys_by_cat.setdefault(_cur_cat, []).append(_cur_pts)
+                                        _cur_pts = []
+                                    _cur_key = _key
+                                    _cur_cat = _cat
+                                    _lonm, _latm = _trf.transform(_bx, _by)
+                                    _cur_pts.append((_latm, _lonm))
+                                if _cur_pts and _cur_cat is not None:
+                                    _polys_by_cat.setdefault(_cur_cat, []).append(_cur_pts)
+
+                                _n_mt_total = sum(len(v) for v in _polys_by_cat.values())
+                                # Mỗi category 1 FeatureGroup → user toggle qua LayerControl
+                                # Vẽ centerline LAST → nằm trên cùng
+                                _order = ["aux_panel", "aux_tunnel", "boundary_land",
+                                          "boundary_station", "boundary_control",
+                                          "other", "centerline"]
+                                for _cat in _order:
+                                    _polys = _polys_by_cat.get(_cat)
+                                    if not _polys:
+                                        continue
+                                    _sty = _METRO_STYLE.get(_cat, _METRO_STYLE["other"])
+                                    _fg_mt = _flm.FeatureGroup(
+                                        name=f"Metro: {_sty['label']} ({len(_polys)})",
+                                        show=True,
+                                    )
+                                    for _poly in _polys:
+                                        if len(_poly) < 2:
+                                            continue
+                                        _kwargs = dict(
+                                            locations=_poly,
+                                            color=_sty["color"],
+                                            weight=_sty["weight"],
+                                            opacity=_sty["opacity"],
+                                        )
+                                        if _sty["dash"]:
+                                            _kwargs["dash_array"] = _sty["dash"]
+                                        _flm.PolyLine(**_kwargs).add_to(_fg_mt)
+                                    _fg_mt.add_to(_fmap)
+
                         # Hố khoan theo zone
                         _ZONE_FLM_COLOR = {
                             "KE": "#E53935", "BXN": "#1565C0",
@@ -4256,11 +4330,13 @@ if _page == "geology":
                             f"{z}: {n}" for z, n in sorted(_zone_counts.items())
                         )
                         _n_tp_shown = len(_tp_rows) if _show_test_piles and '_tp_rows' in dir() else 0
+                        _n_mt_shown = _n_mt_total if _show_metro and '_n_mt_total' in dir() else 0
                         st.caption(
                             f"Tâm: {_lat0:.5f}°N, {_lon0:.5f}°E · "
                             f"{len(_hk_geo)} hố khoan ({_zone_summary}) · "
                             f"{len(_aln_lines)} đoạn tuyến kè · "
-                            f"{_n_tp_shown} cọc CDM thử"
+                            f"{_n_tp_shown} cọc CDM thử · "
+                            f"{_n_mt_shown} polyline tuyến metro"
                         )
                         _stflm(_fmap, width=None, height=640, returned_objects=[])
 
@@ -14395,16 +14471,23 @@ if _page == "cdm_bvt":
             return out
 
         try:
-            _n_tp_bvt = sqlite3.connect(_DB).execute(
+            _con_cap = sqlite3.connect(_DB)
+            _n_tp_bvt = _con_cap.execute(
                 "SELECT COUNT(*) FROM cdm_coc_thu"
             ).fetchone()[0]
+            _n_mt_bvt = _con_cap.execute(
+                "SELECT COUNT(DISTINCT polyline_id) FROM metro_lines"
+            ).fetchone()[0]
+            _con_cap.close()
         except Exception:
             _n_tp_bvt = 0
+            _n_mt_bvt = 0
         st.caption(
             f"Tâm bản đồ: lat={_lat0:.5f}°N, lon={_lon0:.5f}°E · "
             f"{len(_hk_geo)} hố khoan · {len(_ke_geo_lines)} đường kè · "
             f"{len(_cdm_cv) + len(_cdm_ke):,} cọc CDM · "
-            f"{_n_tp_bvt} cọc CDM thử"
+            f"{_n_tp_bvt} cọc CDM thử · "
+            f"{_n_mt_bvt} polyline metro"
         )
 
         # ── 2D folium map ───────────────────────────────────────────────────
@@ -14473,6 +14556,66 @@ if _page == "cdm_bvt":
                         )),
                     ).add_to(_fg_bvt_tp)
                 _fg_bvt_tp.add_to(_fmap)
+
+            # Lớp tuyến metro (bảng metro_lines)
+            _METRO_STYLE_BVT = {
+                "centerline":       {"color": "#D32F2F", "weight": 4, "opacity": 0.95, "dash": None,  "label": "Tuyến chính metro"},
+                "boundary_control": {"color": "#FB8C00", "weight": 2, "opacity": 0.85, "dash": "8,4", "label": "Ranh kiểm soát XD"},
+                "boundary_land":    {"color": "#616161", "weight": 2, "opacity": 0.80, "dash": "4,4", "label": "Ranh GPMB"},
+                "boundary_station": {"color": "#9E9E9E", "weight": 2, "opacity": 0.80, "dash": "2,4", "label": "Ranh ga (Xref)"},
+                "aux_tunnel":       {"color": "#1976D2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường tunnel"},
+                "aux_panel":        {"color": "#7B1FA2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường panel"},
+                "other":            {"color": "#000000", "weight": 1, "opacity": 0.50, "dash": None,  "label": "Khác"},
+            }
+            try:
+                _con_bvt_mt = sqlite3.connect(_DB)
+                _bvt_mt_rows = _con_bvt_mt.execute(
+                    "SELECT polyline_id, vertex_idx, x_m, y_m, category "
+                    "FROM metro_lines ORDER BY category, polyline_id, vertex_idx"
+                ).fetchall()
+                _con_bvt_mt.close()
+            except Exception:
+                _bvt_mt_rows = []
+            if _bvt_mt_rows:
+                _bvt_polys: dict = {}
+                _bvt_key = (None, None)
+                _bvt_pts: list = []
+                _bvt_cat = None
+                for _pl, _vi, _bx, _by, _cat in _bvt_mt_rows:
+                    if (_cat, _pl) != _bvt_key and _bvt_pts:
+                        _bvt_polys.setdefault(_bvt_cat, []).append(_bvt_pts)
+                        _bvt_pts = []
+                    _bvt_key = (_cat, _pl)
+                    _bvt_cat = _cat
+                    _lonm, _latm = _trf_map.transform(_bx, _by)
+                    _bvt_pts.append((_latm, _lonm))
+                if _bvt_pts and _bvt_cat is not None:
+                    _bvt_polys.setdefault(_bvt_cat, []).append(_bvt_pts)
+
+                for _cat in ["aux_panel", "aux_tunnel", "boundary_land",
+                             "boundary_station", "boundary_control",
+                             "other", "centerline"]:
+                    _polys = _bvt_polys.get(_cat)
+                    if not _polys:
+                        continue
+                    _sty = _METRO_STYLE_BVT.get(_cat, _METRO_STYLE_BVT["other"])
+                    _fg_bvt_mt = _flm.FeatureGroup(
+                        name=f"Metro: {_sty['label']} ({len(_polys)})",
+                        show=True,
+                    )
+                    for _poly in _polys:
+                        if len(_poly) < 2:
+                            continue
+                        _kwargs = dict(
+                            locations=_poly,
+                            color=_sty["color"],
+                            weight=_sty["weight"],
+                            opacity=_sty["opacity"],
+                        )
+                        if _sty["dash"]:
+                            _kwargs["dash_array"] = _sty["dash"]
+                        _flm.PolyLine(**_kwargs).add_to(_fg_bvt_mt)
+                    _fg_bvt_mt.add_to(_fmap)
 
             # Lớp HK theo zone
             _HK_FLM_COLOR = {"KE": "#E53935", "BXN": "#AB47BC", "NHC": "#43A047",
@@ -14644,6 +14787,37 @@ if _page == "cdm_bvt":
                     radius=3, pickable=True, auto_highlight=True,
                     extruded=True,
                 ))
+
+            # Lớp tuyến metro centerline (PathLayer đỏ — không vẽ ranh/tường cho 3D đỡ rối)
+            try:
+                _con_3d_mt = sqlite3.connect(_DB)
+                _3d_mt_rows = _con_3d_mt.execute(
+                    "SELECT polyline_id, vertex_idx, x_m, y_m FROM metro_lines "
+                    "WHERE category='centerline' ORDER BY polyline_id, vertex_idx"
+                ).fetchall()
+                _con_3d_mt.close()
+            except Exception:
+                _3d_mt_rows = []
+            if _3d_mt_rows:
+                _mt_paths: list = []
+                _cur_pl_mt = None
+                _cur_path_mt: list = []
+                for _pl, _vi, _bx, _by in _3d_mt_rows:
+                    if _cur_pl_mt is not None and _pl != _cur_pl_mt and _cur_path_mt:
+                        _mt_paths.append({"path": _cur_path_mt})
+                        _cur_path_mt = []
+                    _cur_pl_mt = _pl
+                    _lonm, _latm = _trf_map.transform(_bx, _by)
+                    _cur_path_mt.append([_lonm, _latm])
+                if _cur_path_mt:
+                    _mt_paths.append({"path": _cur_path_mt})
+                if _mt_paths:
+                    _layers_3d.append(_pdk.Layer(
+                        "PathLayer", data=_mt_paths,
+                        get_path="path",
+                        get_color=[211, 47, 47, 240],  # đỏ đậm
+                        width_scale=1, width_min_pixels=3, get_width=5,
+                    ))
 
             _style_lbl = st.selectbox(
                 "Nền bản đồ 3D",
