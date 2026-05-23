@@ -14036,6 +14036,23 @@ if _page == "cdm_bvt":
             {"name": nm, "x": float(xc), "y": float(yc)}
         )
 
+    # Tính sớm `_cnt_all` (số cọc CDM gần nhất theo HK) cho folium tooltip.
+    # Không phụ thuộc D/Ztop/pen — chỉ dùng tọa độ HK + tọa độ cọc CDM.
+    # Section "Thống kê khối lượng" phía dưới sẽ tái sử dụng dict này.
+    _cnt_all: dict = {}
+    try:
+        for _cdm_pts, _zone_pfx in [(_cdm_ke, "KE"), (_cdm_cv, "BXN")]:
+            _zone_bhs = _bh_by_zone.get(_zone_pfx, [])
+            if not _cdm_pts or not _zone_bhs:
+                continue
+            _A_cnt = _np_cdm.array([(b["x"], b["y"]) for b in _zone_bhs])
+            for _nx, _ey in _cdm_pts:
+                _d2 = (_A_cnt[:, 0] - _nx) ** 2 + (_A_cnt[:, 1] - _ey) ** 2
+                _nm_near = _zone_bhs[int(_np_cdm.argmin(_d2))]["name"]
+                _cnt_all[_nm_near] = _cnt_all.get(_nm_near, 0) + 1
+    except Exception:
+        _cnt_all = {}
+
     # Bình đồ kè polylines: swap DXF x(Easting)↔y(Northing) → chart X=Northing
     _bd_cx: list = []
     _bd_cy: list = []
