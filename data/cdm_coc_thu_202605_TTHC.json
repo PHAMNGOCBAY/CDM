@@ -1,0 +1,156 @@
+{
+  "_meta": {
+    "source": "TOA DO CDM-COC THU.xlsx",
+    "sheet": "CDM THỬ",
+    "updated": "2026-05-23 21:13:43",
+    "n_piles": 18,
+    "crs": "VN-2000",
+    "note": "Cọc CDM thử nghiệm — 18 cọc, cao độ mặt = 0 (chưa khảo sát chi tiết)"
+  },
+  "piles": [
+    {
+      "point_name": 1,
+      "code": "CỌC-01",
+      "northing_m": 1191539.123,
+      "easting_m": 605675.03,
+      "elevation_m": 0.0,
+      "description": "CỌC-01"
+    },
+    {
+      "point_name": 2,
+      "code": "CỌC-02",
+      "northing_m": 1191538.759,
+      "easting_m": 605673.575,
+      "elevation_m": 0.0,
+      "description": "CỌC-02"
+    },
+    {
+      "point_name": 3,
+      "code": "CỌC-03",
+      "northing_m": 1191538.322,
+      "easting_m": 605671.828,
+      "elevation_m": 0.0,
+      "description": "CỌC-03"
+    },
+    {
+      "point_name": 4,
+      "code": "CỌC-04",
+      "northing_m": 1191738.981,
+      "easting_m": 605705.711,
+      "elevation_m": 0.0,
+      "description": "CỌC-04"
+    },
+    {
+      "point_name": 5,
+      "code": "CỌC-05",
+      "northing_m": 1191739.471,
+      "easting_m": 605704.835,
+      "elevation_m": 0.0,
+      "description": "CỌC-05"
+    },
+    {
+      "point_name": 6,
+      "code": "CỌC-06",
+      "northing_m": 1191740.355,
+      "easting_m": 605703.266,
+      "elevation_m": 0.0,
+      "description": "CỌC-06"
+    },
+    {
+      "point_name": 7,
+      "code": "CỌC-07",
+      "northing_m": 1191948.702,
+      "easting_m": 605752.92,
+      "elevation_m": 0.0,
+      "description": "CỌC-07"
+    },
+    {
+      "point_name": 8,
+      "code": "CỌC-08",
+      "northing_m": 1191947.937,
+      "easting_m": 605751.63,
+      "elevation_m": 0.0,
+      "description": "CỌC-08"
+    },
+    {
+      "point_name": 9,
+      "code": "CỌC-09",
+      "northing_m": 1191947.019,
+      "easting_m": 605750.081,
+      "elevation_m": 0.0,
+      "description": "CỌC-09"
+    },
+    {
+      "point_name": 10,
+      "code": "CỌC-10",
+      "northing_m": 1191930.15,
+      "easting_m": 605923.356,
+      "elevation_m": 0.0,
+      "description": "CỌC-10"
+    },
+    {
+      "point_name": 11,
+      "code": "CỌC-11",
+      "northing_m": 1191928.38,
+      "easting_m": 605923.68,
+      "elevation_m": 0.0,
+      "description": "CỌC-11"
+    },
+    {
+      "point_name": 12,
+      "code": "CỌC-12",
+      "northing_m": 1191926.609,
+      "easting_m": 605924.004,
+      "elevation_m": 0.0,
+      "description": "CỌC-12"
+    },
+    {
+      "point_name": 13,
+      "code": "CỌC-13",
+      "northing_m": 1191843.509,
+      "easting_m": 606006.546,
+      "elevation_m": 0.0,
+      "description": "CỌC-13"
+    },
+    {
+      "point_name": 14,
+      "code": "CỌC-14",
+      "northing_m": 1191842.279,
+      "easting_m": 606007.86,
+      "elevation_m": 0.0,
+      "description": "CỌC-14"
+    },
+    {
+      "point_name": 15,
+      "code": "CỌC-15",
+      "northing_m": 1191841.048,
+      "easting_m": 606009.173,
+      "elevation_m": 0.0,
+      "description": "CỌC-15"
+    },
+    {
+      "point_name": 16,
+      "code": "CỌC-16",
+      "northing_m": 1191628.915,
+      "easting_m": 605970.168,
+      "elevation_m": 0.0,
+      "description": "CỌC-16"
+    },
+    {
+      "point_name": 17,
+      "code": "CỌC-17",
+      "northing_m": 1191628.08,
+      "easting_m": 605971.762,
+      "elevation_m": 0.0,
+      "description": "CỌC-17"
+    },
+    {
+      "point_name": 18,
+      "code": "CỌC-18",
+      "northing_m": 1191627.245,
+      "easting_m": 605973.357,
+      "elevation_m": 0.0,
+      "description": "CỌC-18"
+    }
+  ]
+}
