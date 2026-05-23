@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bản đồ CDM — TTHC</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+
+<!-- ── Topbar ─────────────────────────────────────────────────────────────── -->
+<header class="topbar">
+  <div class="brand">TTHC &nbsp;<span>Địa kỹ thuật</span></div>
+  <nav>
+    <a href="/ban-do-cdm" class="active">Bản đồ CDM</a>
+    <a href="#">Địa chất</a>
+    <a href="#">Thi công</a>
+    <a href="#">Thí nghiệm</a>
+  </nav>
+</header>
+
+<!-- ── Metrics ────────────────────────────────────────────────────────────── -->
+<div class="metrics" id="metrics">
+  <div class="metric"><div class="val" id="m-total">—</div><div class="lbl">Tổng cọc CDM</div></div>
+  <div class="metric gold"><div class="val" id="m-cv">—</div><div class="lbl">Công viên</div></div>
+  <div class="metric"><div class="val" id="m-ke">—</div><div class="lbl">Kè</div></div>
+  <div class="metric green"><div class="val" id="m-vcv">—</div><div class="lbl">Thể tích CV (m³)</div></div>
+  <div class="metric green"><div class="val" id="m-vke">—</div><div class="lbl">Thể tích Kè (m³)</div></div>
+</div>
+
+<!-- ── Page layout ────────────────────────────────────────────────────────── -->
+<div class="page">
+
+  <!-- Sidebar controls -->
+  <aside class="sidebar">
+
+    <div class="card">
+      <h3>Bộ lọc</h3>
+      <div class="filter-group">
+        <label>Khu vực</label>
+        <select id="sel-zone">
+          <option value="all">Tất cả</option>
+          <option value="CONG_VIEN">Công viên</option>
+          <option value="KE">Kè</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Hiển thị</h3>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label class="check-row">
+          <input type="checkbox" id="chk-cdm" checked>
+          <span class="dot" style="background:#6366f1"></span> Cọc CDM
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="chk-bh" checked>
+          <span class="dot" style="background:#f59e0b"></span> Hố khoan
+        </label>
+        <label class="check-row">
+          <input type="checkbox" id="chk-ke" checked>
+          <span class="dot" style="background:#111827"></span> Ranh kè
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Thống kê theo HK</h3>
+      <div class="tbl-wrap" id="tbl-bh-wrap">
+        <div class="spinner-wrap" style="height:80px"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Main: map + table tabs -->
+  <main class="main">
+
+    <div id="map">
+      <div class="spinner-wrap"><div class="spinner"></div></div>
+    </div>
+
+    <!-- Bottom tabs -->
+    <div style="background:#fff;border-top:1px solid var(--border);padding:12px 16px;max-height:220px;overflow:auto" id="bottom-panel">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('tab-zone')">Theo khu vực</button>
+        <button class="tab-btn" onclick="showTab('tab-status')">Trạng thái thi công</button>
+      </div>
+      <div id="tab-zone"><div class="spinner-wrap" style="height:60px"><div class="spinner"></div></div></div>
+      <div id="tab-status" style="display:none"><div class="spinner-wrap" style="height:60px"><div class="spinner"></div></div></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let _allPoints = [], _boreholes = [], _keLines = [];
+let _stats = {};
+const ZONE_COLOR = { CONG_VIEN: '#7c3aed', KE: '#1d4ed8' };
+const BH_COLOR   = { KE:'#f59e0b', BXN:'#10b981', NHC:'#ef4444', QTT:'#ec4899', OTHER:'#6b7280' };
+
+// ── Fetch all data in parallel ─────────────────────────────────────────────
+async function loadAll() {
+  const [ptsRes, bhRes, keRes, statsRes] = await Promise.all([
+    fetch('/api/cdm/toado').then(r => r.json()),
+    fetch('/api/boreholes').then(r => r.json()),
+    fetch('/api/ke-binhdo').then(r => r.json()),
+    fetch('/api/cdm/stats').then(r => r.json()),
+  ]);
+  _allPoints  = ptsRes.points;
+  _boreholes  = bhRes.boreholes;
+  _keLines    = keRes.polylines;
+  _stats      = statsRes;
+  renderMetrics();
+  renderMap();
+  renderBhTable();
+  renderZoneTable();
+  renderStatusTable();
+}
+
+// ── Metrics ────────────────────────────────────────────────────────────────
+function renderMetrics() {
+  const bz = _stats.by_zone || [];
+  let tot=0, cv=0, ke=0, vcv=0, vke=0;
+  bz.forEach(r => {
+    tot += r.n_coc;
+    if (r.zone==='CONG_VIEN') { cv=r.n_coc; vcv=r.V_m3||0; }
+    if (r.zone==='KE')         { ke=r.n_coc; vke=r.V_m3||0; }
+  });
+  set('m-total', tot.toLocaleString('vi-VN'));
+  set('m-cv',    cv.toLocaleString('vi-VN'));
+  set('m-ke',    ke.toLocaleString('vi-VN'));
+  set('m-vcv',   Math.round(vcv).toLocaleString('vi-VN'));
+  set('m-vke',   Math.round(vke).toLocaleString('vi-VN'));
+}
+
+// ── Map ────────────────────────────────────────────────────────────────────
+function buildTraces(zoneFilter) {
+  const traces = [];
+
+  // Ranh kè (polylines)
+  if (document.getElementById('chk-ke').checked) {
+    let kx=[], ky=[];
+    _keLines.forEach(pl => {
+      pl.forEach(pt => { kx.push(pt.y); ky.push(pt.x); }); // x=E→y_chart, y=N→x_chart
+      kx.push(null); ky.push(null);
+    });
+    traces.push({ x:kx, y:ky, mode:'lines', type:'scatter',
+      line:{color:'rgba(17,24,39,.85)',width:1.5}, name:'Ranh kè',
+      hoverinfo:'skip', connectgaps:false });
+  }
+
+  // CDM piles
+  if (document.getElementById('chk-cdm').checked) {
+    const zones = zoneFilter==='all' ? ['CONG_VIEN','KE'] : [zoneFilter];
+    zones.forEach(z => {
+      const pts = _allPoints.filter(p => p.z===z);
+      traces.push({
+        x: pts.map(p=>p.y),   // Easting → chart X
+        y: pts.map(p=>p.x),   // Northing → chart Y
+        mode:'markers', type:'scattergl',
+        marker:{ color: ZONE_COLOR[z]||'#6366f1', size:3, opacity:.6 },
+        name: z==='CONG_VIEN'?'Công viên':'Kè',
+        text: pts.map(p=>p.n),
+        hovertemplate:'<b>%{text}</b><br>N=%{y:.1f} E=%{x:.1f}<extra></extra>',
+      });
+    });
+  }
+
+  // Boreholes
+  if (document.getElementById('chk-bh').checked) {
+    const bhs = zoneFilter==='all' ? _boreholes
+      : _boreholes.filter(b => {
+          if (zoneFilter==='CONG_VIEN') return ['BXN','QTT'].includes(b.zone);
+          if (zoneFilter==='KE')        return b.zone==='KE';
+          return true;
+        });
+    const bhZones = [...new Set(bhs.map(b=>b.zone))];
+    bhZones.forEach(z => {
+      const grp = bhs.filter(b=>b.zone===z);
+      traces.push({
+        x: grp.map(b=>b.y_coord_m),
+        y: grp.map(b=>b.x_coord_m),
+        mode:'markers+text', type:'scatter',
+        marker:{ color:BH_COLOR[z]||'#6b7280', size:10, symbol:'diamond',
+                 line:{width:1.5, color:'#fff'} },
+        text: grp.map(b=>b.name.replace(/^(KE-|BXN-|NHC-|ND-)/,'')),
+        textposition:'top center', textfont:{size:9, color:'#1e293b'},
+        name:'HK '+z,
+        hovertemplate:'<b>%{customdata}</b><br>N=%{y:.3f}<br>E=%{x:.3f}<br>Z=%{meta:.2f}m<extra></extra>',
+        customdata: grp.map(b=>b.name),
+        meta: grp.map(b=>b.elevation_m),
+      });
+    });
+  }
+
+  return traces;
+}
+
+function renderMap(zoneFilter) {
+  zoneFilter = zoneFilter || document.getElementById('sel-zone').value;
+  const traces = buildTraces(zoneFilter);
+  const layout = {
+    xaxis:{ title:'Easting (m)', scaleanchor:'y', scaleratio:1,
+            gridcolor:'#e2e8f0', zeroline:false },
+    yaxis:{ title:'Northing (m)', gridcolor:'#e2e8f0', zeroline:false },
+    legend:{ orientation:'h', y:1.04, x:0, font:{size:11} },
+    margin:{ t:20, b:50, l:60, r:10 },
+    paper_bgcolor:'#f8fafc', plot_bgcolor:'#f8fafc',
+    hovermode:'closest',
+  };
+  Plotly.react('map', traces, layout, { responsive:true, displaylogo:false });
+}
+
+// ── Tables ─────────────────────────────────────────────────────────────────
+function renderBhTable() {
+  const rows = (_stats.by_bh || []);
+  if (!rows.length) { set('tbl-bh-wrap','<p style="color:var(--muted);font-size:.8rem">Chưa có dữ liệu</p>'); return; }
+  let html = '<table><thead><tr><th>HK</th><th>Khu vực</th><th>Cọc</th><th>L TB (m)</th><th>V (m³)</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const badge = r.zone==='KE'?'ke':'cv';
+    html += `<tr>
+      <td>${r.bh_dieu_hanh}</td>
+      <td><span class="badge ${badge}">${r.zone}</span></td>
+      <td>${r.n_coc.toLocaleString('vi-VN')}</td>
+      <td>${r.L_avg}</td>
+      <td>${Math.round(r.V_m3).toLocaleString('vi-VN')}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  set('tbl-bh-wrap', html);
+}
+
+function renderZoneTable() {
+  const rows = (_stats.by_zone || []);
+  let html = '<table><thead><tr><th>Khu vực</th><th>Số cọc</th><th>L TB (m)</th><th>L min</th><th>L max</th><th>Thể tích (m³)</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const badge = r.zone==='KE'?'ke':'cv';
+    html += `<tr>
+      <td><span class="badge ${badge}">${r.zone==='CONG_VIEN'?'Công viên':'Kè'}</span></td>
+      <td>${r.n_coc.toLocaleString('vi-VN')}</td>
+      <td>${r.L_avg}</td><td>${r.L_min}</td><td>${r.L_max}</td>
+      <td>${Math.round(r.V_m3).toLocaleString('vi-VN')}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  set('tab-zone', html);
+}
+
+function renderStatusTable() {
+  const rows = (_stats.status || []);
+  const labels = { chua_thi_cong:'Chưa thi công', dang_thi_cong:'Đang thi công',
+                   hoan_thanh:'Hoàn thành', khong_dat:'Không đạt', tam_dung:'Tạm dừng' };
+  let html = '<table><thead><tr><th>Khu vực</th><th>Trạng thái</th><th>Số cọc</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const badge = r.zone==='KE'?'ke':'cv';
+    html += `<tr>
+      <td><span class="badge ${badge}">${r.zone==='CONG_VIEN'?'Công viên':'Kè'}</span></td>
+      <td>${labels[r.status]||r.status}</td>
+      <td>${r.n.toLocaleString('vi-VN')}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  set('tab-status', html);
+}
+
+// ── Events ─────────────────────────────────────────────────────────────────
+document.getElementById('sel-zone').addEventListener('change', e => renderMap(e.target.value));
+['chk-cdm','chk-bh','chk-ke'].forEach(id =>
+  document.getElementById(id).addEventListener('change', () => renderMap())
+);
+
+function showTab(id) {
+  document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display='none');
+  document.getElementById(id).style.display='block';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function set(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>
