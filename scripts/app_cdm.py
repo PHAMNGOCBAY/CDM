@@ -379,6 +379,7 @@ _L: dict[str, tuple[str, str]] = {
     "p_settlement": ("Dự báo độ lún",               "Settlement Prediction"),
     "p_export":     ("Xuất kết quả",                "Export Results"),
     "p_cdm_bvt":    ("TKBVTC CDM",                  "CDM Detail Design"),
+    "p_cdm_tien_do":("Tiến độ & Thí nghiệm CDM",   "CDM Progress & Testing"),
     "p_tkcs_sw":    ("TKCS Cọc ván",                "Sheet Pile Prelim Design"),
     "p_ke_sw":      ("Cọc ván SW (Kè)",             "Sheet Pile SW (Ke)"),
     "p_sw_bvt":     ("TKBVTC Cọc SW",              "Sheet Pile Detail Design"),
@@ -3358,6 +3359,7 @@ st.sidebar.markdown(f"**{_t('p_tkcs_cdm')}**")
 _nav(_t("p_params"),    "params",     indent=True)   # gộp: Thông số + Kết quả CDM + Xuất kết quả
 _nav(_t("p_settlement"),"settlement", indent=True)
 _nav(_t("p_cdm_bvt"),   "cdm_bvt")
+_nav(_t("p_cdm_tien_do"), "cdm_tien_do", indent=True)
 st.sidebar.markdown(f"**{_t('p_tkcs_sw')}**")
 _nav(_t("p_ke_sw"),  "ke_sw",  indent=True)
 _nav(_t("p_sw_bvt"), "sw_bvt")
@@ -14390,6 +14392,280 @@ if _page == "cdm_bvt":
                     "- **Hover HK**: hiện tooltip chi tiết\n"
                     f"- **Số cọc CDM hiển thị**: {len(_cdm_cv)+len(_cdm_ke):,} (toàn bộ — pydeck dùng WebGL nên không chậm)"
                 )
+
+# ── Trang Tiến độ & Thí nghiệm CDM ──────────────────────────────────────────
+if _page == "cdm_tien_do":
+    st.markdown("## Tiến độ thi công & Kiểm tra thí nghiệm CDM")
+
+    _con_td = _get_db()
+
+    # ── A. Tổng quan tiến độ ──────────────────────────────────────────────────
+    st.markdown("### A. Tiến độ thi công")
+
+    _td_rows = _con_td.execute("""
+        SELECT zone, status, COUNT(*) AS n
+        FROM cdm_thi_cong GROUP BY zone, status
+    """).fetchall()
+
+    _td_total   = sum(r[2] for r in _td_rows)
+    _td_done    = sum(r[2] for r in _td_rows if r[1] == "hoan_thanh")
+    _td_going   = sum(r[2] for r in _td_rows if r[1] == "dang_thi_cong")
+    _td_pending = sum(r[2] for r in _td_rows if r[1] == "chua_thi_cong")
+    _td_fail    = sum(r[2] for r in _td_rows if r[1] == "khong_dat")
+    _td_pause   = sum(r[2] for r in _td_rows if r[1] == "tam_dung")
+    _td_pct     = round(_td_done / _td_total * 100, 1) if _td_total else 0
+
+    _m1, _m2, _m3, _m4, _m5 = st.columns(5)
+    _m1.metric("Tổng cọc",        f"{_td_total:,}")
+    _m2.metric("Hoàn thành",      f"{_td_done:,}",    delta=f"{_td_pct}%")
+    _m3.metric("Đang thi công",   f"{_td_going:,}")
+    _m4.metric("Chưa thi công",   f"{_td_pending:,}")
+    _m5.metric("Không đạt / Tạm dừng", f"{_td_fail + _td_pause:,}")
+
+    # Biểu đồ tiến độ theo ngày
+    _td_daily = _con_td.execute("""
+        SELECT ngay_thi_cong, zone, COUNT(*) AS n
+        FROM cdm_thi_cong
+        WHERE ngay_thi_cong IS NOT NULL AND status IN ('hoan_thanh','dang_thi_cong')
+        GROUP BY ngay_thi_cong, zone
+        ORDER BY ngay_thi_cong
+    """).fetchall()
+
+    if _td_daily:
+        import pandas as _pd_td
+        _df_daily = _pd_td.DataFrame(_td_daily, columns=["ngay","zone","n"])
+        _df_pivot  = _df_daily.pivot_table(index="ngay", columns="zone", values="n", fill_value=0).reset_index()
+
+        _fig_td = go.Figure()
+        _zone_colors = {"KE": "#1565C0", "CONG_VIEN": "#6A1B9A"}
+        for _z in [c for c in _df_pivot.columns if c != "ngay"]:
+            _clr = _zone_colors.get(_z, "#546E7A")
+            _fig_td.add_trace(go.Bar(
+                x=_df_pivot["ngay"], y=_df_pivot[_z],
+                name=_z, marker_color=_clr,
+            ))
+        _fig_td.update_layout(
+            barmode="stack",
+            title="Số cọc thi công theo ngày",
+            xaxis_title="Ngày thi công",
+            yaxis_title="Số cọc",
+            height=380,
+            legend_title="Khu vực",
+            margin=dict(t=48, b=48, l=48, r=16),
+        )
+        st.plotly_chart(_fig_td, use_container_width=True)
+
+        # Đường cộng dồn
+        _df_cum = _df_daily.groupby("ngay")["n"].sum().reset_index()
+        _df_cum["cum"] = _df_cum["n"].cumsum()
+        _fig_cum = go.Figure()
+        _fig_cum.add_trace(go.Scatter(
+            x=_df_cum["ngay"], y=_df_cum["cum"],
+            mode="lines+markers", name="Cộng dồn",
+            line=dict(color="#1B5E20", width=2),
+            fill="tozeroy", fillcolor="rgba(27,94,32,0.10)",
+        ))
+        _fig_cum.add_hline(y=_td_total, line_dash="dash",
+                           line_color="#B71C1C", annotation_text="Tổng kế hoạch")
+        _fig_cum.update_layout(
+            title="Tiến độ thi công cộng dồn",
+            xaxis_title="Ngày", yaxis_title="Cọc cộng dồn",
+            height=320,
+            margin=dict(t=48, b=48, l=48, r=16),
+        )
+        st.plotly_chart(_fig_cum, use_container_width=True)
+    else:
+        st.info("Chưa có dữ liệu ngày thi công. Nhập dữ liệu từ bảng Excel để hiển thị biểu đồ tiến độ.")
+
+    # Bảng tổng hợp trạng thái
+    st.markdown("#### Phân bố trạng thái theo khu vực")
+    _td_status_labels = {
+        "chua_thi_cong":  "Chưa thi công",
+        "dang_thi_cong":  "Đang thi công",
+        "hoan_thanh":     "Hoàn thành",
+        "khong_dat":      "Không đạt",
+        "tam_dung":       "Tạm dừng",
+    }
+    _td_summary: dict = {}
+    for _zone, _st, _n in _td_rows:
+        _td_summary.setdefault(_zone, {})[_st] = _n
+
+    _td_table_rows = []
+    _all_statuses = ["hoan_thanh","dang_thi_cong","chua_thi_cong","khong_dat","tam_dung"]
+    for _zone in sorted(_td_summary.keys()):
+        _row = {"Khu vực": _zone}
+        _zone_total = sum(_td_summary[_zone].values())
+        for _st in _all_statuses:
+            _n_st = _td_summary[_zone].get(_st, 0)
+            _row[_td_status_labels[_st]] = f"{_n_st:,}"
+        _row["Tổng"] = f"{_zone_total:,}"
+        _td_table_rows.append(_row)
+
+    if _td_table_rows:
+        import pandas as _pd_td2
+        _df_td_tbl = _pd_td2.DataFrame(_td_table_rows)
+        st.table(_df_td_tbl)
+
+    # Bảng tổng hợp tổ đội
+    _td_todoi = _con_td.execute("""
+        SELECT to_doi, zone, COUNT(*) AS n,
+               SUM(CASE WHEN status='hoan_thanh' THEN 1 ELSE 0 END) AS done
+        FROM cdm_thi_cong
+        WHERE to_doi IS NOT NULL
+        GROUP BY to_doi, zone
+        ORDER BY to_doi, zone
+    """).fetchall()
+    if _td_todoi:
+        st.markdown("#### Tổng hợp theo tổ đội")
+        import pandas as _pd_td3
+        _df_todoi = _pd_td3.DataFrame(_td_todoi, columns=["Tổ đội","Khu vực","Số cọc","Hoàn thành"])
+        st.dataframe(_df_todoi, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    # ── B. Kiểm tra thí nghiệm qu ────────────────────────────────────────────
+    st.markdown("### B. Kiểm tra thí nghiệm")
+
+    _kt_rows = _con_td.execute("""
+        SELECT kt.zone, kt.point_name, kt.loai_tn,
+               kt.ngay_thu_nghiem, kt.tuoi_ngay,
+               kt.do_sau_tu_dinh_m, kt.z_sample_m,
+               kt.qu_kPa, kt.qu_yc_kPa, kt.dat_yeu_cau,
+               kt.ham_luong_xi_mang_pct, kt.ghi_chu
+        FROM cdm_kiem_tra kt
+        ORDER BY kt.zone, kt.ngay_thu_nghiem, kt.z_sample_m
+    """).fetchall()
+
+    if not _kt_rows:
+        st.info(
+            "Chưa có kết quả thí nghiệm. "
+            "Điền dữ liệu vào sheet 'Thí nghiệm CDM' trong bảng Excel và chạy script nhập liệu."
+        )
+    else:
+        import pandas as _pd_kt
+        _df_kt = _pd_kt.DataFrame(_kt_rows, columns=[
+            "Khu vực","Số hiệu cọc","Loại TN","Ngày TN","Tuổi (ngày)",
+            "Độ sâu (m)","Cao độ (m)","qu (kPa)","qu yêu cầu (kPa)",
+            "Đạt","Hàm lượng XM (%)","Ghi chú",
+        ])
+        _df_kt["Đạt"] = _df_kt["Đạt"].map({1:"Đạt", 0:"Không đạt", None:"Chưa đánh giá"})
+
+        # Metrics
+        _n_kt    = len(_df_kt)
+        _n_dat   = (_df_kt["Đạt"] == "Đạt").sum()
+        _n_kdat  = (_df_kt["Đạt"] == "Không đạt").sum()
+        _qu_avg  = _df_kt["qu (kPa)"].mean()
+        _qu_min  = _df_kt["qu (kPa)"].min()
+
+        _km1, _km2, _km3, _km4 = st.columns(4)
+        _km1.metric("Tổng mẫu", f"{_n_kt:,}")
+        _km2.metric("Đạt", f"{_n_dat:,}", delta=f"{round(_n_dat/_n_kt*100,1)}%" if _n_kt else None)
+        _km3.metric("Không đạt", f"{_n_kdat:,}")
+        _km4.metric("qu trung bình", f"{_qu_avg:.0f} kPa" if _qu_avg else "—")
+
+        # Scatter: qu vs độ sâu
+        _fig_qu = go.Figure()
+        _zone_clr_kt = {"KE": "#1565C0", "CONG_VIEN": "#6A1B9A"}
+        _dat_sym = {"Đạt": "circle", "Không đạt": "x", "Chưa đánh giá": "circle-open"}
+        for _z in _df_kt["Khu vực"].unique():
+            _dz = _df_kt[_df_kt["Khu vực"] == _z]
+            for _dat_val in ["Đạt","Không đạt","Chưa đánh giá"]:
+                _dd = _dz[_dz["Đạt"] == _dat_val]
+                if _dd.empty:
+                    continue
+                _fig_qu.add_trace(go.Scatter(
+                    x=_dd["qu (kPa)"],
+                    y=_dd["Độ sâu (m)"],
+                    mode="markers",
+                    marker=dict(
+                        symbol=_dat_sym[_dat_val],
+                        size=9,
+                        color=_zone_clr_kt.get(_z, "#546E7A"),
+                        opacity=0.8 if _dat_val == "Đạt" else 1.0,
+                        line=dict(width=1, color="#333333") if _dat_val == "Không đạt" else None,
+                    ),
+                    name=f"{_z} — {_dat_val}",
+                    text=_dd["Số hiệu cọc"],
+                    hovertemplate="<b>%{text}</b><br>qu=%{x:.0f} kPa<br>sâu=%{y:.1f} m<extra></extra>",
+                ))
+
+        # Đường qu yêu cầu (lấy min của các giá trị không null)
+        _qu_yc_vals = _df_kt["qu yêu cầu (kPa)"].dropna()
+        if not _qu_yc_vals.empty:
+            _qu_yc_ref = _qu_yc_vals.min()
+            _fig_qu.add_vline(x=_qu_yc_ref, line_dash="dash", line_color="#B71C1C",
+                              annotation_text=f"qu yc = {_qu_yc_ref:.0f} kPa")
+
+        _fig_qu.update_yaxes(autorange="reversed", title="Độ sâu từ đỉnh cọc (m)")
+        _fig_qu.update_xaxes(title="qu (kPa)")
+        _fig_qu.update_layout(
+            title="Phân bố cường độ nén theo độ sâu",
+            height=480,
+            legend_title="Khu vực / Kết quả",
+            margin=dict(t=48, b=48, l=48, r=16),
+        )
+        st.plotly_chart(_fig_qu, use_container_width=True)
+
+        # Histogram qu
+        _fig_hist = go.Figure()
+        for _z in _df_kt["Khu vực"].unique():
+            _dz = _df_kt[_df_kt["Khu vực"] == _z]["qu (kPa)"].dropna()
+            if _dz.empty:
+                continue
+            _fig_hist.add_trace(go.Histogram(
+                x=_dz, name=_z,
+                marker_color=_zone_clr_kt.get(_z, "#546E7A"),
+                opacity=0.75, nbinsx=20,
+            ))
+        if not _qu_yc_vals.empty:
+            _fig_hist.add_vline(x=_qu_yc_ref, line_dash="dash", line_color="#B71C1C",
+                                annotation_text="qu yc")
+        _fig_hist.update_layout(
+            barmode="overlay",
+            title="Phân bố qu (kPa)",
+            xaxis_title="qu (kPa)", yaxis_title="Số mẫu",
+            height=320,
+            margin=dict(t=48, b=48, l=48, r=16),
+        )
+        st.plotly_chart(_fig_hist, use_container_width=True)
+
+        # Bảng chi tiết
+        with st.expander("Chi tiết kết quả thí nghiệm", expanded=False):
+            _df_kt_show = _df_kt[[
+                "Khu vực","Số hiệu cọc","Loại TN","Tuổi (ngày)",
+                "Cao độ (m)","qu (kPa)","qu yêu cầu (kPa)","Đạt","Ghi chú"
+            ]]
+            import pandas as _pd_kt2
+            def _color_dat(v):
+                if v == "Đạt":       return "background-color:#E8F5E9; color:#1B5E20"
+                if v == "Không đạt": return "background-color:#FFEBEE; color:#B71C1C"
+                return ""
+            st.dataframe(
+                _df_kt_show.style.map(_color_dat, subset=["Đạt"]),
+                use_container_width=True, hide_index=True,
+            )
+
+        # Bảng tổng hợp per zone / loại TN
+        st.markdown("#### Tổng hợp đánh giá theo khu vực")
+        _kt_agg = _con_td.execute("""
+            SELECT zone, loai_tn,
+                   COUNT(*) AS n,
+                   SUM(CASE WHEN dat_yeu_cau=1 THEN 1 ELSE 0 END) AS n_dat,
+                   SUM(CASE WHEN dat_yeu_cau=0 THEN 1 ELSE 0 END) AS n_kdat,
+                   ROUND(AVG(qu_kPa),0) AS qu_avg,
+                   ROUND(MIN(qu_kPa),0) AS qu_min,
+                   ROUND(MAX(qu_kPa),0) AS qu_max
+            FROM cdm_kiem_tra
+            GROUP BY zone, loai_tn
+            ORDER BY zone, loai_tn
+        """).fetchall()
+        if _kt_agg:
+            import pandas as _pd_kt3
+            _df_agg = _pd_kt3.DataFrame(_kt_agg, columns=[
+                "Khu vực","Loại TN","Số mẫu","Đạt","Không đạt",
+                "qu TB (kPa)","qu min (kPa)","qu max (kPa)",
+            ])
+            st.table(_df_agg)
 
 # ── Placeholder: TKBVTC Cọc SW ───────────────────────────────────────────────
 if _page == "sw_bvt":
