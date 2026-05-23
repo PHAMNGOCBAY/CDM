@@ -8518,24 +8518,27 @@ if _page == "ke_sw":
                 key="_ke_b_lower_sym",
             ) if _lower_opts_set else ""
 
-            # ── 3. PCA project HK → chainage ──────────────────────────────
-            _pts_pf = _np_pf.array(
-                [[r[1], r[2]] for r in _bh_info if r[1] and r[2]], dtype=float)
-            if len(_pts_pf) >= 2:
-                _ctr_pf = _pts_pf.mean(axis=0)
-                _, _, _Vt_pf = _np_pf.linalg.svd(
-                    _pts_pf - _ctr_pf, full_matrices=False)
-                _axis_pf = _Vt_pf[0]
-                _chain_pf = {
-                    r[0]: float(_np_pf.dot(
-                        [r[1] - _ctr_pf[0], r[2] - _ctr_pf[1]], _axis_pf))
-                    for r in _bh_info if r[1] and r[2]
-                }
-                _ch_min = min(_chain_pf.values())
-                for _k in _chain_pf:
-                    _chain_pf[_k] -= _ch_min
-            else:
-                _chain_pf = {r[0]: 0.0 for r in _bh_info}
+            # ── 3. Thứ tự HK dọc tuyến kè + chainage cộng dồn ───────────────
+            _KE_BH_ORDER = ["HK1","HK2","HK3","HK4","HK5","HK12",
+                             "HK6","HK7","HK8","HK9","HK10","HK11"]
+            _coord_by_bh = {r[0]: (float(r[1]), float(r[2]))
+                            for r in _bh_info if r[1] and r[2]}
+            # Sắp xếp các HK có tọa độ theo thứ tự tuyến kè
+            _ordered_bhs = [f"KE-{n}" for n in _KE_BH_ORDER
+                            if f"KE-{n}" in _coord_by_bh]
+            # Chainage = khoảng cách cộng dồn dọc tuyến HK1→HK2→...→HK11
+            _chain_pf: dict[str, float] = {}
+            _cum = 0.0
+            for _i, _bn in enumerate(_ordered_bhs):
+                _chain_pf[_bn] = _cum
+                if _i + 1 < len(_ordered_bhs):
+                    _ax, _ay = _coord_by_bh[_bn]
+                    _bx, _by = _coord_by_bh[_ordered_bhs[_i + 1]]
+                    _cum += _np_pf.hypot(_bx - _ax, _by - _ay)
+            # Fallback cho HK ngoài thứ tự
+            for _bn in _coord_by_bh:
+                if _bn not in _chain_pf:
+                    _chain_pf[_bn] = _cum + 999.0
 
             _layers_by_bh_pf: dict[str, list] = {}
             for r in _layer_rows:
@@ -8602,7 +8605,10 @@ if _page == "ke_sw":
                     "pile":      _pile_name,
                     "lay_hover": _lay_hover,
                 })
-            _prof.sort(key=lambda p: p["x"])
+            _prof.sort(key=lambda p: (
+                _KE_BH_ORDER.index(p["bh"]) if p["bh"] in _KE_BH_ORDER
+                else len(_KE_BH_ORDER)
+            ))
 
             _xs = [p["x"] for p in _prof]
             _z_tops = [p["z_t"] for p in _prof]
@@ -8855,7 +8861,10 @@ if _page == "ke_sw":
                  "ch": _chain_pf.get(r[0], 0.0)}
                 for r in _bh_info if r[1] and r[2]
             ]
-            _plan_data.sort(key=lambda p: p["ch"])
+            _plan_data.sort(key=lambda p: (
+                _KE_BH_ORDER.index(p["bh"]) if p["bh"] in _KE_BH_ORDER
+                else len(_KE_BH_ORDER)
+            ))
 
             # Khoảng cách giữa các cặp HK liên tiếp (Euclidean)
             _seg_dist = []
