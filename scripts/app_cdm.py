@@ -8876,7 +8876,7 @@ if _page == "ke_sw":
                     _fig_pl.add_trace(go.Scatter(
                         x=_binhdo_cx, y=_binhdo_cy,
                         mode="lines",
-                        line=dict(color="rgba(76,175,80,0.55)", width=1.2),
+                        line=dict(color="rgba(0,0,0,0.85)", width=1.5),
                         hoverinfo="skip",
                         showlegend=True,
                         name="Ranh kè (bình đồ)",
@@ -8943,15 +8943,15 @@ if _page == "ke_sw":
                         if _cx is None:
                             if _seg_xs:
                                 _ax_plm.plot(_seg_xs, _seg_ys,
-                                             color="#4CAF50", lw=1.0,
-                                             alpha=0.55, zorder=2)
+                                             color="#000000", lw=1.5,
+                                             alpha=0.85, zorder=2)
                             _seg_xs, _seg_ys = [], []
                         else:
                             _seg_xs.append(_cx)
                             _seg_ys.append(_cy)
                     if _seg_xs:
-                        _ax_plm.plot(_seg_xs, _seg_ys, color="#4CAF50",
-                                     lw=1.0, alpha=0.55, zorder=2,
+                        _ax_plm.plot(_seg_xs, _seg_ys, color="#000000",
+                                     lw=1.5, alpha=0.85, zorder=2,
                                      label="Ranh kè (bình đồ)")
                 _xs_pl = [p["x"] for p in _plan_data]
                 _ys_pl = [p["y"] for p in _plan_data]
