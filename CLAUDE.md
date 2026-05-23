@@ -1478,3 +1478,71 @@ Hàm tính lún chính xác theo TCVN 9403 Phụ lục C là `calc_settlement_S1
 2. **CRS sai → HK lệch 25-50km** trên bản đồ. Mặc định EPSG:9210 cho TTHC, có dropdown selector phòng dự án khác.
 3. **`pyproj` axis_swap** — luôn dùng `always_xy=True` → input/output dạng (x=Easting/lon, y=Northing/lat). Dễ nhớ.
 4. **`contextily` / `rasterio`** — kéo GDAL ~40MB, KHÔNG đưa lên Cloud (đã ghi rõ trong requirements.txt).
+
+---
+
+### 33. Tab Địa chất — 3D ở đầu + Bản đồ vị trí folium (cập nhật 2026-05-23)
+
+**Vị trí:** `app_cdm.py`, `if _page == "geology":` (~line 3849)
+
+#### Bố cục trải dọc (sau refactor)
+
+1. View 3D / Map 2D toggle — **đặt ngay đầu trang** (trước bảng địa tầng)
+2. Bảng khoảng cách HK + chọn cặp đo (chỉ hiện ở view 3D)
+3. `st.divider()`
+4. Khu vực + HK selector (sidebar trái) | Bảng địa tầng (phải)
+5. Biểu đồ su VST | Cột địa chất
+6. Expander "Nén cố kết – HK có dữ liệu"
+
+#### Quy tắc multiselect zone — mặc định loại QTT
+
+Cả 3D view (`_3d_cdm_zones`) và Map view (`_geo_map_zones`) đều dùng default:
+```python
+_default_zones = [z for z in _zones_with_coords if z != "QTT"]
+```
+
+Lý do: QTT (Quảng Trường Trung Tâm) chỉ có placeholder tọa độ, không có layers thật — bật mặc định gây nhiễu thị giác.
+
+#### Bản đồ vị trí — KHÔNG dùng Plotly mapbox + GPS calibration nữa
+
+Đã viết lại sang **folium + pyproj** (đồng nhất với tab TKBVTC CDM §32):
+
+| Thành phần | Mô tả |
+|---|---|
+| **CRS selector** | 3 EPSG: 9210 (TTHC, mặc định), 9209 (HCM tổng), 3405 (UTM 48N) |
+| **4 lớp nền togglable** | OSM / Vệ tinh Esri / OpenTopoMap / Carto |
+| **CircleMarker + DivIcon label** | Tên HK cạnh marker, text-shadow trắng |
+| **Popup** | Khu vực · cao độ mặt · độ sâu HK · tọa độ N/E |
+| **Polyline tuyến kè** (toggle) | Đường đen từ `ke_binhdo_toadoke` |
+| **Đường kích thước cặp HK** (toggle) | Đồng bộ với view 3D qua `st.session_state["_sp_pair_sel"]` — vẽ đường cam đứt + nhãn khoảng cách ở midpoint |
+| **3 plugin** | Fullscreen · MeasureControl · MiniMap |
+| **Caption thống kê** | Tâm bản đồ + số HK theo zone + số đoạn tuyến kè |
+
+**Đã xóa hoàn toàn:**
+- Hàm `_project_to_latlon()` (xấp xỉ tay)
+- Hàm `_draw_map_2d()` (Plotly Scattermap + Esri raster)
+- Dict `_MAP_STYLES`
+- 4 session-state keys: `cdm_map_ref_bh/lat/lon`, `cdm_map_style`
+- Expander "Hiệu chỉnh GPS" + 3 input lat/lon thủ công
+
+**Giữ lại** `_vn2000_to_latlon()` — vẫn dùng cho pydeck 3D ở line 1287, 1388.
+
+**Lý do refactor:**
+
+| Cách cũ (Plotly mapbox) | Cách mới (folium + pyproj) |
+|---|---|
+| GPS calibration thủ công (nhập lat/lon Google Maps) | Tự động bằng `pyproj` — chính xác tới mét |
+| `_vn2000_to_latlon` xấp xỉ (CM=105°45' cứng) | EPSG selector — TTHC dùng EPSG:9210 (sai số ~0m vs ~25-50m của xấp xỉ cũ) |
+| Không có công cụ đo | MeasureControl native |
+| Không sync với cặp HK đã chọn ở bảng khoảng cách | Đường kích thước cam đồng bộ qua session_state |
+
+**Pattern bắt buộc khi gọi `_trf.transform()`:**
+
+```python
+# boreholes: x_coord_m = Northing, y_coord_m = Easting
+_lon, _lat = _trf.transform(b["y_coord_m"], b["x_coord_m"])
+# ke_binhdo_toadoke: x_m = Easting, y_m = Northing
+_lonp, _latp = _trf.transform(x_m, y_m)
+```
+
+(Nhớ §32 — pitfall #1: hai bảng có convention ngược nhau).
