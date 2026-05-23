@@ -8454,9 +8454,31 @@ if _page == "ke_sw":
                     ).fetchall()
                 except Exception:
                     _ntd_rows = []
+                # Bình đồ kè — polyline boundary từ DXF
+                try:
+                    _binhdo_rows = _con_pf.execute(
+                        "SELECT polyline_id, x_m, y_m FROM ke_binhdo_toadoke "
+                        "ORDER BY polyline_id, vertex_idx"
+                    ).fetchall()
+                except Exception:
+                    _binhdo_rows = []
 
             _ntd_by_bh = {r[0]: {"D_bot": r[1], "L_des": r[2], "pile": r[3]}
                           for r in _ntd_rows}
+            # Bình đồ kè: gom theo polyline_id, hoán đổi x↔y cho đúng convention
+            # boreholes dùng x_coord_m=Northing (~1191xxx), y_coord_m=Easting (~605xxx)
+            # binhdo DXF:   x_m=Easting  (~605xxx),          y_m=Northing (~1191xxx)
+            # → chart_x = binhdo.y_m,  chart_y = binhdo.x_m
+            _binhdo_cx: list = []   # chart X (Northing)
+            _binhdo_cy: list = []   # chart Y (Easting)
+            _prev_pl = None
+            for _pl_id, _bx, _by in _binhdo_rows:
+                if _prev_pl is not None and _pl_id != _prev_pl:
+                    _binhdo_cx.append(None)
+                    _binhdo_cy.append(None)
+                _binhdo_cx.append(_by)   # y_m = Northing → chart X
+                _binhdo_cy.append(_bx)   # x_m = Easting  → chart Y
+                _prev_pl = _pl_id
             _vst_by_bh: dict = {}
             for n, d, s in _vst_rows:
                 _vst_by_bh.setdefault(n, []).append((d, s))
@@ -8849,6 +8871,17 @@ if _page == "ke_sw":
 
             if _HAS_PLOTLY and _plan_data:
                 _fig_pl = go.Figure()
+                # Bình đồ kè (polyline DXF) — vẽ trước để HK nổi lên trên
+                if _binhdo_cx:
+                    _fig_pl.add_trace(go.Scatter(
+                        x=_binhdo_cx, y=_binhdo_cy,
+                        mode="lines",
+                        line=dict(color="rgba(76,175,80,0.55)", width=1.2),
+                        hoverinfo="skip",
+                        showlegend=True,
+                        name="Ranh kè (bình đồ)",
+                        connectgaps=False,
+                    ))
                 # Đường nối tuyến qua các HK
                 _fig_pl.add_trace(go.Scatter(
                     x=[p["x"] for p in _plan_data],
@@ -8886,10 +8919,12 @@ if _page == "ke_sw":
                            f"trên tuyến kè SW"),
                     xaxis_title="X (Northing VN-2000, m)",
                     yaxis_title="Y (Easting VN-2000, m)",
-                    height=520,
+                    height=560,
                     hovermode="closest",
                     plot_bgcolor="#FAFAFA",
-                    showlegend=False,
+                    showlegend=bool(_binhdo_cx),
+                    legend=dict(x=0.01, y=0.99, bgcolor="rgba(255,255,255,0.8)",
+                                bordercolor="#CCC", borderwidth=1),
                     margin=dict(t=60, b=60, l=60, r=20),
                 )
                 _fig_pl.update_yaxes(scaleanchor="x", scaleratio=1,
@@ -8901,13 +8936,30 @@ if _page == "ke_sw":
             if _HAS_MPL and _plan_data:
                 import matplotlib.pyplot as _plt_pl
                 _fig_plm, _ax_plm = _plt_pl.subplots(figsize=(10, 8), dpi=110)
+                # Vẽ polyline bình đồ kè trước (nền)
+                if _binhdo_cx:
+                    _seg_xs, _seg_ys = [], []
+                    for _cx, _cy in zip(_binhdo_cx, _binhdo_cy):
+                        if _cx is None:
+                            if _seg_xs:
+                                _ax_plm.plot(_seg_xs, _seg_ys,
+                                             color="#4CAF50", lw=1.0,
+                                             alpha=0.55, zorder=2)
+                            _seg_xs, _seg_ys = [], []
+                        else:
+                            _seg_xs.append(_cx)
+                            _seg_ys.append(_cy)
+                    if _seg_xs:
+                        _ax_plm.plot(_seg_xs, _seg_ys, color="#4CAF50",
+                                     lw=1.0, alpha=0.55, zorder=2,
+                                     label="Ranh kè (bình đồ)")
                 _xs_pl = [p["x"] for p in _plan_data]
                 _ys_pl = [p["y"] for p in _plan_data]
                 _ax_plm.plot(_xs_pl, _ys_pl, color="#1976D2", lw=2.5,
                              marker="o", markersize=12,
                              markerfacecolor="#FFC107",
                              markeredgecolor="#1976D2", markeredgewidth=2,
-                             zorder=5)
+                             zorder=5, label="Hố khoan trên tuyến")
                 for p in _plan_data:
                     _ax_plm.annotate(
                         p["bh"], xy=(p["x"], p["y"]),
@@ -8933,6 +8985,8 @@ if _page == "ke_sw":
                 )
                 _ax_plm.set_aspect("equal", adjustable="datalim")
                 _ax_plm.grid(True, ls="--", alpha=0.4)
+                if _binhdo_cx:
+                    _ax_plm.legend(fontsize=9, loc="lower right")
                 _fig_plm.tight_layout()
                 st.session_state["_ke_b_plan_mpl_fig"] = _fig_plm
                 with st.expander("Bản Matplotlib bình đồ (dùng cho PDF)",
