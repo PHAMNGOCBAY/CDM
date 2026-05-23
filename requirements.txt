@@ -27,6 +27,12 @@ sqlalchemy>=2.0
 geojson>=3.2
 scipy>=1.13
 geotech-staff-engineer>=4.6   # slope_stability, sheet_pile, bearing_capacity
+# GIS map deps cho tab TKBVTC CDM (2D folium + 3D pydeck + CRS chuyển đổi)
+pyproj>=3.7              # VN-2000 (EPSG:9209/9210/3405) → WGS-84
+folium>=0.20             # Leaflet map (pure Python)
+streamlit-folium>=0.27   # Streamlit wrapper cho folium
+pydeck>=0.9              # 3D bản đồ — đã có sẵn cùng streamlit
 # Chỉ dùng local (cần binary C++/GDAL/heavy) — KHÔNG đưa lên Cloud:
 # openseespy, gmsh, geopandas, PyNiteFEA, anastruct, kaleido, pdfplumber
+# contextily, rasterio (kéo GDAL nặng ~40MB)
 # Winkler solver dùng scripts/winkler_np.py (NumPy thuần) — Cloud Python 3.14 compatible

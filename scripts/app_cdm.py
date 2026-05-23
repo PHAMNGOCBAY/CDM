@@ -14081,6 +14081,316 @@ if _page == "cdm_bvt":
         )
         st.plotly_chart(_fig_L, use_container_width=True)
 
+    # ════════════════════════════════════════════════════════════════════════
+    # BẢN ĐỒ 2D CÓ NỀN ĐỊA LÝ (folium) + BẢN ĐỒ 3D (pydeck)
+    # ════════════════════════════════════════════════════════════════════════
+    st.divider()
+    st.markdown("### Bản đồ có nền địa lý (2D / 3D)")
+
+    try:
+        import folium as _flm
+        from streamlit_folium import st_folium as _stflm
+        _HAS_FLM = True
+    except ImportError:
+        _HAS_FLM = False
+    try:
+        import pydeck as _pdk
+        _HAS_PDK = True
+    except ImportError:
+        _HAS_PDK = False
+    try:
+        from pyproj import Transformer as _Trf
+        _HAS_PRJ = True
+    except ImportError:
+        _HAS_PRJ = False
+
+    if not (_HAS_FLM and _HAS_PDK and _HAS_PRJ):
+        st.error("Thiếu thư viện bản đồ. Cài: folium, streamlit-folium, pydeck, pyproj.")
+    elif not _bh_all:
+        st.info("Chưa có dữ liệu hố khoan trong khu vực.")
+    else:
+        _MAP_CRS = {
+            "VN-2000 / TM-3 106°00' (TTHC Quận 1, Thủ Thiêm)": "EPSG:9210",
+            "VN-2000 / TM-3 105°45' (HCM mặc định)": "EPSG:9209",
+            "VN-2000 / UTM 48N (105°)": "EPSG:3405",
+        }
+
+        @st.cache_data(show_spinner=False)
+        def _bd_make_trf(epsg: str):
+            return _Trf.from_crs(epsg, "EPSG:4326", always_xy=True)
+
+        _bm_c1, _bm_c2, _bm_c3 = st.columns([3, 2, 1])
+        with _bm_c1:
+            _crs_lbl = st.selectbox(
+                "Hệ tọa độ gốc của dữ liệu",
+                list(_MAP_CRS.keys()),
+                index=0,
+                key="_cdm_bvt_crs",
+                help="Đổi nếu vị trí trên bản đồ bị lệch khoảng 25-50km. TTHC Quận 1/Thủ Thiêm thường dùng TM-3 106°00'.",
+            )
+            _crs_code = _MAP_CRS[_crs_lbl]
+        with _bm_c2:
+            _show_cdm_sample = st.checkbox(
+                "Hiển thị mẫu cọc CDM trên bản đồ 2D",
+                value=False,
+                help="Bật để xem một mẫu cọc CDM (tối đa 2,000 cọc) — nhiều hơn sẽ làm chậm trình duyệt. Bản đồ 3D vẽ toàn bộ.",
+            )
+        with _bm_c3:
+            _vmode = st.radio("Chế độ", ["2D", "3D"], horizontal=False, key="_cdm_bvt_view")
+
+        _trf_map = _bd_make_trf(_crs_code)
+
+        # Chuyển HK sang lat/lon
+        _hk_geo = []
+        for nm, xc, yc in _bh_all:
+            # boreholes: x=Northing, y=Easting → trf.transform(Easting, Northing)
+            _lon, _lat = _trf_map.transform(yc, xc)
+            _hk_geo.append({
+                "name": nm,
+                "zone": _zone_prefix(nm),
+                "lat": _lat, "lon": _lon,
+                "n_piles": _cnt_all.get(nm, 0),
+            })
+        _lat0 = sum(h["lat"] for h in _hk_geo) / len(_hk_geo)
+        _lon0 = sum(h["lon"] for h in _hk_geo) / len(_hk_geo)
+
+        # Polyline kè
+        _ke_geo_lines: list[list[tuple[float, float]]] = []
+        if _bd_rows:
+            _cur_pl, _cur_pts = None, []
+            for _pl_id, _bx, _by in _bd_rows:
+                if _cur_pl is not None and _pl_id != _cur_pl:
+                    if len(_cur_pts) >= 2:
+                        _ke_geo_lines.append(_cur_pts)
+                    _cur_pts = []
+                # JSON: x=Easting, y=Northing → trf.transform(Easting, Northing)
+                _lon_p, _lat_p = _trf_map.transform(_bx, _by)
+                _cur_pts.append((_lat_p, _lon_p))
+                _cur_pl = _pl_id
+            if len(_cur_pts) >= 2:
+                _ke_geo_lines.append(_cur_pts)
+
+        # CDM sample (chỉ cho folium 2D — pydeck vẽ full)
+        _CDM_COLORS = {"CV": "#2196F3", "KE": "#FF9800"}
+        _CDM_ZONE_LABEL = {"CV": "Công viên", "KE": "Kè"}
+
+        def _convert_cdm_pts(rows, max_n=None):
+            out = []
+            step = max(1, len(rows) // max_n) if (max_n and len(rows) > max_n) else 1
+            for nx, ey in rows[::step]:
+                # cdm_toado: northing_m, easting_m → trf(easting, northing)
+                _lonc, _latc = _trf_map.transform(ey, nx)
+                out.append((_latc, _lonc))
+            return out
+
+        st.caption(
+            f"Tâm bản đồ: lat={_lat0:.5f}°N, lon={_lon0:.5f}°E · "
+            f"{len(_hk_geo)} hố khoan · {len(_ke_geo_lines)} đường kè · "
+            f"{len(_cdm_cv) + len(_cdm_ke):,} cọc CDM"
+        )
+
+        # ── 2D folium map ───────────────────────────────────────────────────
+        if _vmode == "2D":
+            _fmap = _flm.Map(location=[_lat0, _lon0], zoom_start=17,
+                             tiles=None, control_scale=True)
+
+            _flm.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(_fmap)
+            _flm.TileLayer(
+                tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                attr="Esri", name="Ảnh vệ tinh (Esri)",
+            ).add_to(_fmap)
+            _flm.TileLayer(
+                tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+                attr="OpenTopoMap", name="Địa hình (OpenTopoMap)",
+            ).add_to(_fmap)
+            _flm.TileLayer(
+                tiles="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+                attr="CartoDB", name="Carto nhạt (in PDF)",
+            ).add_to(_fmap)
+
+            # Lớp polyline kè
+            if _ke_geo_lines:
+                _fg_kel = _flm.FeatureGroup(name="Tuyến kè (đen)", show=True)
+                for poly in _ke_geo_lines:
+                    _flm.PolyLine(poly, color="#000000", weight=3,
+                                  opacity=0.85).add_to(_fg_kel)
+                _fg_kel.add_to(_fmap)
+
+            # Lớp HK theo zone
+            _HK_FLM_COLOR = {"KE": "#E53935", "BXN": "#AB47BC", "NHC": "#43A047",
+                              "Khác": "#78909C"}
+            _zones_fg: dict[str, "_flm.FeatureGroup"] = {}
+            for h in _hk_geo:
+                z = h["zone"]
+                if z not in _zones_fg:
+                    _zones_fg[z] = _flm.FeatureGroup(
+                        name=f"Hố khoan {z}", show=True
+                    )
+                _popup = _flm.Popup(
+                    html=(
+                        f"<b>{h['name']}</b><br>"
+                        f"Khu vực: <b>{z}</b><br>"
+                        f"Số cọc CDM gán cho HK này: <b>{h['n_piles']:,}</b>"
+                    ),
+                    max_width=260,
+                )
+                _flm.CircleMarker(
+                    location=[h["lat"], h["lon"]],
+                    radius=8, color=_HK_FLM_COLOR.get(z, "#777"),
+                    weight=2, fill=True,
+                    fill_color=_HK_FLM_COLOR.get(z, "#999"),
+                    fill_opacity=0.85,
+                    popup=_popup, tooltip=h["name"],
+                ).add_to(_zones_fg[z])
+                _flm.map.Marker(
+                    [h["lat"], h["lon"]],
+                    icon=_flm.DivIcon(html=(
+                        f'<div style="font-size:11px;font-weight:bold;'
+                        f'color:#222;text-shadow:1px 1px 2px #fff,'
+                        f'-1px -1px 2px #fff;margin-left:10px;margin-top:-10px">'
+                        f'{h["name"].split("-")[-1]}</div>'
+                    )),
+                ).add_to(_zones_fg[z])
+            for fg in _zones_fg.values():
+                fg.add_to(_fmap)
+
+            # Lớp cọc CDM mẫu (giới hạn 2000 mỗi nhóm)
+            if _show_cdm_sample:
+                for _grp_key, _pts in [("CV", _cdm_cv), ("KE", _cdm_ke)]:
+                    if not _pts:
+                        continue
+                    _pts_geo = _convert_cdm_pts(_pts, max_n=2000)
+                    _fg_cdm = _flm.FeatureGroup(
+                        name=f"Mẫu cọc CDM {_CDM_ZONE_LABEL[_grp_key]} ({len(_pts_geo):,}/{len(_pts):,})",
+                        show=True,
+                    )
+                    for la, lo in _pts_geo:
+                        _flm.CircleMarker(
+                            location=[la, lo], radius=1.5,
+                            color=_CDM_COLORS[_grp_key],
+                            weight=0, fill=True,
+                            fill_color=_CDM_COLORS[_grp_key],
+                            fill_opacity=0.55,
+                        ).add_to(_fg_cdm)
+                    _fg_cdm.add_to(_fmap)
+
+            _flm.LayerControl(collapsed=False, position="topright").add_to(_fmap)
+
+            try:
+                from folium.plugins import (Fullscreen as _FS,
+                                             MeasureControl as _MC,
+                                             MiniMap as _MM)
+                _FS(position="topright", title="Toàn màn hình",
+                    title_cancel="Thoát").add_to(_fmap)
+                _MC(position="topleft", primary_length_unit="meters",
+                    primary_area_unit="sqmeters").add_to(_fmap)
+                _MM(toggle_display=True, position="bottomright").add_to(_fmap)
+            except Exception:
+                pass
+
+            _stflm(_fmap, width=None, height=720, returned_objects=[])
+
+            with st.expander("Hướng dẫn dùng bản đồ 2D"):
+                st.markdown(
+                    "- **Đổi nền**: bảng góc trên phải — chọn OSM / Vệ tinh / Địa hình / Carto\n"
+                    "- **Tắt/mở lớp**: tick checkbox \"Tuyến kè\", \"Hố khoan KE/BXN/NHC\"\n"
+                    "- **Zoom**: nút +/− góc trái trên hoặc lăn chuột\n"
+                    "- **Pan**: kéo chuột trái\n"
+                    "- **Toàn màn hình**: nút góc phải trên\n"
+                    "- **Đo khoảng cách / diện tích**: nút thước góc trái trên\n"
+                    "- **Nhấp HK**: hiện popup chi tiết\n"
+                    "- **Mẫu cọc CDM**: tick \"Hiển thị mẫu cọc CDM\" phía trên — hiển thị tối đa 2,000 cọc/zone để không làm chậm trình duyệt; xem toàn bộ trong chế độ 3D."
+                )
+
+        # ── 3D pydeck view ──────────────────────────────────────────────────
+        else:
+            _layers_3d = []
+
+            # Lớp HK (Column extrude)
+            _HK_PDK_COLOR = {
+                "KE":   [229, 57, 53, 220], "BXN":  [171, 71, 188, 220],
+                "NHC":  [67, 160, 71, 220], "Khác": [120, 144, 156, 220],
+            }
+            _hk_pdk_data = [
+                {
+                    "position": [h["lon"], h["lat"]],
+                    "name": h["name"], "zone": h["zone"],
+                    "color": _HK_PDK_COLOR.get(h["zone"], [120, 144, 156, 220]),
+                    "height": 120.0,
+                    "n_piles": h["n_piles"],
+                }
+                for h in _hk_geo
+            ]
+            _layers_3d.append(_pdk.Layer(
+                "ColumnLayer", data=_hk_pdk_data,
+                get_position="position",
+                get_elevation="height",
+                get_fill_color="color",
+                radius=4, pickable=True, auto_highlight=True,
+                extruded=True,
+            ))
+
+            # Lớp polyline kè
+            if _ke_geo_lines:
+                _path_data = [
+                    {"path": [[lon, lat] for (lat, lon) in poly]}
+                    for poly in _ke_geo_lines
+                ]
+                _layers_3d.append(_pdk.Layer(
+                    "PathLayer", data=_path_data,
+                    get_path="path", get_color=[0, 0, 0, 220],
+                    width_scale=1, width_min_pixels=2, get_width=4,
+                ))
+
+            # Lớp cọc CDM (full 27K — pydeck WebGL OK)
+            for _grp_key, _pts, _label in [
+                ("CV", _cdm_cv, "Công viên"), ("KE", _cdm_ke, "Kè"),
+            ]:
+                if not _pts:
+                    continue
+                _cdm_geo = _convert_cdm_pts(_pts, max_n=None)
+                _layers_3d.append(_pdk.Layer(
+                    "ScatterplotLayer",
+                    data=[{"position": [lo, la]} for (la, lo) in _cdm_geo],
+                    get_position="position",
+                    get_radius=0.5,
+                    get_fill_color=(
+                        [33, 150, 243, 140] if _grp_key == "CV" else [255, 152, 0, 140]
+                    ),
+                    radius_min_pixels=1, radius_max_pixels=5,
+                ))
+
+            _style_lbl = st.selectbox(
+                "Nền bản đồ 3D",
+                ["Sáng", "Tối", "Đường phố", "Vệ tinh"],
+                index=0, key="_cdm_bvt_3dstyle",
+            )
+            _style = {"Sáng":"light","Tối":"dark","Đường phố":"road","Vệ tinh":"satellite"}[_style_lbl]
+
+            _deck3d = _pdk.Deck(
+                layers=_layers_3d,
+                initial_view_state=_pdk.ViewState(
+                    latitude=_lat0, longitude=_lon0,
+                    zoom=17, pitch=55, bearing=0,
+                ),
+                map_style=_style,
+                tooltip={
+                    "html": "<b>{name}</b><br>Khu vực: {zone}<br>Cọc CDM gần nhất: {n_piles}",
+                    "style": {"backgroundColor": "#2c3e50", "color": "white"},
+                },
+            )
+            st.pydeck_chart(_deck3d, use_container_width=True)
+
+            with st.expander("Hướng dẫn dùng bản đồ 3D"):
+                st.markdown(
+                    "- **Xoay**: Ctrl + kéo chuột (hoặc chuột phải)\n"
+                    "- **Phóng**: lăn chuột\n"
+                    "- **Di chuyển**: kéo chuột trái\n"
+                    "- **Đổi nền**: dropdown phía trên\n"
+                    "- **Hover HK**: hiện tooltip chi tiết\n"
+                    f"- **Số cọc CDM hiển thị**: {len(_cdm_cv)+len(_cdm_ke):,} (toàn bộ — pydeck dùng WebGL nên không chậm)"
+                )
+
 # ── Placeholder: TKBVTC Cọc SW ───────────────────────────────────────────────
 if _page == "sw_bvt":
     st.markdown("## TKBVTC Cọc SW")
