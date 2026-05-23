@@ -4035,14 +4035,21 @@ if _page == "geology":
 
                     _trf = _geo_make_trf(_crs_code)
 
-                    # boreholes: x_coord_m = Northing, y_coord_m = Easting
+                    # boreholes: x_coord_m = Northing, y_coord_m = Easting (CLAUDE.md §32)
+                    # Sanity-check: nếu zone bị nhập ngược (x là Easting) → swap runtime.
                     _hk_geo = []
                     for b in _bhs_all:
                         if b["zone"] not in _map_zones:
                             continue
-                        if b.get("x_coord_m") is None or b.get("y_coord_m") is None:
+                        _xc = b.get("x_coord_m")
+                        _yc = b.get("y_coord_m")
+                        if _xc is None or _yc is None:
                             continue
-                        _lon, _lat = _trf.transform(b["y_coord_m"], b["x_coord_m"])
+                        # Tại TP.HCM: Northing ~1,190,000+, Easting ~600,000.
+                        # Nếu x_coord nhỏ hơn y_coord → convention bị ngược → swap.
+                        if _xc < _yc:
+                            _xc, _yc = _yc, _xc
+                        _lon, _lat = _trf.transform(_yc, _xc)
                         _hk_geo.append({
                             **b,
                             "lat": _lat, "lon": _lon,
