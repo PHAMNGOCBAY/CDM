@@ -5278,20 +5278,7 @@ elif _page == "params":
         st.pyplot(_fig_grd, use_container_width=True)
         _fig_grd.clf()
 
-    # ── Xuất PDF tab này ──────────────────────────────────────────────────────
-    if _HAS_PDF:
-        st.divider()
-        try:
-            _pdf_p = _pdf_params(dict(st.session_state))
-            st.download_button(
-                "Xuất PDF tab Thông số CDM",
-                data=_pdf_p,
-                file_name=f"ThongSoCDM_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except Exception as _e:
-            st.warning(f"Không tạo PDF: {_e}")
+    # Xuất PDF qua nút app đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -7355,25 +7342,7 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                     _fig_mp.tight_layout()
                     st.pyplot(_fig_mp, use_container_width=True)
 
-                # ── Nút xuất PDF cho bảng so sánh + biểu đồ ──────────────────
-                if _HAS_PDF:
-                    _col_pdf1, _col_pdf2 = st.columns([1, 3])
-                    with _col_pdf1:
-                        try:
-                            _pdf_compare = _pdf_settle(
-                                dict(st.session_state),
-                                _cmp,
-                            )
-                            st.download_button(
-                                "Tải PDF bảng so sánh + biểu đồ",
-                                data=_pdf_compare,
-                                file_name=f"SoSanhPhuongAn_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                                mime="application/pdf",
-                                use_container_width=True,
-                                key="sl_pdf_compare",
-                            )
-                        except Exception as _ep:
-                            st.caption(f"_(Không tạo PDF: {_ep})_")
+                # PDF qua nút đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
                 # Biểu đồ S(t)
                 if _HAS_PLOTLY:
@@ -7718,23 +7687,7 @@ Tăng ứng suất $> $ tải thiết kế → tăng tốc độ cố kết → 
                 "Nguyên nhân: đất yếu bị nào xuống, cần thêm đắp bù → tăng tải trọng → tăng lún thêm."
             )
 
-        # ── Xuất PDF tab Dự báo lún ──────────────────────────────────────────
-        if _HAS_PDF:
-            st.divider()
-            try:
-                _pdf_s = _pdf_settle(
-                    dict(st.session_state),
-                    st.session_state.get("sl_result"),
-                )
-                st.download_button(
-                    "Xuất PDF tab Dự báo lún",
-                    data=_pdf_s,
-                    file_name=f"DuBaoLun_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
-            except Exception as _e:
-                st.warning(f"Không tạo PDF: {_e}")
+        # Xuất PDF qua nút đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -12769,20 +12722,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     st.warning(f"Không chạy được kiểm tra ổn định tổng thể: {_e_st}")
 
 
-    # ── Xuất PDF tab Cọc ván SW ──────────────────────────────────────────────
-    if _HAS_PDF:
-        st.divider()
-        try:
-            _pdf_k = _pdf_kesw(_DB)
-            st.download_button(
-                "Xuất PDF tab Cọc ván SW",
-                data=_pdf_k,
-                file_name=f"CocVanSW_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except Exception as _e:
-            st.warning(f"Không tạo PDF: {_e}")
+    # Xuất PDF qua nút đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
     # ── Xuất Word toàn bộ tab Cọc ván SW ────────────────────────────────────
     st.divider()
@@ -13766,7 +13706,6 @@ if _page == "cdm_bvt":
     import numpy as _np_cdm
 
     with _sq3_cdm.connect(str(_DB)) as _con_cdm2:
-        # CDM points
         try:
             _cdm_rows = _con_cdm2.execute(
                 "SELECT zone, northing_m, easting_m FROM cdm_toado "
@@ -13774,8 +13713,6 @@ if _page == "cdm_bvt":
             ).fetchall()
         except Exception:
             _cdm_rows = []
-
-        # Boreholes — lọc ND-* (tọa độ đảo: x_coord_m < 1_000_000)
         try:
             _bh_all = _con_cdm2.execute(
                 "SELECT name, x_coord_m, y_coord_m FROM boreholes "
@@ -13783,8 +13720,6 @@ if _page == "cdm_bvt":
             ).fetchall()
         except Exception:
             _bh_all = []
-
-        # Bình đồ kè polylines
         try:
             _bd_rows = _con_cdm2.execute(
                 "SELECT polyline_id, x_m, y_m FROM ke_binhdo_toadoke "
@@ -13793,15 +13728,13 @@ if _page == "cdm_bvt":
         except Exception:
             _bd_rows = []
 
-    # Tách CDM theo zone
     _cdm_cv = [(r[1], r[2]) for r in _cdm_rows if r[0] == "CONG_VIEN"]
     _cdm_ke = [(r[1], r[2]) for r in _cdm_rows if r[0] == "KE"]
 
-    # Tách boreholes theo khu vực
     def _zone_prefix(name):
-        if name.startswith("KE-"):   return "KE"
-        if name.startswith("BXN-"):  return "BXN"
-        if name.startswith("NHC-"):  return "NHC"
+        if name.startswith("KE-"):  return "KE"
+        if name.startswith("BXN-"): return "BXN"
+        if name.startswith("NHC-"): return "NHC"
         return "Khác"
 
     _bh_by_zone: dict = {}
@@ -13810,7 +13743,7 @@ if _page == "cdm_bvt":
             {"name": nm, "x": float(xc), "y": float(yc)}
         )
 
-    # Bình đồ kè: swap x↔y (DXF x=Easting, y=Northing; chart X=Northing, Y=Easting)
+    # Bình đồ kè polylines: swap DXF x(Easting)↔y(Northing) → chart X=Northing
     _bd_cx: list = []
     _bd_cy: list = []
     _prev_bd = None
@@ -13820,91 +13753,64 @@ if _page == "cdm_bvt":
         _bd_cx.append(_by); _bd_cy.append(_bx)
         _prev_bd = _pl_id
 
-    # ── Thống kê ──────────────────────────────────────────────────────────────
     _c1, _c2, _c3 = st.columns(3)
     _c1.metric("Cọc CDM — Công viên", f"{len(_cdm_cv):,}")
     _c2.metric("Cọc CDM — Kè",        f"{len(_cdm_ke):,}")
-    _c3.metric("Hố khoan",             f"{len(_bh_all)}")
+    _c3.metric("Hố khoan",             str(len(_bh_all)))
 
-    # ── Plotly ────────────────────────────────────────────────────────────────
     if _HAS_PLOTLY:
         _fig_cdm = go.Figure()
-
-        # Bình đồ kè (nền đen)
         if _bd_cx:
             _fig_cdm.add_trace(go.Scatter(
-                x=_bd_cx, y=_bd_cy,
-                mode="lines",
+                x=_bd_cx, y=_bd_cy, mode="lines",
                 line=dict(color="rgba(0,0,0,0.80)", width=1.2),
-                name="Ranh kè (bình đồ)",
-                hoverinfo="skip",
-                connectgaps=False,
+                name="Ranh kè (bình đồ)", hoverinfo="skip", connectgaps=False,
             ))
-
-        # CDM Công viên — WebGL để render 19k điểm nhanh
         if _cdm_cv:
             _fig_cdm.add_trace(go.Scattergl(
-                x=[p[0] for p in _cdm_cv],
-                y=[p[1] for p in _cdm_cv],
+                x=[p[0] for p in _cdm_cv], y=[p[1] for p in _cdm_cv],
                 mode="markers",
-                marker=dict(size=3, color="rgba(33,150,243,0.45)",
-                            line=dict(width=0)),
+                marker=dict(size=3, color="rgba(33,150,243,0.45)", line=dict(width=0)),
                 name=f"CDM Công viên ({len(_cdm_cv):,} cọc)",
                 hovertemplate="N=%.1f<br>E=%.1f<extra>CDM CV</extra>",
             ))
-
-        # CDM Kè
         if _cdm_ke:
             _fig_cdm.add_trace(go.Scattergl(
-                x=[p[0] for p in _cdm_ke],
-                y=[p[1] for p in _cdm_ke],
+                x=[p[0] for p in _cdm_ke], y=[p[1] for p in _cdm_ke],
                 mode="markers",
-                marker=dict(size=3, color="rgba(255,152,0,0.50)",
-                            line=dict(width=0)),
+                marker=dict(size=3, color="rgba(255,152,0,0.50)", line=dict(width=0)),
                 name=f"CDM Kè ({len(_cdm_ke):,} cọc)",
                 hovertemplate="N=%.1f<br>E=%.1f<extra>CDM Kè</extra>",
             ))
-
-        # Boreholes theo khu vực
         _BH_STYLE = {
-            "KE":   dict(symbol="circle",        size=12, color="#E53935",
+            "KE":   dict(symbol="circle",      size=12, color="#E53935",
                          line=dict(color="#B71C1C", width=1.5)),
-            "BXN":  dict(symbol="square",        size=11, color="#AB47BC",
+            "BXN":  dict(symbol="square",      size=11, color="#AB47BC",
                          line=dict(color="#6A1B9A", width=1.5)),
-            "NHC":  dict(symbol="triangle-up",   size=12, color="#43A047",
+            "NHC":  dict(symbol="triangle-up", size=12, color="#43A047",
                          line=dict(color="#1B5E20", width=1.5)),
-            "Khác": dict(symbol="diamond",       size=10, color="#78909C",
+            "Khác": dict(symbol="diamond",     size=10, color="#78909C",
                          line=dict(color="#37474F", width=1.5)),
         }
         for _zone_nm, _bhs in sorted(_bh_by_zone.items()):
-            _ms = _BH_STYLE.get(_zone_nm, _BH_STYLE["Khác"])
             _fig_cdm.add_trace(go.Scatter(
-                x=[b["x"] for b in _bhs],
-                y=[b["y"] for b in _bhs],
+                x=[b["x"] for b in _bhs], y=[b["y"] for b in _bhs],
                 mode="markers+text",
-                marker=_ms,
+                marker=_BH_STYLE.get(_zone_nm, _BH_STYLE["Khác"]),
                 text=[b["name"].split("-")[-1] for b in _bhs],
-                textposition="top center",
-                textfont=dict(size=9),
-                hovertext=[
-                    f"<b>{b['name']}</b><br>N={b['x']:,.1f}<br>E={b['y']:,.1f}"
-                    for b in _bhs
-                ],
+                textposition="top center", textfont=dict(size=9),
+                hovertext=[f"<b>{b['name']}</b><br>N={b['x']:,.1f}<br>E={b['y']:,.1f}"
+                           for b in _bhs],
                 hoverinfo="text",
                 name=f"Hố khoan {_zone_nm} ({len(_bhs)})",
             ))
-
         _fig_cdm.update_layout(
             title="Mặt bằng tổng hợp: Cọc CDM + Hố khoan",
             xaxis_title="Northing VN-2000 (m)",
             yaxis_title="Easting VN-2000 (m)",
-            height=700,
-            hovermode="closest",
-            plot_bgcolor="#F5F5F5",
-            legend=dict(x=0.01, y=0.99,
-                        bgcolor="rgba(255,255,255,0.88)",
-                        bordercolor="#BBB", borderwidth=1,
-                        font=dict(size=11)),
+            height=700, hovermode="closest", plot_bgcolor="#F5F5F5",
+            legend=dict(x=0.01, y=0.99, bgcolor="rgba(255,255,255,0.88)",
+                        bordercolor="#BBB", borderwidth=1, font=dict(size=11)),
             margin=dict(t=60, b=60, l=70, r=20),
         )
         _fig_cdm.update_yaxes(scaleanchor="x", scaleratio=1,
@@ -13912,63 +13818,49 @@ if _page == "cdm_bvt":
         _fig_cdm.update_xaxes(showgrid=True, gridcolor="#E0E0E0")
         st.plotly_chart(_fig_cdm, use_container_width=True)
 
-    # ── Matplotlib double-render (dùng cho PDF / Ctrl+P) ──────────────────────
     if _HAS_MPL and (_cdm_cv or _cdm_ke):
         import matplotlib.pyplot as _plt_cdm
         _fig_cm, _ax_cm = _plt_cdm.subplots(figsize=(14, 10), dpi=110)
-
-        # Bình đồ kè
         if _bd_cx:
             _seg_x, _seg_y = [], []
             for _cx2, _cy2 in zip(_bd_cx, _bd_cy):
                 if _cx2 is None:
                     if _seg_x:
-                        _ax_cm.plot(_seg_x, _seg_y, color="black",
-                                    lw=1.0, alpha=0.80, zorder=2)
+                        _ax_cm.plot(_seg_x, _seg_y, color="black", lw=1.0,
+                                    alpha=0.80, zorder=2)
                     _seg_x, _seg_y = [], []
                 else:
                     _seg_x.append(_cx2); _seg_y.append(_cy2)
             if _seg_x:
                 _ax_cm.plot(_seg_x, _seg_y, color="black", lw=1.0,
                             alpha=0.80, zorder=2, label="Ranh kè")
-
-        # CDM points
         if _cdm_cv:
-            _ax_cm.scatter([p[0] for p in _cdm_cv],
-                           [p[1] for p in _cdm_cv],
+            _ax_cm.scatter([p[0] for p in _cdm_cv], [p[1] for p in _cdm_cv],
                            s=1, c="steelblue", alpha=0.35, linewidths=0,
                            zorder=3, label=f"CDM Công viên ({len(_cdm_cv):,})")
         if _cdm_ke:
-            _ax_cm.scatter([p[0] for p in _cdm_ke],
-                           [p[1] for p in _cdm_ke],
+            _ax_cm.scatter([p[0] for p in _cdm_ke], [p[1] for p in _cdm_ke],
                            s=1, c="darkorange", alpha=0.40, linewidths=0,
                            zorder=3, label=f"CDM Kè ({len(_cdm_ke):,})")
-
-        # Boreholes
         _BH_MPL = {"KE": ("o","#E53935"), "BXN": ("s","#AB47BC"),
                    "NHC": ("^","#43A047"), "Khác": ("D","#78909C")}
         for _zn, _bhs in sorted(_bh_by_zone.items()):
             _mk, _cl = _BH_MPL.get(_zn, ("D","gray"))
-            _ax_cm.scatter([b["x"] for b in _bhs],
-                           [b["y"] for b in _bhs],
+            _ax_cm.scatter([b["x"] for b in _bhs], [b["y"] for b in _bhs],
                            s=60, marker=_mk, c=_cl, zorder=5,
                            label=f"HK {_zn} ({len(_bhs)})",
                            edgecolors="white", linewidths=0.8)
             for b in _bhs:
-                _ax_cm.annotate(
-                    b["name"].split("-")[-1],
-                    xy=(b["x"], b["y"]),
-                    xytext=(0, 6), textcoords="offset points",
-                    ha="center", fontsize=7, color="#333",
-                )
-
+                _ax_cm.annotate(b["name"].split("-")[-1],
+                                xy=(b["x"], b["y"]),
+                                xytext=(0, 6), textcoords="offset points",
+                                ha="center", fontsize=7, color="#333")
         _ax_cm.set_xlabel("Northing VN-2000 (m)")
         _ax_cm.set_ylabel("Easting VN-2000 (m)")
         _ax_cm.set_title("Mặt bằng tổng hợp: Cọc CDM + Hố khoan")
         _ax_cm.set_aspect("equal", adjustable="datalim")
         _ax_cm.grid(True, ls="--", alpha=0.35)
-        _ax_cm.legend(fontsize=8, loc="lower right",
-                      framealpha=0.88, markerscale=2)
+        _ax_cm.legend(fontsize=8, loc="lower right", framealpha=0.88, markerscale=2)
         _fig_cm.tight_layout()
         with st.expander("Bản in (dùng cho PDF)", expanded=False):
             st.pyplot(_fig_cm, use_container_width=True)
@@ -13977,7 +13869,7 @@ if _page == "cdm_bvt":
     st.caption(
         f"Dữ liệu: {len(_cdm_cv):,} cọc CDM khu Công viên + "
         f"{len(_cdm_ke):,} cọc CDM khu Kè. "
-        f"Tọa độ VN-2000. Click vào tên lớp trong chú thích để ẩn/hiện."
+        "Tọa độ VN-2000. Click tên lớp trong chú thích để ẩn/hiện."
     )
 
 # ── Placeholder: TKBVTC Cọc SW ───────────────────────────────────────────────
