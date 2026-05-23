@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TTHC — Thiết kế Địa kỹ thuật</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+/* ── Streamlit-like variables ─────────────────────────────────────── */
+:root{
+  --sidebar-bg:#0e1117; --sidebar-w:240px;
+  --primary:#ff4b4b; --primary-hover:#ff6b6b;
+  --btn-bg:#262730; --btn-fg:#fafafa; --btn-active:#ff4b4b;
+  --bg:#0e1117; --surface:#262730; --surface2:#1a1c24;
+  --text:#fafafa; --muted:#a0a0b0; --border:#3d3d4f;
+  --navy:#1e3a8a; --gold:#ca8a04;
+  --font:'Source Sans Pro','Segoe UI',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px}
+
+/* ── Layout ───────────────────────────────────────────────────────── */
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:var(--sidebar-bg);
+  display:flex;flex-direction:column;
+  border-right:1px solid var(--border);
+  overflow-y:auto;overflow-x:hidden;
+  padding:1rem 0;
+}
+.sidebar-logo{
+  padding:0 1rem 1rem;
+  font-size:.95rem;font-weight:700;color:var(--text);
+  border-bottom:1px solid var(--border);margin-bottom:.75rem;
+}
+.sidebar-logo span{color:var(--primary)}
+.sidebar-section{
+  padding:.25rem 1rem;font-size:.72rem;font-weight:700;
+  color:var(--muted);text-transform:uppercase;letter-spacing:.8px;
+  margin-top:.5rem;
+}
+.nav-btn{
+  display:block;width:100%;text-align:left;
+  padding:.55rem 1rem;
+  background:none;border:none;color:var(--muted);
+  cursor:pointer;font-size:.88rem;font-family:var(--font);
+  border-radius:0;transition:background .1s,color .1s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.nav-btn:hover{background:var(--btn-bg);color:var(--text)}
+.nav-btn.active{background:var(--btn-active);color:#fff;font-weight:600}
+.nav-btn.indent{padding-left:1.8rem;font-size:.84rem}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main-scroll{flex:1;overflow-y:auto;padding:1.25rem 1.5rem}
+
+/* ── Components ──��────────────────────────────────────────────────── */
+h1{font-size:1.5rem;font-weight:700;margin-bottom:.5rem}
+h2{font-size:1.15rem;font-weight:700;margin:1.2rem 0 .5rem;color:var(--text)}
+h3{font-size:.95rem;font-weight:700;margin:.8rem 0 .4rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+p{color:var(--muted);font-size:.88rem;line-height:1.5}
+
+/* Metrics */
+.metrics{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem}
+.metric{background:var(--surface);border-radius:8px;padding:.75rem 1rem;min-width:130px;border:1px solid var(--border)}
+.metric .val{font-size:1.5rem;font-weight:700;color:var(--text);line-height:1.1}
+.metric .lbl{font-size:.72rem;color:var(--muted);margin-top:3px}
+.metric.red .val{color:#ff4b4b}
+.metric.green .val{color:#00c853}
+.metric.gold .val{color:var(--gold)}
+
+/* Controls row */
+.ctrl-row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem}
+.ctrl-group{display:flex;flex-direction:column;gap:4px}
+.ctrl-group label{font-size:.78rem;color:var(--muted);font-weight:600}
+select,input[type=number],input[type=text]{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);border-radius:6px;
+  padding:6px 10px;font-size:.88rem;font-family:var(--font);
+  min-width:140px;
+}
+select:focus,input:focus{outline:2px solid var(--primary);border-color:transparent}
+
+/* Checkbox row */
+.chk-row{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--text);cursor:pointer;margin:4px 0}
+input[type=checkbox]{accent-color:var(--primary);width:15px;height:15px;cursor:pointer}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--border);margin-top:.5rem}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:var(--surface);color:var(--muted);padding:8px 12px;text-align:left;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:7px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.03)}
+
+/* Badge */
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:700}
+.badge.ke {background:#1e3a8a44;color:#93c5fd}
+.badge.cv {background:#4c1d9544;color:#c4b5fd}
+.badge.bxn{background:#14532d44;color:#86efac}
+.badge.nhc{background:#78350f44;color:#fcd34d}
+.badge.qtt{background:#831843 44;color:#f9a8d4}
+
+/* Divider */
+hr{border:none;border-top:1px solid var(--border);margin:1rem 0}
+
+/* Info box */
+.info-box{background:var(--surface2);border-left:3px solid #3b82f6;border-radius:0 8px 8px 0;padding:.75rem 1rem;margin:.75rem 0;color:var(--muted);font-size:.88rem}
+
+/* Expander */
+details{border:1px solid var(--border);border-radius:8px;margin:.5rem 0}
+details>summary{padding:.6rem 1rem;cursor:pointer;font-size:.88rem;font-weight:600;list-style:none;color:var(--text)}
+details>summary::marker,details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"▶ ";font-size:.7rem;color:var(--muted)}
+details[open]>summary::before{content:"▼ "}
+details .details-body{padding:.75rem 1rem;border-top:1px solid var(--border)}
+
+/* Plotly container */
+.chart{background:var(--surface);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin:.5rem 0}
+
+/* 2-col layout */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+@media(max-width:900px){.cols2,.cols3{grid-template-columns:1fr}}
+
+/* Spinner */
+.spin-wrap{display:flex;align-items:center;justify-content:center;padding:2rem}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">TTHC &nbsp;<span>Địa kỹ thuật</span></div>
+
+  <button class="nav-btn active" data-page="geology" onclick="nav(this)">Địa chất</button>
+  <button class="nav-btn" data-page="sample_check" onclick="nav(this)">Kiểm tra mẫu TN</button>
+
+  <div class="sidebar-section">TKCS CDM</div>
+  <button class="nav-btn indent" data-page="params" onclick="nav(this)">Thiết kế CDM</button>
+  <button class="nav-btn indent" data-page="settlement" onclick="nav(this)">Dự báo độ lún</button>
+
+  <button class="nav-btn" data-page="cdm_bvt" onclick="nav(this)">TKBVTC CDM</button>
+  <button class="nav-btn indent" data-page="cdm_tien_do" onclick="nav(this)">Tiến độ &amp; Thí nghiệm</button>
+
+  <div class="sidebar-section">TKCS Cọc ván</div>
+  <button class="nav-btn indent" data-page="ke_sw" onclick="nav(this)">Cọc ván SW (Kè)</button>
+  <button class="nav-btn" data-page="sw_bvt" onclick="nav(this)">TKBVTC Cọc SW</button>
+</nav>
+
+<!-- ── Main ──────────────────────────────────────��────────────────── -->
+<main class="main">
+  <div class="main-scroll" id="main-content">
+    <div class="spin-wrap"><div class="spinner"></div></div>
+  </div>
+</main>
+
+</div><!-- .app -->
+
+<script>
+// ── Router ��───────────────────────────────────────────────────────────────────
+let _curPage = 'geology';
+
+function nav(btn) {
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _curPage = btn.dataset.page;
+  loadPage(_curPage);
+}
+
+function loadPage(page) {
+  const el = document.getElementById('main-content');
+  const pages = {
+    geology:     pageGeology,
+    sample_check:pageSampleCheck,
+    params:      pageParams,
+    settlement:  pageSettlement,
+    cdm_bvt:     pageCdmBvt,
+    cdm_tien_do: pageCdmTienDo,
+    ke_sw:       pageKeSw,
+    sw_bvt:      () => placeholder(el, 'TKBVTC Cọc SW'),
+  };
+  el.innerHTML = '<div class="spin-wrap"><div class="spinner"></div></div>';
+  (pages[page] || (() => placeholder(el, page)))(el);
+}
+
+function placeholder(el, title) {
+  el.innerHTML = `<h1>${title}</h1><div class="info-box">Trang đang phát triển.</div>`;
+}
+
+// ── API helpers ──────────��────────────────────────────────────────────────────
+async function api(path) {
+  const r = await fetch(path);
+  return r.json();
+}
+
+// ── Plotly dark template ────────────────��───────────────────��─────────────────
+const DARK = {
+  layout:{
+    paper_bgcolor:'#262730', plot_bgcolor:'#262730',
+    font:{color:'#fafafa',size:12},
+    xaxis:{gridcolor:'#3d3d4f',zeroline:false},
+    yaxis:{gridcolor:'#3d3d4f',zeroline:false},
+    margin:{t:32,b:48,l:56,r:12},
+    legend:{bgcolor:'rgba(0,0,0,0)',font:{size:11}},
+    hovermode:'closest',
+  },
+  config:{responsive:true,displaylogo:false,displayModeBar:true}
+};
+
+function plot(divId, traces, extraLayout={}) {
+  Plotly.react(divId, traces,
+    Object.assign({}, DARK.layout, extraLayout),
+    DARK.config);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE: Địa chất
+// ���──────────────────────────────────────────────���─────────────────────────────
+async function pageGeology(el) {
+  const {boreholes} = await api('/api/boreholes');
+
+  const ZONE_COLOR = {KE:'#f59e0b',BXN:'#10b981',NHC:'#ef4444',QTT:'#ec4899',OTHER:'#6b7280'};
+  const zones = [...new Set(boreholes.map(b=>b.zone))].sort();
+
+  el.innerHTML = `
+  <h1>Địa chất</h1>
+  <div class="ctrl-row">
+    <div class="ctrl-group"><label>Zone</label>
+      <select id="geo-zone">
+        <option value="all">Tất cả</option>
+        ${zones.map(z=>`<option value="${z}">${z}</option>`).join('')}
+      </select>
+    </div>
+    <div class="ctrl-group"><label>Hố khoan</label>
+      <select id="geo-bh" style="min-width:160px"><option>— chọn —</option></select>
+    </div>
+  </div>
+
+  <div class="cols2" style="height:520px">
+    <div class="chart" style="height:100%"><div id="map3d" style="height:100%"></div></div>
+    <div class="chart" style="height:100%;overflow-y:auto" id="strat-panel">
+      <div style="padding:1rem;color:var(--muted);font-size:.88rem">Chọn hố khoan để xem địa tầng</div>
+    </div>
+  </div>
+
+  <hr>
+  <h2>Danh sách hố khoan</h2>
+  <div class="tbl-wrap" id="bh-table"></div>`;
+
+  // ── 3D borehole map
+  const tracesByZone = {};
+  boreholes.forEach(b => {
+    if (!tracesByZone[b.zone]) tracesByZone[b.zone] = {x:[],y:[],z:[],text:[]};
+    const t = tracesByZone[b.zone];
+    t.x.push(b.y_coord_m); t.y.push(b.x_coord_m);
+    t.z.push(b.elevation_m||0); t.text.push(b.name);
+  });
+  const traces3d = Object.entries(tracesByZone).map(([zone,d])=>({
+    type:'scatter3d', mode:'markers+text',
+    x:d.x, y:d.y, z:d.z, text:d.text, textposition:'top center',
+    marker:{color:ZONE_COLOR[zone]||'#888',size:6,line:{width:1,color:'#fff'}},
+    name: zone,
+    hovertemplate:'<b>%{text}</b><br>E=%{x:.1f}<br>N=%{y:.1f}<br>Z=%{z:.2f}m<extra></extra>',
+  }));
+  plot('map3d', traces3d, {
+    scene:{
+      xaxis:{title:'Easting (m)'},
+      yaxis:{title:'Northing (m)'},
+      zaxis:{title:'Cao độ (m)'},
+    }, margin:{t:20,b:0,l:0,r:0}
+  });
+
+  // ── BH table
+  const bhTbl = document.getElementById('bh-table');
+  bhTbl.innerHTML = `<table>
+    <thead><tr><th>Tên HK</th><th>Zone</th><th>Cao độ (m)</th><th>Northing</th><th>Easting</th></tr></thead>
+    <tbody>${boreholes.map(b=>`<tr>
+      <td style="cursor:pointer;color:#93c5fd" onclick="selectBh('${b.name}')">${b.name}</td>
+      <td><span class="badge ${b.zone.toLowerCase()}">${b.zone}</span></td>
+      <td>${b.elevation_m??'—'}</td>
+      <td>${b.x_coord_m?.toFixed(3)??'—'}</td>
+      <td>${b.y_coord_m?.toFixed(3)??'—'}</td>
+    </tr>`).join('')}</tbody></table>`;
+
+  // ── Zone filter
+  document.getElementById('geo-zone').addEventListener('change', e=>{
+    const z = e.target.value;
+    const filtered = z==='all' ? boreholes : boreholes.filter(b=>b.zone===z);
+    const sel = document.getElementById('geo-bh');
+    sel.innerHTML = '<option>— chọn —</option>' + filtered.map(b=>`<option value="${b.name}">${b.name}</option>`).join('');
+  });
+  document.getElementById('geo-bh').addEventListener('change', e=>{
+    if (e.target.value !== '— chọn —') selectBh(e.target.value);
+  });
+
+  window.selectBh = async (name) => {
+    const panel = document.getElementById('strat-panel');
+    panel.innerHTML = '<div class="spin-wrap"><div class="spinner"></div></div>';
+    const d = await api(`/api/borehole/${encodeURIComponent(name)}/layers`);
+    renderStrat(panel, name, d);
+  };
+}
+
+function renderStrat(panel, name, d) {
+  const {elevation_m, layers, spt, vst} = d;
+  if (!layers.length) { panel.innerHTML = `<div style="padding:1rem;color:var(--muted)">Không có dữ liệu địa tầng cho ${name}</div>`; return; }
+
+  const LAYER_COLORS = {'1':'#6d89b0','1b':'#5a7fa0','XMD':'#7a9fc4','2':'#7b9e8a',
+    '2a':'#8aad99','2b':'#99bcaa','3':'#c4a86a','4':'#d4b87a','5a':'#e4c48a','F':'#a09080'};
+  const maxD = layers[layers.length-1].depth_bot_m;
+
+  // SPT chart
+  const sptX = spt.map(s=>s.N), sptY = spt.map(s=>s.depth_m);
+  const vstX = vst.map(v=>v.su_kPa), vstY = vst.map(v=>v.depth_m);
+
+  panel.innerHTML = `
+    <div style="padding:.75rem 1rem">
+      <h2 style="font-size:1rem">${name} (Z=${elevation_m?.toFixed(2)??'?'}m)</h2>
+    </div>
+    <div id="strat-chart" style="height:380px"></div>
+    <div class="tbl-wrap" style="margin:.75rem">
+      <table><thead><tr><th>Lớp</th><th>Ký hiệu</th><th>Mô tả</th><th>Sâu từ (m)</th><th>Sâu đến (m)</th></tr></thead>
+      <tbody>${layers.map(l=>`<tr>
+        <td>${l.layer_no}</td>
+        <td><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${LAYER_COLORS[l.symbol]||'#888'};margin-right:6px;vertical-align:middle"></span>${l.symbol}</td>
+        <td style="font-size:.78rem;color:var(--muted)">${l.description||''}</td>
+        <td>${l.depth_top_m?.toFixed(1)}</td><td>${l.depth_bot_m?.toFixed(1)}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>`;
+
+  // Draw strat + SPT side by side
+  const traces = [];
+  layers.forEach(l=>{
+    const col = LAYER_COLORS[l.symbol]||'#888';
+    traces.push({
+      type:'scatter', mode:'lines', fill:'tozerox',
+      x:[0,8,8,0,0], y:[l.depth_top_m,l.depth_top_m,l.depth_bot_m,l.depth_bot_m,l.depth_top_m],
+      fillcolor:col+'88', line:{color:col,width:1},
+      name:l.symbol, showlegend:false,
+      hoverinfo:'text', text:`${l.symbol}: ${l.description||''}`,
+    });
+    traces.push({
+      type:'scatter', mode:'text', x:[4], y:[(l.depth_top_m+l.depth_bot_m)/2],
+      text:[l.symbol], textfont:{color:'#fff',size:9}, showlegend:false, hoverinfo:'skip',
+    });
+  });
+  if (sptX.length) traces.push({
+    type:'scatter', mode:'lines+markers', x:sptX.map(v=>v/5+10), y:sptY,
+    line:{color:'#f59e0b',width:2}, marker:{size:5,color:'#f59e0b'},
+    name:'SPT N',
+    hovertemplate:'N=%{customdata}<extra>SPT</extra>', customdata:sptX,
+  });
+  if (vstX.length) traces.push({
+    type:'scatter', mode:'lines+markers', x:vstX.map(v=>v/2+10), y:vstY,
+    line:{color:'#f87171',width:2,dash:'dot'}, marker:{size:5,color:'#f87171'},
+    name:'su VST (kPa)',
+    hovertemplate:'su=%{customdata:.1f} kPa<extra>VST</extra>', customdata:vstX,
+  });
+
+  plot('strat-chart', traces, {
+    yaxis:{autorange:'reversed',title:'Độ sâu (m)',range:[maxD+0.5,-0.5]},
+    xaxis:{title:'',showticklabels:false,range:[0,30]},
+    height:360, margin:{t:16,b:32,l:56,r:12},
+    showlegend:true, legend:{x:0.5,y:1.02,orientation:'h'},
+  });
+}
+
+// ─────���───────────────────────────��───────────────────────────────────────────
+// PAGE: Kiểm tra mẫu TN
+// ─────��───────────────────────────────────────────────────────────────────────
+async function pageSampleCheck(el) {
+  el.innerHTML = `<h1>Kiểm tra mẫu TN</h1><div class="info-box">Trang đang hoàn thiện — dữ liệu có sẵn từ SQLite.</div>`;
+}
+
+// ───────────���─────────────────────────────────────────────────────────────────
+// PAGE: Thiết kế CDM
+// ───────���───────────────────��────────────────────────────��────────────────────
+async function pageParams(el) {
+  el.innerHTML = `<h1>Thiết kế CDM</h1><div class="info-box">Trang đang hoàn thiện.</div>`;
+}
+
+// ───────��────────────────────────────���─────────────────────────────��──────────
+// PAGE: Dự báo độ lún
+// ────────────��──────────────���───────────────────────────────────���─────────────
+async function pageSettlement(el) {
+  el.innerHTML = `<h1>Dự báo độ lún</h1><div class="info-box">Trang đang hoàn thiện.</div>`;
+}
+
+// ─────────────��─────────────────────────────────────────────────────────���─────
+// PAGE: TKBVTC CDM — Bản đồ
+// ─────────���─────────────────────���────────────────────────────��────────────────
+async function pageCdmBvt(el) {
+  el.innerHTML = `
+  <h1>TKBVTC CDM</h1>
+  <h2>Mặt bằng tổng hợp vị trí cọc CDM</h2>
+  <div class="ctrl-row">
+    <div class="ctrl-group"><label>Khu vực</label>
+      <select id="cdm-zone"><option value="all">Tất cả</option><option value="CONG_VIEN">Công viên</option><option value="KE">Kè</option></select>
+    </div>
+    <label class="chk-row"><input type="checkbox" id="chk-cdm" checked><span class="dot" style="background:#7c3aed"></span> Cọc CDM</label>
+    <label class="chk-row"><input type="checkbox" id="chk-bh" checked><span class="dot" style="background:#f59e0b"></span> Hố khoan</label>
+    <label class="chk-row"><input type="checkbox" id="chk-ke" checked><span class="dot" style="background:#9ca3af"></span> Ranh kè</label>
+  </div>
+  <div class="metrics" id="cdm-metrics"><div class="spin-wrap"><div class="spinner"></div></div></div>
+  <div class="chart" style="height:540px"><div id="cdm-map" style="height:100%"></div></div>
+  <hr>
+  <h2>Thống kê khối lượng</h2>
+  <div class="cols2">
+    <div><h3>Theo khu vực</h3><div class="tbl-wrap" id="tbl-zone"></div></div>
+    <div><h3>Theo hố khoan</h3><div class="tbl-wrap" id="tbl-bh" style="max-height:280px;overflow-y:auto"></div></div>
+  </div>`;
+
+  const [ptData, bhData, keData, statsData] = await Promise.all([
+    api('/api/cdm/toado'), api('/api/boreholes'),
+    api('/api/ke-binhdo'), api('/api/cdm/stats'),
+  ]);
+
+  // Metrics
+  const mEl = document.getElementById('cdm-metrics');
+  const bz = statsData.by_zone;
+  let tot=0,cv=0,ke=0,vcv=0,vke=0;
+  bz.forEach(r=>{ tot+=r.n_coc; if(r.zone==='CONG_VIEN'){cv=r.n_coc;vcv=r.V_m3||0} if(r.zone==='KE'){ke=r.n_coc;vke=r.V_m3||0} });
+  mEl.innerHTML = `
+    <div class="metric"><div class="val">${tot.toLocaleString('vi-VN')}</div><div class="lbl">Tổng cọc CDM</div></div>
+    <div class="metric gold"><div class="val">${cv.toLocaleString('vi-VN')}</div><div class="lbl">Công viên</div></div>
+    <div class="metric"><div class="val">${ke.toLocaleString('vi-VN')}</div><div class="lbl">Kè</div></div>
+    <div class="metric green"><div class="val">${Math.round(vcv).toLocaleString('vi-VN')}</div><div class="lbl">V Công viên (m³)</div></div>
+    <div class="metric green"><div class="val">${Math.round(vke).toLocaleString('vi-VN')}</div><div class="lbl">V Kè (m³)</div></div>`;
+
+  const drawMap = (zf) => {
+    const traces = [];
+    // Ranh kè
+    if (document.getElementById('chk-ke').checked) {
+      let kx=[],ky=[];
+      keData.polylines.forEach(pl=>{ pl.forEach(pt=>{kx.push(pt.y);ky.push(pt.x)}); kx.push(null);ky.push(null); });
+      traces.push({x:kx,y:ky,mode:'lines',type:'scatter',line:{color:'rgba(200,200,200,.7)',width:1.2},name:'Ranh kè',hoverinfo:'skip',connectgaps:false});
+    }
+    // CDM
+    if (document.getElementById('chk-cdm').checked) {
+      const zlist = zf==='all'?['CONG_VIEN','KE']:[zf];
+      zlist.forEach(z=>{
+        const pts = ptData.points.filter(p=>p.z===z);
+        traces.push({x:pts.map(p=>p.y),y:pts.map(p=>p.x),mode:'markers',type:'scattergl',
+          marker:{color:z==='CONG_VIEN'?'#7c3aed':'#1d4ed8',size:2.5,opacity:.55},
+          name:z==='CONG_VIEN'?'Công viên':'Kè',
+          text:pts.map(p=>p.n),
+          hovertemplate:'<b>%{text}</b><extra></extra>'});
+      });
+    }
+    // BH
+    if (document.getElementById('chk-bh').checked) {
+      const BHC={KE:'#f59e0b',BXN:'#10b981',NHC:'#ef4444',QTT:'#ec4899',OTHER:'#6b7280'};
+      const bhs = zf==='all'?bhData.boreholes:bhData.boreholes.filter(b=>{
+        if(zf==='CONG_VIEN') return ['BXN','QTT'].includes(b.zone);
+        if(zf==='KE') return b.zone==='KE'; return true;
+      });
+      [...new Set(bhs.map(b=>b.zone))].forEach(z=>{
+        const g=bhs.filter(b=>b.zone===z);
+        traces.push({x:g.map(b=>b.y_coord_m),y:g.map(b=>b.x_coord_m),
+          mode:'markers+text',type:'scatter',
+          marker:{color:BHC[z]||'#888',size:10,symbol:'diamond',line:{width:1.5,color:'#fff'}},
+          text:g.map(b=>b.name.replace(/^(KE-|BXN-|NHC-|ND-)/,'')),
+          textposition:'top center',textfont:{size:9,color:'#fafafa'},
+          name:'HK '+z,
+          customdata:g.map(b=>b.name), meta:g.map(b=>b.elevation_m),
+          hovertemplate:'<b>%{customdata}</b><br>Z=%{meta:.2f}m<extra></extra>'});
+      });
+    }
+    plot('cdm-map', traces, {
+      xaxis:{title:'Easting (m)',scaleanchor:'y',scaleratio:1},
+      yaxis:{title:'Northing (m)'},
+      height:520,
+    });
+  };
+
+  drawMap('all');
+  document.getElementById('cdm-zone').addEventListener('change', e=>drawMap(e.target.value));
+  ['chk-cdm','chk-bh','chk-ke'].forEach(id=>document.getElementById(id).addEventListener('change',()=>drawMap(document.getElementById('cdm-zone').value)));
+
+  // Zone table
+  document.getElementById('tbl-zone').innerHTML = `<table>
+    <thead><tr><th>Khu vực</th><th>Số cọc</th><th>L TB (m)</th><th>L min</th><th>L max</th><th>Thể tích (m³)</th></tr></thead>
+    <tbody>${statsData.by_zone.map(r=>`<tr>
+      <td><span class="badge ${r.zone==='KE'?'ke':'cv'}">${r.zone==='CONG_VIEN'?'Công viên':'Kè'}</span></td>
+      <td>${r.n_coc.toLocaleString('vi-VN')}</td>
+      <td>${r.L_avg}</td><td>${r.L_min}</td><td>${r.L_max}</td>
+      <td>${Math.round(r.V_m3).toLocaleString('vi-VN')}</td>
+    </tr>`).join('')}</tbody></table>`;
+
+  document.getElementById('tbl-bh').innerHTML = `<table>
+    <thead><tr><th>HK</th><th>Zone</th><th>Cọc</th><th>L TB</th><th>V (m³)</th></tr></thead>
+    <tbody>${statsData.by_bh.map(r=>`<tr>
+      <td>${r.bh_dieu_hanh}</td>
+      <td><span class="badge ${r.zone==='KE'?'ke':'cv'}">${r.zone}</span></td>
+      <td>${r.n_coc.toLocaleString('vi-VN')}</td>
+      <td>${r.L_avg}m</td>
+      <td>${Math.round(r.V_m3).toLocaleString('vi-VN')}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ────��─────────────────────��──────────────────────────────────────────────────
+// PAGE: Tiến độ & Thí nghiệm CDM
+// ──────────────────────────────────────────────────────��──────────────────────
+async function pageCdmTienDo(el) {
+  el.innerHTML = `
+  <h1>Tiến độ thi công &amp; Kiểm tra thí nghiệm CDM</h1>
+  <h2>A. Tiến độ thi công</h2>
+  <div class="metrics" id="td-metrics"><div class="spin-wrap"><div class="spinner"></div></div></div>
+  <div id="td-charts"></div>
+  <h2>B. Kiểm tra thí nghiệm</h2>
+  <div id="kt-section"><div class="spin-wrap"><div class="spinner"></div></div></div>`;
+
+  const [statsData, tdData, ktData] = await Promise.all([
+    api('/api/cdm/stats'), api('/api/cdm/tien-do'), api('/api/cdm/kiem-tra'),
+  ]);
+
+  // Metrics
+  const bz = statsData.by_zone;
+  const st = statsData.status;
+  let tot=0,done=0,going=0,pend=0,fail=0;
+  st.forEach(r=>{tot+=r.n; if(r.status==='hoan_thanh')done+=r.n; if(r.status==='dang_thi_cong')going+=r.n; if(r.status==='chua_thi_cong')pend+=r.n; if(r.status==='khong_dat')fail+=r.n;});
+  document.getElementById('td-metrics').innerHTML = `
+    <div class="metric"><div class="val">${tot.toLocaleString('vi-VN')}</div><div class="lbl">Tổng cọc</div></div>
+    <div class="metric green"><div class="val">${done.toLocaleString('vi-VN')}</div><div class="lbl">Hoàn thành</div></div>
+    <div class="metric gold"><div class="val">${going.toLocaleString('vi-VN')}</div><div class="lbl">Đang thi công</div></div>
+    <div class="metric"><div class="val">${pend.toLocaleString('vi-VN')}</div><div class="lbl">Chưa thi công</div></div>
+    <div class="metric red"><div class="val">${fail.toLocaleString('vi-VN')}</div><div class="lbl">Không đạt</div></div>`;
+
+  // Charts
+  const chartEl = document.getElementById('td-charts');
+  if (tdData.daily.length) {
+    chartEl.innerHTML = '<div class="chart" style="height:320px"><div id="td-bar" style="height:100%"></div></div>';
+    const days=[...new Set(tdData.daily.map(r=>r.ngay_thi_cong))].sort();
+    const zones=[...new Set(tdData.daily.map(r=>r.zone))];
+    const ZC={CONG_VIEN:'#7c3aed',KE:'#1d4ed8'};
+    plot('td-bar',zones.map(z=>({
+      type:'bar', name:z==='CONG_VIEN'?'Công viên':'Kè',
+      x:days, y:days.map(d=>{const r=tdData.daily.find(r=>r.ngay_thi_cong===d&&r.zone===z);return r?r.n:0}),
+      marker:{color:ZC[z]||'#888'},
+    })),{barmode:'stack',xaxis:{title:'Ngày'},yaxis:{title:'Số cọc'},title:'Tiến độ theo ngày',height:300});
+  } else {
+    chartEl.innerHTML = '<div class="info-box">Chưa có dữ liệu ngày thi công. Nhập từ bảng Excel để hiển thị biểu đồ.</div>';
+  }
+
+  // Thí nghiệm
+  const ktEl = document.getElementById('kt-section');
+  if (!ktData.rows.length) {
+    ktEl.innerHTML = '<div class="info-box">Chưa có kết quả thí nghiệm. Điền dữ liệu vào bảng Excel và chạy nhập liệu.</div>';
+    return;
+  }
+  const rows = ktData.rows;
+  const nDat = rows.filter(r=>r.dat_yeu_cau===1).length;
+  ktEl.innerHTML = `
+    <div class="metrics">
+      <div class="metric"><div class="val">${rows.length}</div><div class="lbl">Tổng mẫu</div></div>
+      <div class="metric green"><div class="val">${nDat}</div><div class="lbl">Đạt</div></div>
+      <div class="metric red"><div class="val">${rows.filter(r=>r.dat_yeu_cau===0).length}</div><div class="lbl">Không đạt</div></div>
+      <div class="metric gold"><div class="val">${(rows.reduce((s,r)=>s+(r.qu_kPa||0),0)/rows.length).toFixed(0)} kPa</div><div class="lbl">qu trung bình</div></div>
+    </div>
+    <div class="chart" style="height:420px"><div id="kt-scatter" style="height:100%"></div></div>`;
+
+  const ZC2={CONG_VIEN:'#7c3aed',KE:'#1d4ed8'};
+  const ktTraces=[];
+  [...new Set(rows.map(r=>r.zone))].forEach(z=>{
+    const g=rows.filter(r=>r.zone===z&&r.qu_kPa!=null);
+    ktTraces.push({type:'scatter',mode:'markers',
+      x:g.map(r=>r.qu_kPa), y:g.map(r=>r.do_sau_tu_dinh_m),
+      marker:{color:ZC2[z]||'#888',size:8,opacity:.8},
+      name:z==='CONG_VIEN'?'Công viên':'Kè',
+      text:g.map(r=>r.point_name),
+      hovertemplate:'<b>%{text}</b><br>qu=%{x:.0f} kPa<br>sâu=%{y:.1f}m<extra></extra>'});
+  });
+  const quYc = rows.find(r=>r.qu_yc_kPa)?.qu_yc_kPa;
+  if (quYc) ktTraces.push({type:'scatter',mode:'lines',x:[quYc,quYc],y:[0,50],line:{color:'#ef4444',dash:'dash',width:2},name:`qu yc=${quYc} kPa`,hoverinfo:'skip'});
+  plot('kt-scatter', ktTraces, {
+    yaxis:{autorange:'reversed',title:'Độ sâu từ đỉnh (m)'},
+    xaxis:{title:'qu (kPa)'},
+    title:'Phân bố cường độ nén theo độ sâu', height:400,
+  });
+}
+
+// ────────────────────────��───────────────────────────────��────────────────────
+// PAGE: Cọc ván SW
+// ─────���──────────────────────��───────────────────────────────────��────────────
+async function pageKeSw(el) {
+  el.innerHTML = `<h1>Cọc ván SW (Kè)</h1><div class="info-box">Trang đang hoàn thi��n — dữ liệu thiết kế SW có sẵn từ SQLite.</div>`;
+}
+
+// ── Init ─────���───────────────────────────��────────────────────────────────────
+loadPage('geology');
+</script>
+</body>
+</html>
