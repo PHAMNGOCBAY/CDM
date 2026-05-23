@@ -1555,104 +1555,9 @@ def _vn2000_to_latlon(northing: float, easting: float) -> tuple[float, float]:
     return lat, lon
 
 
-def _project_to_latlon(
-    bhs: list[dict],
-    ref_bh_name: str = "",
-    ref_lat: float = 0.0,
-    ref_lon: float = 0.0,
-    use_gps_ref: bool = False,
-) -> list[dict] | None:
-    """Chuyển tọa độ VN-2000 → lat/lon.
-
-    Mặc định dùng công thức trực tiếp CM=105°45'.
-    Nếu use_gps_ref=True và có điểm tham chiếu GPS → hiệu chỉnh thêm offset.
-    """
-    result = []
-    for b in bhs:
-        if b.get("x_coord_m") is None:
-            continue
-        lat, lon = _vn2000_to_latlon(b["x_coord_m"], b["y_coord_m"])
-        result.append({**b, "lat": lat, "lon": lon})
-
-    if use_gps_ref and ref_bh_name and result:
-        ref_calc = next((b for b in result if b["name"] == ref_bh_name), None)
-        if ref_calc:
-            dlat = ref_lat - ref_calc["lat"]
-            dlon = ref_lon - ref_calc["lon"]
-            result = [{**b, "lat": b["lat"] + dlat, "lon": b["lon"] + dlon}
-                      for b in result]
-    return result or None
-
-
-_MAP_STYLES = {
-    "Đường phố (OSM)": "open-street-map",
-    "Bản đồ sáng": "carto-positron",
-    "Vệ tinh (Esri)": "__esri__",
-}
-
-
-def _draw_map_2d(bhs_ll: list[dict], style_key: str) -> "go.Figure":
-    """Bản đồ 2D vị trí hố khoan, hỗ trợ OSM / Esri satellite."""
-    _zone_colors = {"KE": "#E53935", "BXN": "#1565C0", "NHC": "#2E7D32", "QTT": "#F9A825"}
-    fig = go.Figure()
-
-    for zone, color in _zone_colors.items():
-        grp = [b for b in bhs_ll if b["zone"] == zone]
-        if not grp:
-            continue
-        fig.add_trace(go.Scattermap(
-            lat=[b["lat"] for b in grp],
-            lon=[b["lon"] for b in grp],
-            mode="markers+text",
-            text=[b["name"].replace("BXN-CV-", "").replace("KE-", "") for b in grp],
-            textposition="top right",
-            textfont=dict(size=10),
-            marker=dict(size=13, color=color),
-            name=zone,
-            hovertemplate=(
-                "<b>%{text}</b><br>"
-                "lat=%{lat:.6f}<br>lon=%{lon:.6f}"
-                "<extra></extra>"
-            ),
-        ))
-
-    c_lat = sum(b["lat"] for b in bhs_ll) / len(bhs_ll)
-    c_lon = sum(b["lon"] for b in bhs_ll) / len(bhs_ll)
-
-    if style_key == "__esri__":
-        map_cfg = dict(
-            style="white-bg",
-            layers=[{
-                "below": "traces",
-                "sourcetype": "raster",
-                "source": [
-                    "https://server.arcgisonline.com/ArcGIS/rest/services/"
-                    "World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                ],
-                "sourceattribution": "Esri World Imagery",
-            }],
-            center=dict(lat=c_lat, lon=c_lon),
-            zoom=17,
-        )
-    else:
-        map_cfg = dict(
-            style=style_key,
-            center=dict(lat=c_lat, lon=c_lon),
-            zoom=17,
-        )
-
-    fig.update_layout(
-        map=map_cfg,
-        height=600,
-        margin=dict(l=0, r=0, t=10, b=0),
-        legend=dict(
-            orientation="h", x=0.01, y=0.01,
-            bgcolor="rgba(255,255,255,0.85)",
-            bordercolor="#ccc", borderwidth=1,
-        ),
-        paper_bgcolor="#FAFAFA",
-    )
-    return fig
+# (Hàm `_project_to_latlon`, `_MAP_STYLES`, `_draw_map_2d` đã bỏ —
+# bản đồ vị trí trong tab Địa chất chuyển sang folium + pyproj,
+# inline trong page handler. Xem CLAUDE.md §32 và mục page="geology".)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1826,10 +1731,6 @@ _DEFAULTS = {
     "cdm_spacings": [1.4, 1.6, 1.8],
     "cdm_rec_idx": 1,
     "cdm_geo_view": "3D địa chất",
-    "cdm_map_ref_bh": "",
-    "cdm_map_ref_lat": 10.7770,
-    "cdm_map_ref_lon": 106.6800,
-    "cdm_map_style": "Đường phố (OSM)",
     "cdm_vst_sel": [],
     "cdm_quckse": 600.0,
     "cdm_Fs_mat": 3.0,
@@ -3849,6 +3750,417 @@ _PDF_ENGINE = "—"
 if _page == "geology":
     st.subheader(_t("p1_sub"))
 
+    # ── 3D / Map toggle (đưa lên đầu trang) ───────────────────────────────────
+    if not _HAS_PLOTLY:
+        st.info("Biểu đồ 3D cần Plotly — vui lòng tải lại trang.")
+    else:
+        _bhs_all, _ = _load_borehole_3d_data()
+        _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
+        if not _zones_with_coords:
+            st.info(_t("no_coords_db"))
+        else:
+            # ── Thanh điều khiển ──────────────────────────────────────────────
+            _ctrl_a, _ctrl_b = st.columns([3, 2])
+            _view_opts = [_t("view_3d"), _t("view_map")]
+            with _ctrl_a:
+                _geo_view = st.radio(
+                    _t("view_mode"),
+                    _view_opts,
+                    index=0,
+                    horizontal=True,
+                    key="_geo_view_radio",
+                )
+                st.session_state["cdm_geo_view"] = _geo_view
+
+            # ── 3D VIEW ───────────────────────────────────────────────────────
+            if _geo_view == _t("view_3d"):
+                with _ctrl_b:
+                    _default_zones = [z for z in _zones_with_coords if z != "QTT"]
+                    _sel_zones = st.multiselect(
+                        _t("zone_lbl"), _zones_with_coords,
+                        default=_default_zones, key="_3d_cdm_zones",
+                    )
+                _cb1, _cb2, _cb3 = st.columns(3)
+                _show_clay = _cb1.checkbox(_t("clay_surf"), value=True, key="_3d_cdm_clay")
+                _show_cdm  = _cb2.checkbox(_t("cdm_top_show"), value=False, key="_3d_cdm_top")
+                _cdm_top_z = float(_get("cdm_CDTK"))
+                if _show_cdm:
+                    _cdm_top_z = _cb3.number_input(
+                        _t("elev_lbl"), value=_cdm_top_z, step=0.1, key="_3d_cdm_top_z")
+                _vst_focus = _get("cdm_vst_sel")
+                _focus_bh = _vst_focus[0] if len(_vst_focus) == 1 else None
+
+                # ── Layout dọc: 3D ở trên, Bảng khoảng cách ở dưới ──────
+                # Dùng st.empty() placeholder để render 3D chart sau khi
+                # đã lấy được _pair_sel từ bảng phía dưới.
+                _chart_placeholder = st.empty()
+
+                # ── Bảng khoảng cách (dưới) — set _pair_sel ─────────────────
+                _pair_sel = None
+                st.markdown("#### Khoảng cách hố khoan — Điều 5.3.2")
+                try:
+                    import sys as _sys2
+                    _sys2.path.insert(0, str(_ROOT / "scripts"))
+                    from borehole_spacing import check_spacing_532 as _chk_sp
+                    _bhs_sp = [b for b in _bhs_all if b.get("zone") in (_sel_zones or [])]
+                    _step_opts = {
+                        "BVTK (100–150 m)": "BVTK",
+                        "LAPDA (250–500 m)": "LAPDA",
+                    }
+                    _sp_c1, _sp_c2, _sp_c3 = st.columns([1, 2, 2])
+                    with _sp_c1:
+                        _step_lbl = st.selectbox(
+                            "Bước thiết kế",
+                            list(_step_opts.keys()),
+                            key="_sp_step_sel",
+                        )
+                    _step_code = _step_opts[_step_lbl]
+                    _sp_res = _chk_sp(_bhs_sp, _step_code, same_zone_only=True)
+                    _sp_s   = _sp_res["summary"]
+
+                    # Metric tóm tắt — 2 cột bên phải
+                    with _sp_c2:
+                        st.metric(
+                            "Cặp đạt yêu cầu",
+                            f"{_sp_s['n_ok']}/{_sp_s['n_pairs']}",
+                            delta=f"Gần: {_sp_s['n_too_close']} | Xa: {_sp_s['n_too_far']}",
+                            delta_color="normal" if _sp_s["n_ok"] == _sp_s["n_pairs"] else "inverse",
+                        )
+                    with _sp_c3:
+                        if _sp_s["min_dist_m"] is not None:
+                            st.metric(
+                                "Khoảng cách (min–max)",
+                                f"{_sp_s['min_dist_m']:.0f} – {_sp_s['max_dist_m']:.0f} m",
+                                delta=f"Yêu cầu: {_sp_res['limit_min_m']:.0f}–{_sp_res['limit_max_m']:.0f} m",
+                                delta_color="off",
+                            )
+
+                    # Chọn cặp HK để hiển thị kích thước trên 3D
+                    _sp_pairs = _sp_res["pairs"]
+                    _pair_labels = [
+                        f"{p['bh1']} ↔ {p['bh2']}  ({p['distance_m']:.0f} m — {p['status']})"
+                        for p in _sp_pairs
+                    ]
+                    _pair_choice = st.selectbox(
+                        "Chọn cặp HK để đo kích thước trên 3D",
+                        ["(không chọn)"] + _pair_labels,
+                        key="_sp_pair_sel",
+                    )
+                    if _pair_choice != "(không chọn)":
+                        _pidx = _pair_labels.index(_pair_choice)
+                        _pp   = _sp_pairs[_pidx]
+                        _pair_sel = (_pp["bh1"], _pp["bh2"], _pp["distance_m"])
+
+                    # Bảng chi tiết
+                    if _sp_pairs:
+                        _sp_rows = [
+                            {
+                                "Hố khoan 1":    p["bh1"],
+                                "Hố khoan 2":    p["bh2"],
+                                "Khu vực":       p["zone1"],
+                                "Khoảng cách (m)": p["distance_m"],
+                                "Kết quả":       p["status"],
+                            }
+                            for p in _sp_pairs
+                        ]
+                        _sp_df = pd.DataFrame(_sp_rows)
+
+                        def _sp_color(val):
+                            if val == "Đạt":
+                                return "background-color:#d4edda; color:#155724"
+                            if val in ("Gần quá", "Xa quá"):
+                                return "background-color:#f8d7da; color:#721c24"
+                            return ""
+
+                        st.dataframe(
+                            _sp_df.style.map(_sp_color, subset=["Kết quả"]),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    else:
+                        st.info("Chưa có tọa độ hố khoan để tính khoảng cách.")
+                    st.caption(
+                        f"Tiêu chuẩn: TCCS 41:2022 Điều 5.3.2 — {_sp_res['limit_label']}"
+                    )
+                except Exception as _sp_exc:
+                    st.warning(f"Không tải được borehole_spacing: {_sp_exc}")
+
+                # ── 3D chart (render vào placeholder ở trên) ─────────────────
+                if _sel_zones:
+                    try:
+                        _chart_placeholder.plotly_chart(
+                            _draw_boreholes_3d(
+                                _sel_zones, _show_clay, _show_cdm, _cdm_top_z,
+                                focus_bh=_focus_bh,
+                                pair_highlight=_pair_sel,
+                            ),
+                            use_container_width=True,
+                            config={"displayModeBar": True},
+                            key="geo_3d_bhmap",
+                        )
+                    except Exception as _3d_err:
+                        _chart_placeholder.error(f"Không vẽ được biểu đồ 3D: {_3d_err}")
+                else:
+                    _chart_placeholder.info(_t("no_zone"))
+
+            # ── MAP VIEW (folium + pyproj) ────────────────────────────────────
+            else:
+                try:
+                    import folium as _flm
+                    from streamlit_folium import st_folium as _stflm
+                    from pyproj import Transformer as _Trf
+                    _HAS_GIS_GEO = True
+                except ImportError as _gis_err:
+                    _HAS_GIS_GEO = False
+                    st.error(
+                        f"Thiếu thư viện bản đồ. Cài: folium, streamlit-folium, pyproj. ({_gis_err})"
+                    )
+
+                if _HAS_GIS_GEO:
+                    _GEO_MAP_CRS = {
+                        "TM-3 106°00' (TTHC Q.1, Thủ Thiêm)": "EPSG:9210",
+                        "TM-3 105°45' (HCM tổng quát)":       "EPSG:9209",
+                        "UTM 48N (105°)":                     "EPSG:3405",
+                    }
+                    with _ctrl_b:
+                        _crs_lbl = st.selectbox(
+                            "Hệ tọa độ gốc (VN-2000)",
+                            list(_GEO_MAP_CRS.keys()),
+                            index=0,
+                            key="_geo_map_crs_sel",
+                            help="Đổi nếu hố khoan lệch ~25-50 km trên bản đồ. TTHC Q.1 / Thủ Thiêm: TM-3 106°00'.",
+                        )
+                    _crs_code = _GEO_MAP_CRS[_crs_lbl]
+
+                    _map_c1, _map_c2, _map_c3 = st.columns([2, 2, 2])
+                    with _map_c1:
+                        _map_zone_default = [z for z in _zones_with_coords if z != "QTT"]
+                        _map_zones = st.multiselect(
+                            "Khu vực hiển thị",
+                            _zones_with_coords,
+                            default=_map_zone_default,
+                            key="_geo_map_zones",
+                        )
+                    with _map_c2:
+                        _show_ke_aln = st.checkbox(
+                            "Hiện tuyến kè (đen)",
+                            value=True,
+                            key="_geo_map_show_aln",
+                            help="Vẽ polyline tuyến kè từ dữ liệu bình đồ.",
+                        )
+                    with _map_c3:
+                        _show_pair_dim = st.checkbox(
+                            "Hiện đường kích thước cặp đã chọn",
+                            value=True,
+                            key="_geo_map_show_pair",
+                            help="Vẽ đường nối + nhãn khoảng cách giữa 2 hố khoan đã chọn ở bảng phía trên.",
+                        )
+
+                    @st.cache_data(show_spinner=False)
+                    def _geo_make_trf(epsg: str):
+                        return _Trf.from_crs(epsg, "EPSG:4326", always_xy=True)
+
+                    _trf = _geo_make_trf(_crs_code)
+
+                    # boreholes: x_coord_m = Northing, y_coord_m = Easting
+                    _hk_geo = []
+                    for b in _bhs_all:
+                        if b["zone"] not in _map_zones:
+                            continue
+                        if b.get("x_coord_m") is None or b.get("y_coord_m") is None:
+                            continue
+                        _lon, _lat = _trf.transform(b["y_coord_m"], b["x_coord_m"])
+                        _hk_geo.append({
+                            **b,
+                            "lat": _lat, "lon": _lon,
+                        })
+
+                    if not _hk_geo:
+                        st.warning("Không có hố khoan trong khu vực đã chọn.")
+                    else:
+                        _lat0 = sum(h["lat"] for h in _hk_geo) / len(_hk_geo)
+                        _lon0 = sum(h["lon"] for h in _hk_geo) / len(_hk_geo)
+
+                        # Tuyến kè polyline (chỉ load khi tick)
+                        _aln_lines: list[list[tuple[float, float]]] = []
+                        if _show_ke_aln:
+                            try:
+                                _con_aln = sqlite3.connect(_DB)
+                                _aln_rows = _con_aln.execute(
+                                    "SELECT polyline_id, x_m, y_m FROM ke_binhdo_toadoke "
+                                    "ORDER BY polyline_id, vertex_idx"
+                                ).fetchall()
+                                _con_aln.close()
+                                _cur_pl, _cur_pts = None, []
+                                for _pl_id, _bx, _by in _aln_rows:
+                                    if _cur_pl is not None and _pl_id != _cur_pl:
+                                        if len(_cur_pts) >= 2:
+                                            _aln_lines.append(_cur_pts)
+                                        _cur_pts = []
+                                    # JSON polyline: x_m = Easting, y_m = Northing
+                                    _lonp, _latp = _trf.transform(_bx, _by)
+                                    _cur_pts.append((_latp, _lonp))
+                                    _cur_pl = _pl_id
+                                if len(_cur_pts) >= 2:
+                                    _aln_lines.append(_cur_pts)
+                            except Exception:
+                                _aln_lines = []
+
+                        # ── Build folium map ─────────────────────────────────
+                        _fmap = _flm.Map(
+                            location=[_lat0, _lon0],
+                            zoom_start=16,
+                            tiles=None,
+                            control_scale=True,
+                        )
+                        _flm.TileLayer("OpenStreetMap", name="Đường phố (OSM)").add_to(_fmap)
+                        _flm.TileLayer(
+                            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                            attr="Esri", name="Ảnh vệ tinh (Esri)",
+                        ).add_to(_fmap)
+                        _flm.TileLayer(
+                            tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+                            attr="OpenTopoMap", name="Địa hình (OpenTopoMap)",
+                        ).add_to(_fmap)
+                        _flm.TileLayer(
+                            tiles="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+                            attr="CartoDB", name="Carto nhạt (in PDF)",
+                        ).add_to(_fmap)
+
+                        # Polyline kè
+                        if _aln_lines:
+                            _fg_aln = _flm.FeatureGroup(name="Tuyến kè", show=True)
+                            for poly in _aln_lines:
+                                _flm.PolyLine(poly, color="#000000",
+                                              weight=3, opacity=0.85).add_to(_fg_aln)
+                            _fg_aln.add_to(_fmap)
+
+                        # Hố khoan theo zone
+                        _ZONE_FLM_COLOR = {
+                            "KE": "#E53935", "BXN": "#1565C0",
+                            "NHC": "#2E7D32", "QTT": "#F9A825",
+                        }
+                        _fg_by_zone: dict = {}
+                        for h in _hk_geo:
+                            z = h["zone"]
+                            if z not in _fg_by_zone:
+                                _fg_by_zone[z] = _flm.FeatureGroup(
+                                    name=f"Hố khoan {z}", show=True
+                                )
+                            _color = _ZONE_FLM_COLOR.get(z, "#777777")
+                            _popup_html = (
+                                f"<b>{h['name']}</b><br>"
+                                f"Khu vực: <b>{z}</b><br>"
+                                f"Cao độ mặt: <b>{h.get('elevation_m', 0):.2f} m</b><br>"
+                                f"Độ sâu HK: <b>{h.get('depth_m', 0):.1f} m</b><br>"
+                                f"Tọa độ: N={h.get('x_coord_m', 0):,.1f} m, "
+                                f"E={h.get('y_coord_m', 0):,.1f} m"
+                            )
+                            _flm.CircleMarker(
+                                location=[h["lat"], h["lon"]],
+                                radius=8, color=_color,
+                                weight=2, fill=True,
+                                fill_color=_color, fill_opacity=0.85,
+                                popup=_flm.Popup(_popup_html, max_width=280),
+                                tooltip=h["name"],
+                            ).add_to(_fg_by_zone[z])
+                            _flm.map.Marker(
+                                [h["lat"], h["lon"]],
+                                icon=_flm.DivIcon(html=(
+                                    f'<div style="font-size:11px;font-weight:bold;'
+                                    f'color:#222;text-shadow:1px 1px 2px #fff,'
+                                    f'-1px -1px 2px #fff;margin-left:10px;'
+                                    f'margin-top:-10px;white-space:nowrap">'
+                                    f'{h["name"]}</div>'
+                                )),
+                            ).add_to(_fg_by_zone[z])
+                        for fg in _fg_by_zone.values():
+                            fg.add_to(_fmap)
+
+                        # Đường kích thước cặp đã chọn (đồng bộ với 3D view)
+                        _pair_session = st.session_state.get("_sp_pair_sel", "(không chọn)")
+                        if _show_pair_dim and _pair_session and _pair_session != "(không chọn)":
+                            try:
+                                _bh1_nm = _pair_session.split(" ↔ ")[0].strip()
+                                _bh2_nm = _pair_session.split(" ↔ ")[1].split("  ")[0].strip()
+                                _bh1 = next((h for h in _hk_geo if h["name"] == _bh1_nm), None)
+                                _bh2 = next((h for h in _hk_geo if h["name"] == _bh2_nm), None)
+                                if _bh1 and _bh2:
+                                    _dist_m_pair = _pair_session.split("(")[1].split(" m")[0]
+                                    _fg_dim = _flm.FeatureGroup(
+                                        name="Đường kích thước", show=True
+                                    )
+                                    _flm.PolyLine(
+                                        [[_bh1["lat"], _bh1["lon"]],
+                                         [_bh2["lat"], _bh2["lon"]]],
+                                        color="#FF6F00", weight=3,
+                                        opacity=0.9, dash_array="8,6",
+                                    ).add_to(_fg_dim)
+                                    _mid_lat = (_bh1["lat"] + _bh2["lat"]) / 2
+                                    _mid_lon = (_bh1["lon"] + _bh2["lon"]) / 2
+                                    _flm.map.Marker(
+                                        [_mid_lat, _mid_lon],
+                                        icon=_flm.DivIcon(html=(
+                                            f'<div style="background:#FF6F00;color:#fff;'
+                                            f'padding:2px 8px;border-radius:4px;'
+                                            f'font-size:12px;font-weight:bold;'
+                                            f'box-shadow:0 1px 3px rgba(0,0,0,0.3);'
+                                            f'white-space:nowrap">'
+                                            f'{_dist_m_pair} m</div>'
+                                        )),
+                                    ).add_to(_fg_dim)
+                                    _fg_dim.add_to(_fmap)
+                            except Exception:
+                                pass
+
+                        _flm.LayerControl(collapsed=False, position="topright").add_to(_fmap)
+
+                        # Plugins: fullscreen + thước đo + minimap
+                        try:
+                            from folium.plugins import (
+                                Fullscreen as _GFS,
+                                MeasureControl as _GMC,
+                                MiniMap as _GMM,
+                            )
+                            _GFS(position="topleft",
+                                 title="Toàn màn hình",
+                                 title_cancel="Thoát").add_to(_fmap)
+                            _GMC(position="topleft",
+                                 primary_length_unit="meters",
+                                 primary_area_unit="sqmeters").add_to(_fmap)
+                            _GMM(toggle_display=True,
+                                 position="bottomleft").add_to(_fmap)
+                        except Exception:
+                            pass
+
+                        # Thống kê + render
+                        _zone_counts = {}
+                        for h in _hk_geo:
+                            _zone_counts[h["zone"]] = _zone_counts.get(h["zone"], 0) + 1
+                        _zone_summary = " · ".join(
+                            f"{z}: {n}" for z, n in sorted(_zone_counts.items())
+                        )
+                        st.caption(
+                            f"Tâm: {_lat0:.5f}°N, {_lon0:.5f}°E · "
+                            f"{len(_hk_geo)} hố khoan ({_zone_summary}) · "
+                            f"{len(_aln_lines)} đoạn tuyến kè"
+                        )
+                        _stflm(_fmap, width=None, height=640, returned_objects=[])
+
+                        with st.expander("Hướng dẫn dùng bản đồ"):
+                            st.markdown(
+                                "- **Đổi nền**: bảng góc trên phải — OSM / Vệ tinh / Địa hình / Carto\n"
+                                "- **Tắt/mở lớp**: tick checkbox \"Tuyến kè\", \"Hố khoan KE/BXN/NHC\", \"Đường kích thước\"\n"
+                                "- **Zoom**: nút +/− góc trái hoặc lăn chuột\n"
+                                "- **Pan**: kéo chuột trái\n"
+                                "- **Toàn màn hình**: nút mũi tên góc trái trên\n"
+                                "- **Đo khoảng cách/diện tích**: nút thước góc trái trên (click để bắt đầu, double-click để kết thúc)\n"
+                                "- **Nhấp hố khoan**: hiện popup với cao độ, độ sâu, tọa độ N/E\n"
+                                "- **Đồng bộ với view 3D**: cặp HK chọn ở bảng \"Khoảng cách\" phía trên sẽ vẽ đường kích thước cam ở bản đồ"
+                            )
+
+    st.divider()
+
     col_sel, col_prof = st.columns([1, 4])
 
     with col_sel:
@@ -4081,226 +4393,6 @@ if _page == "geology":
                 f"{_n_bh_ok}/{_n_bh_all} "
                 f"{'hố khoan có thí nghiệm nén cố kết (Cc/Cs/Cv/k/PC).' if _is_vn else 'boreholes have consolidation test data (Cc/Cs/Cv/k/PC).'}"
             )
-
-    # ── 3D / Map toggle ───────────────────────────────────────────────────────
-    st.divider()
-    if not _HAS_PLOTLY:
-        st.info("Biểu đồ 3D cần Plotly — vui lòng tải lại trang.")
-    else:
-        _bhs_all, _ = _load_borehole_3d_data()
-        _zones_with_coords = sorted({b["zone"] for b in _bhs_all})
-        if not _zones_with_coords:
-            st.info(_t("no_coords_db"))
-        else:
-            # ── Thanh điều khiển ──────────────────────────────────────────────
-            _ctrl_a, _ctrl_b = st.columns([3, 2])
-            _view_opts = [_t("view_3d"), _t("view_map")]
-            with _ctrl_a:
-                _geo_view = st.radio(
-                    _t("view_mode"),
-                    _view_opts,
-                    index=0,
-                    horizontal=True,
-                    key="_geo_view_radio",
-                )
-                st.session_state["cdm_geo_view"] = _geo_view
-
-            # ── 3D VIEW ───────────────────────────────────────────────────────
-            if _geo_view == _t("view_3d"):
-                with _ctrl_b:
-                    _sel_zones = st.multiselect(
-                        _t("zone_lbl"), _zones_with_coords,
-                        default=_zones_with_coords, key="_3d_cdm_zones",
-                    )
-                _cb1, _cb2, _cb3 = st.columns(3)
-                _show_clay = _cb1.checkbox(_t("clay_surf"), value=True, key="_3d_cdm_clay")
-                _show_cdm  = _cb2.checkbox(_t("cdm_top_show"), value=False, key="_3d_cdm_top")
-                _cdm_top_z = float(_get("cdm_CDTK"))
-                if _show_cdm:
-                    _cdm_top_z = _cb3.number_input(
-                        _t("elev_lbl"), value=_cdm_top_z, step=0.1, key="_3d_cdm_top_z")
-                _vst_focus = _get("cdm_vst_sel")
-                _focus_bh = _vst_focus[0] if len(_vst_focus) == 1 else None
-
-                # ── Layout dọc: 3D ở trên, Bảng khoảng cách ở dưới ──────
-                # Dùng st.empty() placeholder để render 3D chart sau khi
-                # đã lấy được _pair_sel từ bảng phía dưới.
-                _chart_placeholder = st.empty()
-
-                # ── Bảng khoảng cách (dưới) — set _pair_sel ─────────────────
-                _pair_sel = None
-                st.markdown("#### Khoảng cách hố khoan — Điều 5.3.2")
-                try:
-                    import sys as _sys2
-                    _sys2.path.insert(0, str(_ROOT / "scripts"))
-                    from borehole_spacing import check_spacing_532 as _chk_sp
-                    _bhs_sp = [b for b in _bhs_all if b.get("zone") in (_sel_zones or [])]
-                    _step_opts = {
-                        "BVTK (100–150 m)": "BVTK",
-                        "LAPDA (250–500 m)": "LAPDA",
-                    }
-                    _sp_c1, _sp_c2, _sp_c3 = st.columns([1, 2, 2])
-                    with _sp_c1:
-                        _step_lbl = st.selectbox(
-                            "Bước thiết kế",
-                            list(_step_opts.keys()),
-                            key="_sp_step_sel",
-                        )
-                    _step_code = _step_opts[_step_lbl]
-                    _sp_res = _chk_sp(_bhs_sp, _step_code, same_zone_only=True)
-                    _sp_s   = _sp_res["summary"]
-
-                    # Metric tóm tắt — 2 cột bên phải
-                    with _sp_c2:
-                        st.metric(
-                            "Cặp đạt yêu cầu",
-                            f"{_sp_s['n_ok']}/{_sp_s['n_pairs']}",
-                            delta=f"Gần: {_sp_s['n_too_close']} | Xa: {_sp_s['n_too_far']}",
-                            delta_color="normal" if _sp_s["n_ok"] == _sp_s["n_pairs"] else "inverse",
-                        )
-                    with _sp_c3:
-                        if _sp_s["min_dist_m"] is not None:
-                            st.metric(
-                                "Khoảng cách (min–max)",
-                                f"{_sp_s['min_dist_m']:.0f} – {_sp_s['max_dist_m']:.0f} m",
-                                delta=f"Yêu cầu: {_sp_res['limit_min_m']:.0f}–{_sp_res['limit_max_m']:.0f} m",
-                                delta_color="off",
-                            )
-
-                    # Chọn cặp HK để hiển thị kích thước trên 3D
-                    _sp_pairs = _sp_res["pairs"]
-                    _pair_labels = [
-                        f"{p['bh1']} ↔ {p['bh2']}  ({p['distance_m']:.0f} m — {p['status']})"
-                        for p in _sp_pairs
-                    ]
-                    _pair_choice = st.selectbox(
-                        "Chọn cặp HK để đo kích thước trên 3D",
-                        ["(không chọn)"] + _pair_labels,
-                        key="_sp_pair_sel",
-                    )
-                    if _pair_choice != "(không chọn)":
-                        _pidx = _pair_labels.index(_pair_choice)
-                        _pp   = _sp_pairs[_pidx]
-                        _pair_sel = (_pp["bh1"], _pp["bh2"], _pp["distance_m"])
-
-                    # Bảng chi tiết
-                    if _sp_pairs:
-                        _sp_rows = [
-                            {
-                                "Hố khoan 1":    p["bh1"],
-                                "Hố khoan 2":    p["bh2"],
-                                "Khu vực":       p["zone1"],
-                                "Khoảng cách (m)": p["distance_m"],
-                                "Kết quả":       p["status"],
-                            }
-                            for p in _sp_pairs
-                        ]
-                        _sp_df = pd.DataFrame(_sp_rows)
-
-                        def _sp_color(val):
-                            if val == "Đạt":
-                                return "background-color:#d4edda; color:#155724"
-                            if val in ("Gần quá", "Xa quá"):
-                                return "background-color:#f8d7da; color:#721c24"
-                            return ""
-
-                        st.dataframe(
-                            _sp_df.style.map(_sp_color, subset=["Kết quả"]),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
-                    else:
-                        st.info("Chưa có tọa độ hố khoan để tính khoảng cách.")
-                    st.caption(
-                        f"Tiêu chuẩn: TCCS 41:2022 Điều 5.3.2 — {_sp_res['limit_label']}"
-                    )
-                except Exception as _sp_exc:
-                    st.warning(f"Không tải được borehole_spacing: {_sp_exc}")
-
-                # ── 3D chart (render vào placeholder ở trên) ─────────────────
-                if _sel_zones:
-                    try:
-                        _chart_placeholder.plotly_chart(
-                            _draw_boreholes_3d(
-                                _sel_zones, _show_clay, _show_cdm, _cdm_top_z,
-                                focus_bh=_focus_bh,
-                                pair_highlight=_pair_sel,
-                            ),
-                            use_container_width=True,
-                            config={"displayModeBar": True},
-                            key="geo_3d_bhmap",
-                        )
-                    except Exception as _3d_err:
-                        _chart_placeholder.error(f"Không vẽ được biểu đồ 3D: {_3d_err}")
-                else:
-                    _chart_placeholder.info(_t("no_zone"))
-
-            # ── MAP VIEW ──────────────────────────────────────────────────────
-            else:
-                with _ctrl_b:
-                    _map_style_label = st.selectbox(
-                        _t("map_style"),
-                        list(_MAP_STYLES.keys()),
-                        index=list(_MAP_STYLES.keys()).index(
-                            _get("cdm_map_style")
-                            if _get("cdm_map_style") in _MAP_STYLES else "Đường phố (OSM)"
-                        ),
-                        key="_map_style_sel",
-                    )
-                    st.session_state["cdm_map_style"] = _map_style_label
-
-                # Hiệu chỉnh GPS
-                _ref_default = _get("cdm_map_ref_bh") or ""
-                _calibrated  = bool(_ref_default)
-                with st.expander(
-                    _t("gps_done") if _calibrated else _t("gps_needed"),
-                    expanded=not _calibrated,
-                ):
-                    st.markdown(
-                        "**Cách lấy toạ độ GPS:**  \n"
-                        "1. Mở [Google Maps](https://maps.google.com) → tìm vị trí hố khoan trên thực địa  \n"
-                        "2. **Chuột phải** vào điểm đó → copy dòng số đầu tiên (ví dụ: `10.782341, 106.718560`)  \n"
-                        "3. Chọn hố khoan tương ứng bên dưới → nhập lat/lon → **Áp dụng**"
-                    )
-                    _bh_names_all = [b["name"] for b in _bhs_all]
-                    _ref_idx = _bh_names_all.index(_ref_default) if _ref_default in _bh_names_all else 0
-                    _c1, _c2, _c3 = st.columns([2, 1, 1])
-                    _ref_bh  = _c1.selectbox(_t("ref_bh"), _bh_names_all,
-                                             index=_ref_idx, key="_map_ref_bh_sel")
-                    _ref_lat = _c2.number_input("Latitude", value=float(_get("cdm_map_ref_lat")),
-                                                format="%.6f", step=0.000100, key="_map_ref_lat")
-                    _ref_lon = _c3.number_input("Longitude", value=float(_get("cdm_map_ref_lon")),
-                                                format="%.6f", step=0.000100, key="_map_ref_lon")
-                    if st.button(_t("apply_calib"), type="primary", key="_map_calib_btn"):
-                        st.session_state.update({
-                            "cdm_map_ref_bh":  _ref_bh,
-                            "cdm_map_ref_lat": _ref_lat,
-                            "cdm_map_ref_lon": _ref_lon,
-                        })
-                        st.rerun()
-                    if _calibrated:
-                        st.success(
-                            f"Đang dùng: {_get('cdm_map_ref_bh')} → "
-                            f"lat={_get('cdm_map_ref_lat'):.6f}, "
-                            f"lon={_get('cdm_map_ref_lon'):.6f}"
-                        )
-                _use_gps = True
-                _ref_bh  = _get("cdm_map_ref_bh") or (_bh_names_all[0] if _bh_names_all else "")
-                _ref_lat = float(_get("cdm_map_ref_lat"))
-                _ref_lon = float(_get("cdm_map_ref_lon"))
-
-                _bhs_ll = _project_to_latlon(
-                    _bhs_all, _ref_bh, _ref_lat, _ref_lon, use_gps_ref=_use_gps
-                )
-                if _bhs_ll:
-                    st.plotly_chart(
-                        _draw_map_2d(_bhs_ll, _MAP_STYLES[_map_style_label]),
-                        use_container_width=True,
-                        config={"displayModeBar": True, "scrollZoom": True},
-                    )
-                else:
-                    st.warning(_t("no_coords"))
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE – KIỂM TRA MẪU THÍ NGHIỆM
