@@ -57,6 +57,7 @@ scripts/app_fem2d.py
 
 # Backups and logs
 *.zip
+*.bak
 logs/
 
 # Duplicate SQLite at root (use data/TTHC.sqlite)

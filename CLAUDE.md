@@ -463,123 +463,9 @@ from fem2d.frame2d import (
 3. SQLite chung TTHC.sqlite — Cloud chỉ đọc, không ảnh hưởng app khác
 4. Port 8504 riêng (app_cdm.py port 8503) — chạy độc lập
 
-### 13c. FEM2D Roadmap — Các Bước Chưa Thực Hiện (cập nhật 2026-05-21)
+### 13c. FEM2D Roadmap — Các Bước Chưa Thực Hiện
 
-**Phase P4 (Frame 2D) đã DONE.** Roadmap các phase còn lại:
-
-#### Mức ưu tiên ngay (test + tích hợp P4 vào workflow thực tế)
-
-| Step | Mục đích | File / Action | Thời gian | Trạng thái |
-| --- | --- | --- | --- | --- |
-| V1 | Test verify suite trên Python 3.12 local | `python -m fem2d.frame2d.verify` | 5' | ⏸ Chờ user |
-| V2 | Test `start_fem2d.bat` mở port 8504 | Double-click bat, mở http://localhost:8504 | 5' | ⏸ Chờ user |
-| V3 | Verify Test 6 với Plaxis 2D — tường cừ KE-HK10 + 2 neo + đào | Build Plaxis model song song, so M_max/V_max/N_anchor; tolerance < 10% (linear vs MC) | 2h | ⏸ |
-| V4 | Tích hợp FEM2D vào app_cdm.py như tab phụ "Frame 2D nâng cao" | Thêm page id `"fem2d"` trong sidebar (lazy import + try/except để Cloud không crash) | 2h | ⏸ |
-| V5 | Lookup `sw_pile_catalog.json` trong FrameBuilder | Thêm hàm `add_sheet_pile_sw_by_name("SW-840", fc_MPa=70, ...)` tự lookup EA/EI từ JSON | 1h | ⏸ |
-| V6 | Thêm `add_lateral_load_from_earth_pressure()` builder | Gọi `wall_internal_force.build_lateral_load()` tự động + áp lên beams | 2h | ⏸ |
-| V7 | So sánh FEM2D Winkler với `winkler_np.solve_numpy_dist` (regression test) | Cùng case → kết quả M/u khác < 1% | 1h | ⏸ |
-
-#### Phase P1 — Plane Strain Linear Elastic (NỀN tảng cho P2/P3/P5)
-
-| Mục | Chi tiết |
-| --- | --- |
-| **Mục tiêu** | Solver plane strain 2D đàn hồi, mesh tam giác/tứ giác, verify Boussinesq |
-| **Dependencies** | `scikit-fem>=8.0`, `meshio>=5.3`, `pygmsh>=7.1`, `gmsh>=4.13` (binary wheel pip) |
-| **Files mới** | `scripts/fem2d/solid2d/__init__.py`, `mesh.py`, `materials.py`, `elasticity.py`, `solver_static.py`, `bc.py`, `postprocess.py`, `verify.py` |
-| **API public** | `Mesh, MaterialLE, solve_plane_strain(mesh, materials, bcs, loads)` |
-| **Verify** | (1) Boussinesq tải tập trung trên bán không gian: σ_z(z) = 3P/(2π z²); (2) Tải đều trên rãnh: settlement = q·B·(1-ν²)/E·I_p; (3) Block đào sâu vs Plaxis |
-| **Thời gian** | 8-12h coding |
-| **Trạng thái** | ⏸ Chưa bắt đầu — cần user `pip install scikit-fem meshio pygmsh gmsh` |
-
-#### Phase P2 — Mohr-Coulomb Plasticity (sau P1)
-
-| Mục | Chi tiết |
-| --- | --- |
-| **Mục tiêu** | Thêm plasticity Mohr-Coulomb cho solid 2D với Newton-Raphson + consistent tangent |
-| **Dependencies** | Đã có từ P1 |
-| **Files mới** | `scripts/fem2d/solid2d/constitutive.py` (MC return mapping), `solver_nonlinear.py` (Newton-Raphson), `verify_bearing.py` |
-| **Lý thuyết** | Return mapping algorithm theo Souza Neto, Peric, Owen (2008). 2 cases: apex (c·cot(φ)) và regular (line on Mohr-Coulomb yield surface) |
-| **Verify** | (1) Bearing capacity Meyerhof: q_u = c·N_c + γ·D·N_q + 0.5·γ·B·N_γ — sai số < 5%; (2) Block đào không chống vs Plaxis MC |
-| **Thời gian** | 12-16h coding (plasticity phức tạp) |
-| **Trạng thái** | ⏸ Chờ P1 done |
-
-#### Phase P3 — Strength Reduction Factor (mái dốc, sau P2)
-
-| Mục | Chi tiết |
-| --- | --- |
-| **Mục tiêu** | Tự động tính FoS mái dốc bằng φ/c reduction (giống Plaxis Safety phase) |
-| **Dependencies** | P1 + P2 |
-| **Files mới** | `scripts/fem2d/solid2d/srf.py`, `slip_surface.py` |
-| **Lý thuyết** | Loop k = 1, 1.05, 1.1, ...: c_red = c/k, tan(φ_red) = tan(φ)/k. Khi solver không converge → đó là FoS. Slip surface từ deviatoric strain max |
-| **Verify** | So với Bishop slip surface trong `sw_global_stability.py`: sai số FoS < 10% |
-| **Thời gian** | 4-6h |
-| **Trạng thái** | ⏸ Chờ P2 done |
-
-#### Phase P5 — Cố kết Biot 2D Coupled u-p (sau P1)
-
-| Mục | Chi tiết |
-| --- | --- |
-| **Mục tiêu** | Cố kết 2D với coupled displacement-pore pressure (u, p) — giống Plaxis Consolidation phase |
-| **Dependencies** | P1 (mesh + elasticity) |
-| **Files mới** | `scripts/fem2d/solid2d/biot.py`, `time_stepping.py`, `bc_drainage.py` |
-| **Lý thuyết** | Phương trình Biot 1941: K_uu·u + K_up·p = F; K_pu·u_dot + (S + Δt·K_pp)·p = F_q. Time stepping Crank-Nicolson |
-| **Verify** | (1) Terzaghi 1D analytical: U(t) = 1 - 8/π² · Σ exp(-M²·T_v) — sai số < 5%; (2) Block 2D consolidation vs Plaxis |
-| **Thời gian** | 10-14h coding |
-| **Trạng thái** | ⏸ Chờ P1 done (độc lập với P2/P3) |
-
-#### Phase P6 — Tích hợp PLAXIS API (optional, sau tất cả)
-
-| Mục | Chi tiết |
-| --- | --- |
-| **Mục tiêu** | Export FEM2D model sang .geo/.json cho Plaxis 2D import, ngược lại import kết quả Plaxis về so sánh |
-| **Files mới** | `scripts/fem2d/io_plaxis.py`, `scripts/fem2d/io_dxf.py` |
-| **Verify** | Round-trip FEM2D ↔ Plaxis ↔ FEM2D không mất thông tin |
-| **Thời gian** | 6-8h |
-| **Trạng thái** | ⏸ Optional — user chưa yêu cầu |
-
-#### Phase P7 — Plate Bending Element (optional, cho bài toán nền 3D đơn giản)
-
-| Mục | Chi tiết |
-| --- | --- |
-| **Mục tiêu** | Mindlin/Kirchhoff plate bending — cho phân tích móng bè, sàn cứng |
-| **Trạng thái** | ⏸ Out of scope hiện tại |
-
----
-
-#### Lệnh cài thư viện cho P1 (khi sẵn sàng triển khai)
-
-```powershell
-& "C:\Users\bayng\AppData\Local\Programs\Python\Python312\python.exe" -m pip install `
-    "scikit-fem>=8.0" `
-    "meshio>=5.3" `
-    "pygmsh>=7.1" `
-    "gmsh>=4.13"
-```
-
-**Lưu ý:** Tất cả 4 package này **CHỈ cài local**, KHÔNG thêm vào `cdm-deploy/requirements.txt`. CLAUDE.md mục 14 đã ghi rõ scikit-fem/pygmsh/gmsh là local-only.
-
-#### Workflow dependency
-
-```
-V1, V2: Test ngay              → có thể làm độc lập, < 10 phút
-V3:     Verify Plaxis P4       → cần build Plaxis model thủ công, 2h
-V4-V7:  Tích hợp P4 vào app    → 6h tổng
-
-P1:     Plane strain LE        → cài scikit-fem + pygmsh trước
-  ├── P2: Mohr-Coulomb         → cần P1
-  │     └── P3: SRF mái dốc    → cần P2
-  └── P5: Biot 2D              → cần P1, độc lập P2/P3
-
-P6:     Plaxis I/O             → optional, làm khi cần
-P7:     Plate bending          → optional, out-of-scope
-```
-
-#### Decision tree — nên làm gì tiếp?
-
-- **Nếu cần dùng FEM2D ngay cho dự án thực**: làm V1 → V3 → V4 → V5/V6 (P4 đủ cho tường cừ + neo)
-- **Nếu muốn vượt khả năng Plaxis (custom plasticity/SRF)**: làm P1 → P2 → P3
-- **Nếu muốn phân tích cố kết coupled**: làm P1 → P5
-- **Nếu muốn integrate với Plaxis hiện tại**: làm P6
+P4 đã DONE. Roadmap V1-V7 (tích hợp P4 vào app) + P1-P7 (phase mới: Plane Strain LE, Mohr-Coulomb, SRF, Biot, Plaxis I/O, Plate bending) tách ra file riêng để giảm context. Xem [50-fem2d-roadmap.md](50-fem2d-roadmap.md).
 
 ### 14. Stack Thư viện — Quy tắc Áp dụng cho Mỗi Loại Việc
 
@@ -680,250 +566,6 @@ P7:     Plate bending          → optional, out-of-scope
    - Dùng `SU_BY_SYMBOL[symbol]` mà không tìm HK gần trước
    - Báo cáo giá trị giả định mà không ghi rõ HK gốc
    - Silent fallback (warning phải hiển thị nổi bật)
-
-### 13. NT2 Cọc đóng — Đa phương pháp TCVN 11823-10:2017
-
-Engine `scripts/ke_sw_nt_calc.py` tự động chọn phương pháp theo `symbol`:
-
-- **Lớp sét** (mặc định) → α-method (Tomlinson 1980), Điều 7.3.8.6.2, φ_stat = 0,35
-- **Lớp cát** (`SAND_SYMBOLS = {F, 2a, 2b, 2c, 4, 5a, 6, 7}`) → SPT-Meyerhof, Điều 7.3.8.6.7, φ_stat = 0,30
-
-**Đơn vị**: TCVN dùng MPa·mm² → engine đổi sang kPa·m² nhân ra kN.
-- `qs_kPa = 1.9·N₁₆₀` (cọc chiếm chỗ — SW); `0.96·N₁₆₀` (chữ H / ống hở)
-- `qp_kPa = 38·N₁₆₀·(Db/D) ≤ 3200·N₁₆₀` (cát) hoặc `≤ 1800·N₁₆₀` (cát bột)
-- `N₁₆₀ = N·CN`, với `CN = √(100/σ'v_kPa)` clamp [0.5, 2.0]
-
-**σ'v effective**: tích phân γ qua các lớp; phần dưới MNN dùng γ' = γ − γw; lớp cắt ngang MNN chia đôi tự động.
-
-**φ_stat dynamic**: sand Rs > 10% hoặc tip cát → 0,30; còn lại 0,35.
-
-Khi thiếu SPT cho lớp cát → Rs/Rp = 0 + warning trong `n2["warnings"]`. Khi import SPT, formula auto-activate.
-
-**File chi tiết:** [42-ke-sw-nt1-nt2-chi-tiet.md](42-ke-sw-nt1-nt2-chi-tiet.md) + [18-driven-pile-TCVN11823.md](18-driven-pile-TCVN11823.md)
-
-**NHC DXF — Tọa độ hố khoan (cập nhật 2026-05-19):**
-
-File: `NHC-1. TRỤ_TTHC_Tru hien truong.dxf` (G:/My Drive/202605-TRUNG TAM HCM/DIA CHAT/2. NHÀ HÀNH CHÍNH/)
-
-Cấu trúc DXF (page 1, y chuẩn):
-
-| Dòng y | Nội dung | Pattern |
-| --- | --- | --- |
-| y ≈ 71646 | Tên BH (header) | `BH-\d+` |
-| y ≈ 71592 | Northing VN-2000 | `119\d{4}\.\d+` |
-| y ≈ 71587/71588 | Easting VN-2000 | `60[56]\d{3}\.\d+` |
-| y ≈ 71582 | Cao độ mặt đất (m) | `-?\d+\.\d{2}` |
-
-- Pair-by-order (sort x) — KHÔNG dùng nearest-x vì BH-27/BH-28 quá gần nhau (Δx=2 DXF)
-- 16/23 BH có tọa độ trong DXF này (thiếu: BH-01, BH-02, BH-09, BH-31, BH-39, BH-42, BH-44)
-- Script: `scripts/nhc_coord_import.py`; JSON: `data/nhc_coords_202605_TTHC.json`
-- Quy ước DB: `x_coord_m = Northing`, `y_coord_m = Easting` (giống BXN/KE)
-
-### 13. Streamlit App — Khởi Động và Deploy
-
-#### Khởi động local (bền vững)
-
-Dùng `start_app.bat` (nằm ở project root) — double-click để mở CMD window, giữ window mở để app tiếp tục chạy.
-
-```text
-Local URL: http://localhost:8503
-```
-
-**Nguyên nhân app chết:** Khi Claude Code chạy Streamlit qua PowerShell background, process bị garbage-collect khi session kết thúc. `start_app.bat` tạo CMD window độc lập — không phụ thuộc Claude.
-
-Nếu app không chạy được: kill Python trước (`Stop-Process -Name python -Force`), xóa `__pycache__`, chạy lại bat file.
-
-#### Deploy lên Streamlit Cloud
-
-**Repo đang dùng:** `https://github.com/PHAMNGOCBAY/CDM.git`
-**App URL:** `https://phantichcocdm.streamlit.app`
-**Thư mục deploy:** `cdm-deploy/` (embedded git repo trong project root)
-**Main file path trên Cloud:** `scripts/app_cdm.py` (dùng `_ROOT = Path(__file__).parent.parent`)
-
-**Quy trình cập nhật (dùng `update_app.bat`):**
-
-1. Double-click `update_app.bat` ở project root
-2. Script tự copy `scripts/app_cdm.py` + `data/TTHC.sqlite` vào `cdm-deploy/`
-3. Commit + push vào `PHAMNGOCBAY/CDM` → Streamlit Cloud tự redeploy ~30-60 giây
-
-**Hoặc thủ công:**
-
-```bat
-cd cdm-deploy
-copy ..\scripts\app_cdm.py scripts\app_cdm.py
-copy ..\data\TTHC.sqlite data\TTHC.sqlite
-git add -A
-git commit -m "update"
-git push origin main
-```
-
-**Lưu ý quan trọng:**
-
-- Streamlit Cloud dùng `requirements.txt` ở root của `cdm-deploy/` — phải có đủ packages
-- SQLite trong repo → read-only trên Cloud (chỉ đọc) — app hiện tại OK vì chỉ đọc
-- KHÔNG commit trực tiếp vào `cdm-deploy/scripts/app_cdm.py` — luôn sửa `scripts/app_cdm.py` trong project root rồi dùng `update_app.bat`
-
-#### Quy trình deploy thủ công (PowerShell)
-
-```powershell
-$src = "G:\My Drive\AI-SUC TAI COC THEO DAT NEN"
-$dst = "$src\cdm-deploy"
-Copy-Item "$src\scripts\app_cdm.py"        "$dst\scripts\app_cdm.py" -Force
-Copy-Item "$src\data\TTHC.sqlite"          "$dst\data\TTHC.sqlite"   -Force
-Copy-Item "$src\scripts\settlement_calc.py" "$dst\scripts\settlement_calc.py" -Force
-Copy-Item "$src\data\tccs41_params.json"   "$dst\data\tccs41_params.json"     -Force
-cd $dst
-git add -A
-git commit -m "cap nhat"
-git push origin main
-```
-
----
-
-### 12. Module Tính Lún Nền — TCCS 41:2022
-
-**File engine:** `scripts/settlement_calc.py` (thuần Python, không dùng pandas)  
-**Thông số mặc định:** `data/tccs41_params.json`
-
-#### Các hàm công khai
-
-| Hàm | Mô tả |
-|-----|-------|
-| `calc_settlement_from_db(bh_name, H_fill_m, stress_scale=1.0)` | Tính tổng lún sơ cấp từ mẫu lab_tests |
-| `calc_time_series(S_total_cm, method, zone_params, t_list)` | Tính S(t) cho từng phương án xử lý |
-| `compare_methods(bh_name, zone_code, H_fill_m)` | So sánh 5 phương án: no_treat, pvd×2, sand_drain, cdm |
-| `calc_cdm_stress_beta(zone_params)` | Hệ số phân bổ ứng suất CDM — TCVN 9403 Phụ lục C |
-| `check_samples_vs_tccs41(zone_code)` | Kiểm tra số mẫu Cc so với yêu cầu TCCS41 |
-
-#### Quy tắc CDM — BẮT BUỘC dùng công thức TCVN 9403 Phụ lục C
-
-**KHÔNG** dùng: `reduction = 1 - a × 0.85` (không có cơ sở vật lý).  
-**KHÔNG** dùng: `calc_settlement_from_db(..., stress_scale=beta)` cho tính S_CDM — sai bản chất vật lý.
-
-**PHẢI** dùng S1 đàn hồi (trong `compare_methods()`):**
-
-```python
-# S = S1 + S2 (TCVN 9403 Phụ lục C)
-S1 = q × H_soft / (a × Ec + (1-a) × Es)  # [m], nhân 100 → cm
-S2 = 0  # CDM cắm đến lớp cứng
-# Ec = 75 × (field_lab_ratio × qu_lab / 2)   (TCVN 9403 B.5.1)
-# Es = 250 × Cu_avg                           (tương quan Mesri)
-```
-
-**Time series CDM:** lún đàn hồi xảy ra tức thì → flat list `U=100%, S=S1` từ t=0.  
-**Lún còn lại CDM = 0** (không có lún cố kết sau thi công).
-
-**Kết quả mẫu (NHC, a=0.25, H_fill=3m, H_soft=35m):**
-
-- Ec=12375 kPa, Es=3750 kPa, Etb=5906 kPa
-- S1 = 60×35/5906×100 = **35,6 cm** vs S_không xử lý = 107 cm (giảm 67%)
-- `calc_cdm_stress_beta()` vẫn giữ lại để hiển thị biểu đồ ứng suất, không dùng cho tính S
-
-#### Chiều dày đại diện H_i
-
-Mỗi mẫu đại diện cho vùng từ midpoint trên → midpoint dưới (ranh giới trung điểm).
-**KHÔNG** dùng chiều dày mẫu thực (0,6 m) — sẽ cho S_total quá nhỏ.
-
-#### Bảng SQLite cho module lún
-
-| Bảng | Nội dung |
-|------|----------|
-| `settlement_scenarios` | Kịch bản tính toán (phương án, thông số đầu vào, S_total, residual) |
-| `settlement_time_series` | S(t) theo thời gian cho từng kịch bản |
-| `settlement_layers` | Chi tiết lún từng lớp (sigma_v0, sigma_vf, PC, Si_cm, OC_status) |
-
----
-
-### 13. Module Trụ Đất Xi Măng CDM — TCVN 9403:2012
-
-**File engine:** `scripts/cdm_column_calc.py`  
-**Thông số mặc định:** `data/tcvn9403_params.json`  
-**Tài liệu tra cứu:** [39-tcvn9403-tru-dat-xi-mang.md](39-tcvn9403-tru-dat-xi-mang.md)
-
-#### Các hàm công khai
-
-| Hàm | Mô tả |
-|-----|-------|
-| `calc_area_ratio(D, s, pattern)` | Tỷ lệ diện tích thay thế a = Ac/A_đơn_vị |
-| `calc_Ec(Cc_col, factor=75)` | Mô đun biến dạng trụ: Ec = factor × Cc_col |
-| `calc_Es(Cu)` | Mô đun biến dạng đất: Es = 250 × Cu |
-| `calc_Cuu(Cu_soft, Cc_col, a)` | Cường độ cắt tổ hợp: Cuu = Cs(1-a) + Cc×a |
-| `calc_settlement_S1(q, H, a, Ec, Es)` | Lún đàn hồi S1 = qH/(a×Ec+(1-a)×Es) |
-| `calc_settlement_reduction(a, Ec, Es)` | Hệ số giảm lún β = Es/composite_modulus |
-| `full_cdm_design(zone_code, Cu_soft, H_soft, ...)` | Thiết kế đầy đủ một kịch bản CDM |
-| `check_qc_adequacy(n_cot, n_lab, n_field)` | Kiểm tra số mẫu QC vs Bảng B.1 TCVN 9403 |
-| `analyze_lab_results(zone_code)` | Thống kê qu theo hàm lượng xi măng và tuổi mẫu |
-| `create_cdm_tables()` | Tạo bảng SQLite (idempotent) |
-
-#### Lưu ý cross-check quan trọng
-
-Hàm tính lún chính xác theo TCVN 9403 Phụ lục C là `calc_settlement_S1()` trong `cdm_column_calc.py` và logic tương đương trong `compare_methods()` của `settlement_calc.py`.
-
-`calc_settlement_from_db(..., stress_scale=beta)` đo lún Cc cố kết (dùng cho no_treat/PVD/giếng cát) — **không dùng** cho CDM.
-
-#### Bảng SQLite cho module CDM
-
-| Bảng | Nội dung |
-|------|----------|
-| `cdm_design` | Kịch bản thiết kế (a, Ec, Es, S1, hệ số giảm lún) |
-| `cdm_lab_results` | Kết quả thí nghiệm qu theo tuổi / hàm lượng xi măng / phương pháp trộn |
-
----
-
-### 14. Tab "Lún Nền" trong App (page id = "settlement")
-
-**Vị trí:** `app_cdm.py`, cuối file, điều kiện `if _page == "settlement":`
-
-#### Cấu trúc giao diện
-
-**Tab phụ 1 — So sánh phương án:**
-- 3 cột điều khiển: chọn zone/hố khoan, H_fill, giới hạn lún, thời gian thi công
-- Nút "Tính toán lún" → gọi `compare_methods()`
-- 3 metric cards: Lún tự nhiên | CDM beta | CDM giảm lún %
-- Bảng so sánh 5 phương án (màu xanh=Đạt, đỏ=Không đạt)
-- Biểu đồ S(t) — đường cong lún theo thời gian
-- **Biểu đồ ứng suất theo chiều sâu**: σ'v0 (xanh), σ'vf không xử lý (đỏ chấm), σ'vf CDM (cam đứt), PC (xanh lá) — nền màu theo vùng OC/cross_PC/NC
-- Expander "Chi tiết lún từng lớp" — bảng layer data
-- Expander "Lý thuyết tính lún" — giải thích công thức OC/NC/cross_PC + tại sao CDM lún tổng còn lớn
-
-**Tab phụ 2 — Kiểm tra mẫu vs TCCS41:**
-- 3 cột theo zone NHC/BXN/KE
-- Metric: n_HK_đạt/n_HK_tổng, thiếu bao nhiêu mẫu Cc
-- Bảng chi tiết per hố khoan (Cc có / Cc cần / thiếu / trạng thái)
-- Bảng tổng hợp 3 zone
-
-### 15. Module Khoảng Cách Hố Khoan — TCCS 41:2022 Điều 5.3.2
-
-**File engine:** `scripts/borehole_spacing.py`  
-**Tài liệu tra cứu:** mục 2.1 trong [38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md)  
-**Bảng SQLite:** `borehole_distances`
-
-#### Giới hạn khoảng cách theo bước thiết kế
-
-| `design_step` | Dọc tuyến (m) | Ghi chú |
-| --- | :---: | --- |
-| `"LAPDA"` | 250–500 | Điều 5.3.2.1 — lập dự án đầu tư |
-| `"BVTK"` | 100–150 | Điều 5.3.2.2 — dọc tuyến; cao tốc/cấp III: 100 m |
-| `"BVTK_matcat"` | 150–300 | Khoảng cách giữa các mặt cắt ngang |
-
-#### Hàm công khai
-
-| Hàm | Mô tả |
-| --- | --- |
-| `calc_pairwise_distances(bhs)` | Tính tất cả cặp, sort theo distance_m |
-| `check_spacing_532(bhs, design_step, same_zone_only)` | Kiểm tra vs tiêu chuẩn → dict với pairs + summary |
-| `create_borehole_distances_table(db_path)` | Tạo bảng SQLite (idempotent) |
-| `save_distances_to_db(bhs, design_step, db_path)` | Lưu kết quả vào SQLite |
-
-#### Tab Địa chất — UI (cập nhật 2026-05-19)
-
-- Layout 2 cột: 3D view (trái, height=420) | Bảng khoảng cách (phải)
-- Selectbox "Bước thiết kế": BVTK / LAPDA
-- Bảng cặp HK: màu xanh = Đạt, đỏ = Gần quá / Xa quá
-- Selectbox "Chọn cặp HK để đo kích thước trên 3D" → vẽ đường cam + nhãn khoảng cách trên 3D
-- `_draw_boreholes_3d(..., pair_highlight=(bh1, bh2, dist_m))` → thêm trace đường kích thước
-
-**Kết quả TTHC (BVTK):** 36 đạt / 157 cặp; 85 gần quá (HK cùng khu vực), 36 xa quá.
 
 ### 16. Module Cọc Ván SW Dự Ứng Lực — Kè Công Viên (KE)
 
@@ -1555,3 +1197,250 @@ parameters: {c: 30, phi: 22, q: 18, gamma: 17.5, B: 1.5, L: 2.0}
 - qu = 845.3 kN/m²
 - qa (Fs=3) = 281.8 kN/m²
 ```
+
+---
+
+### 26. NT2 Cọc đóng — Đa phương pháp TCVN 11823-10:2017
+
+Engine `scripts/ke_sw_nt_calc.py` tự động chọn phương pháp theo `symbol`:
+
+- **Lớp sét** (mặc định) → α-method (Tomlinson 1980), Điều 7.3.8.6.2, φ_stat = 0,35
+- **Lớp cát** (`SAND_SYMBOLS = {F, 2a, 2b, 2c, 4, 5a, 6, 7}`) → SPT-Meyerhof, Điều 7.3.8.6.7, φ_stat = 0,30
+
+**Đơn vị**: TCVN dùng MPa·mm² → engine đổi sang kPa·m² nhân ra kN.
+- `qs_kPa = 1.9·N₁₆₀` (cọc chiếm chỗ — SW); `0.96·N₁₆₀` (chữ H / ống hở)
+- `qp_kPa = 38·N₁₆₀·(Db/D) ≤ 3200·N₁₆₀` (cát) hoặc `≤ 1800·N₁₆₀` (cát bột)
+- `N₁₆₀ = N·CN`, với `CN = √(100/σ'v_kPa)` clamp [0.5, 2.0]
+
+**σ'v effective**: tích phân γ qua các lớp; phần dưới MNN dùng γ' = γ − γw; lớp cắt ngang MNN chia đôi tự động.
+
+**φ_stat dynamic**: sand Rs > 10% hoặc tip cát → 0,30; còn lại 0,35.
+
+Khi thiếu SPT cho lớp cát → Rs/Rp = 0 + warning trong `n2["warnings"]`. Khi import SPT, formula auto-activate.
+
+**File chi tiết:** [42-ke-sw-nt1-nt2-chi-tiet.md](42-ke-sw-nt1-nt2-chi-tiet.md) + [18-driven-pile-TCVN11823.md](18-driven-pile-TCVN11823.md)
+
+**NHC DXF — Tọa độ hố khoan (cập nhật 2026-05-19):**
+
+File: `NHC-1. TRỤ_TTHC_Tru hien truong.dxf` (G:/My Drive/202605-TRUNG TAM HCM/DIA CHAT/2. NHÀ HÀNH CHÍNH/)
+
+Cấu trúc DXF (page 1, y chuẩn):
+
+| Dòng y | Nội dung | Pattern |
+| --- | --- | --- |
+| y ≈ 71646 | Tên BH (header) | `BH-\d+` |
+| y ≈ 71592 | Northing VN-2000 | `119\d{4}\.\d+` |
+| y ≈ 71587/71588 | Easting VN-2000 | `60[56]\d{3}\.\d+` |
+| y ≈ 71582 | Cao độ mặt đất (m) | `-?\d+\.\d{2}` |
+
+- Pair-by-order (sort x) — KHÔNG dùng nearest-x vì BH-27/BH-28 quá gần nhau (Δx=2 DXF)
+- 16/23 BH có tọa độ trong DXF này (thiếu: BH-01, BH-02, BH-09, BH-31, BH-39, BH-42, BH-44)
+- Script: `scripts/nhc_coord_import.py`; JSON: `data/nhc_coords_202605_TTHC.json`
+- Quy ước DB: `x_coord_m = Northing`, `y_coord_m = Easting` (giống BXN/KE)
+
+### 27. Streamlit App — Khởi Động và Deploy
+
+#### Khởi động local (bền vững)
+
+Dùng `start_app.bat` (nằm ở project root) — double-click để mở CMD window, giữ window mở để app tiếp tục chạy.
+
+```text
+Local URL: http://localhost:8503
+```
+
+**Nguyên nhân app chết:** Khi Claude Code chạy Streamlit qua PowerShell background, process bị garbage-collect khi session kết thúc. `start_app.bat` tạo CMD window độc lập — không phụ thuộc Claude.
+
+Nếu app không chạy được: kill Python trước (`Stop-Process -Name python -Force`), xóa `__pycache__`, chạy lại bat file.
+
+#### Deploy lên Streamlit Cloud
+
+**Repo đang dùng:** `https://github.com/PHAMNGOCBAY/CDM.git`
+**App URL:** `https://phantichcocdm.streamlit.app`
+**Thư mục deploy:** `cdm-deploy/` (embedded git repo trong project root)
+**Main file path trên Cloud:** `scripts/app_cdm.py` (dùng `_ROOT = Path(__file__).parent.parent`)
+
+**Quy trình cập nhật (dùng `update_app.bat`):**
+
+1. Double-click `update_app.bat` ở project root
+2. Script tự copy `scripts/app_cdm.py` + `data/TTHC.sqlite` vào `cdm-deploy/`
+3. Commit + push vào `PHAMNGOCBAY/CDM` → Streamlit Cloud tự redeploy ~30-60 giây
+
+**Hoặc thủ công:**
+
+```bat
+cd cdm-deploy
+copy ..\scripts\app_cdm.py scripts\app_cdm.py
+copy ..\data\TTHC.sqlite data\TTHC.sqlite
+git add -A
+git commit -m "update"
+git push origin main
+```
+
+**Lưu ý quan trọng:**
+
+- Streamlit Cloud dùng `requirements.txt` ở root của `cdm-deploy/` — phải có đủ packages
+- SQLite trong repo → read-only trên Cloud (chỉ đọc) — app hiện tại OK vì chỉ đọc
+- KHÔNG commit trực tiếp vào `cdm-deploy/scripts/app_cdm.py` — luôn sửa `scripts/app_cdm.py` trong project root rồi dùng `update_app.bat`
+
+#### Quy trình deploy thủ công (PowerShell)
+
+```powershell
+$src = "G:\My Drive\AI-SUC TAI COC THEO DAT NEN"
+$dst = "$src\cdm-deploy"
+Copy-Item "$src\scripts\app_cdm.py"        "$dst\scripts\app_cdm.py" -Force
+Copy-Item "$src\data\TTHC.sqlite"          "$dst\data\TTHC.sqlite"   -Force
+Copy-Item "$src\scripts\settlement_calc.py" "$dst\scripts\settlement_calc.py" -Force
+Copy-Item "$src\data\tccs41_params.json"   "$dst\data\tccs41_params.json"     -Force
+cd $dst
+git add -A
+git commit -m "cap nhat"
+git push origin main
+```
+
+---
+
+### 28. Module Tính Lún Nền — TCCS 41:2022
+
+**File engine:** `scripts/settlement_calc.py` (thuần Python, không dùng pandas)  
+**Thông số mặc định:** `data/tccs41_params.json`
+
+#### Các hàm công khai
+
+| Hàm | Mô tả |
+|-----|-------|
+| `calc_settlement_from_db(bh_name, H_fill_m, stress_scale=1.0)` | Tính tổng lún sơ cấp từ mẫu lab_tests |
+| `calc_time_series(S_total_cm, method, zone_params, t_list)` | Tính S(t) cho từng phương án xử lý |
+| `compare_methods(bh_name, zone_code, H_fill_m)` | So sánh 5 phương án: no_treat, pvd×2, sand_drain, cdm |
+| `calc_cdm_stress_beta(zone_params)` | Hệ số phân bổ ứng suất CDM — TCVN 9403 Phụ lục C |
+| `check_samples_vs_tccs41(zone_code)` | Kiểm tra số mẫu Cc so với yêu cầu TCCS41 |
+
+#### Quy tắc CDM — BẮT BUỘC dùng công thức TCVN 9403 Phụ lục C
+
+**KHÔNG** dùng: `reduction = 1 - a × 0.85` (không có cơ sở vật lý).  
+**KHÔNG** dùng: `calc_settlement_from_db(..., stress_scale=beta)` cho tính S_CDM — sai bản chất vật lý.
+
+**PHẢI** dùng S1 đàn hồi (trong `compare_methods()`):**
+
+```python
+# S = S1 + S2 (TCVN 9403 Phụ lục C)
+S1 = q × H_soft / (a × Ec + (1-a) × Es)  # [m], nhân 100 → cm
+S2 = 0  # CDM cắm đến lớp cứng
+# Ec = 75 × (field_lab_ratio × qu_lab / 2)   (TCVN 9403 B.5.1)
+# Es = 250 × Cu_avg                           (tương quan Mesri)
+```
+
+**Time series CDM:** lún đàn hồi xảy ra tức thì → flat list `U=100%, S=S1` từ t=0.  
+**Lún còn lại CDM = 0** (không có lún cố kết sau thi công).
+
+**Kết quả mẫu (NHC, a=0.25, H_fill=3m, H_soft=35m):**
+
+- Ec=12375 kPa, Es=3750 kPa, Etb=5906 kPa
+- S1 = 60×35/5906×100 = **35,6 cm** vs S_không xử lý = 107 cm (giảm 67%)
+- `calc_cdm_stress_beta()` vẫn giữ lại để hiển thị biểu đồ ứng suất, không dùng cho tính S
+
+#### Chiều dày đại diện H_i
+
+Mỗi mẫu đại diện cho vùng từ midpoint trên → midpoint dưới (ranh giới trung điểm).
+**KHÔNG** dùng chiều dày mẫu thực (0,6 m) — sẽ cho S_total quá nhỏ.
+
+#### Bảng SQLite cho module lún
+
+| Bảng | Nội dung |
+|------|----------|
+| `settlement_scenarios` | Kịch bản tính toán (phương án, thông số đầu vào, S_total, residual) |
+| `settlement_time_series` | S(t) theo thời gian cho từng kịch bản |
+| `settlement_layers` | Chi tiết lún từng lớp (sigma_v0, sigma_vf, PC, Si_cm, OC_status) |
+
+---
+
+### 29. Module Trụ Đất Xi Măng CDM — TCVN 9403:2012
+
+**File engine:** `scripts/cdm_column_calc.py`  
+**Thông số mặc định:** `data/tcvn9403_params.json`  
+**Tài liệu tra cứu:** [39-tcvn9403-tru-dat-xi-mang.md](39-tcvn9403-tru-dat-xi-mang.md)
+
+#### Các hàm công khai
+
+| Hàm | Mô tả |
+|-----|-------|
+| `calc_area_ratio(D, s, pattern)` | Tỷ lệ diện tích thay thế a = Ac/A_đơn_vị |
+| `calc_Ec(Cc_col, factor=75)` | Mô đun biến dạng trụ: Ec = factor × Cc_col |
+| `calc_Es(Cu)` | Mô đun biến dạng đất: Es = 250 × Cu |
+| `calc_Cuu(Cu_soft, Cc_col, a)` | Cường độ cắt tổ hợp: Cuu = Cs(1-a) + Cc×a |
+| `calc_settlement_S1(q, H, a, Ec, Es)` | Lún đàn hồi S1 = qH/(a×Ec+(1-a)×Es) |
+| `calc_settlement_reduction(a, Ec, Es)` | Hệ số giảm lún β = Es/composite_modulus |
+| `full_cdm_design(zone_code, Cu_soft, H_soft, ...)` | Thiết kế đầy đủ một kịch bản CDM |
+| `check_qc_adequacy(n_cot, n_lab, n_field)` | Kiểm tra số mẫu QC vs Bảng B.1 TCVN 9403 |
+| `analyze_lab_results(zone_code)` | Thống kê qu theo hàm lượng xi măng và tuổi mẫu |
+| `create_cdm_tables()` | Tạo bảng SQLite (idempotent) |
+
+#### Lưu ý cross-check quan trọng
+
+Hàm tính lún chính xác theo TCVN 9403 Phụ lục C là `calc_settlement_S1()` trong `cdm_column_calc.py` và logic tương đương trong `compare_methods()` của `settlement_calc.py`.
+
+`calc_settlement_from_db(..., stress_scale=beta)` đo lún Cc cố kết (dùng cho no_treat/PVD/giếng cát) — **không dùng** cho CDM.
+
+#### Bảng SQLite cho module CDM
+
+| Bảng | Nội dung |
+|------|----------|
+| `cdm_design` | Kịch bản thiết kế (a, Ec, Es, S1, hệ số giảm lún) |
+| `cdm_lab_results` | Kết quả thí nghiệm qu theo tuổi / hàm lượng xi măng / phương pháp trộn |
+
+---
+
+### 30. Tab "Lún Nền" trong App (page id = "settlement")
+
+**Vị trí:** `app_cdm.py`, cuối file, điều kiện `if _page == "settlement":`
+
+#### Cấu trúc giao diện
+
+**Tab phụ 1 — So sánh phương án:**
+- 3 cột điều khiển: chọn zone/hố khoan, H_fill, giới hạn lún, thời gian thi công
+- Nút "Tính toán lún" → gọi `compare_methods()`
+- 3 metric cards: Lún tự nhiên | CDM beta | CDM giảm lún %
+- Bảng so sánh 5 phương án (màu xanh=Đạt, đỏ=Không đạt)
+- Biểu đồ S(t) — đường cong lún theo thời gian
+- **Biểu đồ ứng suất theo chiều sâu**: σ'v0 (xanh), σ'vf không xử lý (đỏ chấm), σ'vf CDM (cam đứt), PC (xanh lá) — nền màu theo vùng OC/cross_PC/NC
+- Expander "Chi tiết lún từng lớp" — bảng layer data
+- Expander "Lý thuyết tính lún" — giải thích công thức OC/NC/cross_PC + tại sao CDM lún tổng còn lớn
+
+**Tab phụ 2 — Kiểm tra mẫu vs TCCS41:**
+- 3 cột theo zone NHC/BXN/KE
+- Metric: n_HK_đạt/n_HK_tổng, thiếu bao nhiêu mẫu Cc
+- Bảng chi tiết per hố khoan (Cc có / Cc cần / thiếu / trạng thái)
+- Bảng tổng hợp 3 zone
+
+### 31. Module Khoảng Cách Hố Khoan — TCCS 41:2022 Điều 5.3.2
+
+**File engine:** `scripts/borehole_spacing.py`  
+**Tài liệu tra cứu:** mục 2.1 trong [38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md)  
+**Bảng SQLite:** `borehole_distances`
+
+#### Giới hạn khoảng cách theo bước thiết kế
+
+| `design_step` | Dọc tuyến (m) | Ghi chú |
+| --- | :---: | --- |
+| `"LAPDA"` | 250–500 | Điều 5.3.2.1 — lập dự án đầu tư |
+| `"BVTK"` | 100–150 | Điều 5.3.2.2 — dọc tuyến; cao tốc/cấp III: 100 m |
+| `"BVTK_matcat"` | 150–300 | Khoảng cách giữa các mặt cắt ngang |
+
+#### Hàm công khai
+
+| Hàm | Mô tả |
+| --- | --- |
+| `calc_pairwise_distances(bhs)` | Tính tất cả cặp, sort theo distance_m |
+| `check_spacing_532(bhs, design_step, same_zone_only)` | Kiểm tra vs tiêu chuẩn → dict với pairs + summary |
+| `create_borehole_distances_table(db_path)` | Tạo bảng SQLite (idempotent) |
+| `save_distances_to_db(bhs, design_step, db_path)` | Lưu kết quả vào SQLite |
+
+#### Tab Địa chất — UI (cập nhật 2026-05-19)
+
+- Layout 2 cột: 3D view (trái, height=420) | Bảng khoảng cách (phải)
+- Selectbox "Bước thiết kế": BVTK / LAPDA
+- Bảng cặp HK: màu xanh = Đạt, đỏ = Gần quá / Xa quá
+- Selectbox "Chọn cặp HK để đo kích thước trên 3D" → vẽ đường cam + nhãn khoảng cách trên 3D
+- `_draw_boreholes_3d(..., pair_highlight=(bh1, bh2, dist_m))` → thêm trace đường kích thước
+
+**Kết quả TTHC (BVTK):** 36 đạt / 157 cặp; 85 gần quá (HK cùng khu vực), 36 xa quá.
+

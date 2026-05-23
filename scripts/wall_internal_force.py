@@ -514,7 +514,8 @@ def solve_pynite_dist(layers, pile, L_m, zs_load, p_load_kNm2, N=60,
 def solve_anastruct(layers, pile, L_m, H_kNm, M_kNm=0.0, N=60,
                     eps50=0.02, k_sand_kNm3=10_000.0,
                     cdm_thickness_m=0.0, cdm_factor=3.0):
-    from anastruct import SystemElements
+    # Legacy debug solver — production dùng winkler_np.py (Cloud Python 3.14)
+    from anastruct.fem.system import SystemElements  # pyright: ignore[reportMissingImports]
     EI = pile.EI_kNm2
     zs, k_h = kh_profile(layers, pile, L_m, N, eps50, k_sand_kNm3,
                          cdm_thickness_m, cdm_factor)
@@ -527,9 +528,9 @@ def solve_anastruct(layers, pile, L_m, H_kNm, M_kNm=0.0, N=60,
     ss.point_load(node_id=1, Fx=H_kNm)
     if abs(M_kNm) > 0: ss.moment_load(node_id=1, Ty=M_kNm)
     ss.solve()
-    disp = ss.get_node_displacements()
+    disp = ss.get_node_displacements()  # pyright: ignore[reportCallIssue]
     ux_mm = [d["ux"] * 1000.0 for d in disp]
-    er = ss.get_element_results(verbose=False)
+    er = ss.get_element_results(verbose=False)  # pyright: ignore[reportCallIssue]
     Ms = [e["Mmax"] for e in er]
     Qs = [e.get("wmax", 0) or e.get("qmax", 0) for e in er]
     return {
@@ -625,8 +626,8 @@ def _demo_distributed():
     print(f"  |u|max = {res['u_max_mm']:8.2f} mm  (giới hạn 25)")
     print(f"  M max  = {res['M_max_kNm']:8.1f} kNm (Mcr = {res['Mcr_kNm']:.0f})")
     print(f"  Q max  = {res['Q_max_kN']:8.1f} kN")
-    u_ok = res["u_max_mm"] < 25.0
-    M_ok = res["M_max_kNm"] < res["Mcr_kNm"]
+    u_ok = float(res["u_max_mm"]) < 25.0
+    M_ok = float(res["M_max_kNm"]) < float(res["Mcr_kNm"])
     print(f"\nKiểm tra: u {'Đạt' if u_ok else 'KHÔNG ĐẠT'}, "
           f"M {'Đạt' if M_ok else 'KHÔNG ĐẠT'}")
     return {"load": load, "res": res, "geom": geom}

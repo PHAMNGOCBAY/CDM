@@ -164,7 +164,7 @@ def save_cdm_lab_result(
          cement_pct, w_c_ratio, age_days, qu_kPa, notes),
     )
     conn.commit()
-    rowid = cur.lastrowid
+    rowid = cur.lastrowid or 0
     conn.close()
     return rowid
 
@@ -218,7 +218,7 @@ def save_cdm_design(
          S1_cm, S_reduction),
     )
     conn.commit()
-    rowid = cur.lastrowid
+    rowid = cur.lastrowid or 0
     conn.close()
     return rowid
 

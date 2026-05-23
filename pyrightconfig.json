@@ -1,0 +1,25 @@
+{
+  "include": [
+    "scripts"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    "cdm-deploy",
+    ".claude/worktrees",
+    "scripts/fem2d"
+  ],
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": "none",
+  "reportGeneralTypeIssues": "warning",
+  "reportOptionalMemberAccess": "warning",
+  "reportOptionalSubscript": "warning",
+  "reportOptionalIterable": "warning",
+  "reportPossiblyUnboundVariable": "warning",
+  "reportUnusedImport": "none",
+  "reportUnusedVariable": "none"
+}

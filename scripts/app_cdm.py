@@ -5278,20 +5278,7 @@ elif _page == "params":
         st.pyplot(_fig_grd, use_container_width=True)
         _fig_grd.clf()
 
-    # ── Xuất PDF tab này ──────────────────────────────────────────────────────
-    if _HAS_PDF:
-        st.divider()
-        try:
-            _pdf_p = _pdf_params(dict(st.session_state))
-            st.download_button(
-                "Xuất PDF tab Thông số CDM",
-                data=_pdf_p,
-                file_name=f"ThongSoCDM_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except Exception as _e:
-            st.warning(f"Không tạo PDF: {_e}")
+    # Xuất PDF qua nút app đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -7355,25 +7342,7 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                     _fig_mp.tight_layout()
                     st.pyplot(_fig_mp, use_container_width=True)
 
-                # ── Nút xuất PDF cho bảng so sánh + biểu đồ ──────────────────
-                if _HAS_PDF:
-                    _col_pdf1, _col_pdf2 = st.columns([1, 3])
-                    with _col_pdf1:
-                        try:
-                            _pdf_compare = _pdf_settle(
-                                dict(st.session_state),
-                                _cmp,
-                            )
-                            st.download_button(
-                                "Tải PDF bảng so sánh + biểu đồ",
-                                data=_pdf_compare,
-                                file_name=f"SoSanhPhuongAn_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                                mime="application/pdf",
-                                use_container_width=True,
-                                key="sl_pdf_compare",
-                            )
-                        except Exception as _ep:
-                            st.caption(f"_(Không tạo PDF: {_ep})_")
+                # PDF qua nút đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
                 # Biểu đồ S(t)
                 if _HAS_PLOTLY:
@@ -7718,23 +7687,7 @@ Tăng ứng suất $> $ tải thiết kế → tăng tốc độ cố kết → 
                 "Nguyên nhân: đất yếu bị nào xuống, cần thêm đắp bù → tăng tải trọng → tăng lún thêm."
             )
 
-        # ── Xuất PDF tab Dự báo lún ──────────────────────────────────────────
-        if _HAS_PDF:
-            st.divider()
-            try:
-                _pdf_s = _pdf_settle(
-                    dict(st.session_state),
-                    st.session_state.get("sl_result"),
-                )
-                st.download_button(
-                    "Xuất PDF tab Dự báo lún",
-                    data=_pdf_s,
-                    file_name=f"DuBaoLun_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
-            except Exception as _e:
-                st.warning(f"Không tạo PDF: {_e}")
+        # Xuất PDF qua nút đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -12769,20 +12722,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     st.warning(f"Không chạy được kiểm tra ổn định tổng thể: {_e_st}")
 
 
-    # ── Xuất PDF tab Cọc ván SW ──────────────────────────────────────────────
-    if _HAS_PDF:
-        st.divider()
-        try:
-            _pdf_k = _pdf_kesw(_DB)
-            st.download_button(
-                "Xuất PDF tab Cọc ván SW",
-                data=_pdf_k,
-                file_name=f"CocVanSW_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-            )
-        except Exception as _e:
-            st.warning(f"Không tạo PDF: {_e}")
+    # Xuất PDF qua nút đã tắt (§25 CLAUDE.md) — dùng Ctrl+P trình duyệt
 
     # ── Xuất Word toàn bộ tab Cọc ván SW ────────────────────────────────────
     st.divider()
