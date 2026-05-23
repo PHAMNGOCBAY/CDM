@@ -4157,14 +4157,12 @@ if _page == "geology":
                                     ).add_to(_fg_tp)
                                 _fg_tp.add_to(_fmap)
 
-                        # Tuyến metro (bảng metro_lines)
+                        # Tuyến metro (bảng metro_lines) — bỏ aux_tunnel + boundary_control
                         if _show_metro:
                             _METRO_STYLE = {
                                 "centerline":       {"color": "#D32F2F", "weight": 4, "opacity": 0.95, "dash": None,  "label": "Tuyến chính metro"},
-                                "boundary_control": {"color": "#FB8C00", "weight": 2, "opacity": 0.85, "dash": "8,4", "label": "Ranh kiểm soát XD"},
                                 "boundary_land":    {"color": "#616161", "weight": 2, "opacity": 0.80, "dash": "4,4", "label": "Ranh GPMB"},
                                 "boundary_station": {"color": "#9E9E9E", "weight": 2, "opacity": 0.80, "dash": "2,4", "label": "Ranh ga (Xref)"},
-                                "aux_tunnel":       {"color": "#1976D2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường tunnel"},
                                 "aux_panel":        {"color": "#7B1FA2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường panel"},
                                 "other":            {"color": "#000000", "weight": 1, "opacity": 0.50, "dash": None,  "label": "Khác"},
                             }
@@ -4172,7 +4170,9 @@ if _page == "geology":
                                 _con_mt = sqlite3.connect(_DB)
                                 _mt_rows = _con_mt.execute(
                                     "SELECT polyline_id, vertex_idx, x_m, y_m, category "
-                                    "FROM metro_lines ORDER BY category, polyline_id, vertex_idx"
+                                    "FROM metro_lines "
+                                    "WHERE category NOT IN ('aux_tunnel', 'boundary_control') "
+                                    "ORDER BY category, polyline_id, vertex_idx"
                                 ).fetchall()
                                 _con_mt.close()
                             except Exception:
@@ -4198,9 +4198,8 @@ if _page == "geology":
                                 _n_mt_total = sum(len(v) for v in _polys_by_cat.values())
                                 # Mỗi category 1 FeatureGroup → user toggle qua LayerControl
                                 # Vẽ centerline LAST → nằm trên cùng
-                                _order = ["aux_panel", "aux_tunnel", "boundary_land",
-                                          "boundary_station", "boundary_control",
-                                          "other", "centerline"]
+                                _order = ["aux_panel", "boundary_land",
+                                          "boundary_station", "other", "centerline"]
                                 for _cat in _order:
                                     _polys = _polys_by_cat.get(_cat)
                                     if not _polys:
@@ -14557,13 +14556,11 @@ if _page == "cdm_bvt":
                     ).add_to(_fg_bvt_tp)
                 _fg_bvt_tp.add_to(_fmap)
 
-            # Lớp tuyến metro (bảng metro_lines)
+            # Lớp tuyến metro (bảng metro_lines) — bỏ aux_tunnel + boundary_control
             _METRO_STYLE_BVT = {
                 "centerline":       {"color": "#D32F2F", "weight": 4, "opacity": 0.95, "dash": None,  "label": "Tuyến chính metro"},
-                "boundary_control": {"color": "#FB8C00", "weight": 2, "opacity": 0.85, "dash": "8,4", "label": "Ranh kiểm soát XD"},
                 "boundary_land":    {"color": "#616161", "weight": 2, "opacity": 0.80, "dash": "4,4", "label": "Ranh GPMB"},
                 "boundary_station": {"color": "#9E9E9E", "weight": 2, "opacity": 0.80, "dash": "2,4", "label": "Ranh ga (Xref)"},
-                "aux_tunnel":       {"color": "#1976D2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường tunnel"},
                 "aux_panel":        {"color": "#7B1FA2", "weight": 1, "opacity": 0.60, "dash": None,  "label": "Tường panel"},
                 "other":            {"color": "#000000", "weight": 1, "opacity": 0.50, "dash": None,  "label": "Khác"},
             }
@@ -14571,7 +14568,9 @@ if _page == "cdm_bvt":
                 _con_bvt_mt = sqlite3.connect(_DB)
                 _bvt_mt_rows = _con_bvt_mt.execute(
                     "SELECT polyline_id, vertex_idx, x_m, y_m, category "
-                    "FROM metro_lines ORDER BY category, polyline_id, vertex_idx"
+                    "FROM metro_lines "
+                    "WHERE category NOT IN ('aux_tunnel', 'boundary_control') "
+                    "ORDER BY category, polyline_id, vertex_idx"
                 ).fetchall()
                 _con_bvt_mt.close()
             except Exception:
@@ -14592,9 +14591,8 @@ if _page == "cdm_bvt":
                 if _bvt_pts and _bvt_cat is not None:
                     _bvt_polys.setdefault(_bvt_cat, []).append(_bvt_pts)
 
-                for _cat in ["aux_panel", "aux_tunnel", "boundary_land",
-                             "boundary_station", "boundary_control",
-                             "other", "centerline"]:
+                for _cat in ["aux_panel", "boundary_land",
+                             "boundary_station", "other", "centerline"]:
                     _polys = _bvt_polys.get(_cat)
                     if not _polys:
                         continue
