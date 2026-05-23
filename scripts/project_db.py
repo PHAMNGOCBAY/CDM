@@ -27,7 +27,7 @@ DB_PATH = ROOT / "data" / "TTHC.sqlite"
 # ── JSON sources ───────────────────────────────────────────────────────────────
 KE_PROFILE_JSON  = ROOT / "data" / "soil_profile_202605_TTHC.json"
 KE_VS_JSON       = ROOT / "data" / "vane_shear_202605_TTHC.json"
-KE_LAB_JSON      = ROOT / "data" / "lab_tests_202605_TTHC.json"
+KE_LAB_JSON      = ROOT / "data" / "ke_lab_tests_202605_TTHC.json"
 KE_CDM_JSON      = ROOT / "data" / "cdm_tests_202605_TTHC.json"
 
 BXN_BH_JSON      = ROOT / "data" / "bxn_boreholes_202605_TTHC.json"

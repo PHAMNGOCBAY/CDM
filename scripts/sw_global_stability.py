@@ -163,24 +163,30 @@ class SWStabilityResult:
 
     @property
     def all_pass(self) -> bool:
+        def _ok(v, lim):
+            return v is not None and v >= lim
         return (
-            self.Fs_global_slip   >= 1.30 and
-            self.Fs_overturning   >= 2.00 and
-            self.Fs_toe_kickout   >= 1.50
+            _ok(self.Fs_global_slip, 1.30) and
+            _ok(self.Fs_overturning, 2.00) and
+            _ok(self.Fs_toe_kickout, 1.50)
         )
 
     def summary(self) -> str:
         rows = [
-            ("Trượt cung tròn",  self.Fs_global_slip,  1.30),
+            ("Trượt cung tròn",   self.Fs_global_slip, 1.30),
             ("Lật quanh chân cừ", self.Fs_overturning, 2.00),
-            ("Xoay nhổ chân cừ", self.Fs_toe_kickout,  1.50),
+            ("Xoay nhổ chân cừ",  self.Fs_toe_kickout, 1.50),
         ]
         lines = ["", "Kiểm tra ổn định tổng thể tường SW + CDM:"]
         lines.append(f"{'Mục':<22} {'Fs':>8} {'Fs_min':>8} {'Trạng thái':>12}")
         lines.append("─" * 56)
         for name, fs, fs_min in rows:
-            status = "Đạt" if fs >= fs_min else "KHÔNG ĐẠT"
-            lines.append(f"{name:<22} {fs:>8.2f} {fs_min:>8.2f} {status:>12}")
+            if fs is None:
+                status = "Không tính được"
+                lines.append(f"{name:<22} {'N/A':>8} {fs_min:>8.2f} {status:>12}")
+            else:
+                status = "Đạt" if fs >= fs_min else "KHÔNG ĐẠT"
+                lines.append(f"{name:<22} {fs:>8.2f} {fs_min:>8.2f} {status:>12}")
         if self.warnings:
             lines.append("")
             lines.append("Cảnh báo:")
@@ -335,7 +341,7 @@ def check_global_slip(
     """
     try:
         from slope_stability import (
-            SlopeGeometry, SlopeSoilLayer, search_critical_surface,
+            SlopeGeometry, SlopeSoilLayer, analyze_slope,
         )
         _HAS_SLOPE = True
     except ImportError:
@@ -399,16 +405,49 @@ def check_global_slip(
                      (reach, geom.water_elev_back)],
         surcharge=geom.surcharge_front,
     )
-    # Grid search quanh chân cừ
-    x_range = (slope_x * 1.5 if slope_x else -L * 0.3, L * 0.3)
-    y_range = (te, te + L)
-    result = search_critical_surface(
-        geom_sl, x_range=x_range, y_range=y_range,
-        nx=n_grid, ny=n_grid, method=method, n_slices=n_slices,
-    )
-    crit = result.critical
-    Fs = getattr(crit, f"FOS_{method}", crit.FOS)
-    return Fs, crit.xc, crit.yc, crit.radius
+
+    # ── CONSTRAINT: mỗi cung trượt PHẢI đi qua chân cừ ──────────────────────
+    # Chân cừ tại (x=0, y=z_tip). Với mỗi tâm (xc, yc) trong lưới:
+    #     R = √(xc² + (yc − z_tip)²)
+    # → cung qua chân cừ + chỉ search 2 tham số (xc, yc), không search R.
+    z_tip = te - L
+    x_min = slope_x * 1.5 if slope_x else -L * 0.3
+    x_max = L * 0.3
+    y_min = te
+    y_max = te + L
+
+    import numpy as _np
+    xc_vals = _np.linspace(x_min, x_max, int(n_grid))
+    yc_vals = _np.linspace(y_min, y_max, int(n_grid))
+
+    best_Fs = float("inf")
+    best_xc = best_yc = best_R = 0.0
+    for xc_i in xc_vals:
+        for yc_i in yc_vals:
+            R_i = math.sqrt(xc_i * xc_i + (yc_i - z_tip) ** 2)
+            if R_i < 1.0:
+                continue
+            try:
+                res_i = analyze_slope(
+                    geom_sl, xc=float(xc_i), yc=float(yc_i), radius=R_i,
+                    method=method, n_slices=int(n_slices),
+                )
+            except Exception:
+                continue
+            # FOS_<method> ưu tiên (Optional → có thể None); fallback FOS chung
+            _fos_i = getattr(res_i, f"FOS_{method}", None)
+            fos = _fos_i if _fos_i is not None else (res_i.FOS or None)
+            if fos is None or fos <= 0:
+                continue
+            if fos < best_Fs:
+                best_Fs = float(fos)
+                best_xc, best_yc, best_R = float(xc_i), float(yc_i), float(R_i)
+
+    if best_Fs == float("inf"):
+        # Không có cung nào hợp lệ trong lưới → fallback Bishop inline (cũng constraint qua chân cừ)
+        return _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
+                                 slope_ratio, n_grid, n_slices)
+    return best_Fs, best_xc, best_yc, best_R
 
 
 def _bishop_fallback(geom, front_layers, back_layers, fill, cdm,
@@ -643,13 +682,20 @@ def check_all(
     method: str = "bishop",
 ) -> SWStabilityResult:
     """Chạy đầy đủ 3 kiểm tra ổn định tổng thể, trả về SWStabilityResult."""
+    # Helper: ép float, None → 0.0 (đảm bảo format f"{x:.Nf}" luôn chạy)
+    def _f(v) -> float:
+        try:
+            return float(v) if v is not None else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+
     res = SWStabilityResult()
     # 1. Trượt cung tròn
     try:
         Fs1, xc, yc, R = check_global_slip(geom, front_layers, back_layers,
                                             fill, cdm, method=method)
-        res.Fs_global_slip = Fs1
-        res.slip_xc = xc; res.slip_yc = yc; res.slip_R = R
+        res.Fs_global_slip = _f(Fs1)
+        res.slip_xc = _f(xc); res.slip_yc = _f(yc); res.slip_R = _f(R)
         res.slip_method = method
     except Exception as e:
         res.warnings.append(f"Trượt cung tròn: {e}")
@@ -658,16 +704,16 @@ def check_all(
     try:
         Fs2, Mg, Ml = check_overturning(geom, front_layers, back_layers,
                                          fill, cdm, pile)
-        res.Fs_overturning = Fs2
-        res.M_giu_kNm = Mg; res.M_lat_kNm = Ml
+        res.Fs_overturning = _f(Fs2)
+        res.M_giu_kNm = _f(Mg); res.M_lat_kNm = _f(Ml)
     except Exception as e:
         res.warnings.append(f"Lật: {e}")
     # 3. Toe kick-out
     try:
         Fs3, Ma, Mp = check_toe_kickout(geom, front_layers, back_layers,
                                          fill, cdm)
-        res.Fs_toe_kickout = Fs3
-        res.Ma_kNm = Ma; res.Mp_kNm = Mp
+        res.Fs_toe_kickout = _f(Fs3)
+        res.Ma_kNm = _f(Ma); res.Mp_kNm = _f(Mp)
     except Exception as e:
         res.warnings.append(f"Toe kick-out: {e}")
     return res
