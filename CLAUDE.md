@@ -1478,4 +1478,3 @@ Hàm tính lún chính xác theo TCVN 9403 Phụ lục C là `calc_settlement_S1
 2. **CRS sai → HK lệch 25-50km** trên bản đồ. Mặc định EPSG:9210 cho TTHC, có dropdown selector phòng dự án khác.
 3. **`pyproj` axis_swap** — luôn dùng `always_xy=True` → input/output dạng (x=Easting/lon, y=Northing/lat). Dễ nhớ.
 4. **`contextily` / `rasterio`** — kéo GDAL ~40MB, KHÔNG đưa lên Cloud (đã ghi rõ trong requirements.txt).
-
