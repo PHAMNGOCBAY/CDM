@@ -1,0 +1,3610 @@
+{
+  "_meta": {
+    "source": "pnbay-tọa dobinhdoke.dxf",
+    "updated": "2026-05-23",
+    "n_points": 400,
+    "n_polylines": 184
+  },
+  "points": [
+    {
+      "stt": 1,
+      "polyline_id": 1,
+      "vertex_idx": 0,
+      "x_m": 605776.183006,
+      "y_m": 1191993.859253,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 2,
+      "polyline_id": 1,
+      "vertex_idx": 1,
+      "x_m": 605771.658394,
+      "y_m": 1191995.007767,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 3,
+      "polyline_id": 2,
+      "vertex_idx": 0,
+      "x_m": 605776.183006,
+      "y_m": 1191993.859253,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 4,
+      "polyline_id": 2,
+      "vertex_idx": 1,
+      "x_m": 605802.800616,
+      "y_m": 1191949.466924,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 5,
+      "polyline_id": 3,
+      "vertex_idx": 0,
+      "x_m": 605802.800616,
+      "y_m": 1191949.466924,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 6,
+      "polyline_id": 3,
+      "vertex_idx": 1,
+      "x_m": 605820.633508,
+      "y_m": 1191927.808582,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 7,
+      "polyline_id": 3,
+      "vertex_idx": 2,
+      "x_m": 605854.665542,
+      "y_m": 1191899.903572,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 8,
+      "polyline_id": 3,
+      "vertex_idx": 3,
+      "x_m": 605884.981327,
+      "y_m": 1191888.067539,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 9,
+      "polyline_id": 3,
+      "vertex_idx": 4,
+      "x_m": 605919.194388,
+      "y_m": 1191885.301187,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 10,
+      "polyline_id": 3,
+      "vertex_idx": 5,
+      "x_m": 605969.376457,
+      "y_m": 1191903.732137,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 11,
+      "polyline_id": 3,
+      "vertex_idx": 6,
+      "x_m": 605992.251297,
+      "y_m": 1191926.907466,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 12,
+      "polyline_id": 4,
+      "vertex_idx": 0,
+      "x_m": 605964.560191,
+      "y_m": 1191774.132633,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 13,
+      "polyline_id": 4,
+      "vertex_idx": 1,
+      "x_m": 605979.955595,
+      "y_m": 1191748.661756,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 14,
+      "polyline_id": 5,
+      "vertex_idx": 0,
+      "x_m": 605994.314611,
+      "y_m": 1191729.478609,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 15,
+      "polyline_id": 5,
+      "vertex_idx": 1,
+      "x_m": 605979.955595,
+      "y_m": 1191748.661756,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 16,
+      "polyline_id": 6,
+      "vertex_idx": 0,
+      "x_m": 605997.385601,
+      "y_m": 1191698.521654,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 17,
+      "polyline_id": 6,
+      "vertex_idx": 1,
+      "x_m": 605998.28718,
+      "y_m": 1191702.809958,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 18,
+      "polyline_id": 7,
+      "vertex_idx": 0,
+      "x_m": 605988.4337,
+      "y_m": 1191675.448582,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 19,
+      "polyline_id": 7,
+      "vertex_idx": 1,
+      "x_m": 605997.385601,
+      "y_m": 1191698.521654,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 20,
+      "polyline_id": 8,
+      "vertex_idx": 0,
+      "x_m": 605966.570568,
+      "y_m": 1191634.496588,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 21,
+      "polyline_id": 8,
+      "vertex_idx": 1,
+      "x_m": 605988.4337,
+      "y_m": 1191675.448582,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 22,
+      "polyline_id": 9,
+      "vertex_idx": 0,
+      "x_m": 605966.554215,
+      "y_m": 1191634.466913,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 23,
+      "polyline_id": 9,
+      "vertex_idx": 1,
+      "x_m": 605966.570568,
+      "y_m": 1191634.496588,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 24,
+      "polyline_id": 10,
+      "vertex_idx": 0,
+      "x_m": 605939.421435,
+      "y_m": 1191586.220889,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 25,
+      "polyline_id": 10,
+      "vertex_idx": 1,
+      "x_m": 605966.554215,
+      "y_m": 1191634.466913,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 26,
+      "polyline_id": 11,
+      "vertex_idx": 0,
+      "x_m": 605903.905737,
+      "y_m": 1191558.542326,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 27,
+      "polyline_id": 11,
+      "vertex_idx": 1,
+      "x_m": 605939.421435,
+      "y_m": 1191586.220889,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 28,
+      "polyline_id": 12,
+      "vertex_idx": 0,
+      "x_m": 605903.905737,
+      "y_m": 1191558.542326,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 29,
+      "polyline_id": 12,
+      "vertex_idx": 1,
+      "x_m": 605887.17145,
+      "y_m": 1191547.140156,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 30,
+      "polyline_id": 12,
+      "vertex_idx": 2,
+      "x_m": 605875.880449,
+      "y_m": 1191528.053134,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 31,
+      "polyline_id": 13,
+      "vertex_idx": 0,
+      "x_m": 605875.880449,
+      "y_m": 1191528.053134,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 32,
+      "polyline_id": 13,
+      "vertex_idx": 1,
+      "x_m": 605873.450051,
+      "y_m": 1191515.701119,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 33,
+      "polyline_id": 14,
+      "vertex_idx": 0,
+      "x_m": 605674.781739,
+      "y_m": 1191572.639783,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 34,
+      "polyline_id": 14,
+      "vertex_idx": 1,
+      "x_m": 605683.302614,
+      "y_m": 1191521.261233,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 35,
+      "polyline_id": 15,
+      "vertex_idx": 0,
+      "x_m": 605675.620603,
+      "y_m": 1191573.48651,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 36,
+      "polyline_id": 15,
+      "vertex_idx": 1,
+      "x_m": 605674.781739,
+      "y_m": 1191572.639783,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 37,
+      "polyline_id": 16,
+      "vertex_idx": 0,
+      "x_m": 605675.620603,
+      "y_m": 1191573.48651,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 38,
+      "polyline_id": 16,
+      "vertex_idx": 1,
+      "x_m": 605676.46919,
+      "y_m": 1191574.4474,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 39,
+      "polyline_id": 17,
+      "vertex_idx": 0,
+      "x_m": 605676.848007,
+      "y_m": 1191583.672661,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 40,
+      "polyline_id": 17,
+      "vertex_idx": 1,
+      "x_m": 605676.46919,
+      "y_m": 1191574.4474,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 41,
+      "polyline_id": 18,
+      "vertex_idx": 0,
+      "x_m": 605677.193127,
+      "y_m": 1191584.415483,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 42,
+      "polyline_id": 18,
+      "vertex_idx": 1,
+      "x_m": 605676.848007,
+      "y_m": 1191583.672661,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 43,
+      "polyline_id": 19,
+      "vertex_idx": 0,
+      "x_m": 605681.702926,
+      "y_m": 1191624.016158,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 44,
+      "polyline_id": 19,
+      "vertex_idx": 1,
+      "x_m": 605677.193127,
+      "y_m": 1191584.415483,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 45,
+      "polyline_id": 20,
+      "vertex_idx": 0,
+      "x_m": 605688.412782,
+      "y_m": 1191654.989475,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 46,
+      "polyline_id": 20,
+      "vertex_idx": 1,
+      "x_m": 605681.702926,
+      "y_m": 1191624.016158,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 47,
+      "polyline_id": 21,
+      "vertex_idx": 0,
+      "x_m": 605689.398394,
+      "y_m": 1191658.628697,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 48,
+      "polyline_id": 21,
+      "vertex_idx": 1,
+      "x_m": 605688.412782,
+      "y_m": 1191654.989475,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 49,
+      "polyline_id": 22,
+      "vertex_idx": 0,
+      "x_m": 605689.398394,
+      "y_m": 1191658.628697,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 50,
+      "polyline_id": 22,
+      "vertex_idx": 1,
+      "x_m": 605689.531906,
+      "y_m": 1191659.109692,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 51,
+      "polyline_id": 23,
+      "vertex_idx": 0,
+      "x_m": 605692.1219,
+      "y_m": 1191668.789297,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 52,
+      "polyline_id": 23,
+      "vertex_idx": 1,
+      "x_m": 605689.531906,
+      "y_m": 1191659.109692,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 53,
+      "polyline_id": 24,
+      "vertex_idx": 0,
+      "x_m": 605692.1219,
+      "y_m": 1191668.789297,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 54,
+      "polyline_id": 24,
+      "vertex_idx": 1,
+      "x_m": 605692.032088,
+      "y_m": 1191670.735661,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 55,
+      "polyline_id": 25,
+      "vertex_idx": 0,
+      "x_m": 605699.215509,
+      "y_m": 1191690.973592,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 56,
+      "polyline_id": 25,
+      "vertex_idx": 1,
+      "x_m": 605692.032088,
+      "y_m": 1191670.735661,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 57,
+      "polyline_id": 26,
+      "vertex_idx": 0,
+      "x_m": 605699.215509,
+      "y_m": 1191690.973592,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 58,
+      "polyline_id": 26,
+      "vertex_idx": 1,
+      "x_m": 605698.589452,
+      "y_m": 1191692.248414,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 59,
+      "polyline_id": 27,
+      "vertex_idx": 0,
+      "x_m": 605698.589452,
+      "y_m": 1191692.248414,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 60,
+      "polyline_id": 27,
+      "vertex_idx": 1,
+      "x_m": 605695.27898,
+      "y_m": 1191693.50695,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 61,
+      "polyline_id": 28,
+      "vertex_idx": 0,
+      "x_m": 605694.989408,
+      "y_m": 1191695.028874,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 62,
+      "polyline_id": 28,
+      "vertex_idx": 1,
+      "x_m": 605695.27898,
+      "y_m": 1191693.50695,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 63,
+      "polyline_id": 29,
+      "vertex_idx": 0,
+      "x_m": 605709.0329,
+      "y_m": 1191724.166754,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 64,
+      "polyline_id": 29,
+      "vertex_idx": 1,
+      "x_m": 605694.989408,
+      "y_m": 1191695.028874,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 65,
+      "polyline_id": 30,
+      "vertex_idx": 0,
+      "x_m": 605709.0329,
+      "y_m": 1191724.166754,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 66,
+      "polyline_id": 30,
+      "vertex_idx": 1,
+      "x_m": 605708.661317,
+      "y_m": 1191725.436414,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 67,
+      "polyline_id": 31,
+      "vertex_idx": 0,
+      "x_m": 605708.661317,
+      "y_m": 1191725.436414,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 68,
+      "polyline_id": 31,
+      "vertex_idx": 1,
+      "x_m": 605703.81781,
+      "y_m": 1191727.904813,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 69,
+      "polyline_id": 32,
+      "vertex_idx": 0,
+      "x_m": 605703.264732,
+      "y_m": 1191729.200641,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 70,
+      "polyline_id": 32,
+      "vertex_idx": 1,
+      "x_m": 605703.81781,
+      "y_m": 1191727.904813,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 71,
+      "polyline_id": 33,
+      "vertex_idx": 0,
+      "x_m": 605712.407615,
+      "y_m": 1191745.606765,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 72,
+      "polyline_id": 33,
+      "vertex_idx": 1,
+      "x_m": 605703.264732,
+      "y_m": 1191729.200641,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 73,
+      "polyline_id": 34,
+      "vertex_idx": 0,
+      "x_m": 605745.299837,
+      "y_m": 1191793.323895,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 74,
+      "polyline_id": 34,
+      "vertex_idx": 1,
+      "x_m": 605712.407615,
+      "y_m": 1191745.606765,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 75,
+      "polyline_id": 35,
+      "vertex_idx": 0,
+      "x_m": 605745.299837,
+      "y_m": 1191793.323895,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 76,
+      "polyline_id": 35,
+      "vertex_idx": 1,
+      "x_m": 605744.942529,
+      "y_m": 1191794.758475,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 77,
+      "polyline_id": 36,
+      "vertex_idx": 0,
+      "x_m": 605744.942529,
+      "y_m": 1191794.758475,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 78,
+      "polyline_id": 36,
+      "vertex_idx": 1,
+      "x_m": 605742.412848,
+      "y_m": 1191796.607687,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 79,
+      "polyline_id": 37,
+      "vertex_idx": 0,
+      "x_m": 605742.121638,
+      "y_m": 1191797.939471,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 80,
+      "polyline_id": 37,
+      "vertex_idx": 1,
+      "x_m": 605742.412848,
+      "y_m": 1191796.607687,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 81,
+      "polyline_id": 38,
+      "vertex_idx": 0,
+      "x_m": 605742.121638,
+      "y_m": 1191797.939471,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 82,
+      "polyline_id": 38,
+      "vertex_idx": 1,
+      "x_m": 605759.528238,
+      "y_m": 1191817.692271,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 83,
+      "polyline_id": 38,
+      "vertex_idx": 2,
+      "x_m": 605759.347212,
+      "y_m": 1191819.168633,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 84,
+      "polyline_id": 39,
+      "vertex_idx": 0,
+      "x_m": 605759.347212,
+      "y_m": 1191819.168633,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 85,
+      "polyline_id": 39,
+      "vertex_idx": 1,
+      "x_m": 605757.712271,
+      "y_m": 1191820.31178,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 86,
+      "polyline_id": 40,
+      "vertex_idx": 0,
+      "x_m": 605757.496132,
+      "y_m": 1191821.745509,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 87,
+      "polyline_id": 40,
+      "vertex_idx": 1,
+      "x_m": 605757.712271,
+      "y_m": 1191820.31178,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 88,
+      "polyline_id": 41,
+      "vertex_idx": 0,
+      "x_m": 605774.99223,
+      "y_m": 1191840.32108,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 89,
+      "polyline_id": 41,
+      "vertex_idx": 1,
+      "x_m": 605757.496132,
+      "y_m": 1191821.745509,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 90,
+      "polyline_id": 42,
+      "vertex_idx": 0,
+      "x_m": 605774.99223,
+      "y_m": 1191840.32108,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 91,
+      "polyline_id": 42,
+      "vertex_idx": 1,
+      "x_m": 605775.145592,
+      "y_m": 1191841.706889,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 92,
+      "polyline_id": 43,
+      "vertex_idx": 0,
+      "x_m": 605775.145592,
+      "y_m": 1191841.706889,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 93,
+      "polyline_id": 43,
+      "vertex_idx": 1,
+      "x_m": 605772.999293,
+      "y_m": 1191844.225871,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 94,
+      "polyline_id": 44,
+      "vertex_idx": 0,
+      "x_m": 605788.986902,
+      "y_m": 1191857.822539,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 95,
+      "polyline_id": 44,
+      "vertex_idx": 1,
+      "x_m": 605772.999293,
+      "y_m": 1191844.225871,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 96,
+      "polyline_id": 45,
+      "vertex_idx": 0,
+      "x_m": 605788.986902,
+      "y_m": 1191857.822539,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 97,
+      "polyline_id": 45,
+      "vertex_idx": 1,
+      "x_m": 605793.608785,
+      "y_m": 1191882.802816,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 98,
+      "polyline_id": 46,
+      "vertex_idx": 0,
+      "x_m": 605793.608785,
+      "y_m": 1191882.802816,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 99,
+      "polyline_id": 46,
+      "vertex_idx": 1,
+      "x_m": 605740.547707,
+      "y_m": 1191972.479385,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 100,
+      "polyline_id": 47,
+      "vertex_idx": 0,
+      "x_m": 605741.576975,
+      "y_m": 1191976.934247,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 101,
+      "polyline_id": 47,
+      "vertex_idx": 1,
+      "x_m": 605740.547707,
+      "y_m": 1191972.479385,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 102,
+      "polyline_id": 48,
+      "vertex_idx": 0,
+      "x_m": 605992.251297,
+      "y_m": 1191926.907466,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 103,
+      "polyline_id": 48,
+      "vertex_idx": 1,
+      "x_m": 606000.838524,
+      "y_m": 1191950.989823,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 104,
+      "polyline_id": 48,
+      "vertex_idx": 2,
+      "x_m": 606004.365235,
+      "y_m": 1191981.620891,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 105,
+      "polyline_id": 49,
+      "vertex_idx": 0,
+      "x_m": 606016.09573,
+      "y_m": 1192010.703123,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 106,
+      "polyline_id": 49,
+      "vertex_idx": 1,
+      "x_m": 606004.365235,
+      "y_m": 1191981.620891,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 107,
+      "polyline_id": 50,
+      "vertex_idx": 0,
+      "x_m": 606016.09573,
+      "y_m": 1192010.703123,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 108,
+      "polyline_id": 50,
+      "vertex_idx": 1,
+      "x_m": 606030.850711,
+      "y_m": 1192033.028616,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 109,
+      "polyline_id": 51,
+      "vertex_idx": 0,
+      "x_m": 606044.602096,
+      "y_m": 1192060.749764,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 110,
+      "polyline_id": 51,
+      "vertex_idx": 1,
+      "x_m": 606030.850711,
+      "y_m": 1192033.028616,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 111,
+      "polyline_id": 52,
+      "vertex_idx": 0,
+      "x_m": 606050.479949,
+      "y_m": 1192067.249235,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 112,
+      "polyline_id": 52,
+      "vertex_idx": 1,
+      "x_m": 606044.602096,
+      "y_m": 1192060.749764,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 113,
+      "polyline_id": 53,
+      "vertex_idx": 0,
+      "x_m": 606069.866453,
+      "y_m": 1192074.308944,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 114,
+      "polyline_id": 53,
+      "vertex_idx": 1,
+      "x_m": 606050.479949,
+      "y_m": 1192067.249235,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 115,
+      "polyline_id": 54,
+      "vertex_idx": 0,
+      "x_m": 606087.879838,
+      "y_m": 1192071.511112,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 116,
+      "polyline_id": 54,
+      "vertex_idx": 1,
+      "x_m": 606069.866453,
+      "y_m": 1192074.308944,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 117,
+      "polyline_id": 55,
+      "vertex_idx": 0,
+      "x_m": 606113.172278,
+      "y_m": 1192061.245777,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 118,
+      "polyline_id": 55,
+      "vertex_idx": 1,
+      "x_m": 606087.879838,
+      "y_m": 1192071.511112,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 119,
+      "polyline_id": 56,
+      "vertex_idx": 0,
+      "x_m": 606117.666729,
+      "y_m": 1192059.374595,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 120,
+      "polyline_id": 56,
+      "vertex_idx": 1,
+      "x_m": 606113.172278,
+      "y_m": 1192061.245777,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 121,
+      "polyline_id": 57,
+      "vertex_idx": 0,
+      "x_m": 606120.552836,
+      "y_m": 1192053.727648,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 122,
+      "polyline_id": 57,
+      "vertex_idx": 1,
+      "x_m": 606117.666729,
+      "y_m": 1192059.374595,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 123,
+      "polyline_id": 58,
+      "vertex_idx": 0,
+      "x_m": 606086.138371,
+      "y_m": 1191991.054543,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 124,
+      "polyline_id": 58,
+      "vertex_idx": 1,
+      "x_m": 606077.496113,
+      "y_m": 1191985.430689,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 125,
+      "polyline_id": 58,
+      "vertex_idx": 2,
+      "x_m": 606069.918874,
+      "y_m": 1191980.549912,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 126,
+      "polyline_id": 58,
+      "vertex_idx": 3,
+      "x_m": 606058.319359,
+      "y_m": 1191971.982786,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 127,
+      "polyline_id": 59,
+      "vertex_idx": 0,
+      "x_m": 606058.319359,
+      "y_m": 1191971.982786,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 128,
+      "polyline_id": 59,
+      "vertex_idx": 1,
+      "x_m": 606051.147247,
+      "y_m": 1191966.040089,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 129,
+      "polyline_id": 60,
+      "vertex_idx": 0,
+      "x_m": 606051.147247,
+      "y_m": 1191966.040089,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 130,
+      "polyline_id": 60,
+      "vertex_idx": 1,
+      "x_m": 606043.790183,
+      "y_m": 1191958.566932,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 131,
+      "polyline_id": 60,
+      "vertex_idx": 2,
+      "x_m": 606040.694629,
+      "y_m": 1191951.471254,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 132,
+      "polyline_id": 60,
+      "vertex_idx": 3,
+      "x_m": 606040.668122,
+      "y_m": 1191939.545999,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 133,
+      "polyline_id": 60,
+      "vertex_idx": 4,
+      "x_m": 606042.616827,
+      "y_m": 1191931.523801,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 134,
+      "polyline_id": 61,
+      "vertex_idx": 0,
+      "x_m": 606045.313698,
+      "y_m": 1191921.990934,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 135,
+      "polyline_id": 61,
+      "vertex_idx": 1,
+      "x_m": 606042.616827,
+      "y_m": 1191931.523801,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 136,
+      "polyline_id": 62,
+      "vertex_idx": 0,
+      "x_m": 606047.276393,
+      "y_m": 1191910.544072,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 137,
+      "polyline_id": 62,
+      "vertex_idx": 1,
+      "x_m": 606045.313698,
+      "y_m": 1191921.990934,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 138,
+      "polyline_id": 63,
+      "vertex_idx": 0,
+      "x_m": 606046.306254,
+      "y_m": 1191898.215319,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 139,
+      "polyline_id": 63,
+      "vertex_idx": 1,
+      "x_m": 606047.276393,
+      "y_m": 1191910.544072,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 140,
+      "polyline_id": 64,
+      "vertex_idx": 0,
+      "x_m": 606041.514006,
+      "y_m": 1191889.28199,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 141,
+      "polyline_id": 64,
+      "vertex_idx": 1,
+      "x_m": 606046.306254,
+      "y_m": 1191898.215319,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 142,
+      "polyline_id": 65,
+      "vertex_idx": 0,
+      "x_m": 606029.963879,
+      "y_m": 1191871.373949,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 143,
+      "polyline_id": 65,
+      "vertex_idx": 1,
+      "x_m": 606041.514006,
+      "y_m": 1191889.28199,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 144,
+      "polyline_id": 66,
+      "vertex_idx": 0,
+      "x_m": 606017.6596,
+      "y_m": 1191863.036685,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 145,
+      "polyline_id": 66,
+      "vertex_idx": 1,
+      "x_m": 606029.963879,
+      "y_m": 1191871.373949,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 146,
+      "polyline_id": 67,
+      "vertex_idx": 0,
+      "x_m": 606009.926161,
+      "y_m": 1191859.239599,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 147,
+      "polyline_id": 67,
+      "vertex_idx": 1,
+      "x_m": 606017.6596,
+      "y_m": 1191863.036685,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 148,
+      "polyline_id": 68,
+      "vertex_idx": 0,
+      "x_m": 606009.926161,
+      "y_m": 1191859.239599,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 149,
+      "polyline_id": 68,
+      "vertex_idx": 1,
+      "x_m": 606000.779583,
+      "y_m": 1191853.842565,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 150,
+      "polyline_id": 68,
+      "vertex_idx": 2,
+      "x_m": 605996.1663,
+      "y_m": 1191846.425215,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 151,
+      "polyline_id": 68,
+      "vertex_idx": 3,
+      "x_m": 605995.702188,
+      "y_m": 1191833.030857,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 152,
+      "polyline_id": 69,
+      "vertex_idx": 0,
+      "x_m": 605995.409566,
+      "y_m": 1191832.168562,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 153,
+      "polyline_id": 69,
+      "vertex_idx": 1,
+      "x_m": 605995.702188,
+      "y_m": 1191833.030857,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 154,
+      "polyline_id": 70,
+      "vertex_idx": 0,
+      "x_m": 605982.985449,
+      "y_m": 1191818.427095,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 155,
+      "polyline_id": 70,
+      "vertex_idx": 1,
+      "x_m": 605995.409566,
+      "y_m": 1191832.168562,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 156,
+      "polyline_id": 71,
+      "vertex_idx": 0,
+      "x_m": 605982.985449,
+      "y_m": 1191818.427095,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 157,
+      "polyline_id": 71,
+      "vertex_idx": 1,
+      "x_m": 605967.342688,
+      "y_m": 1191797.402444,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 158,
+      "polyline_id": 71,
+      "vertex_idx": 2,
+      "x_m": 605962.994815,
+      "y_m": 1191782.344027,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 159,
+      "polyline_id": 72,
+      "vertex_idx": 0,
+      "x_m": 605962.994815,
+      "y_m": 1191782.344027,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 160,
+      "polyline_id": 72,
+      "vertex_idx": 1,
+      "x_m": 605964.560211,
+      "y_m": 1191774.132623,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 161,
+      "polyline_id": 73,
+      "vertex_idx": 0,
+      "x_m": 605873.450051,
+      "y_m": 1191515.701119,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 162,
+      "polyline_id": 73,
+      "vertex_idx": 1,
+      "x_m": 605872.799251,
+      "y_m": 1191506.082121,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 163,
+      "polyline_id": 74,
+      "vertex_idx": 0,
+      "x_m": 605871.917853,
+      "y_m": 1191492.77658,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 164,
+      "polyline_id": 74,
+      "vertex_idx": 1,
+      "x_m": 605872.799251,
+      "y_m": 1191506.082121,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 165,
+      "polyline_id": 75,
+      "vertex_idx": 0,
+      "x_m": 605870.978006,
+      "y_m": 1191485.187473,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 166,
+      "polyline_id": 75,
+      "vertex_idx": 1,
+      "x_m": 605871.917853,
+      "y_m": 1191492.77658,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 167,
+      "polyline_id": 76,
+      "vertex_idx": 0,
+      "x_m": 605865.700422,
+      "y_m": 1191478.783599,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 168,
+      "polyline_id": 76,
+      "vertex_idx": 1,
+      "x_m": 605870.978006,
+      "y_m": 1191485.187473,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 169,
+      "polyline_id": 77,
+      "vertex_idx": 0,
+      "x_m": 605802.807805,
+      "y_m": 1191462.672569,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 170,
+      "polyline_id": 77,
+      "vertex_idx": 1,
+      "x_m": 605815.174761,
+      "y_m": 1191461.172214,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 171,
+      "polyline_id": 78,
+      "vertex_idx": 0,
+      "x_m": 605802.807805,
+      "y_m": 1191462.672569,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 172,
+      "polyline_id": 78,
+      "vertex_idx": 1,
+      "x_m": 605794.126225,
+      "y_m": 1191467.610141,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 173,
+      "polyline_id": 78,
+      "vertex_idx": 2,
+      "x_m": 605757.097382,
+      "y_m": 1191479.845114,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 174,
+      "polyline_id": 79,
+      "vertex_idx": 0,
+      "x_m": 605734.252249,
+      "y_m": 1191483.417821,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 175,
+      "polyline_id": 79,
+      "vertex_idx": 1,
+      "x_m": 605757.097382,
+      "y_m": 1191479.845114,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 176,
+      "polyline_id": 80,
+      "vertex_idx": 0,
+      "x_m": 605714.3584,
+      "y_m": 1191488.200104,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 177,
+      "polyline_id": 80,
+      "vertex_idx": 1,
+      "x_m": 605734.252249,
+      "y_m": 1191483.417821,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 178,
+      "polyline_id": 81,
+      "vertex_idx": 0,
+      "x_m": 605711.448397,
+      "y_m": 1191489.219059,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 179,
+      "polyline_id": 81,
+      "vertex_idx": 1,
+      "x_m": 605714.3584,
+      "y_m": 1191488.200104,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 180,
+      "polyline_id": 82,
+      "vertex_idx": 0,
+      "x_m": 605683.302614,
+      "y_m": 1191521.261233,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 181,
+      "polyline_id": 82,
+      "vertex_idx": 1,
+      "x_m": 605711.448397,
+      "y_m": 1191489.219059,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 182,
+      "polyline_id": 83,
+      "vertex_idx": 0,
+      "x_m": 606102.45444,
+      "y_m": 1192001.539735,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 183,
+      "polyline_id": 83,
+      "vertex_idx": 1,
+      "x_m": 606101.218333,
+      "y_m": 1192000.864116,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 184,
+      "polyline_id": 84,
+      "vertex_idx": 0,
+      "x_m": 606120.975114,
+      "y_m": 1192004.927059,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 185,
+      "polyline_id": 84,
+      "vertex_idx": 1,
+      "x_m": 606102.45444,
+      "y_m": 1192001.539735,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 186,
+      "polyline_id": 85,
+      "vertex_idx": 0,
+      "x_m": 606120.975114,
+      "y_m": 1192004.927059,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 187,
+      "polyline_id": 85,
+      "vertex_idx": 1,
+      "x_m": 606127.419775,
+      "y_m": 1192009.759806,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 188,
+      "polyline_id": 86,
+      "vertex_idx": 0,
+      "x_m": 606127.419775,
+      "y_m": 1192009.759806,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 189,
+      "polyline_id": 86,
+      "vertex_idx": 1,
+      "x_m": 606127.113385,
+      "y_m": 1192012.93564,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 190,
+      "polyline_id": 87,
+      "vertex_idx": 0,
+      "x_m": 606087.823367,
+      "y_m": 1191987.484343,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 191,
+      "polyline_id": 87,
+      "vertex_idx": 1,
+      "x_m": 606082.702437,
+      "y_m": 1191982.012432,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 192,
+      "polyline_id": 88,
+      "vertex_idx": 0,
+      "x_m": 606082.702437,
+      "y_m": 1191982.012432,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 193,
+      "polyline_id": 88,
+      "vertex_idx": 1,
+      "x_m": 606080.916958,
+      "y_m": 1191978.999592,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 194,
+      "polyline_id": 89,
+      "vertex_idx": 0,
+      "x_m": 606080.916958,
+      "y_m": 1191978.999592,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 195,
+      "polyline_id": 89,
+      "vertex_idx": 1,
+      "x_m": 606079.131906,
+      "y_m": 1191973.849845,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 196,
+      "polyline_id": 90,
+      "vertex_idx": 0,
+      "x_m": 606075.503134,
+      "y_m": 1191968.79247,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 197,
+      "polyline_id": 90,
+      "vertex_idx": 1,
+      "x_m": 606079.131906,
+      "y_m": 1191973.849845,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 198,
+      "polyline_id": 91,
+      "vertex_idx": 0,
+      "x_m": 606075.503134,
+      "y_m": 1191968.79247,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 199,
+      "polyline_id": 91,
+      "vertex_idx": 1,
+      "x_m": 606073.80794,
+      "y_m": 1191965.049999,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 200,
+      "polyline_id": 92,
+      "vertex_idx": 0,
+      "x_m": 606071.755383,
+      "y_m": 1191959.400421,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 201,
+      "polyline_id": 92,
+      "vertex_idx": 1,
+      "x_m": 606073.80794,
+      "y_m": 1191965.049999,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 202,
+      "polyline_id": 93,
+      "vertex_idx": 0,
+      "x_m": 606071.755383,
+      "y_m": 1191959.400421,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 203,
+      "polyline_id": 93,
+      "vertex_idx": 1,
+      "x_m": 606071.744363,
+      "y_m": 1191959.387108,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 204,
+      "polyline_id": 93,
+      "vertex_idx": 2,
+      "x_m": 606070.68982,
+      "y_m": 1191957.153962,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 205,
+      "polyline_id": 93,
+      "vertex_idx": 3,
+      "x_m": 606069.791061,
+      "y_m": 1191949.9811,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 206,
+      "polyline_id": 93,
+      "vertex_idx": 4,
+      "x_m": 606071.073683,
+      "y_m": 1191938.023764,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 207,
+      "polyline_id": 94,
+      "vertex_idx": 0,
+      "x_m": 606075.645156,
+      "y_m": 1191919.974414,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 208,
+      "polyline_id": 94,
+      "vertex_idx": 1,
+      "x_m": 606071.073683,
+      "y_m": 1191938.023764,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 209,
+      "polyline_id": 95,
+      "vertex_idx": 0,
+      "x_m": 606068.039066,
+      "y_m": 1191923.628697,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 210,
+      "polyline_id": 95,
+      "vertex_idx": 1,
+      "x_m": 606070.449307,
+      "y_m": 1191928.711275,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 211,
+      "polyline_id": 96,
+      "vertex_idx": 0,
+      "x_m": 606068.039066,
+      "y_m": 1191923.628697,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 212,
+      "polyline_id": 96,
+      "vertex_idx": 1,
+      "x_m": 606066.163296,
+      "y_m": 1191918.370285,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 213,
+      "polyline_id": 97,
+      "vertex_idx": 0,
+      "x_m": 606065.896473,
+      "y_m": 1191917.738797,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 214,
+      "polyline_id": 97,
+      "vertex_idx": 1,
+      "x_m": 606066.163296,
+      "y_m": 1191918.370285,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 215,
+      "polyline_id": 98,
+      "vertex_idx": 0,
+      "x_m": 606065.896473,
+      "y_m": 1191917.738797,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 216,
+      "polyline_id": 98,
+      "vertex_idx": 1,
+      "x_m": 606063.113044,
+      "y_m": 1191910.995221,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 217,
+      "polyline_id": 99,
+      "vertex_idx": 0,
+      "x_m": 606062.356232,
+      "y_m": 1191910.34484,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 218,
+      "polyline_id": 99,
+      "vertex_idx": 1,
+      "x_m": 606063.113044,
+      "y_m": 1191910.995221,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 219,
+      "polyline_id": 100,
+      "vertex_idx": 0,
+      "x_m": 606062.356232,
+      "y_m": 1191910.34484,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 220,
+      "polyline_id": 100,
+      "vertex_idx": 1,
+      "x_m": 606055.019186,
+      "y_m": 1191904.460402,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 221,
+      "polyline_id": 101,
+      "vertex_idx": 0,
+      "x_m": 606052.692129,
+      "y_m": 1191899.995182,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 222,
+      "polyline_id": 101,
+      "vertex_idx": 1,
+      "x_m": 606055.019186,
+      "y_m": 1191904.460402,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 223,
+      "polyline_id": 102,
+      "vertex_idx": 0,
+      "x_m": 606052.692129,
+      "y_m": 1191899.995182,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 224,
+      "polyline_id": 102,
+      "vertex_idx": 1,
+      "x_m": 606048.859558,
+      "y_m": 1191893.387562,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 225,
+      "polyline_id": 102,
+      "vertex_idx": 2,
+      "x_m": 606047.670783,
+      "y_m": 1191890.588742,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 226,
+      "polyline_id": 102,
+      "vertex_idx": 3,
+      "x_m": 606047.095561,
+      "y_m": 1191884.903902,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 227,
+      "polyline_id": 102,
+      "vertex_idx": 4,
+      "x_m": 606047.719488,
+      "y_m": 1191882.319771,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 228,
+      "polyline_id": 103,
+      "vertex_idx": 0,
+      "x_m": 606047.690957,
+      "y_m": 1191881.177302,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 229,
+      "polyline_id": 103,
+      "vertex_idx": 1,
+      "x_m": 606047.719488,
+      "y_m": 1191882.319771,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 230,
+      "polyline_id": 104,
+      "vertex_idx": 0,
+      "x_m": 606045.493242,
+      "y_m": 1191876.191107,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 231,
+      "polyline_id": 104,
+      "vertex_idx": 1,
+      "x_m": 606047.690957,
+      "y_m": 1191881.177302,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 232,
+      "polyline_id": 105,
+      "vertex_idx": 0,
+      "x_m": 606045.493242,
+      "y_m": 1191876.191107,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 233,
+      "polyline_id": 105,
+      "vertex_idx": 1,
+      "x_m": 606036.545227,
+      "y_m": 1191868.902628,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 234,
+      "polyline_id": 106,
+      "vertex_idx": 0,
+      "x_m": 606032.947962,
+      "y_m": 1191863.64215,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 235,
+      "polyline_id": 106,
+      "vertex_idx": 1,
+      "x_m": 606036.545227,
+      "y_m": 1191868.902628,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 236,
+      "polyline_id": 107,
+      "vertex_idx": 0,
+      "x_m": 606033.18503,
+      "y_m": 1191860.485741,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 237,
+      "polyline_id": 107,
+      "vertex_idx": 1,
+      "x_m": 606043.501183,
+      "y_m": 1191864.186042,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 238,
+      "polyline_id": 108,
+      "vertex_idx": 0,
+      "x_m": 606033.18503,
+      "y_m": 1191860.485741,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 239,
+      "polyline_id": 108,
+      "vertex_idx": 1,
+      "x_m": 606020.358656,
+      "y_m": 1191851.435245,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 240,
+      "polyline_id": 109,
+      "vertex_idx": 0,
+      "x_m": 606005.340863,
+      "y_m": 1191834.7157,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 241,
+      "polyline_id": 109,
+      "vertex_idx": 1,
+      "x_m": 606020.358656,
+      "y_m": 1191851.435245,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 242,
+      "polyline_id": 110,
+      "vertex_idx": 0,
+      "x_m": 606005.340863,
+      "y_m": 1191834.7157,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 243,
+      "polyline_id": 110,
+      "vertex_idx": 1,
+      "x_m": 606004.0458,
+      "y_m": 1191831.584349,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 244,
+      "polyline_id": 111,
+      "vertex_idx": 0,
+      "x_m": 606003.576879,
+      "y_m": 1191829.953174,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 245,
+      "polyline_id": 111,
+      "vertex_idx": 1,
+      "x_m": 606004.0458,
+      "y_m": 1191831.584349,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 246,
+      "polyline_id": 112,
+      "vertex_idx": 0,
+      "x_m": 606003.422557,
+      "y_m": 1191829.441072,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 247,
+      "polyline_id": 112,
+      "vertex_idx": 1,
+      "x_m": 606003.576879,
+      "y_m": 1191829.953174,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 248,
+      "polyline_id": 113,
+      "vertex_idx": 0,
+      "x_m": 606003.422557,
+      "y_m": 1191829.441072,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 249,
+      "polyline_id": 113,
+      "vertex_idx": 1,
+      "x_m": 606001.599086,
+      "y_m": 1191826.460657,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 250,
+      "polyline_id": 113,
+      "vertex_idx": 2,
+      "x_m": 606001.506681,
+      "y_m": 1191821.803894,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 251,
+      "polyline_id": 114,
+      "vertex_idx": 0,
+      "x_m": 606001.506681,
+      "y_m": 1191821.803894,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 252,
+      "polyline_id": 114,
+      "vertex_idx": 1,
+      "x_m": 606006.069975,
+      "y_m": 1191815.098568,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 253,
+      "polyline_id": 115,
+      "vertex_idx": 0,
+      "x_m": 605999.252743,
+      "y_m": 1191821.380584,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 254,
+      "polyline_id": 115,
+      "vertex_idx": 1,
+      "x_m": 605997.803497,
+      "y_m": 1191817.008467,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 255,
+      "polyline_id": 116,
+      "vertex_idx": 0,
+      "x_m": 605997.803497,
+      "y_m": 1191817.008467,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 256,
+      "polyline_id": 116,
+      "vertex_idx": 1,
+      "x_m": 605997.637423,
+      "y_m": 1191816.485207,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 257,
+      "polyline_id": 117,
+      "vertex_idx": 0,
+      "x_m": 605996.992285,
+      "y_m": 1191815.693207,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 258,
+      "polyline_id": 117,
+      "vertex_idx": 1,
+      "x_m": 605997.637423,
+      "y_m": 1191816.485207,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 259,
+      "polyline_id": 118,
+      "vertex_idx": 0,
+      "x_m": 605996.992285,
+      "y_m": 1191815.693207,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 260,
+      "polyline_id": 118,
+      "vertex_idx": 1,
+      "x_m": 605992.264849,
+      "y_m": 1191810.230234,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 261,
+      "polyline_id": 119,
+      "vertex_idx": 0,
+      "x_m": 605991.222836,
+      "y_m": 1191808.422104,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 262,
+      "polyline_id": 119,
+      "vertex_idx": 1,
+      "x_m": 605992.264849,
+      "y_m": 1191810.230234,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 263,
+      "polyline_id": 120,
+      "vertex_idx": 0,
+      "x_m": 605991.222836,
+      "y_m": 1191808.422104,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 264,
+      "polyline_id": 120,
+      "vertex_idx": 1,
+      "x_m": 605989.173938,
+      "y_m": 1191802.853993,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 265,
+      "polyline_id": 121,
+      "vertex_idx": 0,
+      "x_m": 605989.173938,
+      "y_m": 1191802.853993,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 266,
+      "polyline_id": 121,
+      "vertex_idx": 1,
+      "x_m": 605989.099047,
+      "y_m": 1191799.945528,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 267,
+      "polyline_id": 121,
+      "vertex_idx": 2,
+      "x_m": 605989.124303,
+      "y_m": 1191799.092499,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 268,
+      "polyline_id": 121,
+      "vertex_idx": 3,
+      "x_m": 605989.561239,
+      "y_m": 1191798.380416,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 269,
+      "polyline_id": 122,
+      "vertex_idx": 0,
+      "x_m": 605996.325004,
+      "y_m": 1191787.701162,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 270,
+      "polyline_id": 122,
+      "vertex_idx": 1,
+      "x_m": 605989.561239,
+      "y_m": 1191798.380416,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 271,
+      "polyline_id": 123,
+      "vertex_idx": 0,
+      "x_m": 605996.325004,
+      "y_m": 1191787.701162,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 272,
+      "polyline_id": 123,
+      "vertex_idx": 1,
+      "x_m": 606001.528393,
+      "y_m": 1191780.358773,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 273,
+      "polyline_id": 124,
+      "vertex_idx": 0,
+      "x_m": 606004.104908,
+      "y_m": 1191768.048416,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 274,
+      "polyline_id": 124,
+      "vertex_idx": 1,
+      "x_m": 606001.528393,
+      "y_m": 1191780.358773,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 275,
+      "polyline_id": 125,
+      "vertex_idx": 0,
+      "x_m": 606001.493645,
+      "y_m": 1191761.42346,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 276,
+      "polyline_id": 125,
+      "vertex_idx": 1,
+      "x_m": 606004.104908,
+      "y_m": 1191768.048416,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 277,
+      "polyline_id": 126,
+      "vertex_idx": 0,
+      "x_m": 606001.493645,
+      "y_m": 1191761.42346,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 278,
+      "polyline_id": 126,
+      "vertex_idx": 1,
+      "x_m": 606002.745758,
+      "y_m": 1191754.75762,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 279,
+      "polyline_id": 127,
+      "vertex_idx": 0,
+      "x_m": 606004.620073,
+      "y_m": 1191751.939995,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 280,
+      "polyline_id": 127,
+      "vertex_idx": 1,
+      "x_m": 606002.745758,
+      "y_m": 1191754.75762,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 281,
+      "polyline_id": 128,
+      "vertex_idx": 0,
+      "x_m": 606005.708374,
+      "y_m": 1191747.653638,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 282,
+      "polyline_id": 128,
+      "vertex_idx": 1,
+      "x_m": 606004.620073,
+      "y_m": 1191751.939995,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 283,
+      "polyline_id": 129,
+      "vertex_idx": 0,
+      "x_m": 606005.537028,
+      "y_m": 1191744.855845,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 284,
+      "polyline_id": 129,
+      "vertex_idx": 1,
+      "x_m": 606005.708374,
+      "y_m": 1191747.653638,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 285,
+      "polyline_id": 130,
+      "vertex_idx": 0,
+      "x_m": 606012.462069,
+      "y_m": 1191755.388458,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 286,
+      "polyline_id": 130,
+      "vertex_idx": 1,
+      "x_m": 606011.159921,
+      "y_m": 1191752.84206,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 287,
+      "polyline_id": 130,
+      "vertex_idx": 2,
+      "x_m": 606007.075282,
+      "y_m": 1191738.295089,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 288,
+      "polyline_id": 130,
+      "vertex_idx": 3,
+      "x_m": 606006.920215,
+      "y_m": 1191729.997835,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 289,
+      "polyline_id": 131,
+      "vertex_idx": 0,
+      "x_m": 606105.575387,
+      "y_m": 1191986.701838,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 290,
+      "polyline_id": 131,
+      "vertex_idx": 1,
+      "x_m": 606109.616246,
+      "y_m": 1192001.103278,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 291,
+      "polyline_id": 132,
+      "vertex_idx": 0,
+      "x_m": 606105.575387,
+      "y_m": 1191986.701838,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 292,
+      "polyline_id": 132,
+      "vertex_idx": 1,
+      "x_m": 606105.27632,
+      "y_m": 1191985.172996,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 293,
+      "polyline_id": 133,
+      "vertex_idx": 0,
+      "x_m": 606104.648858,
+      "y_m": 1191977.985109,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 294,
+      "polyline_id": 133,
+      "vertex_idx": 1,
+      "x_m": 606105.27632,
+      "y_m": 1191985.172996,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 295,
+      "polyline_id": 134,
+      "vertex_idx": 0,
+      "x_m": 606103.87275,
+      "y_m": 1191976.08604,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 296,
+      "polyline_id": 134,
+      "vertex_idx": 1,
+      "x_m": 606104.648858,
+      "y_m": 1191977.985109,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 297,
+      "polyline_id": 135,
+      "vertex_idx": 0,
+      "x_m": 606103.87275,
+      "y_m": 1191976.08604,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 298,
+      "polyline_id": 135,
+      "vertex_idx": 1,
+      "x_m": 606103.086243,
+      "y_m": 1191973.320693,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 299,
+      "polyline_id": 136,
+      "vertex_idx": 0,
+      "x_m": 606100.849828,
+      "y_m": 1191966.162854,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 300,
+      "polyline_id": 136,
+      "vertex_idx": 1,
+      "x_m": 606103.086243,
+      "y_m": 1191973.320693,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 301,
+      "polyline_id": 137,
+      "vertex_idx": 0,
+      "x_m": 606097.203001,
+      "y_m": 1191961.046976,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 302,
+      "polyline_id": 137,
+      "vertex_idx": 1,
+      "x_m": 606100.849828,
+      "y_m": 1191966.162854,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 303,
+      "polyline_id": 138,
+      "vertex_idx": 0,
+      "x_m": 606095.372409,
+      "y_m": 1191954.37095,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 304,
+      "polyline_id": 138,
+      "vertex_idx": 1,
+      "x_m": 606097.203001,
+      "y_m": 1191961.046976,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 305,
+      "polyline_id": 139,
+      "vertex_idx": 0,
+      "x_m": 606095.372409,
+      "y_m": 1191954.37095,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 306,
+      "polyline_id": 139,
+      "vertex_idx": 1,
+      "x_m": 606095.481965,
+      "y_m": 1191953.992657,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 307,
+      "polyline_id": 140,
+      "vertex_idx": 0,
+      "x_m": 606095.481965,
+      "y_m": 1191946.968656,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 308,
+      "polyline_id": 140,
+      "vertex_idx": 1,
+      "x_m": 606095.481965,
+      "y_m": 1191953.992657,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 309,
+      "polyline_id": 141,
+      "vertex_idx": 0,
+      "x_m": 606093.117597,
+      "y_m": 1191943.017672,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 310,
+      "polyline_id": 141,
+      "vertex_idx": 1,
+      "x_m": 606095.481965,
+      "y_m": 1191946.968656,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 311,
+      "polyline_id": 142,
+      "vertex_idx": 0,
+      "x_m": 606092.602259,
+      "y_m": 1191941.299351,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 312,
+      "polyline_id": 142,
+      "vertex_idx": 1,
+      "x_m": 606093.117597,
+      "y_m": 1191943.017672,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 313,
+      "polyline_id": 143,
+      "vertex_idx": 0,
+      "x_m": 606092.194427,
+      "y_m": 1191940.332825,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 314,
+      "polyline_id": 143,
+      "vertex_idx": 1,
+      "x_m": 606092.602259,
+      "y_m": 1191941.299351,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 315,
+      "polyline_id": 144,
+      "vertex_idx": 0,
+      "x_m": 606092.61065,
+      "y_m": 1191936.015426,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 316,
+      "polyline_id": 144,
+      "vertex_idx": 1,
+      "x_m": 606092.194427,
+      "y_m": 1191940.332825,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 317,
+      "polyline_id": 145,
+      "vertex_idx": 0,
+      "x_m": 606091.498735,
+      "y_m": 1191929.00985,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 318,
+      "polyline_id": 145,
+      "vertex_idx": 1,
+      "x_m": 606092.61065,
+      "y_m": 1191936.015426,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 319,
+      "polyline_id": 146,
+      "vertex_idx": 0,
+      "x_m": 606092.900109,
+      "y_m": 1191922.267256,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 320,
+      "polyline_id": 146,
+      "vertex_idx": 1,
+      "x_m": 606091.498735,
+      "y_m": 1191929.00985,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 321,
+      "polyline_id": 147,
+      "vertex_idx": 0,
+      "x_m": 606090.8427,
+      "y_m": 1191912.060367,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 322,
+      "polyline_id": 147,
+      "vertex_idx": 1,
+      "x_m": 606092.900109,
+      "y_m": 1191922.267256,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 323,
+      "polyline_id": 148,
+      "vertex_idx": 0,
+      "x_m": 606087.662032,
+      "y_m": 1191907.572302,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 324,
+      "polyline_id": 148,
+      "vertex_idx": 1,
+      "x_m": 606090.8427,
+      "y_m": 1191912.060367,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 325,
+      "polyline_id": 149,
+      "vertex_idx": 0,
+      "x_m": 606084.315375,
+      "y_m": 1191903.330817,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 326,
+      "polyline_id": 149,
+      "vertex_idx": 1,
+      "x_m": 606087.662032,
+      "y_m": 1191907.572302,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 327,
+      "polyline_id": 150,
+      "vertex_idx": 0,
+      "x_m": 606084.315375,
+      "y_m": 1191903.330817,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 328,
+      "polyline_id": 150,
+      "vertex_idx": 1,
+      "x_m": 606083.436758,
+      "y_m": 1191902.041614,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 329,
+      "polyline_id": 151,
+      "vertex_idx": 0,
+      "x_m": 606079.135397,
+      "y_m": 1191894.006147,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 330,
+      "polyline_id": 151,
+      "vertex_idx": 1,
+      "x_m": 606083.436758,
+      "y_m": 1191902.041614,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 331,
+      "polyline_id": 152,
+      "vertex_idx": 0,
+      "x_m": 606076.137375,
+      "y_m": 1191896.87476,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 332,
+      "polyline_id": 152,
+      "vertex_idx": 1,
+      "x_m": 606075.510932,
+      "y_m": 1191904.83565,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 333,
+      "polyline_id": 153,
+      "vertex_idx": 0,
+      "x_m": 606075.394505,
+      "y_m": 1191891.241858,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 334,
+      "polyline_id": 153,
+      "vertex_idx": 1,
+      "x_m": 606076.137375,
+      "y_m": 1191896.87476,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 335,
+      "polyline_id": 154,
+      "vertex_idx": 0,
+      "x_m": 606070.922667,
+      "y_m": 1191883.397267,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 336,
+      "polyline_id": 154,
+      "vertex_idx": 1,
+      "x_m": 606075.394505,
+      "y_m": 1191891.241858,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 337,
+      "polyline_id": 155,
+      "vertex_idx": 0,
+      "x_m": 606061.217086,
+      "y_m": 1191875.834446,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 338,
+      "polyline_id": 155,
+      "vertex_idx": 1,
+      "x_m": 606070.922667,
+      "y_m": 1191883.397267,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 339,
+      "polyline_id": 156,
+      "vertex_idx": 0,
+      "x_m": 606059.984553,
+      "y_m": 1191875.116247,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 340,
+      "polyline_id": 156,
+      "vertex_idx": 1,
+      "x_m": 606061.217086,
+      "y_m": 1191875.834446,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 341,
+      "polyline_id": 157,
+      "vertex_idx": 0,
+      "x_m": 606058.265308,
+      "y_m": 1191870.911395,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 342,
+      "polyline_id": 157,
+      "vertex_idx": 1,
+      "x_m": 606062.747847,
+      "y_m": 1191873.254374,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 343,
+      "polyline_id": 157,
+      "vertex_idx": 2,
+      "x_m": 606065.814934,
+      "y_m": 1191875.223234,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 344,
+      "polyline_id": 158,
+      "vertex_idx": 0,
+      "x_m": 606067.682844,
+      "y_m": 1191873.562474,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 345,
+      "polyline_id": 158,
+      "vertex_idx": 1,
+      "x_m": 606065.814934,
+      "y_m": 1191875.223234,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 346,
+      "polyline_id": 159,
+      "vertex_idx": 0,
+      "x_m": 606060.277416,
+      "y_m": 1191861.134839,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 347,
+      "polyline_id": 159,
+      "vertex_idx": 1,
+      "x_m": 606067.682844,
+      "y_m": 1191873.562474,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 348,
+      "polyline_id": 160,
+      "vertex_idx": 0,
+      "x_m": 606045.099352,
+      "y_m": 1191848.57994,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 349,
+      "polyline_id": 160,
+      "vertex_idx": 1,
+      "x_m": 606060.277416,
+      "y_m": 1191861.134839,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 350,
+      "polyline_id": 161,
+      "vertex_idx": 0,
+      "x_m": 606045.099352,
+      "y_m": 1191848.57994,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 351,
+      "polyline_id": 161,
+      "vertex_idx": 1,
+      "x_m": 606031.521119,
+      "y_m": 1191838.560643,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 352,
+      "polyline_id": 161,
+      "vertex_idx": 2,
+      "x_m": 606027.89426,
+      "y_m": 1191833.172825,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 353,
+      "polyline_id": 162,
+      "vertex_idx": 0,
+      "x_m": 606025.575553,
+      "y_m": 1191830.177163,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 354,
+      "polyline_id": 162,
+      "vertex_idx": 1,
+      "x_m": 606027.89426,
+      "y_m": 1191833.172825,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 355,
+      "polyline_id": 163,
+      "vertex_idx": 0,
+      "x_m": 606025.575553,
+      "y_m": 1191830.177163,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 356,
+      "polyline_id": 163,
+      "vertex_idx": 1,
+      "x_m": 606024.127229,
+      "y_m": 1191825.759285,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 357,
+      "polyline_id": 163,
+      "vertex_idx": 2,
+      "x_m": 606023.766533,
+      "y_m": 1191823.021447,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 358,
+      "polyline_id": 164,
+      "vertex_idx": 0,
+      "x_m": 606023.588427,
+      "y_m": 1191817.157783,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 359,
+      "polyline_id": 164,
+      "vertex_idx": 1,
+      "x_m": 606023.766533,
+      "y_m": 1191823.021447,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 360,
+      "polyline_id": 165,
+      "vertex_idx": 0,
+      "x_m": 606023.588427,
+      "y_m": 1191817.157783,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 361,
+      "polyline_id": 165,
+      "vertex_idx": 1,
+      "x_m": 606022.573546,
+      "y_m": 1191813.695045,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 362,
+      "polyline_id": 166,
+      "vertex_idx": 0,
+      "x_m": 606018.289823,
+      "y_m": 1191801.764755,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 363,
+      "polyline_id": 166,
+      "vertex_idx": 1,
+      "x_m": 606022.573546,
+      "y_m": 1191813.695045,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 364,
+      "polyline_id": 167,
+      "vertex_idx": 0,
+      "x_m": 606015.375082,
+      "y_m": 1191802.109633,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 365,
+      "polyline_id": 167,
+      "vertex_idx": 1,
+      "x_m": 606011.581129,
+      "y_m": 1191806.40153,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 366,
+      "polyline_id": 168,
+      "vertex_idx": 0,
+      "x_m": 606021.551981,
+      "y_m": 1191791.029919,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 367,
+      "polyline_id": 168,
+      "vertex_idx": 1,
+      "x_m": 606015.375082,
+      "y_m": 1191802.109633,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 368,
+      "polyline_id": 169,
+      "vertex_idx": 0,
+      "x_m": 606022.172359,
+      "y_m": 1191776.697072,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 369,
+      "polyline_id": 169,
+      "vertex_idx": 1,
+      "x_m": 606021.551981,
+      "y_m": 1191791.029919,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 370,
+      "polyline_id": 170,
+      "vertex_idx": 0,
+      "x_m": 606016.815034,
+      "y_m": 1191765.23474,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 371,
+      "polyline_id": 170,
+      "vertex_idx": 1,
+      "x_m": 606022.172359,
+      "y_m": 1191776.697072,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 372,
+      "polyline_id": 171,
+      "vertex_idx": 0,
+      "x_m": 606016.815034,
+      "y_m": 1191765.23474,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 373,
+      "polyline_id": 171,
+      "vertex_idx": 1,
+      "x_m": 606014.984583,
+      "y_m": 1191762.76013,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 374,
+      "polyline_id": 172,
+      "vertex_idx": 0,
+      "x_m": 606021.748555,
+      "y_m": 1191769.912018,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 375,
+      "polyline_id": 172,
+      "vertex_idx": 1,
+      "x_m": 606026.411492,
+      "y_m": 1191759.146041,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 376,
+      "polyline_id": 173,
+      "vertex_idx": 0,
+      "x_m": 606028.452107,
+      "y_m": 1191753.994743,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 377,
+      "polyline_id": 173,
+      "vertex_idx": 1,
+      "x_m": 606026.411492,
+      "y_m": 1191759.146041,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 378,
+      "polyline_id": 174,
+      "vertex_idx": 0,
+      "x_m": 606027.152143,
+      "y_m": 1191746.487728,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 379,
+      "polyline_id": 174,
+      "vertex_idx": 1,
+      "x_m": 606028.452107,
+      "y_m": 1191753.994743,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 380,
+      "polyline_id": 175,
+      "vertex_idx": 0,
+      "x_m": 606027.152143,
+      "y_m": 1191746.487728,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 381,
+      "polyline_id": 175,
+      "vertex_idx": 1,
+      "x_m": 606025.713947,
+      "y_m": 1191742.732013,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 382,
+      "polyline_id": 175,
+      "vertex_idx": 2,
+      "x_m": 606024.668607,
+      "y_m": 1191736.947708,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 383,
+      "polyline_id": 176,
+      "vertex_idx": 0,
+      "x_m": 606023.938507,
+      "y_m": 1191733.808424,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 384,
+      "polyline_id": 176,
+      "vertex_idx": 1,
+      "x_m": 606024.668607,
+      "y_m": 1191736.947708,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 385,
+      "polyline_id": 177,
+      "vertex_idx": 0,
+      "x_m": 606025.047613,
+      "y_m": 1191722.838206,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 386,
+      "polyline_id": 177,
+      "vertex_idx": 1,
+      "x_m": 606023.938507,
+      "y_m": 1191733.808424,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 387,
+      "polyline_id": 178,
+      "vertex_idx": 0,
+      "x_m": 606025.093527,
+      "y_m": 1191719.55285,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 388,
+      "polyline_id": 178,
+      "vertex_idx": 1,
+      "x_m": 606025.047613,
+      "y_m": 1191722.838206,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 389,
+      "polyline_id": 179,
+      "vertex_idx": 0,
+      "x_m": 606022.913101,
+      "y_m": 1191712.402798,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 390,
+      "polyline_id": 179,
+      "vertex_idx": 1,
+      "x_m": 606025.093527,
+      "y_m": 1191719.55285,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 391,
+      "polyline_id": 180,
+      "vertex_idx": 0,
+      "x_m": 606022.913101,
+      "y_m": 1191712.402798,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 392,
+      "polyline_id": 180,
+      "vertex_idx": 1,
+      "x_m": 606022.594776,
+      "y_m": 1191711.849415,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 393,
+      "polyline_id": 181,
+      "vertex_idx": 0,
+      "x_m": 606016.662848,
+      "y_m": 1191707.514547,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 394,
+      "polyline_id": 181,
+      "vertex_idx": 1,
+      "x_m": 606022.594776,
+      "y_m": 1191711.849415,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 395,
+      "polyline_id": 182,
+      "vertex_idx": 0,
+      "x_m": 606015.431264,
+      "y_m": 1191706.877235,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 396,
+      "polyline_id": 182,
+      "vertex_idx": 1,
+      "x_m": 606016.662848,
+      "y_m": 1191707.514547,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 397,
+      "polyline_id": 183,
+      "vertex_idx": 0,
+      "x_m": 606010.950871,
+      "y_m": 1191709.312865,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 398,
+      "polyline_id": 183,
+      "vertex_idx": 1,
+      "x_m": 606015.431264,
+      "y_m": 1191706.877235,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 399,
+      "polyline_id": 184,
+      "vertex_idx": 0,
+      "x_m": 606010.950871,
+      "y_m": 1191709.312865,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    },
+    {
+      "stt": 400,
+      "polyline_id": 184,
+      "vertex_idx": 1,
+      "x_m": 606010.602493,
+      "y_m": 1191711.398606,
+      "layer": "SEAPE_C-ROAD-CNTR-N",
+      "closed": 0
+    }
+  ]
+}
