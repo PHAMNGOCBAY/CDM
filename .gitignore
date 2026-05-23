@@ -49,6 +49,11 @@ cdm-deploy/
 
 # Batch scripts (local paths)
 start_app.bat
+start_fem2d.bat
+
+# FEM2D module — local only (P4 Frame 2D solver, không deploy Cloud)
+scripts/fem2d/
+scripts/app_fem2d.py
 
 # Backups and logs
 *.zip

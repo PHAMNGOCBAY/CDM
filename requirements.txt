@@ -1,4 +1,10 @@
 python-docx==1.2.0
+latex2mathml>=3.81      # LaTeX → MathML (W3C) — pure Python, Cloud compat
+math2docx>=3.1          # LaTeX → MathML → OMML embed vào python-docx (Word native equation)
+docxtpl>=0.20           # Word template Jinja2 (pure Python, Cloud compat)
+pylatex>=1.4            # LaTeX object model in Python (pure Python, Cloud compat)
+# KHÔNG cài typst (binary Rust 21MB, có thể không chạy được Cloud)
+# KHÔNG cài quarto-cli (Windows MAX_PATH fail; Cloud cần binary riêng)
 streamlit>=1.35.0
 numpy>=1.24             # Cloud có sẵn 1.26.4 (Python 3.14); local dùng 2.x cũng OK
 pandas>=2.2.2          # pandas <2.2.2 pin numpy<2
@@ -9,8 +15,10 @@ openpyxl>=3.1
 xlrd>=2.0
 jinja2>=3.1
 sympy>=1.14
-reportlab>=4.0         # PDF fallback (Windows không có GTK3)
+reportlab>=4.0         # PDF tier-3 fallback (programmatic, pure Python)
+xhtml2pdf>=0.2.16      # PDF tier-2 fallback: HTML+CSS → PDF (pure Python, thay weasyprint trên Cloud)
 # weasyprint không cài được trên Python 3.14 (brotli/zopfli chưa có cp314 wheel)
+# → fallback chain: weasyprint → xhtml2pdf → reportlab
 fpdf2>=2.8
 ezdxf>=1.4
 unidecode>=1.4

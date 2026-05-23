@@ -17,7 +17,9 @@ Public API:
 from __future__ import annotations
 import base64
 import io
+import re
 import sqlite3
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,8 +27,37 @@ from typing import Any
 import pandas as pd
 import numpy as np
 from jinja2 import Template
-from weasyprint import HTML, CSS
-from weasyprint.text.fonts import FontConfiguration
+
+# ─── PDF engine auto-detect (tier-1 → tier-2 → tier-3) ──────────────────────
+# tier-1: weasyprint  — best HTML/CSS, cần GTK3 (Windows) hoặc apt libs (Cloud)
+# tier-2: xhtml2pdf   — pure Python, CSS cơ bản, chạy được Cloud Python 3.14
+# tier-3: reportlab   — programmatic PDF, fallback cuối nếu HTML→PDF fail
+_HAS_WEASYPRINT = False
+_HAS_XHTML2PDF = False
+_HAS_REPORTLAB = False
+try:
+    from weasyprint import HTML as _WP_HTML  # noqa: F401
+    from weasyprint.text.fonts import FontConfiguration as _WP_FontConfig  # noqa: F401
+    _HAS_WEASYPRINT = True
+except Exception:
+    pass
+try:
+    from xhtml2pdf import pisa as _pisa  # noqa: F401
+    _HAS_XHTML2PDF = True
+except Exception:
+    pass
+try:
+    from reportlab.lib.pagesizes import A4 as _RL_A4  # noqa: F401
+    from reportlab.lib.styles import getSampleStyleSheet as _rl_styles  # noqa: F401
+    from reportlab.platypus import (  # noqa: F401
+        SimpleDocTemplate as _RL_Doc,
+        Paragraph as _RL_Para,
+        Spacer as _RL_Spacer,
+        PageBreak as _RL_PageBreak,
+    )
+    _HAS_REPORTLAB = True
+except Exception:
+    pass
 
 _ROOT = Path(__file__).resolve().parent.parent
 
@@ -209,12 +240,23 @@ def mpl_to_b64(fig, dpi: int = 130) -> str:
 
 
 def plotly_to_b64(fig, width: int = 1000, height: int = 500) -> str:
-    """Plotly Figure → data URI (cần kaleido)."""
+    """Plotly Figure → data URI (cần kaleido).
+
+    LƯU Ý: kaleido KHÔNG có wheel cp314 → không chạy được trên Streamlit Cloud.
+    Quy tắc dự án (CLAUDE.md): mọi chart embed PDF phải vẽ lại bằng Matplotlib
+    qua `mpl_to_b64()`. Hàm này chỉ dùng cho local Windows có kaleido cài sẵn.
+    """
     try:
         png_bytes = fig.to_image(format="png", width=width, height=height, scale=2)
         return "data:image/png;base64," + base64.b64encode(png_bytes).decode()
     except Exception as e:
-        return ""  # fallback: skip image silently
+        warnings.warn(
+            f"plotly_to_b64 fail ({type(e).__name__}: {e}). "
+            "Trên Cloud Python 3.14 không có kaleido → vẽ lại bằng Matplotlib "
+            "qua mpl_to_b64(). Chart sẽ bị BỎ QUA trong PDF.",
+            RuntimeWarning, stacklevel=2,
+        )
+        return ""
 
 
 def df_to_html(df: pd.DataFrame, caption: str | None = None,
@@ -280,14 +322,135 @@ _REPORT_TEMPLATE = Template("""
 """)
 
 
+def _render_pdf_weasyprint(html_str: str) -> bytes:
+    """Tier-1: WeasyPrint — chất lượng HTML/CSS cao nhất."""
+    font_config = _WP_FontConfig()
+    return _WP_HTML(string=html_str).write_pdf(font_config=font_config)
+
+
+def _render_pdf_xhtml2pdf(html_str: str) -> bytes:
+    """Tier-2: xhtml2pdf (pisa) — pure Python, hỗ trợ CSS cơ bản.
+
+    Lưu ý so với weasyprint:
+    - Không hỗ trợ CSS Paged Media @page với @top-right/@bottom-center →
+      đã được _strip_unsupported_css() loại bỏ trước khi render.
+    - Hỗ trợ font Unicode qua @font-face nếu file TTF tồn tại.
+    """
+    buf = io.BytesIO()
+    html_clean = _strip_unsupported_css(html_str)
+    result = _pisa.CreatePDF(src=html_clean, dest=buf, encoding="utf-8")
+    if result.err:
+        raise RuntimeError(f"xhtml2pdf render failed ({result.err} errors)")
+    return buf.getvalue()
+
+
+def _render_pdf_reportlab(title: str, content_html: str,
+                          subtitle: str, meta: dict, cover: bool) -> bytes:
+    """Tier-3: ReportLab — fallback cuối, dựng PDF từ HTML thô.
+
+    Strip tag HTML, giữ text + heading + bảng tối giản. Không render được
+    figure base64 (ảnh) và CSS — chỉ đảm bảo nội dung text không mất.
+    """
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                     PageBreak)
+    from reportlab.lib.pagesizes import A4
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=1.2*cm, rightMargin=1.2*cm,
+                            topMargin=1.5*cm, bottomMargin=1.8*cm)
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=14,
+                        textColor="#1F4E79", spaceAfter=8)
+    h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=12,
+                        textColor="#2E5C8A", spaceAfter=6)
+    body = ParagraphStyle("Body", parent=styles["BodyText"], fontSize=10,
+                          leading=14)
+
+    flow = []
+    if cover:
+        flow.append(Paragraph(title, ParagraphStyle(
+            "Cover", parent=styles["Title"], fontSize=22,
+            textColor="#1F4E79", alignment=1)))
+        if subtitle:
+            flow.append(Spacer(1, 0.5*cm))
+            flow.append(Paragraph(subtitle, ParagraphStyle(
+                "Sub", parent=styles["BodyText"], fontSize=12,
+                textColor="#555", alignment=1)))
+        flow.append(Spacer(1, 1*cm))
+        for k, v in (meta or {}).items():
+            flow.append(Paragraph(f"<b>{k}:</b> {v}", body))
+        flow.append(PageBreak())
+
+    # Strip HTML thô: thay <h1>/<h2>/<p>/<table> bằng paragraph riêng
+    blocks = re.split(r"(<h[12][^>]*>.*?</h[12]>|<table.*?</table>|<p>.*?</p>)",
+                      content_html, flags=re.DOTALL | re.IGNORECASE)
+    for blk in blocks:
+        if not blk or not blk.strip():
+            continue
+        if re.match(r"<h1", blk, re.I):
+            txt = re.sub(r"<[^>]+>", "", blk).strip()
+            flow.append(Paragraph(txt, h1))
+        elif re.match(r"<h2", blk, re.I):
+            txt = re.sub(r"<[^>]+>", "", blk).strip()
+            flow.append(Paragraph(txt, h2))
+        elif re.match(r"<table", blk, re.I):
+            # Render bảng đơn giản từ thẻ <tr>/<td>
+            rows = re.findall(r"<tr.*?>(.*?)</tr>", blk, re.DOTALL | re.I)
+            for r in rows:
+                cells = re.findall(r"<t[hd].*?>(.*?)</t[hd]>", r, re.DOTALL | re.I)
+                line = " | ".join(re.sub(r"<[^>]+>", "", c).strip() for c in cells)
+                if line:
+                    flow.append(Paragraph(line, body))
+            flow.append(Spacer(1, 0.3*cm))
+        else:
+            txt = re.sub(r"<[^>]+>", "", blk).strip()
+            if txt:
+                flow.append(Paragraph(txt, body))
+                flow.append(Spacer(1, 0.2*cm))
+
+    doc.build(flow)
+    return buf.getvalue()
+
+
+def _strip_unsupported_css(html_str: str) -> str:
+    """Loại bỏ CSS Paged Media advanced không được xhtml2pdf hỗ trợ.
+
+    - @top-right / @bottom-center / @bottom-left blocks (CSS3 paged media)
+    - string-set declarations
+    Giữ lại @page { size + margin } cơ bản — xhtml2pdf hiểu được.
+    """
+    # Bỏ các block @top-*/@bottom-* lồng trong @page
+    out = re.sub(r"@(top|bottom|left|right)-[a-z]+\s*\{[^}]*\}", "",
+                 html_str, flags=re.IGNORECASE)
+    # Bỏ string-set
+    out = re.sub(r"string-set\s*:[^;]+;", "", out, flags=re.IGNORECASE)
+    # Bỏ content: counter()/string() (xhtml2pdf không hỗ trợ counter advanced)
+    out = re.sub(r"content\s*:\s*[^;}]*counter\([^)]*\)[^;}]*;", "", out,
+                 flags=re.IGNORECASE)
+    out = re.sub(r"content\s*:\s*string\([^)]*\)\s*;", "", out,
+                 flags=re.IGNORECASE)
+    return out
+
+
 def build_report_pdf(
     title: str,
     content_html: str,
     subtitle: str = "",
     meta: dict | None = None,
     cover: bool = True,
+    engine: str = "auto",
 ) -> bytes:
-    """Compose HTML từ template + render qua WeasyPrint."""
+    """Compose HTML từ template + render PDF với 3-tier fallback.
+
+    engine:
+      - "auto"        — thử weasyprint → xhtml2pdf → reportlab
+      - "weasyprint"  — bắt buộc tier-1 (raise nếu không có)
+      - "xhtml2pdf"   — bắt buộc tier-2
+      - "reportlab"   — bắt buộc tier-3 (text-only)
+    """
     html_str = _REPORT_TEMPLATE.render(
         title=title,
         subtitle=subtitle,
@@ -297,9 +460,41 @@ def build_report_pdf(
         content=content_html,
         cover=cover,
     )
-    font_config = FontConfiguration()
-    pdf_bytes = HTML(string=html_str).write_pdf(font_config=font_config)
-    return pdf_bytes
+
+    chain: list[str]
+    if engine == "auto":
+        chain = ["weasyprint", "xhtml2pdf", "reportlab"]
+    else:
+        chain = [engine]
+
+    errors: list[str] = []
+    for eng in chain:
+        try:
+            if eng == "weasyprint":
+                if not _HAS_WEASYPRINT:
+                    raise ImportError("weasyprint không khả dụng")
+                return _render_pdf_weasyprint(html_str)
+            if eng == "xhtml2pdf":
+                if not _HAS_XHTML2PDF:
+                    raise ImportError("xhtml2pdf không khả dụng")
+                return _render_pdf_xhtml2pdf(html_str)
+            if eng == "reportlab":
+                if not _HAS_REPORTLAB:
+                    raise ImportError("reportlab không khả dụng")
+                return _render_pdf_reportlab(title, content_html,
+                                             subtitle, meta or {}, cover)
+            raise ValueError(f"Engine không hỗ trợ: {eng}")
+        except Exception as e:
+            errors.append(f"{eng}: {e}")
+            warnings.warn(f"PDF engine '{eng}' fail → fallback. ({e})",
+                          RuntimeWarning, stacklevel=2)
+            continue
+
+    raise RuntimeError(
+        "Không engine PDF nào khả dụng. Lỗi:\n  - "
+        + "\n  - ".join(errors)
+        + "\nCài 1 trong: weasyprint / xhtml2pdf / reportlab."
+    )
 
 
 # ────────────────────────────────────────────────────────────────────────────

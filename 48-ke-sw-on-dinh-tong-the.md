@@ -1,6 +1,6 @@
 # 48 — Ổn định tổng thể tường cừ SW + CDM (Mục E)
 
-Tài liệu tổng hợp công thức 3 kiểm tra ổn định tổng thể tường cừ SW kết hợp xử lý nền CDM, áp dụng cho Kè Công Viên TTHC.
+Tài liệu tổng hợp công thức 2 kiểm tra ổn định tổng thể tường cừ SW kết hợp xử lý nền CDM, áp dụng cho Kè Công Viên TTHC.
 
 **Tiêu chuẩn áp dụng:**
 - TCVN 4253:2012 — Móng cọc và kết cấu chắn đất
@@ -122,27 +122,11 @@ $$F_{s,\text{lật}} \geq 2{,}00$$
 
 ---
 
-## 3. Kiểm tra xoay nhổ chân cừ — Toe Kick-out (Free Earth Support)
-
-Cừ tựa trên 2 điểm: đỉnh (neo / dầm mũ) và đáy ngàm vào lớp tốt. Kiểm tra khả năng chống xoay tại chân.
-
-### 3.1 Hệ số Fs_toe
-
-$$F_{s,\text{toe}} = \dfrac{M_p^{\text{below tip}}}{M_a^{\text{above tip}}}$$
-
-Với $M_a^{\text{above tip}}$ tính từ mặt đất Front xuống chân cừ, $M_p^{\text{below tip}}$ tính 1m dưới chân cừ vào lớp đất tốt.
-
-### 3.2 Tiêu chuẩn
-
-$$F_{s,\text{toe}} \geq 1{,}50$$
-
----
-
-## 4. Khối CDM composite — TCVN 9403:2012 Phụ lục C
+## 3. Khối CDM composite — TCVN 9403:2012 Phụ lục C
 
 Khi cung trượt cắt qua vùng đất được gia cố CDM, dùng tham số composite cho khối hỗn hợp đất-cột:
 
-### 4.1 Cường độ + thông số composite
+### 3.1 Cường độ + thông số composite
 
 $$c_{\text{comp}} = a \cdot c_{\text{col}} + (1 - a) \cdot c_{\text{soil}} \qquad \text{(C.2)}$$
 
@@ -152,7 +136,7 @@ $$\gamma_{\text{comp}} = a \cdot \gamma_{\text{col}} + (1 - a) \cdot \gamma_{\te
 
 $$\gamma_{\text{sub,comp}} = a \cdot \gamma_{\text{sub,col}} + (1 - a) \cdot \gamma_{\text{sub,soil}}$$
 
-### 4.2 Bảng ký hiệu
+### 3.2 Bảng ký hiệu
 
 | Ký hiệu | Đơn vị | Mô tả |
 |---|---|---|
@@ -163,7 +147,7 @@ $$\gamma_{\text{sub,comp}} = a \cdot \gamma_{\text{sub,col}} + (1 - a) \cdot \ga
 | $\gamma_{\text{col}}$ | kN/m³ | Dung trọng cột CDM (mặc định 19 kN/m³) |
 | $c_{\text{soil}}, \varphi_{\text{soil}}$ | | Cường độ + ma sát của đất nền giữa các cột |
 
-### 4.3 Hình học khối CDM
+### 3.3 Hình học khối CDM
 
 Mặc định dự án:
 
@@ -175,9 +159,9 @@ $$\text{Chiều dày CDM} = H_1 + 1{,}0 \text{ m}, \qquad \text{Chiều rộng m
 
 ---
 
-## 5. Quy ước thông số đầu vào
+## 4. Quy ước thông số đầu vào
 
-### 5.1 Lấy thông số đất
+### 4.1 Lấy thông số đất
 
 | Tham số | Nguồn | Ưu tiên |
 |---|---|---|
@@ -189,7 +173,7 @@ $$\text{Chiều dày CDM} = H_1 + 1{,}0 \text{ m}, \qquad \text{Chiều rộng m
 | Phía Back | **Chỉ từ lớp bùn (1, XMD) trở xuống** (đã đào hết Fill / lớp trên) | — |
 | **Phía Back KHÔNG có CDM** | **Cọc CDM chỉ gia cố Front (kè). Back là đất tự nhiên chưa xử lý.** c=Su Back, φ tự nhiên, KHÔNG dùng `c_col` của CDMBlock. | — |
 
-### 5.2 Fill (đất đắp Front)
+### 4.2 Fill (đất đắp Front)
 
 Bộ chuẩn dự án (xem CLAUDE.md mục 6):
 
@@ -202,20 +186,10 @@ Bộ chuẩn dự án (xem CLAUDE.md mục 6):
 
 ---
 
-## 6. Tóm tắt 3 kiểm tra + Tiêu chuẩn
+## 5. Tóm tắt 2 kiểm tra + Tiêu chuẩn
 
 | Kiểm tra | Công thức Fs | $F_{s,\min}$ | Tiêu chuẩn |
 |---|---|---|---|
 | (1) Trượt cung tròn | $F_s = \dfrac{\sum \dfrac{c b + (W - u b) \tan \varphi}{m_\alpha}}{\sum W \sin \alpha}$ | **1.30** | TCVN 4253, USACE EM 1110-2-2504 |
 | (2) Lật quanh chân cừ | $F_{s,\text{lật}} = \dfrac{M_p + M_{\text{neo}}}{M_a + M_w + M_q}$ | **2.00** | FHWA GEC-13 |
-| (3) Xoay nhổ chân (toe kick-out) | $F_{s,\text{toe}} = \dfrac{M_p^{\text{below tip}}}{M_a^{\text{above tip}}}$ | **1.50** | USACE EM 1110-2-2504 |
 
----
-
-## 7. File tham chiếu
-
-- Engine: [scripts/sw_global_stability.py](scripts/sw_global_stability.py)
-- Áp dụng UI: [scripts/app_cdm.py](scripts/app_cdm.py) — Mục E "Ổn định tổng thể"
-- Earth pressure: [scripts/earth_pressure.py](scripts/earth_pressure.py)
-- CDM TCVN 9403: [scripts/cdm_column_calc.py](scripts/cdm_column_calc.py) + [39-tcvn9403-tru-dat-xi-mang.md](39-tcvn9403-tru-dat-xi-mang.md)
-- Wall geometry: [scripts/wall_internal_force.py](scripts/wall_internal_force.py)

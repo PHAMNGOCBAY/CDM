@@ -94,6 +94,42 @@ KHÔNG được chỉ lưu JSON mà bỏ qua SQLite.
 
 **Dùng skill `/load-catalog`** khi cần tra cứu cọc SW — tự động đọc JSON, không đọc PDF.
 
+### Quy tắc Single Source of Truth — SQLite là nguồn duy nhất cho computed data (BẮT BUỘC)
+
+**Nguyên nhân gốc rễ của lỗi "sửa nhiều lần":** app đọc cả JSON lẫn SQLite cho cùng một field → JSON stale → hiển thị sai → phải sync lại → lại stale.
+
+**Phân loại dứt khoát — 3 loại JSON:**
+
+| Loại | Ví dụ | App đọc từ | Ghi vào |
+|------|-------|------------|---------|
+| **Computed/measured** — data có SQLite table | `ke_layers_202605_TTHC.json`, `ke_sw_nt_results.json`, `bxn_boreholes_*.json`, `ke_lab_tests_*.json` | **SQLite (bắt buộc)** | Import script ghi SQLite + JSON cùng lúc |
+| **Config** — quyết định của kỹ sư, không compute | `ke_sw_202605_TTHC.json` (recommended_pile, on_sw_alignment, note) | **JSON** | Sửa tay hoặc UI |
+| **Reference/catalog** — thông số tiêu chuẩn, catalog sản phẩm | `sw_pile_catalog.json`, `tccs41_params.json`, `earth_pressure.json`... | **JSON** | Cập nhật khi tiêu chuẩn thay đổi |
+
+**Quy tắc viết code app (BẮT BUỘC):**
+
+```python
+# ĐÚNG — SQLite primary, JSON fallback chỉ khi SQLite chưa có table
+_db = _nt_detail.get(f"KE-{_bh['name']}") or {}
+value = _db.get("field_from_sqlite") or _bh.get("field_from_json") or 0
+
+# SAI — đọc trực tiếp từ JSON cho computed field
+value = _bh.get("L_req_m") or 0   # JSON có thể stale!
+```
+
+**Quy tắc viết import script (BẮT BUỘC):**
+
+```python
+# Sau khi tính toán → ghi SQLite TRƯỚC, JSON chỉ là snapshot debug
+con.execute("INSERT OR REPLACE INTO ke_sw_nt_detail VALUES (...)")  # authoritative
+json_out.write(json.dumps(result))                                  # debug snapshot only
+```
+
+**Kiểm tra khi thêm feature mới:** trước khi đọc bất kỳ field nào từ JSON, hỏi:
+- "Field này có SQLite table không?" → có → BẮT BUỘC đọc SQLite
+- "Field này là config do kỹ sư quyết định?" → có → đọc JSON OK
+- "Field này là tham số tiêu chuẩn?" → có → đọc JSON OK
+
 ### 6. Thứ tự Ưu tiên Lấy Thông Số Địa Kỹ Thuật (BẮT BUỘC — áp dụng cho mọi tính toán)
 
 **Mọi thông số đầu vào (su, Cu, φ, c, Z_m, chiều dày lớp...) phải ưu tiên lấy từ dữ liệu đo đạc thực tế trong SQLite. Chỉ dùng giá trị giả định khi không có dữ liệu, và BẮT BUỘC cảnh báo kỹ sư.**
@@ -226,6 +262,28 @@ Cách thực hiện:
 2. **Cập nhật CLAUDE.md** với pattern/quy tắc mới (không cần ghi chi tiết code, chỉ ghi nguyên tắc)
 3. **Lưu memory** nếu là feedback hoặc quyết định kiến trúc quan trọng
 
+### 9b. Auto-Compute — KHÔNG có nút "Build / Solve / Run" trong app
+
+**Mọi tính toán BẮT BUỘC chạy tự động khi input thay đổi.** KHÔNG dùng nút như "🔨 Build", "⚡ Solve", "🧪 Run verification" — Streamlit rerun toàn bộ script trên mỗi input change, vậy chỉ cần đặt logic compute ở script-level.
+
+**Why:** Tránh quy trình "nhập → bấm → chờ → bấm tiếp" rườm rà. Người dùng nhìn kết quả live → trải nghiệm liền mạch + phù hợp luồng báo cáo Ctrl+P.
+
+**How to apply:**
+
+1. Bọc compute trong hàm helper, gọi ở script-level:
+   ```python
+   try:
+       model = _build_model_auto(...)
+       st.session_state["model"] = model
+   except Exception as e:
+       st.error(f"Lỗi build: {e}")
+   ```
+2. Dùng `@st.cache_data(show_spinner=False)` cho compute nặng (solver, FEM) — key bằng hash của input để skip re-compute khi không đổi.
+3. **Giữ nút CHỈ khi:** thao tác mutate DB (Save model), xóa dữ liệu, hoặc external side-effect (xuất file, gọi API). KHÔNG đặt nút cho compute đơn thuần.
+4. Validation lỗi → `st.warning()` / `st.error()` + `session_state["X"] = None` để mục sau biết model invalid.
+
+File tham chiếu: `scripts/app_fem2d.py` (auto-build + cached solve + cached verify), `scripts/app_cdm.py` mục B Kè SW (cọc tối ưu auto-fill).
+
 ### 10. Quy tắc Đặt tên Hố khoan (BẮT BUỘC toàn dự án)
 
 Dự án có 3 khu vực (KE, BXN, NHC) — tên hố khoan phải luôn mang tiền tố khu vực.
@@ -247,7 +305,7 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 
 | Module | Tiền tố | Ví dụ file/bảng |
 | --- | --- | --- |
-| Cọc ván SW — Kè KE | `ke_sw_` | `ke_sw_202605_TTHC.json`, `ke_sw_design`, `ke_sw_nt2_layers`, `16-ke-sw-*.md` |
+| Cọc ván SW — Kè KE | `ke_sw_` | `ke_sw_202605_TTHC.json`, `ke_sw_design`, `ke_sw_nt2_layers`, `ke_sw_winkler_results`, `16-ke-sw-*.md` |
 | Hố khoan chung — Kè KE | `ke_` | `ke_borehole_mapping.json`, `ke_borehole_mapping.py`, `40-ke-borehole-*.md` |
 | Trụ đất xi măng CDM | `cdm_` | `cdm_column_calc.py`, `tcvn9403_params.json`, `cdm_design`, `cdm_lab_results` |
 | Tính lún nền | `settlement_` | `settlement_calc.py`, `settlement_scenarios`, `settlement_layers`, `settlement_time_series` |
@@ -262,6 +320,76 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 - Tài liệu MD ở root: `NN-ke-sw-*.md`, `NN-ke-*.md`, `NN-cdm-*.md`...
 
 **KHÔNG** đặt tên chung chung như `sw_design` hay `pile_data` — thiếu tiền tố khu vực gây nhầm lẫn khi dự án mở rộng thêm khu vực BXN/NHC.
+
+### 11b. KQTN BXN — Quy tắc Parse XLS "Full gui" (cập nhật 2026-05-22)
+
+**Nguồn:** `BXN-3KQTN_BXN-TTHC KQTN Full gui-INPUT SQLTIE.xls` (sheet `M`, 17 hố CV-HK1..17, 360 mẫu)
+**Script:** [scripts/bxn_lab_import.py](scripts/bxn_lab_import.py) — parse + ghi JSON + cập nhật SQLite (idempotent)
+**Output:** `data/bxn_lab_tests_202605_TTHC.json` + SQLite `lab_tests`
+
+**Trụ địa chất:** PDF `BXN-2-TRỤ_BXN-TTHC. Tru DC-inpu SQLITE.pdf` (68 pages, 17 HK × 4) → JSON `data/bxn_boreholes_202605_TTHC.json` (đã trích trước, không cần re-parse). Đồng bộ vào SQLite (`boreholes`, `layers`, `spt_values`) qua `scripts/project_db.py::import_bxn_boreholes()`. Vane shear: `bxn_vane_shear_202605_TTHC.json` (5 vị trí, 50 điểm) → `vst_locations` + `vane_shear_tests`.
+
+### 11c. KQTN KE — Parser riêng vì XLS layout khác BXN (cập nhật 2026-05-22)
+
+**Nguồn:** `KE-3 KQTN_260519 CV-TTHC HCM. KQTN Full INPUT SQLTIE.xls` (sheet `M`, 12 hố HK1..HK12, 206 mẫu)
+**Script:** [scripts/ke_lab_import.py](scripts/ke_lab_import.py)
+**Output:** `data/ke_lab_tests_202605_TTHC.json` + SQLite `lab_tests`
+
+#### Column mapping KE-3 (KHÁC BXN-3, không dùng chung parser)
+
+| Col | KE-3 | BXN-3 | Ghi chú |
+| --- | --- | --- | --- |
+| 18, 19, 20 | γ, γ_dry, **γ_sub g/cm³** | γ, γ_dry, γ_sub **kN/m³** | KE: × 9.81 cho γ_sub. BXN: KHÔNG nhân (đã ở kN/m³) |
+| 21 | Gs | Gs | giống |
+| 22 | **e0** | Sr% | KE đảo thứ tự |
+| 23 | n% | n% | |
+| 24 | **Sr%** | e0 | |
+| 25, 26, 27, 28 | wL, wP, Ip, IS | sand emin/emax/ad/aw | KE: Atterberg ngay sau Sr |
+| 29-32 | sand emax/emin/ad/aw | Atterberg | đảo |
+| 38 | **c shear (kgf/cm²)** | φ shear deg | KE: c trước |
+| 39 | **φ shear deg** | φ shear min | |
+| 40 | **φ shear min** | c shear | KE: deg+min split |
+| 41 | a1-2 cm²/kgf | a1-2 cm²/kgf | giống |
+| 42, 43 | **c UU, φ UU (DDMM)** | PC, Cc | DDMM integer trong 1 cell |
+| 44, 45 | **c CU, φ CU (DDMM)** | Cs, cv | |
+| 46, 47 | **c'_CU, φ'_CU (DDMM)** | k, mv | effective stress |
+| 48-53 | **PC, Cc, Cs, cv, kv, mv** | c CU, φ CU... | oedometer dồn cuối |
+| 53 | mv | φ UU "d°m'" | BXN: chuỗi, KE: số mv |
+| 54, 55 | symbol, description | giống | |
+
+#### Quy tắc parse φ riêng
+
+| Cột | Kiểu lưu | Cách đọc |
+| --- | --- | --- |
+| φ shear (col 39 + 40) | 2 cell: deg + min | `d + m/60` (giống BXN cắt phẳng) |
+| φ UU (col 43), φ CU (col 45), φ'_CU (col 47) | 1 cell **DDMM integer** | `v // 100 + (v % 100)/60` |
+
+Ví dụ: 339 → 3°39' = 3.65° ; 1612 → 16°12' = 16.2° ; 2458 → 24°58' = 24.97°.
+
+**File legacy `data/lab_tests_202605_TTHC.json` đã xóa** — thay bằng `ke_lab_tests_202605_TTHC.json` theo §11.
+
+**Trụ ĐC + cắt cánh + CDM KE:** PDF `KE-2`, `KE-4`, `KE-5` đã được trích xuất sang JSON (2026-05-18). Không re-parse trừ khi PDF đổi nội dung. SQLite có đầy đủ: `boreholes`(12) + `layers`(91) + `spt_values`(248) + `vst_locations`(12)/`vane_shear_tests`(110) + `cdm_tests`(12).
+
+#### Column mapping (header bắt đầu row 4, data row 11)
+
+| Col | Trường | Đơn vị XLS | Chuyển đổi |
+| --- | --- | --- | --- |
+| 1 | Borehole | `CV-HKx` | DB name = `BXN-` + raw |
+| 3, 4 | depth_from, depth_to | m | giữ nguyên |
+| 18, 19 | γ, γ_dry | **g/cm³** | × 9.81 → kN/m³ |
+| 20 | **γ_sub (đẩy nổi)** | **đã ở kN/m³** | KHÔNG nhân 9.81 (XLS đã lưu γ_sat − γ_w) |
+| 38, 39 | φ direct shear | deg + min (2 ô) | d + m/60 |
+| 40 | c direct shear | kgf/cm² | × 100 → kPa |
+| 41 | a1-2 | cm²/kgf (raw) | giữ raw, ghi là `a12_kPa_inv_e2` |
+| 42 | PC | kgf/cm² | × 100 → kPa |
+| 45 | cv | × 10⁻³ cm²/s | × 1e-3 |
+| 46 | k | × 10⁻⁷ cm/s | × 1e-7 |
+| 52 | c UU | kgf/cm² | × 100 → kPa (`Cu_UU_kPa`) |
+| 53 | φ UU | chuỗi `"d°m'"` | regex `(\d+)°(\d+)'` → d + m/60 |
+
+**E_kPa**: tính lại bằng công thức Eoed = (1+e0) / (a12 × 0.01) — khác giá trị E_kPa cũ trong JSON (formula cũ không rõ).
+
+**SQLite update**: DELETE `lab_tests` cho `borehole_id` thuộc `BXN-CV-%`, INSERT lại. Giữ nguyên `BXN-HK2`, `BXN-HK3` (50+50 mẫu, khảo sát cũ khác nguồn).
 
 ### 12. DXF Import — Quy tắc Parsing theo Zone
 
@@ -280,25 +408,206 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 
 **KE SPT (cập nhật 2026-05-20):** dùng file `KE-1. TRỤ_260512 CVTT-TTHC. Tru DC.dxf` (file mới, không phải `BOKE-1...` cũ). Import qua `scripts/import_ke_spt.py`, lưu vào `spt_values`. Convention N: user yêu cầu `N = N1 + N2` (sum cột 2+3, KHÁC chuẩn ASTM N=N2+N3). JSON lưu cả 2 (`N` user + `N_astm` chuẩn). Có 248 readings cho 12 HK.
 
+### 13b. Module FEM2D Frame Solver — LOCAL ONLY (P4, cập nhật 2026-05-21)
+
+**File engine:** `scripts/fem2d/frame2d/` (package ~10 file, ~2500 dòng)
+**App:** `scripts/app_fem2d.py` (Streamlit port 8504, KHÔNG deploy Cloud)
+**Khởi động:** `start_fem2d.bat` (CMD độc lập)
+**Plan chi tiết:** [50-fem2d-frame-p4-plan.md](50-fem2d-frame-p4-plan.md)
+
+**Khả năng (P4 — Frame 2D nâng cao):**
+
+- 3 DOF/node (u_X, u_Y, θ_z), ma trận K 6×6
+- Beam Euler-Bernoulli + Truss element 2D (4 DOF, axial-only)
+- Static condensation cho moment release (pin/hinge tại đầu phần tử)
+- Winkler springs (k_h, k_v, k_r) — nhân với tributary length của node
+- Prestress neo (truss element) — equivalent nodal forces
+- P-Delta iterative (geometric stiffness K_g) — refinement loop
+- Staged construction (active elements + extra restraints per phase)
+- SQLite storage 5 bảng prefix `fem2d_frame_*` trong `TTHC.sqlite`
+- FrameBuilder high-level API cho tường cừ + neo + Winkler + tải Active
+
+**API public:**
+
+```python
+from fem2d.frame2d import (
+    Node, BeamElement, TrussElement, NodalLoad, ElemDistLoad,  # types
+    FrameBuilder,                                                # high-level
+    solve, solve_phase,                                          # solver
+    plot_diagrams, dataframe_node_disp, dataframe_elem_forces,   # post
+    save_model, save_result, load_model_by_name, create_tables,  # DB
+    run_verify_suite,                                            # verify
+)
+```
+
+**Verify suite (5 analytical cases — pass với sai số máy):**
+
+| # | Test case | Formula | Sai số |
+| --- | --- | --- | --- |
+| 1 | Cantilever | δ = PL³/(3EI) | 0.00e+00 |
+| 2 | Simply supported uniform | M_max = wL²/8 | 0.00% |
+| 3 | Portal frame | ΣR_X = -H_load | 0.00% |
+| 4 | Beam + truss anchor | ΣR_Y = P_applied | 0.00% |
+| 5 | Euler buckling (10 elem) | P_cr = π²EI/(4L²) | 0.001% |
+
+**Quy ước Front/Back áp dụng (CLAUDE.md §20):**
+
+- Front = trái = global_x dương; tải Active push cọc về phía +X
+- Anchor end PHẢI đặt phía Back (X âm) để đảm bảo neo BỊ KÉO (N > 0)
+- Nếu đặt sai phía (X dương), neo bị NÉN → thiết kế sai vật lý
+
+**4 lớp bảo vệ chống lên Cloud (BẮT BUỘC kiểm tra trước commit):**
+
+1. `update_app.bat` whitelist — chỉ copy 4 file (`app_cdm.py`, `wall_internal_force.py`, `sw_global_stability.py`, `TTHC.sqlite`). `fem2d/` KHÔNG có
+2. `cdm-deploy/.gitignore` chặn: `scripts/fem2d/`, `scripts/app_fem2d.py`, `start_fem2d.bat`
+3. SQLite chung TTHC.sqlite — Cloud chỉ đọc, không ảnh hưởng app khác
+4. Port 8504 riêng (app_cdm.py port 8503) — chạy độc lập
+
+### 13c. FEM2D Roadmap — Các Bước Chưa Thực Hiện (cập nhật 2026-05-21)
+
+**Phase P4 (Frame 2D) đã DONE.** Roadmap các phase còn lại:
+
+#### Mức ưu tiên ngay (test + tích hợp P4 vào workflow thực tế)
+
+| Step | Mục đích | File / Action | Thời gian | Trạng thái |
+| --- | --- | --- | --- | --- |
+| V1 | Test verify suite trên Python 3.12 local | `python -m fem2d.frame2d.verify` | 5' | ⏸ Chờ user |
+| V2 | Test `start_fem2d.bat` mở port 8504 | Double-click bat, mở http://localhost:8504 | 5' | ⏸ Chờ user |
+| V3 | Verify Test 6 với Plaxis 2D — tường cừ KE-HK10 + 2 neo + đào | Build Plaxis model song song, so M_max/V_max/N_anchor; tolerance < 10% (linear vs MC) | 2h | ⏸ |
+| V4 | Tích hợp FEM2D vào app_cdm.py như tab phụ "Frame 2D nâng cao" | Thêm page id `"fem2d"` trong sidebar (lazy import + try/except để Cloud không crash) | 2h | ⏸ |
+| V5 | Lookup `sw_pile_catalog.json` trong FrameBuilder | Thêm hàm `add_sheet_pile_sw_by_name("SW-840", fc_MPa=70, ...)` tự lookup EA/EI từ JSON | 1h | ⏸ |
+| V6 | Thêm `add_lateral_load_from_earth_pressure()` builder | Gọi `wall_internal_force.build_lateral_load()` tự động + áp lên beams | 2h | ⏸ |
+| V7 | So sánh FEM2D Winkler với `winkler_np.solve_numpy_dist` (regression test) | Cùng case → kết quả M/u khác < 1% | 1h | ⏸ |
+
+#### Phase P1 — Plane Strain Linear Elastic (NỀN tảng cho P2/P3/P5)
+
+| Mục | Chi tiết |
+| --- | --- |
+| **Mục tiêu** | Solver plane strain 2D đàn hồi, mesh tam giác/tứ giác, verify Boussinesq |
+| **Dependencies** | `scikit-fem>=8.0`, `meshio>=5.3`, `pygmsh>=7.1`, `gmsh>=4.13` (binary wheel pip) |
+| **Files mới** | `scripts/fem2d/solid2d/__init__.py`, `mesh.py`, `materials.py`, `elasticity.py`, `solver_static.py`, `bc.py`, `postprocess.py`, `verify.py` |
+| **API public** | `Mesh, MaterialLE, solve_plane_strain(mesh, materials, bcs, loads)` |
+| **Verify** | (1) Boussinesq tải tập trung trên bán không gian: σ_z(z) = 3P/(2π z²); (2) Tải đều trên rãnh: settlement = q·B·(1-ν²)/E·I_p; (3) Block đào sâu vs Plaxis |
+| **Thời gian** | 8-12h coding |
+| **Trạng thái** | ⏸ Chưa bắt đầu — cần user `pip install scikit-fem meshio pygmsh gmsh` |
+
+#### Phase P2 — Mohr-Coulomb Plasticity (sau P1)
+
+| Mục | Chi tiết |
+| --- | --- |
+| **Mục tiêu** | Thêm plasticity Mohr-Coulomb cho solid 2D với Newton-Raphson + consistent tangent |
+| **Dependencies** | Đã có từ P1 |
+| **Files mới** | `scripts/fem2d/solid2d/constitutive.py` (MC return mapping), `solver_nonlinear.py` (Newton-Raphson), `verify_bearing.py` |
+| **Lý thuyết** | Return mapping algorithm theo Souza Neto, Peric, Owen (2008). 2 cases: apex (c·cot(φ)) và regular (line on Mohr-Coulomb yield surface) |
+| **Verify** | (1) Bearing capacity Meyerhof: q_u = c·N_c + γ·D·N_q + 0.5·γ·B·N_γ — sai số < 5%; (2) Block đào không chống vs Plaxis MC |
+| **Thời gian** | 12-16h coding (plasticity phức tạp) |
+| **Trạng thái** | ⏸ Chờ P1 done |
+
+#### Phase P3 — Strength Reduction Factor (mái dốc, sau P2)
+
+| Mục | Chi tiết |
+| --- | --- |
+| **Mục tiêu** | Tự động tính FoS mái dốc bằng φ/c reduction (giống Plaxis Safety phase) |
+| **Dependencies** | P1 + P2 |
+| **Files mới** | `scripts/fem2d/solid2d/srf.py`, `slip_surface.py` |
+| **Lý thuyết** | Loop k = 1, 1.05, 1.1, ...: c_red = c/k, tan(φ_red) = tan(φ)/k. Khi solver không converge → đó là FoS. Slip surface từ deviatoric strain max |
+| **Verify** | So với Bishop slip surface trong `sw_global_stability.py`: sai số FoS < 10% |
+| **Thời gian** | 4-6h |
+| **Trạng thái** | ⏸ Chờ P2 done |
+
+#### Phase P5 — Cố kết Biot 2D Coupled u-p (sau P1)
+
+| Mục | Chi tiết |
+| --- | --- |
+| **Mục tiêu** | Cố kết 2D với coupled displacement-pore pressure (u, p) — giống Plaxis Consolidation phase |
+| **Dependencies** | P1 (mesh + elasticity) |
+| **Files mới** | `scripts/fem2d/solid2d/biot.py`, `time_stepping.py`, `bc_drainage.py` |
+| **Lý thuyết** | Phương trình Biot 1941: K_uu·u + K_up·p = F; K_pu·u_dot + (S + Δt·K_pp)·p = F_q. Time stepping Crank-Nicolson |
+| **Verify** | (1) Terzaghi 1D analytical: U(t) = 1 - 8/π² · Σ exp(-M²·T_v) — sai số < 5%; (2) Block 2D consolidation vs Plaxis |
+| **Thời gian** | 10-14h coding |
+| **Trạng thái** | ⏸ Chờ P1 done (độc lập với P2/P3) |
+
+#### Phase P6 — Tích hợp PLAXIS API (optional, sau tất cả)
+
+| Mục | Chi tiết |
+| --- | --- |
+| **Mục tiêu** | Export FEM2D model sang .geo/.json cho Plaxis 2D import, ngược lại import kết quả Plaxis về so sánh |
+| **Files mới** | `scripts/fem2d/io_plaxis.py`, `scripts/fem2d/io_dxf.py` |
+| **Verify** | Round-trip FEM2D ↔ Plaxis ↔ FEM2D không mất thông tin |
+| **Thời gian** | 6-8h |
+| **Trạng thái** | ⏸ Optional — user chưa yêu cầu |
+
+#### Phase P7 — Plate Bending Element (optional, cho bài toán nền 3D đơn giản)
+
+| Mục | Chi tiết |
+| --- | --- |
+| **Mục tiêu** | Mindlin/Kirchhoff plate bending — cho phân tích móng bè, sàn cứng |
+| **Trạng thái** | ⏸ Out of scope hiện tại |
+
+---
+
+#### Lệnh cài thư viện cho P1 (khi sẵn sàng triển khai)
+
+```powershell
+& "C:\Users\bayng\AppData\Local\Programs\Python\Python312\python.exe" -m pip install `
+    "scikit-fem>=8.0" `
+    "meshio>=5.3" `
+    "pygmsh>=7.1" `
+    "gmsh>=4.13"
+```
+
+**Lưu ý:** Tất cả 4 package này **CHỈ cài local**, KHÔNG thêm vào `cdm-deploy/requirements.txt`. CLAUDE.md mục 14 đã ghi rõ scikit-fem/pygmsh/gmsh là local-only.
+
+#### Workflow dependency
+
+```
+V1, V2: Test ngay              → có thể làm độc lập, < 10 phút
+V3:     Verify Plaxis P4       → cần build Plaxis model thủ công, 2h
+V4-V7:  Tích hợp P4 vào app    → 6h tổng
+
+P1:     Plane strain LE        → cài scikit-fem + pygmsh trước
+  ├── P2: Mohr-Coulomb         → cần P1
+  │     └── P3: SRF mái dốc    → cần P2
+  └── P5: Biot 2D              → cần P1, độc lập P2/P3
+
+P6:     Plaxis I/O             → optional, làm khi cần
+P7:     Plate bending          → optional, out-of-scope
+```
+
+#### Decision tree — nên làm gì tiếp?
+
+- **Nếu cần dùng FEM2D ngay cho dự án thực**: làm V1 → V3 → V4 → V5/V6 (P4 đủ cho tường cừ + neo)
+- **Nếu muốn vượt khả năng Plaxis (custom plasticity/SRF)**: làm P1 → P2 → P3
+- **Nếu muốn phân tích cố kết coupled**: làm P1 → P5
+- **Nếu muốn integrate với Plaxis hiện tại**: làm P6
+
 ### 14. Stack Thư viện — Quy tắc Áp dụng cho Mỗi Loại Việc
 
 | Thư viện | Phiên bản | Dùng cho | Đánh giá | Phạm vi áp dụng |
 |---|---|---|---|---|
-| **WeasyPrint** | ≥ 68.0 | **PDF từ HTML/CSS** | ★★★ PDF quality | `scripts/pdf_report.py` — primary engine cho PDF báo cáo (HTML/CSS/Jinja2 pipeline) |
-| **Plotly** | ≥ 6.0 | **Biểu đồ tương tác** | ★★★ professional charts | Biểu đồ trên web (drag/zoom/hover). Static PNG → embed PDF qua `kaleido` |
-| **Matplotlib** | ≥ 3.8 | **Biểu đồ đơn giản / fallback** | ★★ simple & fast | Sơ đồ CDM, soil column, mặt cắt. Fallback khi không có Plotly |
+| **WeasyPrint** | ≥ 68.0 | **PDF từ HTML/CSS** (tier-1) | ★★★ PDF quality | `scripts/pdf_report.py` — primary engine, HTML/CSS/Jinja2 pipeline. KHÔNG có trên Cloud Python 3.14 (brotli/zopfli wheel) |
+| **xhtml2pdf** | ≥ 0.2.16 | **PDF từ HTML/CSS** (tier-2) | ★★ pure Python, CSS cơ bản | Fallback tier-2 — chạy được trên Cloud. Hỗ trợ table/color/font/page-break, KHÔNG hỗ trợ flexbox/grid/`@top-right` (đã strip auto trong `_strip_unsupported_css`) |
+| **Plotly** | ≥ 6.0 | **Biểu đồ tương tác** | ★★★ professional charts | Biểu đồ trên web (drag/zoom/hover). Static PNG → embed PDF qua `kaleido` (chỉ local) |
+| **Matplotlib** | ≥ 3.8 | **Biểu đồ cho PDF + fallback** | ★★ simple & fast | Sơ đồ CDM, soil column, mặt cắt. **BẮT BUỘC dùng MPL cho mọi chart embed PDF trên Cloud** (kaleido không khả dụng) |
 | **Pandas** | ≥ 2.0 | **Xử lý dữ liệu + Bảng** | ★★★ easy data | `read_csv/read_excel`, `DataFrame.to_html()` cho table render |
 | **SymPy** | ≥ 1.14 | **Công thức symbolic** | ★★★ math symbolic | Derive công thức parametric ($\sigma = f(\epsilon)$), latex output |
 | **LaTeX (MathJax/KaTeX)** | — (built-in) | **Render công thức** | ★★★ standard | `$$...$$` trong `st.markdown` (web) + WeasyPrint MathML (PDF); chuẩn hoá tất cả công thức |
-| **ReportLab** | ≥ 4.0 | **PDF full control (fallback)** | ★★★ full control | `scripts/pdf_export.py` — fallback khi WeasyPrint thiếu native libs (Windows local) |
-| **Kaleido** | ≥ 1.0 | Plotly fig → PNG | — | `fig.to_image(format="png")` để embed vào PDF |
+| **ReportLab** | ≥ 4.0 | **PDF programmatic** (tier-3) | ★★★ full control | `scripts/pdf_export.py` + tier-3 fallback trong `pdf_report.py` — text-only khi cả weasyprint+xhtml2pdf đều fail |
+| **Kaleido** | ≥ 1.0 | Plotly fig → PNG | — | CHỈ LOCAL — không có wheel cp314. Trên Cloud: vẽ lại bằng Matplotlib |
 | **Jinja2** | ≥ 3.1 | HTML template | — | `_REPORT_TEMPLATE` trong `pdf_report.py` |
 | **NumPy** | ≥ 1.26 | Tính toán array | — | Mọi tính toán số |
 | **openpyxl + xlrd** | — | Đọc Excel | — | `.xlsx` (openpyxl), `.xls` cũ (xlrd) |
 
 **Quy tắc bắt buộc**:
 
-1. **PDF báo cáo** → ưu tiên **WeasyPrint** (HTML/CSS render chuẩn web, multi-page, font Vietnamese OK). Fallback **ReportLab** chỉ khi WeasyPrint thiếu native libs (Windows local).
+1. **PDF báo cáo** — pipeline 3-tier auto-fallback trong `scripts/pdf_report.py::build_report_pdf(engine="auto")`:
+   - **Tier-1 WeasyPrint** (local Windows có GTK3) — HTML/CSS chất lượng cao nhất
+   - **Tier-2 xhtml2pdf** (Cloud Python 3.14) — pure Python, CSS cơ bản, tự strip `@top-right`/`string-set` không hỗ trợ
+   - **Tier-3 ReportLab** — programmatic, text-only fallback nếu cả 2 tier trên fail
+   - Gọi `build_report_pdf(...)` không cần truyền `engine` — auto chọn tier khả dụng đầu tiên
+   - **Layout cao cấp A4 (cập nhật 2026-05-22)**: cover page (eyebrow + brand-bar navy+gold + serif title + meta key-value + footer strip) · TOC tự sinh (dot-leaders) · running header bottom-bordered (doc title trái / section title phải) · running footer (meta trái / "Trang X / Y" phải) · h1 chapter (page-break-before: always) · h2 với gold left-border · h3 với `▸` accent · tables zebra + `thead` lặp khi tách trang + tabular numerals · status pills `.badge.{pass,fail,warn,info}` · metric cards `metric_row(metric_card(...))` · callouts `.callout.{info,warning,success,danger}` · pull quote · signature block 3 cột (người lập / kiểm tra / phê duyệt) · auto-numbered figure/table caption qua CSS counter (Hình `<section>.<n>`, Bảng `<section>.<n>`)
+   - Helpers mới: `figure(b64, caption)`, `badge(text, kind)`, `callout(body, kind, title)`, `pull_quote(text)`, `metric_row(*cards)`, `section_marker(title)`
+   - `build_report_pdf()` thêm args: `eyebrow`, `toc`, `toc_items`, `signatures`, `doc_title_running`, `doc_meta_running`
 
 2. **Biểu đồ tương tác trên web** → **Plotly** (drag/zoom/rotate/hover). KHÔNG dùng Matplotlib cho web charts trừ fallback.
 
@@ -621,6 +930,32 @@ Hàm tính lún chính xác theo TCVN 9403 Phụ lục C là `calc_settlement_S1
 **Trang app:** `"ke_sw"` trong `app_cdm.py`, sidebar label "Cọc ván SW (Kè)"  
 **Dữ liệu:** `data/sw_pile_catalog.json` (22 loại cọc) + `data/ke_sw_202605_TTHC.json` (12 HK TTHC)
 
+#### Quy tắc nguồn dữ liệu Mục B (cập nhật 2026-05-22)
+
+**Hai nguồn, hai vai trò — KHÔNG trộn lẫn:**
+
+| Nguồn | Loại dữ liệu | Lý do |
+|-------|-------------|-------|
+| `ke_sw_nt_detail` (SQLite) | **Computed** — Z_m, D_bottom_soft_m, L_req_nt1_m, nt1_result, nt2_result, Rs/Rp/RR/W_kN, ratio_nt2 | Tính bởi `ke_sw_nt_calc.py`; luôn tươi sau mỗi recalc |
+| `ke_sw_202605_TTHC.json` | **Config** — recommended_pile, recommended_L_m, note, on_sw_alignment | User decisions; không bao giờ stale vì không computed |
+
+**Pattern bắt buộc trong Mục B:**
+```python
+# Load TRƯỚC khi dùng (tải 1 lần)
+_nt_detail = {r["bh_name"]: dict(r) for r in sqlite3.execute("SELECT * FROM ke_sw_nt_detail")}
+
+# Trong loop: SQLite primary, JSON fallback
+_db = _nt_detail.get(f"KE-{_bh['name']}") or {}
+_L_req   = float(_db.get("L_req_nt1_m") or _bh.get("L_req_m") or 0)
+_z       = float(_db.get("Z_m") or _bh.get("Z_m") or 0)
+_h1      = float(_db.get("D_bottom_soft_m") or _bh.get("H_layer1_m") or 0)
+_nt1_val = _db.get("nt1_result") or _bh.get("NT1")
+```
+
+**KHÔNG được:**
+- Đọc Z_m/H_layer1_m/L_req_m/NT1/NT2/Rs/Rp trực tiếp từ JSON dict `_bh` trong Mục B
+- Hardcode fallback `or 22.0`, `or "SPECIAL"` cho bất kỳ computed field nào
+
 #### Bố cục — trải phẳng từ trên xuống dưới (cập nhật 2026-05-19)
 
 Không dùng `st.tabs()` — toàn bộ nội dung trải thẳng đứng để in PDF được.
@@ -663,7 +998,7 @@ Hàm `draw_pile_schematic(...)` copy từ `app_coc_tai_ngang.py`, đặt trên c
   - `Rs = α × Su × P × L_soil`  |  `Rp = 9 × Su × Ap`
   - `W_cọc = (TL_T × 9,81 / L_std) × L_des`
 - **Su ưu tiên:** VST (`vane_shear_tests`) > lab (`lab_tests`) > `SU_BY_SYMBOL` mặc định (cảnh báo)
-- **SQLite schema:** `ke_sw_nt_detail` (cột `D_bottom_soft_m`, `D_source`) + `ke_sw_nt2_layers`
+- **SQLite schema:** `ke_sw_nt_detail` (cột `D_bottom_soft_m`, `D_source`) + `ke_sw_nt2_layers` + `ke_sw_winkler_results` (nội lực Winkler — PRIMARY KEY `(bh_name, pile_type, L_m, load_case)`, cột chính `u_max_mm`, `M_max_kNm`, `Mcr_kNm`, `Q_max_kN`, `mcr_ratio`, `u_ok`, `mcr_ok`, `solver`, `ts`). Hàm `save_winkler_results_to_db()` / `load_winkler_results()` trong `scripts/wall_internal_force.py` — INSERT OR REPLACE, idempotent, tự create table
 
 #### Kết quả TTHC (Kè KE, cập nhật 2026-05-19)
 
@@ -781,6 +1116,50 @@ _field_run(pg, "NUMPAGES")
 
 ---
 
+### 18b. Quy tắc Báo cáo Word — Luôn Cập nhật, Đầy đủ, Tiếng Việt (cập nhật 2026-05-22)
+
+**Nguyên tắc bắt buộc cho mọi báo cáo Word xuất từ app:**
+
+#### Nội dung phải luôn mirror app
+
+| Mục trong app | Phải có trong Word | Nguồn dữ liệu |
+|---|---|---|
+| Bảng thông số thiết kế per HK | Section 1 — bảng tổng hợp | SQLite `ke_sw_nt_detail` (KHÔNG từ JSON) |
+| Cơ sở lý thuyết + công thức | Section 2 — formula images (matplotlib mathtext) | Hard-coded từ tiêu chuẩn |
+| Tổng hợp NT1/NT2/Nội lực | Section 3 — bảng tổng hợp đầy đủ | SQLite `ke_sw_nt_detail` + kết quả Winkler |
+| Biểu đồ nội lực per HK | Section 4 — 5 panel mỗi HK | Runtime compute |
+| Ổn định tổng thể | Section 5 — bảng Fs + biểu đồ bar 3 phương pháp | SQLite ổn định |
+| Kết luận & Kiến nghị | Section 6 | Auto-generate từ kết quả |
+
+**Thiếu bất kỳ mục nào = lỗi cần sửa ngay.**
+
+#### Header / Footer bắt buộc
+
+- Header trái: logo công ty (`session_state["export_logo_bytes"]`) | Header phải: tên công ty
+- Footer trái: nhân sự thực hiện | Footer phải: "Trang X / Y" (PAGE/NUMPAGES field)
+- Hàm `_field_run7(para, "PAGE")` / `_field_run7(para, "NUMPAGES")` dùng OxmlElement
+
+#### Tiếng Việt có dấu — BẮT BUỘC
+
+- **MỌI** chuỗi hiển thị trong Word phải dùng tiếng Việt có dấu đầy đủ
+- **CẤMS:** "Dat"/"Khong dat" → phải là "Đạt"/"Không đạt"
+- **CẤMS:** "Ket qua:", "Ket luan", "Kien nghi", "On dinh" → phải có dấu
+- **CẤMS:** `st.spinner(...)`, `st.success(...)`, `st.error(...)`, `st.download_button(...)` cũng phải tiếng Việt có dấu
+- Tên cột bảng, nhãn trục biểu đồ (ylabel, title) — tất cả phải tiếng Việt có dấu
+- `matplotlib` với font mặc định render OK tiếng Việt khi dùng Unicode literal; không cần thay đổi font
+
+#### Checklist trước khi báo cáo Word "xong"
+
+- [ ] Tất cả heading tiếng Việt có dấu
+- [ ] Tất cả cell bảng: "Đạt"/"Không đạt" (không phải "Dat"/"Khong dat")
+- [ ] Tất cả paragraph body text tiếng Việt
+- [ ] Nhãn trục biểu đồ tiếng Việt
+- [ ] Spinner/success/error/download button text tiếng Việt
+- [ ] Header + footer đã setup (logo | company | page numbering)
+- [ ] Section 1 đọc từ SQLite `ke_sw_nt_detail` (không từ JSON)
+
+---
+
 ### 19. Quy tắc Định dạng Công thức trong File *.md
 
 **File tham chiếu chuẩn:** [`41-cdm-choc-thung-dem-ximang.md`](41-cdm-choc-thung-dem-ximang.md)
@@ -863,6 +1242,172 @@ Dùng bảng Markdown 3 cột: `$Ký hiệu$` | `Đơn vị` | `Mô tả`. Đặ
 - `scripts/earth_pressure.py` — engine áp lực đất Active/Passive
 - `scripts/water_pressure.py` — áp lực nước Hydrostatic/Seepage 2 phía
 - Memory: `memory/feedback_front_back_convention.md`
+
+---
+
+### 21. CSS `@media print` cho Ctrl+P trình duyệt (BẮT BUỘC)
+
+Khi user in PDF qua Ctrl+P trên 8503, các vấn đề thường gặp + cách fix.
+
+| Vấn đề | Nguyên nhân | Fix CSS |
+|---|---|---|
+| Plotly chart trống ở giữa | Wildcard `* { position: static !important }` đè lên `position: absolute` của Plotly internals | **KHÔNG** override position toàn cục. Chỉ override cho `[data-testid="stSidebar/stHeader/stToolbar/stMainBlockContainer/stAppViewBlockContainer"]`, `.main`, `.block-container` |
+| Plotly chart hiện 2-3 lần | Streamlit để `display:none` cho DOM stale; CSS ép `display:block` hiện tất cả | Bỏ ép display:block cho `.js-plotly-plot` / `.main-svg`. Rule ẩn duplicate: `.stPlotlyChart .js-plotly-plot ~ .js-plotly-plot { display: none }` |
+| Công thức KaTeX lặp 2 lần (HTML + MathML) | `.katex-mathml` (screen reader) hiện ra khi `position: revert` | Ép ẩn cứng: `.katex-mathml { display:none; visibility:hidden; clip:rect(0,0,0,0); position:absolute }` |
+| Dấu Việt + subscript trôi loạn | Wildcard `* { height: auto }` đè lên glyph stack KaTeX | Restore với `.katex *, .katex-html *, span.katex * { height: revert; position: revert; vertical-align: revert; line-height: revert }` |
+| Bảng `st.dataframe` đè công thức `st.latex` phía dưới | Glide Data Grid canvas height cố định ~280px | Chuyển sang `st.table` cho bảng nhỏ; CSS fallback: `[data-testid="stDataFrame"] { min-height: fit-content; height: auto }` |
+| Chart matplotlib pyplot tràn trang A4 | Không giới hạn chiều cao | `.stPyplot img, [data-testid="stPyplot"] img { max-height: 22cm; object-fit: contain }` |
+| Hàng 2 cột (label+chart, label+chart) tách trang | label + pyplot là 2 element riêng | `[data-testid="stHorizontalBlock"] { break-inside: avoid }` (KHÔNG áp dụng cho `stColumn` / `stVerticalBlock` — quá rộng, gây gap lớn) |
+| Heading + content kế tiếp tách trang | — | `[data-testid="stMarkdownContainer"] h1-h6, strong { break-after: avoid }` |
+
+**JS handler `beforeprint`:** mở tất cả `<details>` + gọi `Plotly.Plots.resize()` cho mọi `.js-plotly-plot` → force redraw trước khi Chrome capture print preview + `scrollTo(0,0)`.
+
+**File tham chiếu:** `scripts/app_cdm.py` block CSS `@media print` (line ~3335) + JS `beforeprint` (line ~3436). Memory: `feedback_browser_print_css.md`.
+
+**Quy tắc khi áp dụng:**
+
+1. **Bảng nhỏ ≤20 dòng, là reference/lookup** → dùng `st.table(df)` thay `st.dataframe`. Đặc biệt khi sau bảng có `st.latex` hoặc nội dung khác.
+2. **Bảng có `column_config` (format số), `style.map` (color highlight), cần scroll** → giữ `st.dataframe`, dựa vào CSS fallback.
+3. **Công thức tổng quát (chung mọi HK)** → KHÔNG đặt trong vòng lặp HK; tách ra **1 expander chung** trước vòng lặp, đặt suffix `"(chung cho mọi HK)"`. Mỗi HK chỉ render kết quả riêng.
+4. **PDF qua nút app** → user yêu cầu ẩn (Streamlit canvas + Plotly iframe không reliable cho server-side render). Gate bằng `_HAS_PDF = False`. User dùng Ctrl+P browser + Word export.
+
+---
+
+### 22. Trắc dọc địa chất + Bình đồ HK ở Mục B (Cọc ván SW)
+
+Hai khung view nhúng ngay sau bảng `data_editor` của Mục B, trước biểu đồ NT2 ratio.
+
+**Trục X chainage qua PCA SVD:** chiếu `(x_coord_m, y_coord_m)` HK lên trục chính của tập điểm → tuyến đi qua tất cả HK theo đúng thứ tự dọc.
+
+**Inputs (3 cột):** Cao độ đỉnh kè TK · Cao độ mặt nước · Lớp dưới muốn vẽ (selectbox từ symbol ≠ '1').
+
+**Đường vẽ Plotly (chính):**
+- Mặt đất tự nhiên (nâu, marker tròn)
+- Lớp 1 bùn — fill `_LAYER_COLORS['1']` + line đáy
+- Lớp dưới user chọn — fill + line đỉnh/đáy (▲▼)
+- Đáy lớp đất yếu — đường hồng đứt + ◆ — từ `ke_sw_nt_detail.D_bottom_soft_m`
+- **Mũi cọc TK** — cam, ▼, có **đường nối liền** giữa các điểm
+- Đỉnh kè TK + mặt nước (hlines)
+
+**Hover (per layer per HK):** symbol, độ sâu, cao độ, su VST/Lab, N̄-SPT — query 1 lần từ SQLite `vane_shear_tests` + `lab_tests` + `spt_values`.
+
+**Matplotlib double-render:** lưu vào `st.session_state["_ke_b_profile_mpl_fig"]` + expander thu gọn "Bản Matplotlib (dùng cho PDF)". Tương tự cho bình đồ.
+
+**Bình đồ vị trí:** Plotly scatter X=Northing, Y=Easting, **tỷ lệ trục 1:1** (`scaleratio=1`); annotation khoảng cách Euclidean giữa các cặp HK liên tiếp; bảng `st.table` khoảng cách + tổng chiều dài.
+
+**Live link:** đổi multiselect HK / cọc / L thiết kế trong bảng data_editor → trắc dọc + bình đồ tự cập nhật.
+
+**Helper bắt buộc:**
+```python
+def _hex_to_rgba(hex_str: str, alpha: float) -> str:
+    # Plotly 6.x KHÔNG chấp nhận hex 8 ký tự #RRGGBBAA
+    # → phải convert sang rgba(R,G,B,alpha)
+```
+
+**File tham chiếu:** `scripts/app_cdm.py` ~line 8160-8800. Memory: `project_tracdoc_binhdo_mucB.md`.
+
+---
+
+### 23. Ẩn tên kỹ thuật trên UI (BẮT BUỘC)
+
+Mọi text hiển thị trên 8503 (`st.markdown`, `st.caption`, `st.info`, `st.warning`, `st.error`, `help=`, expander label) KHÔNG được chứa:
+
+- Tên thư viện: `SQLite`, `matplotlib`, `plotly`, `numpy`, `pandas`, `reportlab`, `weasyprint`, `streamlit`...
+- Đuôi file: `.py`, `.md`, `.json`, `.sqlite`, `.xlsx`, `.xls`, `.csv`, `.dxf`, `.dwg`
+- Tên bảng SQL: `lab_tests`, `vane_shear_tests`, `ke_sw_nt_detail`, `boreholes`, `layers`, `spt_values`, `ke_sw_winkler_results`, `ke_sw_stability`...
+- Tên hàm/biến code: `_db()`, `_load_layers()`, `_HAS_PDF`...
+- Tiếng Anh thuần không cần thiết: `Auto` → `Tự chọn`, `tip method` → `Phương pháp mũi`
+
+**Thay thế chuẩn (đã đúc kết 2026-05-22):**
+
+| Trước | Sau |
+|---|---|
+| "Kết quả lưu SQLite" | "Kết quả được lưu" |
+| "lưu vào bảng scenario SQLite riêng" | "lưu vào kịch bản riêng" |
+| "thí nghiệm UU trong SQLite" | "thí nghiệm cắt cánh hiện trường (VST) hoặc UU phòng" |
+| "nguồn: SQLite" | "nguồn: thí nghiệm" |
+| "Đáy bùn (NT detail)" | "Đáy lớp đất yếu (tính NT1)" |
+| `Auto` (phương pháp NT2) | "Tự chọn" |
+| `tip method` (cột bảng) | "Phương pháp mũi" |
+| "Không đọc được `ke_sw_winkler_results`" | "Không đọc được kết quả Winkler đã lưu" |
+| "Lỗi đọc `ke_sw_stability`" | "Lỗi đọc kết quả ổn định tổng thể" |
+| "Kiểm tra `scripts/winkler_np.py`" | "Liên hệ kỹ sư phát triển để kiểm tra môi trường" |
+
+**Vẫn được phép:**
+
+- Tên file user **download** (vd `BaoCao_CDM_HK2_20260522.xlsx`) — đó là tên thật của file output
+- Comments trong code (`# ...`) — không hiển thị UI
+- Tên hố khoan có prefix zone (`KE-HK6`, `BXN-HK1`, `NHC-BH-03`) — quy ước dự án
+- Tên cọc theo catalog (`SW-840`, `SW-940`) — danh pháp kỹ thuật
+- Ký hiệu tiêu chuẩn (`TCVN 4253`, `USACE EM 1110-2-2504`, `FHWA GEC-13`)
+
+**Memory tham chiếu:** `memory/feedback_no_tech_names_in_ui.md`.
+
+---
+
+### 24. Thư viện mới cho Word OMML + Typography (cập nhật 2026-05-22)
+
+Cài đặt qua `pip install`:
+
+| Lib | Phiên bản min | Vai trò |
+|---|---|---|
+| `latex2mathml` | ≥ 3.81 | LaTeX → MathML XML (W3C, bảo toàn dấu Việt) |
+| `math2docx` | ≥ 3.1 | LaTeX → MathML → OMML embed vào `python-docx` paragraph |
+| `docxtpl` | ≥ 0.20 | Word template Jinja2 — tách logic Python ↔ thiết kế Word (header/footer/watermark phức tạp) |
+| `pylatex` | ≥ 1.4 | Mô phỏng object TeX trong Python — dành cho PDF academic chuẩn LaTeX |
+| `typst` | ≥ 0.14 | Python binding cho Typst (Rust compiler) — typography next-gen, response <100ms |
+
+**Đã thêm vào** `requirements.txt` + `cdm-deploy/requirements.txt`.
+
+**Cách dùng `math2docx` cho công thức editable trong Word:**
+
+```python
+from docx import Document
+from math2docx import add_math
+
+doc = Document()
+p = doc.add_paragraph("Công thức kiểm tra NT1: ")
+add_math(p, r"L_{\text{thiết kế}} \geq L_{\text{yêu cầu}} = (Z_{\text{đỉnh kè}} - Z) + H_{\text{lớp yếu}} + h_{\text{ngàm}}")
+doc.save("baocao.docx")
+```
+
+Lợi ích so với mathtext PNG cũ:
+- Công thức **editable** trong Word (chỉnh được)
+- Render đẹp ở mọi zoom (vector OMML, không vỡ)
+- File Word nhẹ hơn (không cần PNG mỗi công thức)
+
+**Lưu ý cài Quarto:** `pip install quarto-cli` thất bại trên Windows do MAX_PATH limit (260 ký tự). Phải dùng `winget install Posit.Quarto` hoặc installer từ https://quarto.org. Chưa cần Quarto trong production hiện tại.
+
+---
+
+### 25. Ẩn nút Xuất PDF qua app — user dùng Ctrl+P + Word
+
+User yêu cầu (2026-05-22): bỏ TẤT CẢ nút "Xuất PDF" qua engine server-side. Chỉ giữ:
+- Các nút **Xuất Word** (Word export pipeline vẫn dùng)
+- **Ctrl+P** trình duyệt → in PDF qua print preview (CSS @media print đã optimize — xem mục 21)
+
+**Cách ẩn:**
+
+```python
+# Ép disable PDF engine — gate tất cả nút `if _HAS_PDF:`
+_HAS_PDF = False
+_PDF_ENGINE = "—"
+```
+
+Sau dòng này, các nút sau KHÔNG render (tự động):
+- "Xuất PDF Tổng hợp (tất cả tab)" — sidebar
+- "Xuất PDF tab Thông số CDM"
+- "Xuất PDF tab Dự báo lún"
+- "Xuất PDF tab Cọc ván SW"
+- "Tải PDF bảng so sánh + biểu đồ"
+
+**Section "Báo cáo PDF tuỳ chỉnh"** trong tab Thông số CDM (checkboxes + 2 nút) **KHÔNG gated** → đã xoá hẳn block ~80 dòng (vì có nội dung `_custom_report_pdf` không phụ thuộc `_HAS_PDF`).
+
+**Sidebar PDF section** (`st.sidebar.markdown("### Xuất PDF")` + caption) **KHÔNG gated** → đã xoá toàn bộ block.
+
+**Khôi phục:** chỉ cần đổi `_HAS_PDF = True`. Các nút trong `if _HAS_PDF:` sẽ tự render lại. Block "Báo cáo PDF tuỳ chỉnh" + sidebar PDF phải khôi phục từ git history.
+
+**Memory:** `feedback_hide_pdf_buttons.md`.
 
 ---
 

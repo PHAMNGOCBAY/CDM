@@ -987,13 +987,11 @@ def calc_all_alignment_hks(
 
 # ── SQLite: tạo / cập nhật bảng ──────────────────────────────────────────────
 def create_nt_tables(db_path: Path = DB_PATH) -> None:
-    con = sqlite3.connect(str(db_path))
-    # DROP để đảm bảo schema mới (dữ liệu luôn được tái tạo từ tính toán)
+    """Tạo bảng ke_sw_nt_detail + ke_sw_nt2_layers (idempotent — KHÔNG DROP)."""
+    con = sqlite3.connect(str(db_path), timeout=30)
+    con.execute("PRAGMA journal_mode=WAL")
     con.executescript("""
-        DROP TABLE IF EXISTS ke_sw_nt_detail;
-        DROP TABLE IF EXISTS ke_sw_nt2_layers;
-
-        CREATE TABLE ke_sw_nt_detail (
+        CREATE TABLE IF NOT EXISTS ke_sw_nt_detail (
             id                INTEGER PRIMARY KEY AUTOINCREMENT,
             project           TEXT NOT NULL DEFAULT '202605-TTHC',
             zone              TEXT NOT NULL DEFAULT 'KE',
@@ -1029,7 +1027,7 @@ def create_nt_tables(db_path: Path = DB_PATH) -> None:
             UNIQUE(bh_name, pile_type, L_design_m)
         );
 
-        CREATE TABLE ke_sw_nt2_layers (
+        CREATE TABLE IF NOT EXISTS ke_sw_nt2_layers (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             sw_design_id    INTEGER NOT NULL,
             layer_order     INTEGER,
@@ -1064,7 +1062,7 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
         warnings_txt = "; ".join(n2.get("warnings", [])) or None
 
         cur.execute("""
-            INSERT INTO ke_sw_nt_detail
+            INSERT OR REPLACE INTO ke_sw_nt_detail
             (project, zone, bh_name, pile_type, L_design_m, Z_m, Z_source,
              fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source,
              L_req_nt1_m, margin_nt1_m, nt1_result,
@@ -1127,6 +1125,324 @@ def save_nt_json(results: list[dict], out_path: Path) -> None:
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+# ── SQLite cache helpers — save/load per-HK results ──────────────────────────
+
+def save_nt_detail_single(
+    Z_m: float,
+    Z_source: str,
+    D_source: str,
+    n1: dict,
+    n2: dict,
+    db_path: Path = DB_PATH,
+) -> None:
+    """Lưu kết quả NT1+NT2 của một HK vào ke_sw_nt_detail (INSERT OR REPLACE)."""
+    create_nt_tables(db_path)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    warnings_txt = "; ".join(n2.get("warnings", [])) or None
+    with sqlite3.connect(str(db_path), timeout=30) as con:
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("""
+            INSERT OR REPLACE INTO ke_sw_nt_detail
+            (project, zone, bh_name, pile_type, L_design_m, Z_m, Z_source,
+             fill_m, L_soil_m, tip_depth_m, D_bottom_soft_m, D_source,
+             L_req_nt1_m, margin_nt1_m, nt1_result,
+             Rs_kN, Rs_clay_kN, Rs_sand_kN,
+             tip_symbol, tip_method, tip_su_kNm2, tip_N160,
+             Rp_kN, phi_stat, phi_basis, RR_kN, W_kN,
+             ratio_nt2, nt2_result, su_warnings, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            "202605-TTHC", "KE",
+            n1["bh_name"], n1["pile_name"], n1["L_design_m"],
+            Z_m, Z_source,
+            n2.get("fill_m"), n2.get("L_soil_m"), n2.get("tip_depth_m"),
+            n1.get("D_bottom_soft_m"), D_source,
+            n1["L_req_m"], n1["margin_m"], n1["result"],
+            n2["Rs_kN"], n2.get("Rs_clay_kN"), n2.get("Rs_sand_kN"),
+            n2["tip_symbol"], n2.get("tip_method"),
+            n2.get("tip_su_kNm2"), n2.get("tip_N160"),
+            n2["Rp_kN"], n2["phi_stat"], n2.get("phi_basis"),
+            n2["RR_kN"], n2["W_kN"],
+            n2["ratio"], n2["result"],
+            warnings_txt, now,
+        ))
+        con.commit()
+
+
+def load_nt_detail_from_db(
+    bh_name: str,
+    pile_type: str,
+    L_m: float,
+    db_path: Path = DB_PATH,
+) -> dict | None:
+    """Đọc kết quả NT1+NT2 từ ke_sw_nt_detail.
+    Trả về dict tương thích với _calc_one_bh_nt trong app, hoặc None nếu chưa có.
+    Không ghi DB trong load path — trả None nếu bảng chưa tồn tại.
+    """
+    try:
+        with sqlite3.connect(str(db_path), timeout=10) as con:
+            con.row_factory = sqlite3.Row
+            row = con.execute("""
+                SELECT * FROM ke_sw_nt_detail
+                WHERE bh_name=? AND pile_type=? AND L_design_m=?
+                ORDER BY created_at DESC LIMIT 1
+            """, (bh_name, pile_type, float(L_m))).fetchone()
+    except Exception:
+        return None
+    if row is None:
+        return None
+    r = dict(row)
+    return {
+        "L_req_m":        r.get("L_req_nt1_m"),
+        "NT1":            r.get("nt1_result"),
+        "NT2":            r.get("nt2_result"),
+        "W_pile_kN":      r.get("W_kN"),
+        "NT2_multilayer": {
+            "Rs_kN":      r.get("Rs_kN"),
+            "Rp_kN":      r.get("Rp_kN"),
+            "RR_kN":      r.get("RR_kN"),
+            "ratio":      r.get("ratio_nt2"),
+            "tip_layer":  r.get("tip_symbol"),
+            "tip_method": r.get("tip_method"),
+        },
+        "_from_db": True,
+    }
+
+
+# ── Scenario table: lưu kết quả với Z tùy chỉnh (không ghi đè real data) ─────
+
+def _create_nt_z_scenarios_table(con: sqlite3.Connection) -> None:
+    con.executescript("""
+        CREATE TABLE IF NOT EXISTS ke_sw_nt_z_scenarios (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            bh_name       TEXT NOT NULL,
+            pile_type     TEXT NOT NULL,
+            L_design_m    REAL NOT NULL,
+            z_m_input     REAL NOT NULL,
+            L_req_nt1_m   REAL,
+            margin_nt1_m  REAL,
+            nt1_result    TEXT,
+            fill_m        REAL,
+            L_soil_m      REAL,
+            Rs_kN         REAL,
+            Rs_clay_kN    REAL,
+            Rs_sand_kN    REAL,
+            tip_symbol    TEXT,
+            tip_method    TEXT,
+            tip_su_kNm2   REAL,
+            tip_N160      REAL,
+            Rp_kN         REAL,
+            phi_stat      REAL,
+            phi_basis     TEXT,
+            RR_kN         REAL,
+            W_kN          REAL,
+            ratio_nt2     REAL,
+            nt2_result    TEXT,
+            su_warnings   TEXT,
+            created_at    TEXT,
+            UNIQUE(bh_name, pile_type, L_design_m, z_m_input)
+        );
+    """)
+
+
+def save_nt_z_scenario(
+    z_m_input: float,
+    n1: dict,
+    n2: dict,
+    db_path: Path = DB_PATH,
+) -> None:
+    """Lưu kết quả NT1+NT2 với Z giả định vào ke_sw_nt_z_scenarios.
+    UNIQUE(bh_name, pile_type, L_design_m, z_m_input) — không ghi đè real data.
+    """
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    warnings_txt = "; ".join(n2.get("warnings", [])) or None
+    with sqlite3.connect(str(db_path), timeout=30) as con:
+        con.execute("PRAGMA journal_mode=WAL")
+        _create_nt_z_scenarios_table(con)
+        con.execute("""
+            INSERT OR REPLACE INTO ke_sw_nt_z_scenarios
+            (bh_name, pile_type, L_design_m, z_m_input,
+             L_req_nt1_m, margin_nt1_m, nt1_result,
+             fill_m, L_soil_m,
+             Rs_kN, Rs_clay_kN, Rs_sand_kN,
+             tip_symbol, tip_method, tip_su_kNm2, tip_N160,
+             Rp_kN, phi_stat, phi_basis, RR_kN, W_kN,
+             ratio_nt2, nt2_result, su_warnings, created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            n1["bh_name"], n1["pile_name"], n1["L_design_m"], float(z_m_input),
+            n1["L_req_m"], n1["margin_m"], n1["result"],
+            n2.get("fill_m"), n2.get("L_soil_m"),
+            n2["Rs_kN"], n2.get("Rs_clay_kN"), n2.get("Rs_sand_kN"),
+            n2["tip_symbol"], n2.get("tip_method"),
+            n2.get("tip_su_kNm2"), n2.get("tip_N160"),
+            n2["Rp_kN"], n2["phi_stat"], n2.get("phi_basis"),
+            n2["RR_kN"], n2["W_kN"],
+            n2["ratio"], n2["result"],
+            warnings_txt, now,
+        ))
+        con.commit()
+
+
+def load_nt_z_scenario(
+    bh_name: str,
+    pile_type: str,
+    L_m: float,
+    z_m_input: float,
+    db_path: Path = DB_PATH,
+) -> dict | None:
+    """Đọc kết quả NT với Z tùy chỉnh từ ke_sw_nt_z_scenarios.
+    Trả None nếu chưa tính cho combo (bh, pile, L, z_m_input) này.
+    """
+    try:
+        with sqlite3.connect(str(db_path), timeout=10) as con:
+            con.row_factory = sqlite3.Row
+            row = con.execute("""
+                SELECT * FROM ke_sw_nt_z_scenarios
+                WHERE bh_name=? AND pile_type=? AND L_design_m=? AND z_m_input=?
+                ORDER BY created_at DESC LIMIT 1
+            """, (bh_name, pile_type, float(L_m), float(z_m_input))).fetchone()
+    except Exception:
+        return None
+    if row is None:
+        return None
+    r = dict(row)
+    return {
+        "L_req_m":        r.get("L_req_nt1_m"),
+        "NT1":            r.get("nt1_result"),
+        "NT2":            r.get("nt2_result"),
+        "W_pile_kN":      r.get("W_kN"),
+        "NT2_multilayer": {
+            "Rs_kN":      r.get("Rs_kN"),
+            "Rp_kN":      r.get("Rp_kN"),
+            "RR_kN":      r.get("RR_kN"),
+            "ratio":      r.get("ratio_nt2"),
+            "tip_layer":  r.get("tip_symbol"),
+            "tip_method": r.get("tip_method"),
+        },
+        "_from_db": True,
+        "_z_scenario": True,
+    }
+
+
+def create_nt2_compare_table(db_path: Path = DB_PATH) -> None:
+    """Tạo bảng ke_sw_nt2_compare (idempotent)."""
+    with sqlite3.connect(str(db_path), timeout=30) as con:
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("""
+        CREATE TABLE IF NOT EXISTS ke_sw_nt2_compare (
+            bh_name          TEXT NOT NULL,
+            pile_type        TEXT NOT NULL,
+            L_m              REAL NOT NULL,
+            method           TEXT NOT NULL,
+            Rs_kN            REAL,
+            Rp_kN            REAL,
+            RR_kN            REAL,
+            W_kN             REAL,
+            ratio            REAL,
+            phi_stat         REAL,
+            result           TEXT,
+            L_clay_total_m   REAL,
+            su_avg_clay_kPa  REAL,
+            sigma_avg_clay_kPa REAL,
+            ts               TEXT NOT NULL,
+            PRIMARY KEY (bh_name, pile_type, L_m, method)
+        )
+        """)
+        # Migrate existing tables that lack the 3 common-data columns
+        for _col, _type in (
+            ("L_clay_total_m",      "REAL"),
+            ("su_avg_clay_kPa",     "REAL"),
+            ("sigma_avg_clay_kPa",  "REAL"),
+        ):
+            try:
+                con.execute(f"ALTER TABLE ke_sw_nt2_compare ADD COLUMN {_col} {_type}")
+            except Exception:
+                pass  # column already exists
+        con.commit()
+
+
+def save_nt2_compare_to_db(
+    bh_name: str,
+    pile_type: str,
+    L_m: float,
+    all_result: dict,
+    db_path: Path = DB_PATH,
+) -> None:
+    """Lưu kết quả 5 phương pháp NT2 vào ke_sw_nt2_compare (INSERT OR REPLACE)."""
+    create_nt2_compare_table(db_path)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    common = all_result.get("common", {})
+    W_kN             = common.get("W_kN", 0.0)
+    L_clay_total_m   = common.get("L_clay_total_m")
+    su_avg_clay_kPa  = common.get("su_avg_clay_kPa")
+    sigma_avg_clay   = common.get("sigma_avg_clay_kPa")
+    rows = []
+    for method in ("auto", "alpha", "beta", "lambda", "SPT"):
+        m = all_result.get(method, {})
+        rows.append((
+            bh_name, pile_type, float(L_m), method,
+            m.get("Rs_kN"), m.get("Rp_kN"), m.get("RR_kN"),
+            W_kN, m.get("ratio"), m.get("phi_stat"), m.get("result"),
+            L_clay_total_m, su_avg_clay_kPa, sigma_avg_clay,
+            now,
+        ))
+    with sqlite3.connect(str(db_path), timeout=30) as con:
+        con.execute("PRAGMA journal_mode=WAL")
+        con.executemany("""
+            INSERT OR REPLACE INTO ke_sw_nt2_compare
+            (bh_name, pile_type, L_m, method,
+             Rs_kN, Rp_kN, RR_kN, W_kN, ratio, phi_stat, result,
+             L_clay_total_m, su_avg_clay_kPa, sigma_avg_clay_kPa, ts)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, rows)
+        con.commit()
+
+
+def load_nt2_compare_from_db(
+    bh_name: str,
+    pile_type: str,
+    L_m: float,
+    db_path: Path = DB_PATH,
+) -> dict | None:
+    """Đọc 5 phương pháp NT2 từ ke_sw_nt2_compare.
+    Trả về dict cùng format với calc_nt2_all_methods, hoặc None nếu chưa đủ.
+    Không ghi DB (tránh lock trên Google Drive) — trả None nếu bảng chưa tồn tại.
+    """
+    try:
+        with sqlite3.connect(str(db_path), timeout=10) as con:
+            con.row_factory = sqlite3.Row
+            rows = con.execute("""
+                SELECT * FROM ke_sw_nt2_compare
+                WHERE bh_name=? AND pile_type=? AND L_m=?
+            """, (bh_name, pile_type, float(L_m))).fetchall()
+    except Exception:
+        return None  # bảng chưa tồn tại hoặc DB bận — sẽ tính lại
+    found = {dict(r)["method"]: dict(r) for r in rows}
+    if not all(m in found for m in ("auto", "alpha", "beta", "lambda", "SPT")):
+        return None
+    _auto_row = found["auto"]
+    out: dict = {"common": {
+        "pile_name":           pile_type,
+        "L_design_m":          float(L_m),
+        "W_kN":                _auto_row.get("W_kN", 0.0),
+        "L_clay_total_m":      _auto_row.get("L_clay_total_m", 0.0),
+        "su_avg_clay_kPa":     _auto_row.get("su_avg_clay_kPa", 0.0),
+        "sigma_avg_clay_kPa":  _auto_row.get("sigma_avg_clay_kPa", 0.0),
+    }}
+    for method in ("auto", "alpha", "beta", "lambda", "SPT"):
+        r = found[method]
+        out[method] = {
+            "Rs_kN":    r.get("Rs_kN"),
+            "Rp_kN":    r.get("Rp_kN"),
+            "RR_kN":    r.get("RR_kN"),
+            "ratio":    r.get("ratio"),
+            "phi_stat": r.get("phi_stat"),
+            "result":   r.get("result"),
+        }
+    return out
+
+
 # ── Public helper cho app ─────────────────────────────────────────────────────
 def calc_nt_for_bh(
     bh_name: str,
@@ -1136,23 +1452,31 @@ def calc_nt_for_bh(
     L_design_m: float,
     db_path: Path = DB_PATH,
     sw_json_path: Path = SW_JSON,
+    prefer_input: bool = False,
 ) -> tuple[dict, dict]:
     """
     Tính NT1 + NT2 cho một HK với pile/L_design tùy chọn (dùng trong app).
-    Z_m và D_bottom_soft_m được ghi đè nếu có trong SQLite.
+
+    Mặc định: Z_m và D_bottom_soft_m được ghi đè bằng giá trị từ SQLite
+              (đảm bảo nhất quán với dữ liệu khảo sát thực).
+
+    Khi `prefer_input=True`: TÔN TRỌNG Z_m và D_bottom_soft_m do caller truyền vào,
+                              KHÔNG đọc DB. Dùng cho kịch bản user chỉnh tay trong
+                              UI (vd: bảng Mục B của app Kè SW cho phép edit Z + H1).
     """
     catalog = _load_catalog(sw_json_path)
     if pile_name not in catalog:
         pile_name = "SW-840"
     pile = catalog[pile_name]
 
-    Z_db = _get_bh_Z_m(bh_name, db_path)
-    if Z_db is not None:
-        Z_m = Z_db
+    if not prefer_input:
+        Z_db = _get_bh_Z_m(bh_name, db_path)
+        if Z_db is not None:
+            Z_m = Z_db
 
-    D_db, _ = _get_D_bottom_soft(bh_name, db_path)
-    if D_db > 0:
-        D_bottom_soft_m = D_db
+        D_db, _ = _get_D_bottom_soft(bh_name, db_path)
+        if D_db > 0:
+            D_bottom_soft_m = D_db
 
     nt1 = calc_nt1(bh_name, Z_m, D_bottom_soft_m, pile_name, L_design_m)
     nt2 = calc_nt2_layers(bh_name, Z_m, pile_name, pile, L_design_m, db_path=db_path)

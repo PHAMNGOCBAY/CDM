@@ -254,8 +254,15 @@ def _draw_pressure_panel(
 ):
     """Polyline + arrows + dots for one side's pressure profile."""
     ax.axvline(0, color="k", lw=0.8)
+    # Đường ngang "đỉnh kè TK" — nơi áp dụng tải khai thác (ref_surface)
+    ax.axhline(top, color="#C62828", lw=1.0, ls=":", alpha=0.85)
+    ax.text(0.02, 0.985,
+            f"đỉnh kè TK = {top:.2f} m  (tải q áp tại đây)",
+            transform=ax.transAxes, fontsize=6.5, va="top",
+            color="#C62828", fontweight="bold")
+    # Đường ngang "mặt đất tự nhiên"
     ax.axhline(slf, color="saddlebrown", lw=1.0, ls="--", alpha=0.7)
-    ax.text(0.02, 0.98, f"soil_level = {slf:.2f} m",
+    ax.text(0.02, 0.93, f"mặt đất = {slf:.2f} m",
             transform=ax.transAxes, fontsize=6.5, va="top", color="saddlebrown")
 
     if pressure.max() > 1e-3:

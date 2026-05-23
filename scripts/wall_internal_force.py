@@ -715,6 +715,142 @@ def _plot_distributed(demo, png_path):
     print(f"\nBiểu đồ đã lưu: {png_path}")
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# SQLite persistence — bảng ke_sw_winkler_results
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Schema tối thiểu theo yêu cầu (CLAUDE.md §5 — SQLite bắt buộc cho mọi kết quả
+# kỹ thuật). Lưu sau mỗi lần solve để app/báo cáo PDF không phụ thuộc Word.
+#
+# PRIMARY KEY (bh_name, pile_type, L_m, load_case)
+#   load_case: 'concentrated' (H+M tại đỉnh) | 'distributed' (Front-Back tự động)
+# Idempotent: INSERT OR REPLACE — chạy lại cùng cấu hình ghi đè kết quả cũ.
+
+
+_DEFAULT_DB_PATH = None  # lazy resolve trong _resolve_db_path()
+
+
+def _resolve_db_path(db_path=None) -> str:
+    """Trả về path tới TTHC.sqlite — default = data/TTHC.sqlite cạnh repo."""
+    if db_path:
+        return str(db_path)
+    from pathlib import Path
+    here = Path(__file__).resolve().parent.parent
+    return str(here / "data" / "TTHC.sqlite")
+
+
+def create_winkler_results_table(db_path=None) -> None:
+    """Tạo bảng ke_sw_winkler_results (idempotent)."""
+    import sqlite3
+    path = _resolve_db_path(db_path)
+    with sqlite3.connect(path) as con:
+        con.execute("""
+        CREATE TABLE IF NOT EXISTS ke_sw_winkler_results (
+            bh_name      TEXT NOT NULL,
+            pile_type    TEXT NOT NULL,
+            L_m          REAL NOT NULL,
+            load_case    TEXT NOT NULL DEFAULT 'concentrated',
+            u_top_mm     REAL,
+            u_max_mm     REAL,
+            M_max_kNm    REAL,
+            Mcr_kNm      REAL,
+            Q_max_kN     REAL,
+            EI_kNm2      REAL,
+            D_mm         REAL,
+            H_load_kN    REAL,
+            M_load_kNm   REAL,
+            mcr_ratio    REAL,
+            u_ok         INTEGER,
+            mcr_ok       INTEGER,
+            solver       TEXT,
+            ts           TEXT NOT NULL,
+            PRIMARY KEY (bh_name, pile_type, L_m, load_case)
+        )
+        """)
+        con.commit()
+
+
+def save_winkler_results_to_db(
+    result: dict,
+    bh_name: str,
+    pile_type: str,
+    L_m: float,
+    load_case: str = "concentrated",
+    H_load_kN: float = 0.0,
+    M_load_kNm: float = 0.0,
+    u_limit_mm: float = 50.0,
+    db_path=None,
+) -> bool:
+    """Lưu 1 result Winkler vào bảng ke_sw_winkler_results.
+
+    result: dict trả về từ solve_pynite/solve_pynite_dist/solve_numpy/solve_numpy_dist
+            phải có các key: u_top_mm, u_max_mm, M_max_kNm, Mcr_kNm, Q_max_kN
+    bh_name: tên hố khoan ĐẦY ĐỦ (vd 'KE-HK1') — quy ước CLAUDE.md §10
+    pile_type: 'SW-600', 'SW-740', ...
+    load_case: 'concentrated' | 'distributed'
+
+    Returns: True nếu lưu OK, False nếu skip (result có error hoặc thiếu key).
+    """
+    import sqlite3
+    from datetime import datetime
+
+    if not result or "error" in result:
+        return False
+    required = ("u_top_mm", "u_max_mm", "M_max_kNm", "Mcr_kNm", "Q_max_kN")
+    if not all(k in result for k in required):
+        return False
+
+    create_winkler_results_table(db_path)  # idempotent guard
+
+    u_top = float(result["u_top_mm"])
+    u_max = float(result["u_max_mm"])
+    M_max = float(result["M_max_kNm"])
+    Mcr   = float(result["Mcr_kNm"])
+    Q_max = float(result["Q_max_kN"])
+    EI    = float(result.get("EI_kNm2", 0.0))
+    D_mm  = float(result.get("D_mm", 0.0))
+    solver = str(result.get("solver", ""))
+    ratio = (M_max / Mcr) if Mcr > 0 else 0.0
+    u_ok = 1 if abs(u_max) < u_limit_mm else 0
+    mcr_ok = 1 if (Mcr > 0 and M_max < Mcr) else 0
+
+    path = _resolve_db_path(db_path)
+    with sqlite3.connect(path) as con:
+        con.execute("""
+        INSERT OR REPLACE INTO ke_sw_winkler_results
+          (bh_name, pile_type, L_m, load_case,
+           u_top_mm, u_max_mm, M_max_kNm, Mcr_kNm, Q_max_kN,
+           EI_kNm2, D_mm, H_load_kN, M_load_kNm,
+           mcr_ratio, u_ok, mcr_ok, solver, ts)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            bh_name, pile_type, float(L_m), load_case,
+            u_top, u_max, M_max, Mcr, Q_max,
+            EI, D_mm, float(H_load_kN), float(M_load_kNm),
+            ratio, u_ok, mcr_ok, solver,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        ))
+        con.commit()
+    return True
+
+
+def load_winkler_results(bh_name=None, db_path=None) -> list[dict]:
+    """Đọc kết quả Winkler từ DB. Filter theo bh_name nếu truyền."""
+    import sqlite3
+    path = _resolve_db_path(db_path)
+    create_winkler_results_table(db_path)
+    sql = "SELECT * FROM ke_sw_winkler_results"
+    params: tuple = ()
+    if bh_name:
+        sql += " WHERE bh_name = ?"
+        params = (bh_name,)
+    sql += " ORDER BY bh_name, pile_type, L_m"
+    with sqlite3.connect(path) as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
+
+
 if __name__ == "__main__":
     import sys
     out_png = sys.argv[1] if len(sys.argv) > 1 else "wall_demo_distributed.png"
