@@ -154,3 +154,104 @@ async def api_settlement(bh_name: str = "BXN-CV-HK1", H_fill: float = 3.0):
         return JSONResponse({"ok": True, "result": result})
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)})
+
+
+# ── API: Bản đồ vị trí (VN-2000 → WGS-84) ────────────────────────────────────
+
+@app.get("/api/geo/locations")
+async def api_geo_locations(epsg: int = 9210):
+    """
+    Trả về tọa độ WGS-84 (lat/lon) của hố khoan, ranh kè và CDM centroids.
+    epsg: 9210 (mặc định TTHC Q1/Thủ Thiêm) | 9209 | 3405
+    """
+    try:
+        from pyproj import Transformer
+        tr = Transformer.from_crs(epsg, 4326, always_xy=True)
+    except Exception as e:
+        return JSONResponse({"error": f"pyproj: {e}"}, status_code=500)
+
+    con = _db()
+
+    # Hố khoan
+    bh_rows = con.execute("""
+        SELECT name, elevation_m, x_coord_m, y_coord_m,
+               CASE WHEN name LIKE 'KE-%'  THEN 'KE'
+                    WHEN name LIKE 'BXN-%' THEN 'BXN'
+                    WHEN name LIKE 'NHC-%' THEN 'NHC'
+                    WHEN name LIKE 'ND-%'  THEN 'QTT'
+                    ELSE 'OTHER' END AS zone
+        FROM boreholes WHERE x_coord_m > 1000000 ORDER BY name
+    """).fetchall()
+
+    boreholes = []
+    for r in bh_rows:
+        try:
+            # x_coord_m = Northing, y_coord_m = Easting → transform(E, N)
+            lon, lat = tr.transform(float(r["y_coord_m"]), float(r["x_coord_m"]))
+            boreholes.append({
+                "name": r["name"], "zone": r["zone"],
+                "elevation_m": r["elevation_m"],
+                "lat": round(lat, 7), "lon": round(lon, 7),
+            })
+        except Exception:
+            pass
+
+    # Ranh kè polylines → lat/lon
+    ke_lines = []
+    try:
+        poly_rows = con.execute(
+            "SELECT polyline_id, x_m, y_m FROM ke_binhdo_toadoke ORDER BY polyline_id, vertex_idx"
+        ).fetchall()
+        polys: dict = {}
+        for pid, xm, ym in poly_rows:
+            polys.setdefault(pid, []).append((xm, ym))
+        for pid, pts in polys.items():
+            ll = []
+            for xm, ym in pts:
+                try:
+                    # x_m = Easting, y_m = Northing
+                    lon2, lat2 = tr.transform(float(xm), float(ym))
+                    ll.append([round(lat2, 7), round(lon2, 7)])
+                except Exception:
+                    pass
+            if ll:
+                ke_lines.append(ll)
+    except Exception:
+        pass
+
+    # CDM — centroid per zone (không load 27k điểm cho bản đồ nền)
+    cdm_zones = []
+    try:
+        cdm_rows = con.execute("""
+            SELECT zone,
+                   AVG(northing_m) cx, AVG(easting_m) cy,
+                   MIN(northing_m) nx_min, MAX(northing_m) nx_max,
+                   MIN(easting_m)  ey_min, MAX(easting_m)  ey_max,
+                   COUNT(*) n
+            FROM cdm_toado GROUP BY zone
+        """).fetchall()
+        for r in cdm_rows:
+            lon_c, lat_c = tr.transform(float(r[2]), float(r[1]))
+            # Bounding box corners
+            corners = []
+            for nx, ey in [
+                (r[3], r[4]), (r[3], r[5]),
+                (r[6], r[4]), (r[6], r[5]),
+            ]:
+                lo, la = tr.transform(float(ey), float(nx))
+                corners.append([round(la, 7), round(lo, 7)])
+            cdm_zones.append({
+                "zone": r[0], "n": r[7],
+                "lat": round(lat_c, 7), "lon": round(lon_c, 7),
+                "bbox": corners,
+            })
+    except Exception:
+        pass
+
+    con.close()
+    return JSONResponse({
+        "epsg": epsg,
+        "boreholes": boreholes,
+        "ke_lines": ke_lines,
+        "cdm_zones": cdm_zones,
+    })

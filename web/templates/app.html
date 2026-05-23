@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TTHC — Thiết kế Địa kỹ thuật</title>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 /* ── Streamlit-like variables ─────────────────────────────────────── */
 :root{
@@ -123,6 +125,14 @@ details .details-body{padding:.75rem 1rem;border-top:1px solid var(--border)}
 /* Plotly container */
 .chart{background:var(--surface);border-radius:8px;border:1px solid var(--border);overflow:hidden;margin:.5rem 0}
 
+/* Leaflet overrides cho dark theme */
+.leaflet-container{background:#1a1c24}
+.leaflet-control-zoom a,.leaflet-control-layers-toggle{background:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important}
+.leaflet-popup-content-wrapper{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.leaflet-popup-tip{background:var(--surface)}
+.leaflet-control-layers{background:var(--surface)!important;color:var(--text)!important;border-color:var(--border)!important}
+.leaflet-control-layers label{color:var(--text)!important}
+
 /* 2-col layout */
 .cols2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
 .cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
@@ -147,6 +157,7 @@ details .details-body{padding:.75rem 1rem;border-top:1px solid var(--border)}
   <div class="sidebar-logo">TTHC &nbsp;<span>Địa kỹ thuật</span></div>
 
   <button class="nav-btn active" data-page="geology" onclick="nav(this)">Địa chất</button>
+  <button class="nav-btn" data-page="ban_do_vi_tri" onclick="nav(this)">Bản đồ vị trí</button>
   <button class="nav-btn" data-page="sample_check" onclick="nav(this)">Kiểm tra mẫu TN</button>
 
   <div class="sidebar-section">TKCS CDM</div>
@@ -184,14 +195,15 @@ function nav(btn) {
 function loadPage(page) {
   const el = document.getElementById('main-content');
   const pages = {
-    geology:     pageGeology,
-    sample_check:pageSampleCheck,
-    params:      pageParams,
-    settlement:  pageSettlement,
-    cdm_bvt:     pageCdmBvt,
-    cdm_tien_do: pageCdmTienDo,
-    ke_sw:       pageKeSw,
-    sw_bvt:      () => placeholder(el, 'TKBVTC Cọc SW'),
+    geology:        pageGeology,
+    ban_do_vi_tri:  pageBanDoViTri,
+    sample_check:   pageSampleCheck,
+    params:         pageParams,
+    settlement:     pageSettlement,
+    cdm_bvt:        pageCdmBvt,
+    cdm_tien_do:    pageCdmTienDo,
+    ke_sw:          pageKeSw,
+    sw_bvt:         () => placeholder(el, 'TKBVTC Cọc SW'),
   };
   el.innerHTML = '<div class="spin-wrap"><div class="spinner"></div></div>';
   (pages[page] || (() => placeholder(el, page)))(el);
@@ -600,7 +612,184 @@ async function pageKeSw(el) {
   el.innerHTML = `<h1>Cọc ván SW (Kè)</h1><div class="info-box">Trang đang hoàn thi��n — dữ liệu thiết kế SW có sẵn từ SQLite.</div>`;
 }
 
-// ── Init ─────���───────────────────────────��────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE: Bản đồ vị trí
+// ─────────────────────────────────────────────────────────────────────────────
+let _leafletMap = null;
+
+async function pageBanDoViTri(el) {
+  el.innerHTML = `
+  <h1>Bản đồ vị trí</h1>
+  <div class="ctrl-row" style="margin-bottom:.75rem">
+    <div class="ctrl-group">
+      <label>Hệ tọa độ nguồn</label>
+      <select id="epsg-sel">
+        <option value="9210" selected>EPSG:9210 — VN-2000 TM-3 106° (TTHC mặc định)</option>
+        <option value="9209">EPSG:9209 — VN-2000 TM-3 105°45'</option>
+        <option value="3405">EPSG:3405 — VN-2000 UTM 48N</option>
+      </select>
+    </div>
+    <button onclick="reloadMap()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:.88rem;align-self:flex-end">Tải lại</button>
+  </div>
+  <div id="leaflet-map" style="height:520px;border-radius:8px;border:1px solid var(--border);overflow:hidden"></div>
+  <hr>
+  <div class="cols2">
+    <div>
+      <h3>Hố khoan</h3>
+      <div class="tbl-wrap" id="geo-bh-tbl"></div>
+    </div>
+    <div>
+      <h3>Phạm vi CDM</h3>
+      <div class="tbl-wrap" id="geo-cdm-tbl"></div>
+    </div>
+  </div>`;
+
+  // Destroy old map nếu còn
+  if (_leafletMap) { _leafletMap.remove(); _leafletMap = null; }
+
+  await drawLeaflet(parseInt(document.getElementById('epsg-sel').value));
+
+  window.reloadMap = async () => {
+    const epsg = parseInt(document.getElementById('epsg-sel').value);
+    if (_leafletMap) { _leafletMap.remove(); _leafletMap = null; }
+    await drawLeaflet(epsg);
+  };
+}
+
+async function drawLeaflet(epsg = 9210) {
+  const data = await api(`/api/geo/locations?epsg=${epsg}`);
+  if (data.error) {
+    document.getElementById('leaflet-map').innerHTML =
+      `<div class="info-box" style="margin:1rem">Lỗi chuyển đổi tọa độ: ${data.error}</div>`;
+    return;
+  }
+
+  const { boreholes, ke_lines, cdm_zones } = data;
+  if (!boreholes.length) {
+    document.getElementById('leaflet-map').innerHTML =
+      `<div class="info-box" style="margin:1rem">Không có dữ liệu tọa độ hố khoan.</div>`;
+    return;
+  }
+
+  // Center = trung bình các HK
+  const latC = boreholes.reduce((s, b) => s + b.lat, 0) / boreholes.length;
+  const lonC = boreholes.reduce((s, b) => s + b.lon, 0) / boreholes.length;
+
+  _leafletMap = L.map('leaflet-map', { center: [latC, lonC], zoom: 15 });
+
+  // Tile layers
+  const tiles = {
+    'OpenStreetMap': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap', maxZoom: 20,
+    }),
+    'Vệ tinh (Esri)': L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      { attribution: '© Esri', maxZoom: 20 }),
+    'Địa hình': L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      { attribution: '© OpenTopoMap', maxZoom: 17 }),
+    'Tối (CartoDB)': L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      { attribution: '© CartoDB', maxZoom: 20 }),
+  };
+  tiles['Vệ tinh (Esri)'].addTo(_leafletMap);
+
+  // BH zone colors
+  const BH_CLR = { KE:'#f59e0b', BXN:'#10b981', NHC:'#ef4444', QTT:'#ec4899', OTHER:'#6b7280' };
+
+  // Layer groups
+  const lgBH  = L.layerGroup();
+  const lgKe  = L.layerGroup();
+  const lgCDM = L.layerGroup();
+
+  // Hố khoan markers
+  boreholes.forEach(b => {
+    const clr = BH_CLR[b.zone] || '#888';
+    const icon = L.divIcon({
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${clr};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>`,
+      className: '', iconSize: [14, 14], iconAnchor: [7, 7],
+    });
+    const marker = L.marker([b.lat, b.lon], { icon });
+    marker.bindPopup(`
+      <div style="font-family:'Segoe UI',sans-serif;min-width:160px">
+        <b>${b.name}</b><br>
+        Zone: <b>${b.zone}</b><br>
+        Cao độ: <b>${b.elevation_m?.toFixed(2) ?? '—'} m</b><br>
+        Lat: ${b.lat.toFixed(6)}<br>Lon: ${b.lon.toFixed(6)}
+      </div>`);
+    // Tên HK label
+    L.tooltip({ permanent: true, direction: 'top', offset: [0, -8],
+                className: 'bh-label' })
+      .setContent(`<span style="font-size:10px;font-weight:700;color:${clr}">${b.name.replace(/^(KE-|BXN-|NHC-|ND-)/,'')}</span>`)
+      .setLatLng([b.lat, b.lon])
+      .addTo(lgBH);
+    marker.addTo(lgBH);
+  });
+
+  // Ranh kè polylines
+  ke_lines.forEach(ll => {
+    L.polyline(ll, { color: '#e5e7eb', weight: 1.5, opacity: 0.8 }).addTo(lgKe);
+  });
+
+  // CDM vùng — bounding box + centroid
+  cdm_zones.forEach(z => {
+    const clr = z.zone === 'KE' ? '#7c3aed' : '#1d4ed8';
+    if (z.bbox && z.bbox.length === 4) {
+      L.rectangle(
+        [[Math.min(...z.bbox.map(c=>c[0])), Math.min(...z.bbox.map(c=>c[1]))],
+         [Math.max(...z.bbox.map(c=>c[0])), Math.max(...z.bbox.map(c=>c[1]))]],
+        { color: clr, weight: 1.5, fillOpacity: 0.08, dashArray: '6 4' }
+      ).bindPopup(`<b>CDM ${z.zone === 'CONG_VIEN' ? 'Công viên' : 'Kè'}</b><br>${z.n.toLocaleString('vi-VN')} cọc`)
+      .addTo(lgCDM);
+    }
+    L.circleMarker([z.lat, z.lon], { radius: 8, color: clr, fillColor: clr, fillOpacity: 0.5 })
+      .bindTooltip(`CDM ${z.zone === 'CONG_VIEN' ? 'Công viên' : 'Kè'}: ${z.n.toLocaleString('vi-VN')} cọc`, { permanent: false })
+      .addTo(lgCDM);
+  });
+
+  // Add all layers
+  lgCDM.addTo(_leafletMap);
+  lgKe.addTo(_leafletMap);
+  lgBH.addTo(_leafletMap);
+
+  // Layer control
+  L.control.layers(tiles, {
+    'Hố khoan': lgBH,
+    'Ranh kè': lgKe,
+    'Vùng CDM': lgCDM,
+  }, { collapsed: false }).addTo(_leafletMap);
+
+  // Scale
+  L.control.scale({ metric: true, imperial: false }).addTo(_leafletMap);
+
+  // Fit bounds
+  const allLats = boreholes.map(b=>b.lat);
+  const allLons = boreholes.map(b=>b.lon);
+  _leafletMap.fitBounds([
+    [Math.min(...allLats)-0.003, Math.min(...allLons)-0.003],
+    [Math.max(...allLats)+0.003, Math.max(...allLons)+0.003],
+  ]);
+
+  // Tables
+  const BH_BADGE = { KE:'ke', BXN:'bxn', NHC:'nhc', QTT:'qtt', OTHER:'ke' };
+  document.getElementById('geo-bh-tbl').innerHTML = `<table>
+    <thead><tr><th>Tên HK</th><th>Zone</th><th>Z (m)</th><th>Lat</th><th>Lon</th></tr></thead>
+    <tbody>${boreholes.map(b=>`<tr>
+      <td style="cursor:pointer;color:#93c5fd" onclick="_leafletMap.setView([${b.lat},${b.lon}],18)">${b.name}</td>
+      <td><span class="badge ${BH_BADGE[b.zone]||'ke'}">${b.zone}</span></td>
+      <td>${b.elevation_m?.toFixed(2)??'—'}</td>
+      <td>${b.lat.toFixed(5)}</td><td>${b.lon.toFixed(5)}</td>
+    </tr>`).join('')}</tbody></table>`;
+
+  document.getElementById('geo-cdm-tbl').innerHTML = `<table>
+    <thead><tr><th>Khu vực</th><th>Số cọc</th><th>Lat TT</th><th>Lon TT</th></tr></thead>
+    <tbody>${cdm_zones.map(z=>`<tr>
+      <td><span class="badge ${z.zone==='KE'?'ke':'cv'}">${z.zone==='CONG_VIEN'?'Công viên':'Kè'}</span></td>
+      <td>${z.n.toLocaleString('vi-VN')}</td>
+      <td>${z.lat.toFixed(5)}</td><td>${z.lon.toFixed(5)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
 loadPage('geology');
 </script>
 </body>
