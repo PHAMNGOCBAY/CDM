@@ -1730,7 +1730,7 @@ _DEFAULTS = {
     "cdm_WC": 1.0,
     "cdm_spacings": [1.4, 1.6, 1.8],
     "cdm_rec_idx": 1,
-    "cdm_geo_view": "3D địa chất",
+    "cdm_geo_view": "Bản đồ vị trí",
     "cdm_vst_sel": [],
     "cdm_quckse": 600.0,
     "cdm_Fs_mat": 3.0,
@@ -3761,7 +3761,7 @@ if _page == "geology":
         else:
             # ── Thanh điều khiển ──────────────────────────────────────────────
             _ctrl_a, _ctrl_b = st.columns([3, 2])
-            _view_opts = [_t("view_3d"), _t("view_map")]
+            _view_opts = [_t("view_map"), _t("view_3d")]
             with _ctrl_a:
                 _geo_view = st.radio(
                     _t("view_mode"),
