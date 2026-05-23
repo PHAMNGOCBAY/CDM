@@ -11,36 +11,36 @@
       "name": "ND-02",
       "elevation_m": 1.7,
       "depth_m": 31.0,
-      "x_coord_m": 605239.025,
-      "y_coord_m": 1191680.407
+      "x_coord_m": 1191680.407,
+      "y_coord_m": 605239.025
     },
     {
       "name": "ND-03",
       "elevation_m": 1.89,
       "depth_m": 36.0,
-      "x_coord_m": 605340.447,
-      "y_coord_m": 1191670.883
+      "x_coord_m": 1191670.883,
+      "y_coord_m": 605340.447
     },
     {
       "name": "ND-05",
       "elevation_m": 3.2,
       "depth_m": 36.0,
-      "x_coord_m": 605445.999,
-      "y_coord_m": 1191736.974
+      "x_coord_m": 1191736.974,
+      "y_coord_m": 605445.999
     },
     {
       "name": "ND-06",
       "elevation_m": 4.24,
       "depth_m": 36.0,
-      "x_coord_m": 605349.439,
-      "y_coord_m": 1191761.037
+      "x_coord_m": 1191761.037,
+      "y_coord_m": 605349.439
     },
     {
       "name": "ND-07",
       "elevation_m": 3.47,
       "depth_m": 36.0,
-      "x_coord_m": 605252.887,
-      "y_coord_m": 1191785.152
+      "x_coord_m": 1191785.152,
+      "y_coord_m": 605252.887
     }
   ]
 }
