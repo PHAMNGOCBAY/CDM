@@ -3991,7 +3991,7 @@ if _page == "geology":
                         )
                     _crs_code = _GEO_MAP_CRS[_crs_lbl]
 
-                    _map_c1, _map_c2, _map_c3 = st.columns([2, 2, 2])
+                    _map_c1, _map_c2, _map_c3, _map_c4 = st.columns([2, 2, 2, 2])
                     with _map_c1:
                         _map_zone_default = [z for z in _zones_with_coords if z != "QTT"]
                         _map_zones = st.multiselect(
@@ -4013,6 +4013,13 @@ if _page == "geology":
                             value=True,
                             key="_geo_map_show_pair",
                             help="Vẽ đường nối + nhãn khoảng cách giữa 2 hố khoan đã chọn ở bảng phía trên.",
+                        )
+                    with _map_c4:
+                        _show_test_piles = st.checkbox(
+                            "Hiện cọc CDM thử (18 cọc)",
+                            value=True,
+                            key="_geo_map_show_test_piles",
+                            help="Vẽ 18 cọc CDM thử (CỌC-01..18) — marker tròn cam đậm + nhãn số thứ tự.",
                         )
 
                     @st.cache_data(show_spinner=False)
@@ -4093,6 +4100,55 @@ if _page == "geology":
                                 _flm.PolyLine(poly, color="#000000",
                                               weight=3, opacity=0.85).add_to(_fg_aln)
                             _fg_aln.add_to(_fmap)
+
+                        # Cọc CDM thử (18 cọc — bảng cdm_coc_thu)
+                        if _show_test_piles:
+                            try:
+                                _con_tp = sqlite3.connect(_DB)
+                                _tp_rows = _con_tp.execute(
+                                    "SELECT code, northing_m, easting_m, elevation_m, description "
+                                    "FROM cdm_coc_thu ORDER BY point_name"
+                                ).fetchall()
+                                _con_tp.close()
+                            except Exception:
+                                _tp_rows = []
+                            if _tp_rows:
+                                _fg_tp = _flm.FeatureGroup(
+                                    name=f"Cọc CDM thử ({len(_tp_rows)})", show=True
+                                )
+                                for _code, _nor, _eas, _elev, _desc in _tp_rows:
+                                    _lon_tp, _lat_tp = _trf.transform(_eas, _nor)
+                                    _popup_tp = (
+                                        f"<b>{_code}</b><br>"
+                                        f"<i>{_desc}</i><br>"
+                                        f"Cao độ mặt: <b>{_elev:.2f} m</b><br>"
+                                        f"Tọa độ: N={_nor:,.1f} m, E={_eas:,.1f} m"
+                                    )
+                                    _num = _code.split("-")[-1] if "-" in _code else _code
+                                    # Marker hình tròn cam đậm + viền nâu để phân biệt với HK xanh/đỏ/lá
+                                    _flm.CircleMarker(
+                                        location=[_lat_tp, _lon_tp],
+                                        radius=7,
+                                        color="#BF360C",
+                                        weight=2,
+                                        fill=True,
+                                        fill_color="#FF6F00",
+                                        fill_opacity=0.95,
+                                        popup=_flm.Popup(_popup_tp, max_width=240),
+                                        tooltip=_code,
+                                    ).add_to(_fg_tp)
+                                    # Nhãn số thứ tự (NN) bên cạnh
+                                    _flm.map.Marker(
+                                        [_lat_tp, _lon_tp],
+                                        icon=_flm.DivIcon(html=(
+                                            f'<div style="font-size:10px;font-weight:bold;'
+                                            f'color:#BF360C;text-shadow:1px 1px 2px #fff,'
+                                            f'-1px -1px 2px #fff;margin-left:10px;'
+                                            f'margin-top:-6px;white-space:nowrap">'
+                                            f'{_num}</div>'
+                                        )),
+                                    ).add_to(_fg_tp)
+                                _fg_tp.add_to(_fmap)
 
                         # Hố khoan theo zone
                         _ZONE_FLM_COLOR = {
@@ -4199,10 +4255,12 @@ if _page == "geology":
                         _zone_summary = " · ".join(
                             f"{z}: {n}" for z, n in sorted(_zone_counts.items())
                         )
+                        _n_tp_shown = len(_tp_rows) if _show_test_piles and '_tp_rows' in dir() else 0
                         st.caption(
                             f"Tâm: {_lat0:.5f}°N, {_lon0:.5f}°E · "
                             f"{len(_hk_geo)} hố khoan ({_zone_summary}) · "
-                            f"{len(_aln_lines)} đoạn tuyến kè"
+                            f"{len(_aln_lines)} đoạn tuyến kè · "
+                            f"{_n_tp_shown} cọc CDM thử"
                         )
                         _stflm(_fmap, width=None, height=640, returned_objects=[])
 
@@ -14336,10 +14394,17 @@ if _page == "cdm_bvt":
                 out.append((_latc, _lonc))
             return out
 
+        try:
+            _n_tp_bvt = sqlite3.connect(_DB).execute(
+                "SELECT COUNT(*) FROM cdm_coc_thu"
+            ).fetchone()[0]
+        except Exception:
+            _n_tp_bvt = 0
         st.caption(
             f"Tâm bản đồ: lat={_lat0:.5f}°N, lon={_lon0:.5f}°E · "
             f"{len(_hk_geo)} hố khoan · {len(_ke_geo_lines)} đường kè · "
-            f"{len(_cdm_cv) + len(_cdm_ke):,} cọc CDM"
+            f"{len(_cdm_cv) + len(_cdm_ke):,} cọc CDM · "
+            f"{_n_tp_bvt} cọc CDM thử"
         )
 
         # ── 2D folium map ───────────────────────────────────────────────────
@@ -14368,6 +14433,46 @@ if _page == "cdm_bvt":
                     _flm.PolyLine(poly, color="#000000", weight=3,
                                   opacity=0.85).add_to(_fg_kel)
                 _fg_kel.add_to(_fmap)
+
+            # Lớp cọc CDM thử (cdm_coc_thu — 18 cọc)
+            try:
+                _con_bvt_tp = sqlite3.connect(_DB)
+                _bvt_tp_rows = _con_bvt_tp.execute(
+                    "SELECT code, northing_m, easting_m, elevation_m, description "
+                    "FROM cdm_coc_thu ORDER BY point_name"
+                ).fetchall()
+                _con_bvt_tp.close()
+            except Exception:
+                _bvt_tp_rows = []
+            if _bvt_tp_rows:
+                _fg_bvt_tp = _flm.FeatureGroup(
+                    name=f"Cọc CDM thử ({len(_bvt_tp_rows)})", show=True
+                )
+                for _code, _nor, _eas, _elev, _desc in _bvt_tp_rows:
+                    _lon_tp, _lat_tp = _trf_map.transform(_eas, _nor)
+                    _num = _code.split("-")[-1] if "-" in _code else _code
+                    _flm.CircleMarker(
+                        location=[_lat_tp, _lon_tp],
+                        radius=7, color="#BF360C", weight=2,
+                        fill=True, fill_color="#FF6F00", fill_opacity=0.95,
+                        popup=_flm.Popup(
+                            f"<b>{_code}</b><br><i>{_desc}</i><br>"
+                            f"Cao độ mặt: <b>{_elev:.2f} m</b><br>"
+                            f"Tọa độ: N={_nor:,.1f} m, E={_eas:,.1f} m",
+                            max_width=240,
+                        ),
+                        tooltip=_code,
+                    ).add_to(_fg_bvt_tp)
+                    _flm.map.Marker(
+                        [_lat_tp, _lon_tp],
+                        icon=_flm.DivIcon(html=(
+                            f'<div style="font-size:10px;font-weight:bold;'
+                            f'color:#BF360C;text-shadow:1px 1px 2px #fff,'
+                            f'-1px -1px 2px #fff;margin-left:10px;'
+                            f'margin-top:-6px;white-space:nowrap">{_num}</div>'
+                        )),
+                    ).add_to(_fg_bvt_tp)
+                _fg_bvt_tp.add_to(_fmap)
 
             # Lớp HK theo zone
             _HK_FLM_COLOR = {"KE": "#E53935", "BXN": "#AB47BC", "NHC": "#43A047",
@@ -14511,6 +14616,33 @@ if _page == "cdm_bvt":
                         [33, 150, 243, 140] if _grp_key == "CV" else [255, 152, 0, 140]
                     ),
                     radius_min_pixels=1, radius_max_pixels=5,
+                ))
+
+            # Lớp cọc CDM thử (18 cọc — nổi bật bằng ColumnLayer cam cao 80m)
+            try:
+                _con_3d_tp = sqlite3.connect(_DB)
+                _3d_tp_rows = _con_3d_tp.execute(
+                    "SELECT code, northing_m, easting_m FROM cdm_coc_thu ORDER BY point_name"
+                ).fetchall()
+                _con_3d_tp.close()
+            except Exception:
+                _3d_tp_rows = []
+            if _3d_tp_rows:
+                _tp_pdk_data = []
+                for _code, _nor, _eas in _3d_tp_rows:
+                    _lon_tp, _lat_tp = _trf_map.transform(_eas, _nor)
+                    _tp_pdk_data.append({
+                        "position": [_lon_tp, _lat_tp],
+                        "name":     _code,
+                        "height":   80.0,
+                    })
+                _layers_3d.append(_pdk.Layer(
+                    "ColumnLayer", data=_tp_pdk_data,
+                    get_position="position",
+                    get_elevation="height",
+                    get_fill_color=[255, 111, 0, 240],  # cam đậm
+                    radius=3, pickable=True, auto_highlight=True,
+                    extruded=True,
                 ))
 
             _style_lbl = st.selectbox(
