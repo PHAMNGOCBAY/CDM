@@ -209,6 +209,65 @@ div[data-testid="stMetricValue"] { font-size: 1.1rem; }
 [data-testid="stDecoration"] { display: none; }
 footer { visibility: hidden; }
 
+/* ── Nút đóng / mở sidebar — làm to + nổi bật, cân đối 2 chiều ──
+   - Khi sidebar mở: nút « ở góc trên phải sidebar (Streamlit tự render).
+   - Khi sidebar đóng: nút » nổi ở góc trên trái màn hình (collapsedControl).
+   CSS dưới đây phóng to + bo góc + đổ bóng + hover xanh navy cho cả 2 nút.
+   Áp dụng cho cả tên cũ (collapsedControl) lẫn tên mới (stSidebarCollapsedControl)
+   để tương thích các bản Streamlit khác nhau. */
+[data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] {
+    background: #ffffff !important;
+    border: 2px solid #1e3a8a !important;
+    border-radius: 10px !important;
+    box-shadow: 0 3px 10px rgba(30, 58, 138, 0.25) !important;
+    width: 44px !important;
+    height: 44px !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 999 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease-in-out !important;
+}
+[data-testid="stSidebarCollapsedControl"]:hover,
+[data-testid="collapsedControl"]:hover {
+    background: #1e3a8a !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 14px rgba(30, 58, 138, 0.45) !important;
+}
+[data-testid="stSidebarCollapsedControl"] svg,
+[data-testid="stSidebarCollapsedControl"] button,
+[data-testid="collapsedControl"] svg,
+[data-testid="collapsedControl"] button {
+    color: #1e3a8a !important;
+    fill: #1e3a8a !important;
+}
+[data-testid="stSidebarCollapsedControl"]:hover svg,
+[data-testid="stSidebarCollapsedControl"]:hover button,
+[data-testid="collapsedControl"]:hover svg,
+[data-testid="collapsedControl"]:hover button {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+/* Nút « đóng sidebar (đã có sẵn trong sidebar) — đồng bộ style để cân đối */
+[data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"],
+[data-testid="stSidebar"] button[kind="header"] {
+    background: rgba(30, 58, 138, 0.08) !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease-in-out !important;
+}
+[data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"]:hover,
+[data-testid="stSidebar"] button[kind="header"]:hover {
+    background: #1e3a8a !important;
+}
+[data-testid="stSidebar"] [data-testid="baseButton-headerNoPadding"]:hover svg,
+[data-testid="stSidebar"] button[kind="header"]:hover svg {
+    color: #ffffff !important;
+    fill: #ffffff !important;
+}
+
 /* ── iframe height=0 (JS handler): ẩn hẳn trên mọi tab, không chiếm chỗ ──
    Áp dụng screen mode — hiệu lực cho tất cả tab, không chỉ khi in.
    Plotly SVG inline không qua iframe → không bị ảnh hưởng. */
