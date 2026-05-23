@@ -13697,10 +13697,389 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 import traceback as _tb_wf
                 st.code(_tb_wf.format_exc())
 
-# ── Placeholder: TKBVTC CDM ──────────────────────────────────────────────────
+# ── TKBVTC CDM — Mặt bằng tổng hợp cọc CDM + hố khoan ──────────────────────
 if _page == "cdm_bvt":
     st.markdown("## TKBVTC CDM")
-    st.info("Trang đang phát triển — thiết kế bản vẽ thi công CDM.")
+    st.markdown("### Mặt bằng tổng hợp: Vị trí cọc CDM và hố khoan")
+
+    import sqlite3 as _sq3_cdm
+    import numpy as _np_cdm
+
+    with _sq3_cdm.connect(str(_DB)) as _con_cdm2:
+        try:
+            _cdm_rows = _con_cdm2.execute(
+                "SELECT zone, northing_m, easting_m FROM cdm_toado "
+                "WHERE source='xlsx_toado_cdm' ORDER BY zone"
+            ).fetchall()
+        except Exception:
+            _cdm_rows = []
+        try:
+            _bh_all = _con_cdm2.execute(
+                "SELECT name, x_coord_m, y_coord_m FROM boreholes "
+                "WHERE x_coord_m > 1000000 AND y_coord_m IS NOT NULL"
+            ).fetchall()
+        except Exception:
+            _bh_all = []
+        try:
+            _bd_rows = _con_cdm2.execute(
+                "SELECT polyline_id, x_m, y_m FROM ke_binhdo_toadoke "
+                "ORDER BY polyline_id, vertex_idx"
+            ).fetchall()
+        except Exception:
+            _bd_rows = []
+
+    _cdm_cv = [(r[1], r[2]) for r in _cdm_rows if r[0] == "CONG_VIEN"]
+    _cdm_ke = [(r[1], r[2]) for r in _cdm_rows if r[0] == "KE"]
+
+    def _zone_prefix(name):
+        if name.startswith("KE-"):  return "KE"
+        if name.startswith("BXN-"): return "BXN"
+        if name.startswith("NHC-"): return "NHC"
+        return "Khác"
+
+    _bh_by_zone: dict = {}
+    for nm, xc, yc in _bh_all:
+        _bh_by_zone.setdefault(_zone_prefix(nm), []).append(
+            {"name": nm, "x": float(xc), "y": float(yc)}
+        )
+
+    # Bình đồ kè polylines: swap DXF x(Easting)↔y(Northing) → chart X=Northing
+    _bd_cx: list = []
+    _bd_cy: list = []
+    _prev_bd = None
+    for _pl_id, _bx, _by in _bd_rows:
+        if _prev_bd is not None and _pl_id != _prev_bd:
+            _bd_cx.append(None); _bd_cy.append(None)
+        _bd_cx.append(_by); _bd_cy.append(_bx)
+        _prev_bd = _pl_id
+
+    _c1, _c2, _c3 = st.columns(3)
+    _c1.metric("Cọc CDM — Công viên", f"{len(_cdm_cv):,}")
+    _c2.metric("Cọc CDM — Kè",        f"{len(_cdm_ke):,}")
+    _c3.metric("Hố khoan",             str(len(_bh_all)))
+
+    if _HAS_PLOTLY:
+        _fig_cdm = go.Figure()
+        if _bd_cx:
+            _fig_cdm.add_trace(go.Scatter(
+                x=_bd_cx, y=_bd_cy, mode="lines",
+                line=dict(color="rgba(0,0,0,0.80)", width=1.2),
+                name="Ranh kè (bình đồ)", hoverinfo="skip", connectgaps=False,
+            ))
+        if _cdm_cv:
+            _fig_cdm.add_trace(go.Scattergl(
+                x=[p[0] for p in _cdm_cv], y=[p[1] for p in _cdm_cv],
+                mode="markers",
+                marker=dict(size=3, color="rgba(33,150,243,0.45)", line=dict(width=0)),
+                name=f"CDM Công viên ({len(_cdm_cv):,} cọc)",
+                hovertemplate="N=%.1f<br>E=%.1f<extra>CDM CV</extra>",
+            ))
+        if _cdm_ke:
+            _fig_cdm.add_trace(go.Scattergl(
+                x=[p[0] for p in _cdm_ke], y=[p[1] for p in _cdm_ke],
+                mode="markers",
+                marker=dict(size=3, color="rgba(255,152,0,0.50)", line=dict(width=0)),
+                name=f"CDM Kè ({len(_cdm_ke):,} cọc)",
+                hovertemplate="N=%.1f<br>E=%.1f<extra>CDM Kè</extra>",
+            ))
+        _BH_STYLE = {
+            "KE":   dict(symbol="circle",      size=12, color="#E53935",
+                         line=dict(color="#B71C1C", width=1.5)),
+            "BXN":  dict(symbol="square",      size=11, color="#AB47BC",
+                         line=dict(color="#6A1B9A", width=1.5)),
+            "NHC":  dict(symbol="triangle-up", size=12, color="#43A047",
+                         line=dict(color="#1B5E20", width=1.5)),
+            "Khác": dict(symbol="diamond",     size=10, color="#78909C",
+                         line=dict(color="#37474F", width=1.5)),
+        }
+        for _zone_nm, _bhs in sorted(_bh_by_zone.items()):
+            _fig_cdm.add_trace(go.Scatter(
+                x=[b["x"] for b in _bhs], y=[b["y"] for b in _bhs],
+                mode="markers+text",
+                marker=_BH_STYLE.get(_zone_nm, _BH_STYLE["Khác"]),
+                text=[b["name"].split("-")[-1] for b in _bhs],
+                textposition="top center", textfont=dict(size=9),
+                hovertext=[f"<b>{b['name']}</b><br>N={b['x']:,.1f}<br>E={b['y']:,.1f}"
+                           for b in _bhs],
+                hoverinfo="text",
+                name=f"Hố khoan {_zone_nm} ({len(_bhs)})",
+            ))
+        _fig_cdm.update_layout(
+            title="Mặt bằng tổng hợp: Cọc CDM + Hố khoan",
+            xaxis_title="Northing VN-2000 (m)",
+            yaxis_title="Easting VN-2000 (m)",
+            height=700, hovermode="closest", plot_bgcolor="#F5F5F5",
+            legend=dict(x=0.01, y=0.99, bgcolor="rgba(255,255,255,0.88)",
+                        bordercolor="#BBB", borderwidth=1, font=dict(size=11)),
+            margin=dict(t=60, b=60, l=70, r=20),
+        )
+        _fig_cdm.update_yaxes(scaleanchor="x", scaleratio=1,
+                               showgrid=True, gridcolor="#E0E0E0")
+        _fig_cdm.update_xaxes(showgrid=True, gridcolor="#E0E0E0")
+        st.plotly_chart(_fig_cdm, use_container_width=True)
+
+    if _HAS_MPL and (_cdm_cv or _cdm_ke):
+        import matplotlib.pyplot as _plt_cdm
+        _fig_cm, _ax_cm = _plt_cdm.subplots(figsize=(14, 10), dpi=110)
+        if _bd_cx:
+            _seg_x, _seg_y = [], []
+            for _cx2, _cy2 in zip(_bd_cx, _bd_cy):
+                if _cx2 is None:
+                    if _seg_x:
+                        _ax_cm.plot(_seg_x, _seg_y, color="black", lw=1.0,
+                                    alpha=0.80, zorder=2)
+                    _seg_x, _seg_y = [], []
+                else:
+                    _seg_x.append(_cx2); _seg_y.append(_cy2)
+            if _seg_x:
+                _ax_cm.plot(_seg_x, _seg_y, color="black", lw=1.0,
+                            alpha=0.80, zorder=2, label="Ranh kè")
+        if _cdm_cv:
+            _ax_cm.scatter([p[0] for p in _cdm_cv], [p[1] for p in _cdm_cv],
+                           s=1, c="steelblue", alpha=0.35, linewidths=0,
+                           zorder=3, label=f"CDM Công viên ({len(_cdm_cv):,})")
+        if _cdm_ke:
+            _ax_cm.scatter([p[0] for p in _cdm_ke], [p[1] for p in _cdm_ke],
+                           s=1, c="darkorange", alpha=0.40, linewidths=0,
+                           zorder=3, label=f"CDM Kè ({len(_cdm_ke):,})")
+        _BH_MPL = {"KE": ("o","#E53935"), "BXN": ("s","#AB47BC"),
+                   "NHC": ("^","#43A047"), "Khác": ("D","#78909C")}
+        for _zn, _bhs in sorted(_bh_by_zone.items()):
+            _mk, _cl = _BH_MPL.get(_zn, ("D","gray"))
+            _ax_cm.scatter([b["x"] for b in _bhs], [b["y"] for b in _bhs],
+                           s=60, marker=_mk, c=_cl, zorder=5,
+                           label=f"HK {_zn} ({len(_bhs)})",
+                           edgecolors="white", linewidths=0.8)
+            for b in _bhs:
+                _ax_cm.annotate(b["name"].split("-")[-1],
+                                xy=(b["x"], b["y"]),
+                                xytext=(0, 6), textcoords="offset points",
+                                ha="center", fontsize=7, color="#333")
+        _ax_cm.set_xlabel("Northing VN-2000 (m)")
+        _ax_cm.set_ylabel("Easting VN-2000 (m)")
+        _ax_cm.set_title("Mặt bằng tổng hợp: Cọc CDM + Hố khoan")
+        _ax_cm.set_aspect("equal", adjustable="datalim")
+        _ax_cm.grid(True, ls="--", alpha=0.35)
+        _ax_cm.legend(fontsize=8, loc="lower right", framealpha=0.88, markerscale=2)
+        _fig_cm.tight_layout()
+        with st.expander("Bản in (dùng cho PDF)", expanded=False):
+            st.pyplot(_fig_cm, use_container_width=True)
+        _plt_cdm.close(_fig_cm)
+
+    st.caption(
+        f"Dữ liệu: {len(_cdm_cv):,} cọc CDM khu Công viên + "
+        f"{len(_cdm_ke):,} cọc CDM khu Kè. "
+        "Tọa độ VN-2000. Click tên lớp trong chú thích để ẩn/hiện."
+    )
+
+    # ── Thống kê khối lượng cọc CDM ──────────────────────────────────────────
+    st.divider()
+    st.markdown("### Thống kê khối lượng cọc CDM")
+
+    _ci1, _ci2, _ci3 = st.columns(3)
+    _D_cdm    = _ci1.number_input("Đường kính cọc D (m)",       value=0.60,
+                                   min_value=0.30, max_value=2.0,
+                                   step=0.05, format="%.2f", key="_cdm_D")
+    _Ztop_cdm = _ci2.number_input("Cao độ đỉnh cọc (m)",        value=0.80,
+                                   step=0.10, format="%.2f",      key="_cdm_ztop")
+    _pen_cdm  = _ci3.number_input("Ngàm dưới đáy lớp bùn (m)",  value=1.00,
+                                   min_value=0.0, step=0.50, format="%.2f",
+                                   key="_cdm_pen")
+
+    _SOFT_SYM = frozenset({"1","1b","XMD","2","2a","2b","2c"})
+
+    with _sq3_cdm.connect(str(_DB)) as _con_vol:
+        # D_bottom_soft: KE → ke_sw_nt_detail; others → layers table
+        _ke_soft = {r[0]: r[1] for r in _con_vol.execute(
+            "SELECT bh_name, D_bottom_soft_m FROM ke_sw_nt_detail "
+            "WHERE D_bottom_soft_m IS NOT NULL"
+        ).fetchall()}
+        _sym_ph = ",".join(f"'{s}'" for s in _SOFT_SYM)
+        _lyr_soft = {r[0]: r[1] for r in _con_vol.execute(
+            f"SELECT b.name, MAX(l.depth_bot_m) "
+            f"FROM layers l JOIN boreholes b ON l.borehole_id=b.id "
+            f"WHERE l.symbol IN ({_sym_ph}) AND b.x_coord_m > 1000000 "
+            f"GROUP BY b.name"
+        ).fetchall()}
+        _bh_elev = {r[0]: (float(r[1] or 0), float(r[2]), float(r[3]))
+                    for r in _con_vol.execute(
+            "SELECT name, elevation_m, x_coord_m, y_coord_m "
+            "FROM boreholes WHERE x_coord_m > 1000000 AND y_coord_m IS NOT NULL"
+        ).fetchall()}
+
+    # Hợp nhất nguồn D_bottom_soft (ke_sw_nt_detail ưu tiên cho KE)
+    _bh_design: list[dict] = []
+    for _bn, (elev, xc, yc) in sorted(_bh_elev.items()):
+        _D_soft = _ke_soft.get(_bn) or _lyr_soft.get(_bn)
+        if _D_soft is None:
+            continue
+        _z_bot_soft = elev - _D_soft
+        _z_tip      = _z_bot_soft - _pen_cdm
+        _L          = _Ztop_cdm - _z_tip
+        _zone       = ("KE" if _bn.startswith("KE-") else
+                       "BXN" if _bn.startswith("BXN-") else "NHC")
+        _bh_design.append({
+            "bh": _bn, "zone": _zone,
+            "elevation": elev,
+            "D_soft": round(_D_soft, 2),
+            "z_bot_soft": round(_z_bot_soft, 2),
+            "z_tip": round(_z_tip, 2),
+            "L": round(_L, 2),
+            "x": xc, "y": yc,
+        })
+
+    # Gán cọc CDM đến hố khoan gần nhất cùng khu (vectorised numpy)
+    def _assign_nearest(cdm_pts, bh_list):
+        if not cdm_pts or not bh_list:
+            return {}
+        _A = _np_cdm.array([(b["x"], b["y"]) for b in bh_list])
+        counts = {b["bh"]: 0 for b in bh_list}
+        for _nx, _ey in cdm_pts:
+            _d2 = (_A[:,0] - _nx)**2 + (_A[:,1] - _ey)**2
+            counts[bh_list[int(_np_cdm.argmin(_d2))]["bh"]] += 1
+        return counts
+
+    _ke_bhs  = [b for b in _bh_design if b["zone"] == "KE"]
+    _bxn_bhs = [b for b in _bh_design if b["zone"] == "BXN"]
+
+    _cnt_ke  = _assign_nearest(_cdm_ke,  _ke_bhs)
+    _cnt_bxn = _assign_nearest(_cdm_cv,  _bxn_bhs)
+    _cnt_all = {**_cnt_ke, **_cnt_bxn}
+
+    _A_sec = _np_cdm.pi / 4 * _D_cdm**2
+
+    # Gán số cọc vào _bh_design
+    for b in _bh_design:
+        b["n_piles"] = _cnt_all.get(b["bh"], 0)
+        b["V_m3"]    = round(b["n_piles"] * _A_sec * b["L"], 1)
+
+    # ── Bảng 1: chiều dài cọc theo hố khoan ─────────────────────────────────
+    st.markdown("#### Chiều dài thiết kế cọc CDM theo hố khoan")
+    import pandas as _pd_cdm
+    _df1 = _pd_cdm.DataFrame([
+        {
+            "Hố khoan":              b["bh"],
+            "Khu vực":               b["zone"],
+            "Cao độ nền (m)":        b["elevation"],
+            "Đáy lớp bùn (m sâu)":  b["D_soft"],
+            "Cao độ đáy bùn (m)":   b["z_bot_soft"],
+            "Cao độ đỉnh cọc (m)":  _Ztop_cdm,
+            "Cao độ mũi cọc (m)":   b["z_tip"],
+            "Chiều dài L (m)":       b["L"],
+        }
+        for b in _bh_design if b["n_piles"] > 0 or b["zone"] in ("KE","BXN")
+    ])
+    if not _df1.empty:
+        st.dataframe(
+            _df1.style.format({
+                "Cao độ nền (m)": "{:.2f}",
+                "Đáy lớp bùn (m sâu)": "{:.1f}",
+                "Cao độ đáy bùn (m)": "{:.2f}",
+                "Cao độ đỉnh cọc (m)": "{:.2f}",
+                "Cao độ mũi cọc (m)": "{:.2f}",
+                "Chiều dài L (m)": "{:.2f}",
+            }).apply(
+                lambda row: ["background-color:#E3F2FD"]*len(row)
+                            if row["Khu vực"] == "KE"
+                            else ["background-color:#F3E5F5"]*len(row),
+                axis=1,
+            ),
+            use_container_width=True, hide_index=True,
+        )
+
+    # ── Bảng 2: thống kê tổng hợp per zone ──────────────────────────────────
+    st.markdown("#### Tổng hợp khối lượng")
+    _summary = []
+    for _zone_s, _label in [("KE","Kè"), ("BXN","Công viên")]:
+        _subset = [b for b in _bh_design if b["zone"] == _zone_s and b["n_piles"] > 0]
+        if not _subset:
+            continue
+        _n = sum(b["n_piles"] for b in _subset)
+        _V = sum(b["V_m3"]    for b in _subset)
+        _L_avg = sum(b["L"] * b["n_piles"] for b in _subset) / _n if _n else 0
+        _summary.append({
+            "Khu vực":              _label,
+            "Số cọc CDM":           _n,
+            "Đường kính D (m)":     _D_cdm,
+            "Tiết diện (m²)":       round(_A_sec, 4),
+            "L trung bình (m)":     round(_L_avg, 2),
+            "L min (m)":            round(min(b["L"] for b in _subset), 2),
+            "L max (m)":            round(max(b["L"] for b in _subset), 2),
+            "Tổng thể tích (m³)":   round(_V, 0),
+        })
+    # Tổng cộng
+    if len(_summary) > 1:
+        _summary.append({
+            "Khu vực":             "Tổng cộng",
+            "Số cọc CDM":          sum(r["Số cọc CDM"] for r in _summary),
+            "Đường kính D (m)":    _D_cdm,
+            "Tiết diện (m²)":      round(_A_sec, 4),
+            "L trung bình (m)":    round(
+                sum(r["L trung bình (m)"] * r["Số cọc CDM"] for r in _summary)
+                / max(sum(r["Số cọc CDM"] for r in _summary), 1), 2),
+            "L min (m)":           round(min(r["L min (m)"] for r in _summary), 2),
+            "L max (m)":           round(max(r["L max (m)"] for r in _summary), 2),
+            "Tổng thể tích (m³)":  round(sum(r["Tổng thể tích (m³)"] for r in _summary), 0),
+        })
+    if _summary:
+        _df2 = _pd_cdm.DataFrame(_summary)
+        st.dataframe(
+            _df2.style.format({
+                "Đường kính D (m)": "{:.2f}",
+                "Tiết diện (m²)": "{:.4f}",
+                "L trung bình (m)": "{:.2f}",
+                "L min (m)": "{:.2f}", "L max (m)": "{:.2f}",
+                "Tổng thể tích (m³)": "{:,.0f}",
+            }).apply(
+                lambda row: ["font-weight:bold; background-color:#FFF9C4"]*len(row)
+                            if row["Khu vực"] == "Tổng cộng"
+                            else [""]*len(row),
+                axis=1,
+            ),
+            use_container_width=True, hide_index=True,
+        )
+
+    # ── Biểu đồ chiều dài L per borehole ────────────────────────────────────
+    _plot_bhs = [b for b in _bh_design
+                 if b["zone"] in ("KE","BXN") and b["n_piles"] > 0]
+    if _HAS_PLOTLY and _plot_bhs:
+        _fig_L = go.Figure()
+        for _zone_s, _clr, _label in [
+            ("KE","#1976D2","Kè"), ("BXN","#8E24AA","Công viên")
+        ]:
+            _sub = [b for b in _plot_bhs if b["zone"] == _zone_s]
+            if not _sub:
+                continue
+            _fig_L.add_trace(go.Bar(
+                x=[b["bh"].split("-")[-1] for b in _sub],
+                y=[b["L"] for b in _sub],
+                name=_label,
+                marker_color=_clr,
+                text=[f"{b['L']:.1f} m" for b in _sub],
+                textposition="outside",
+                customdata=[[b["bh"], b["elevation"], b["z_tip"], b["n_piles"]]
+                            for b in _sub],
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>"
+                    "Cao độ nền: %{customdata[1]:.2f} m<br>"
+                    "Cao độ mũi: %{customdata[2]:.2f} m<br>"
+                    "L = %{y:.2f} m<br>"
+                    "Số cọc: %{customdata[3]:,}<extra></extra>"
+                ),
+            ))
+        _fig_L.add_hline(y=_Ztop_cdm - (
+            sum(b["z_tip"] * b["n_piles"] for b in _plot_bhs)
+            / max(sum(b["n_piles"] for b in _plot_bhs), 1)
+        ), line_dash="dot", line_color="red",
+            annotation_text="L trung bình", annotation_position="right")
+        _fig_L.update_layout(
+            title=f"Chiều dài cọc CDM theo hố khoan điều hành  (D={_D_cdm:.2f}m, đỉnh={_Ztop_cdm:+.1f}m)",
+            xaxis_title="Hố khoan", yaxis_title="Chiều dài L (m)",
+            height=380, barmode="group",
+            margin=dict(t=55, b=40, r=60),
+            plot_bgcolor="#FAFAFA",
+        )
+        st.plotly_chart(_fig_L, use_container_width=True)
 
 # ── Placeholder: TKBVTC Cọc SW ───────────────────────────────────────────────
 if _page == "sw_bvt":
