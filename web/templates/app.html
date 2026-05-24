@@ -2440,7 +2440,33 @@ async function pageKeSw(el) {
     </tr></thead>
     <tbody id="sw-dist-body"></tbody>
   </table>
-</div>`;
+</div>
+
+<div class="sw-sec">B.4. Chi tiết tính toán NT1/NT2 từng hố khoan</div>
+<div id="sw-nt-detail-list"><div style="color:#64748b;padding:14px">Đang tải...</div></div>
+
+<div class="sw-sec">C. So sánh 3 phương pháp NT2 — tự động cho mọi HK ở Mục B</div>
+<div style="background:#1e3a5f;border-left:4px solid #38bdf8;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#cbd5e1;border-radius:4px">
+  Tự động chạy so sánh Rs/Rp/RR theo 5 phương pháp <b>TCVN 11823-10:2017</b> cho mọi HK + cọc kiến nghị ở Mục B:<br>
+  <b>α</b> (Tomlinson 1980, sét, Điều 7.3.8.6.2, φ=0.35) · <b>β</b> (Esrig & Kirby 1979, sét, Điều 7.3.8.6.3, φ=0.25) ·
+  <b>λ</b> (Vijayvergiya & Focht 1972, cọc ống, Điều 7.3.8.6.4, φ=0.40) · <b>SPT</b> (cát, Điều 7.3.8.6.7) · <b>Tự chọn</b>
+</div>
+<div style="overflow-x:auto;margin-bottom:14px">
+  <table class="sw-tbl" id="sw-tbl-nt2-sum">
+    <thead><tr>
+      <th>Hố khoan</th><th>Cọc</th><th>L (m)</th><th>W (kN)</th>
+      <th>RR — α</th><th>Ratio α</th>
+      <th>RR — β</th><th>Ratio β</th>
+      <th>RR — λ</th><th>Ratio λ</th>
+      <th>RR — SPT</th><th>Ratio SPT</th>
+      <th>RR — Tự chọn</th><th>Ratio Tự chọn</th>
+      <th>Kết quả (Tự chọn)</th>
+    </tr></thead>
+    <tbody id="sw-nt2-sum-body"><tr><td colspan="15" style="color:#64748b;padding:14px">Đang tải...</td></tr></tbody>
+  </table>
+</div>
+<div id="sw-nt2-chart" style="height:420px"></div>
+<div id="sw-nt2-detail-list" style="margin-top:14px"></div>`;
 
   // ── Shared state ─────────────────────────────────────────────────────────
   const LS_REC_KEY = 'ke_sw_rec_piles_v2';
@@ -2867,6 +2893,247 @@ async function pageKeSw(el) {
     }
   }
 
+  // ── B.4 Chi tiết NT1/NT2 từng HK ────────────────────────────────────────
+  const SRC_LBL = {
+    VST:'VST', lab:'Lab', default:'Giả định',
+    sand:'Cát', SPT:'SPT', missing:'Thiếu SPT', unknown:'?',
+  };
+
+  async function _loadNTDetail() {
+    let layersData;
+    try {
+      layersData = await fetch('/api/ke-sw/nt-layers').then(r => r.json());
+    } catch (e) {
+      document.getElementById('sw-nt-detail-list').innerHTML =
+        `<div style="color:#f87171">Lỗi tải chi tiết NT: ${e.message}</div>`;
+      return;
+    }
+    const layersByBh = layersData.layers_by_bh || {};
+
+    if (!_allRows.length) {
+      document.getElementById('sw-nt-detail-list').innerHTML =
+        '<div style="color:#94a3b8;padding:14px">Chưa có HK ở Mục B.</div>';
+      return;
+    }
+
+    const html = _allRows.map(row => {
+      const db = row.db || {};
+      const bhName = row.bhName;
+      if (!db.bh_name) return '';  // skip BH không có NT data
+
+      const nt1Pass = (db.margin_nt1_m ?? -1) >= 0;
+      const nt2Pass = (db.ratio_nt2 ?? 0) >= 1;
+      const nt1Badge = nt1Pass ? '🟢' : '🔴';
+      const nt2Badge = nt2Pass ? '🟢' : '🔴';
+      const warningHtml = db.su_warnings
+        ? `<div style="background:#7c2d12;color:#fed7aa;border-left:3px solid #f97316;padding:8px 12px;margin:6px 0;font-size:.8rem;border-radius:4px">⚠ <b>Cảnh báo:</b> ${db.su_warnings.split('; ').join(' · ')}</div>`
+        : '';
+
+      // Build Rs breakdown
+      const rsParts = [];
+      if (db.Rs_clay_kN != null) rsParts.push(`sét=${db.Rs_clay_kN.toFixed(0)}`);
+      if (db.Rs_sand_kN != null && db.Rs_sand_kN > 0) rsParts.push(`cát=${db.Rs_sand_kN.toFixed(0)}`);
+      const rsBd = rsParts.length ? ` (${rsParts.join(' + ')})` : '';
+
+      let tipShort = `${db.tip_symbol||'?'}[${db.tip_method||'α'}]`;
+      if (db.tip_method === 'SPT') {
+        tipShort += db.tip_N160 != null ? `·N₁₆₀=${db.tip_N160.toFixed(0)}` : '·noSPT';
+      } else if (db.tip_su_kNm2 != null) {
+        tipShort += `·su=${db.tip_su_kNm2.toFixed(0)} kPa`;
+      }
+
+      // Layers table
+      const lays = layersByBh[bhName] || [];
+      const layersHtml = lays.length ? `
+        <table class="sw-tbl" style="margin-top:8px">
+          <thead><tr>
+            <th>Lớp</th><th>L (m)</th><th>PP</th><th>su (kPa)</th>
+            <th>α</th><th>N₁₆₀</th><th>γ (kN/m³)</th>
+            <th>σ'v (kPa)</th><th>Nguồn</th><th>Rs (kN)</th>
+          </tr></thead>
+          <tbody>${lays.map(l => `<tr>
+            <td style="font-weight:600">${l.symbol||'—'}</td>
+            <td>${(l.L_m||0).toFixed(2)}</td>
+            <td>${(l.method||'alpha').substring(0,5)}</td>
+            <td>${l.su_kPa != null ? l.su_kPa.toFixed(1) : 0}</td>
+            <td>${l.alpha != null ? l.alpha.toFixed(3) : 0}</td>
+            <td>${l.N160 != null ? l.N160.toFixed(0) : '—'}</td>
+            <td>${l.gamma_kNm3 != null ? l.gamma_kNm3.toFixed(1) : '—'}</td>
+            <td>${l.sigma_v_eff_kPa != null ? l.sigma_v_eff_kPa.toFixed(0) : '—'}</td>
+            <td style="font-size:.74rem">${l.su_source && l.su_source.startsWith('nearest:') ? '≈' + l.su_source.substring(8) : (SRC_LBL[l.su_source]||l.su_source||'—')}</td>
+            <td style="font-weight:600">${(l.Rs_kN||0).toFixed(0)}</td>
+          </tr>`).join('')}</tbody>
+        </table>` : '<div style="color:#64748b;font-size:.8rem;padding:8px">Không có dữ liệu lớp đất.</div>';
+
+      return `<details style="background:#1e293b;border:1px solid #334155;border-radius:6px;margin-bottom:10px;padding:0">
+        <summary style="padding:10px 14px;cursor:pointer;font-weight:600;color:#e2e8f0;font-size:.9rem;list-style:none">
+          ${bhName.replace('KE-','')} — ${db.pile_type||'?'} L=${(db.L_design_m||0).toFixed(0)}m
+          <span style="float:right;color:#94a3b8;font-size:.78rem;font-weight:400">
+            NT1: ${nt1Badge} ${db.nt1_result||'—'} · NT2: ${nt2Badge} ${db.nt2_result||'—'} (RR/W=${(db.ratio_nt2||0).toFixed(2)})
+          </span>
+        </summary>
+        <div style="padding:0 14px 14px">
+          ${warningHtml}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px">
+            <div>
+              <div style="font-weight:600;color:#e2e8f0;margin-bottom:4px">NT1 — Chiều dài xuyên qua lớp yếu ${nt1Badge} <b>${db.nt1_result||'—'}</b></div>
+              <div style="font-size:.8rem;color:#cbd5e1;line-height:1.6">
+                L tk = <b>${(db.L_design_m||0).toFixed(1)} m</b> · L req = ${(db.L_req_nt1_m||0).toFixed(1)} m ·
+                Δ = <b style="color:${nt1Pass?'#6ee7b7':'#fca5a5'}">${(db.margin_nt1_m||0)>=0?'+':''}${(db.margin_nt1_m||0).toFixed(2)} m</b><br>
+                Đáy lớp mềm = ${(db.D_bottom_soft_m||0).toFixed(1)} m · Z mặt đất = ${(db.Z_m||0)>=0?'+':''}${(db.Z_m||0).toFixed(2)} m<br>
+                Đắp = ${(db.fill_m||0).toFixed(2)} m · Trong đất = ${(db.L_soil_m||0).toFixed(2)} m
+              </div>
+            </div>
+            <div>
+              <div style="font-weight:600;color:#e2e8f0;margin-bottom:4px">
+                NT2 — Sức kháng TCVN 11823-10 ${nt2Badge} <b>${db.nt2_result||'—'}</b>
+                <span style="color:${nt2Pass?'#6ee7b7':'#fca5a5'}">(RR/W=${(db.ratio_nt2||0).toFixed(2)})</span>
+              </div>
+              <div style="font-size:.8rem;color:#cbd5e1;line-height:1.6">
+                Rs = ${(db.Rs_kN||0).toFixed(0)}${rsBd} · Rp = ${(db.Rp_kN||0).toFixed(0)} kN<br>
+                RR = φ(Rs+Rp) = <b>${(db.RR_kN||0).toFixed(0)} kN</b> · W = ${(db.W_kN||0).toFixed(0)} kN<br>
+                φ = <b>${(db.phi_stat||0).toFixed(2)}</b> (${db.phi_basis||'—'}) · Tip: ${tipShort}
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:10px"><b style="font-size:.84rem;color:#e2e8f0">Bảng lớp đất (NT2):</b>${layersHtml}</div>
+        </div>
+      </details>`;
+    }).filter(s => s).join('');
+
+    document.getElementById('sw-nt-detail-list').innerHTML = html || '<div style="color:#94a3b8">Không có dữ liệu.</div>';
+  }
+
+  // ── C. So sánh 5 phương pháp NT2 ────────────────────────────────────────
+  async function _loadNT2Compare() {
+    let data;
+    try {
+      data = await fetch('/api/ke-sw/nt2-compare').then(r => r.json());
+    } catch (e) {
+      document.getElementById('sw-nt2-sum-body').innerHTML =
+        `<tr><td colspan="15" style="color:#f87171">Lỗi tải: ${e.message}</td></tr>`;
+      return;
+    }
+    const groups = data.by_bh_pile || [];
+
+    // Filter chỉ giữ HK thuộc alignment (8 HK trên tuyến + cọc kiến nghị)
+    const alignBh = new Set(_allRows.map(r => r.bhName));
+    const filtered = groups.filter(g => alignBh.has(g.bh_name));
+
+    if (!filtered.length) {
+      document.getElementById('sw-nt2-sum-body').innerHTML =
+        `<tr><td colspan="15" style="color:#94a3b8;padding:14px">Chưa có dữ liệu so sánh NT2 cho các HK ở Mục B.</td></tr>`;
+      return;
+    }
+
+    const methodLabels = { alpha:'α', beta:'β', lambda:'λ', SPT:'SPT', auto:'Tự chọn' };
+    const methodKeys = ['alpha', 'beta', 'lambda', 'SPT', 'auto'];
+
+    function _fmt(v, dec=0) { return v == null ? '—' : v.toFixed(dec); }
+    function _ratioColor(r) {
+      if (r == null) return '';
+      return r < 1.0 ? 'color:#f87171;font-weight:600'
+           : r < 1.5 ? 'color:#fbbf24;font-weight:600' : 'color:#6ee7b7';
+    }
+
+    // Bảng tổng hợp
+    const tbody = document.getElementById('sw-nt2-sum-body');
+    tbody.innerHTML = filtered.map(g => {
+      const m = g.methods || {};
+      const auto = m.auto || {};
+      const autoResultBadge = auto.result === 'Đạt'
+        ? '<span class="sw-badge-pass">Đạt</span>'
+        : auto.result ? '<span class="sw-badge-fail">Không đạt</span>' : '—';
+      let cols = '';
+      for (const key of methodKeys) {
+        const x = m[key] || {};
+        cols += `<td>${_fmt(x.RR_kN)}</td>`;
+        cols += `<td style="${_ratioColor(x.ratio)}">${_fmt(x.ratio, 2)}</td>`;
+      }
+      return `<tr>
+        <td class="left" style="font-weight:600">${g.bh_name.replace('KE-','')}</td>
+        <td>${g.pile_type}</td>
+        <td>${_fmt(g.L_m, 1)}</td>
+        <td>${_fmt(g.common.W_kN)}</td>
+        ${cols}
+        <td>${autoResultBadge}</td>
+      </tr>`;
+    }).join('');
+
+    // Biểu đồ bar chart RR theo phương pháp
+    if (window.Plotly) {
+      const xs = filtered.map(g => g.bh_name.replace('KE-',''));
+      const traces = methodKeys.map(key => ({
+        type: 'bar', name: methodLabels[key],
+        x: xs,
+        y: filtered.map(g => (g.methods[key]||{}).RR_kN || 0),
+        text: filtered.map(g => {
+          const r = (g.methods[key]||{}).ratio;
+          return r != null ? r.toFixed(2) : '';
+        }),
+        textposition: 'outside', textfont: {size: 9},
+      }));
+      traces.push({
+        type: 'scatter', mode: 'lines+markers', name: 'W cọc',
+        x: xs, y: filtered.map(g => g.common.W_kN),
+        line: {color: '#94a3b8', dash: 'dash', width: 2},
+        marker: {size: 9, symbol: 'diamond', color: '#94a3b8'},
+      });
+      Plotly.newPlot('sw-nt2-chart', traces, {
+        ...DARK,
+        title: { text: 'So sánh RR theo 5 phương pháp — tất cả HK', font: {size: 13} },
+        xaxis: { title: 'Hố khoan', gridcolor: '#374151' },
+        yaxis: { title: 'RR = φ·(Rs+Rp) (kN)', gridcolor: '#374151' },
+        barmode: 'group', height: 400,
+        legend: { orientation: 'h', y: -0.18 },
+        margin: { t: 50, b: 80 },
+      }, { responsive: true, displayModeBar: false });
+    }
+
+    // Chi tiết từng HK (expander)
+    const detailHtml = filtered.map(g => {
+      const auto = g.methods.auto || {};
+      const autoOk = auto.result === 'Đạt';
+      const summary = `${g.bh_name.replace('KE-','')} — ${g.pile_type} L=${g.L_m.toFixed(0)}m — Tự chọn: <b style="color:${autoOk?'#6ee7b7':'#fca5a5'}">${auto.result||'—'}</b> (RR=${_fmt(auto.RR_kN)} kN, ratio=${_fmt(auto.ratio, 2)})`;
+      const metrics = `
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
+          <div style="background:#0f172a;padding:8px 12px;border-radius:5px"><div style="font-size:.72rem;color:#94a3b8">L cọc trong sét</div><div style="font-size:1.1rem;font-weight:600;color:#e2e8f0">${_fmt(g.common.L_clay_total_m, 2)} m</div></div>
+          <div style="background:#0f172a;padding:8px 12px;border-radius:5px"><div style="font-size:.72rem;color:#94a3b8">Su TB sét</div><div style="font-size:1.1rem;font-weight:600;color:#e2e8f0">${_fmt(g.common.su_avg_clay_kPa, 1)} kPa</div></div>
+          <div style="background:#0f172a;padding:8px 12px;border-radius:5px"><div style="font-size:.72rem;color:#94a3b8">σ'v TB sét</div><div style="font-size:1.1rem;font-weight:600;color:#e2e8f0">${_fmt(g.common.sigma_avg_clay_kPa)} kPa</div></div>
+          <div style="background:#0f172a;padding:8px 12px;border-radius:5px"><div style="font-size:.72rem;color:#94a3b8">W cọc</div><div style="font-size:1.1rem;font-weight:600;color:#e2e8f0">${_fmt(g.common.W_kN)} kN</div></div>
+        </div>`;
+      const detRows = methodKeys.map(key => {
+        const x = g.methods[key] || {};
+        const resBadge = x.result === 'Đạt' ? '<span class="sw-badge-pass">Đạt</span>'
+                      : x.result ? '<span class="sw-badge-fail">Không đạt</span>' : '—';
+        return `<tr>
+          <td class="left" style="font-weight:600">${methodLabels[key]}</td>
+          <td>${_fmt(x.phi_stat, 2)}</td>
+          <td>${_fmt(x.Rs_kN)}</td>
+          <td>${_fmt(x.Rp_kN)}</td>
+          <td>${_fmt(x.RR_kN)}</td>
+          <td>${_fmt(g.common.W_kN)}</td>
+          <td style="${_ratioColor(x.ratio)}">${_fmt(x.ratio, 2)}</td>
+          <td>${resBadge}</td>
+        </tr>`;
+      }).join('');
+      return `<details style="background:#1e293b;border:1px solid #334155;border-radius:6px;margin-bottom:8px"${autoOk?'':' open'}>
+        <summary style="padding:10px 14px;cursor:pointer;color:#e2e8f0;font-size:.86rem;list-style:none">${summary}</summary>
+        <div style="padding:0 14px 14px">
+          ${metrics}
+          <table class="sw-tbl">
+            <thead><tr>
+              <th>Phương pháp</th><th>φ<sub>stat</sub></th><th>Rs (kN)</th><th>Rp (kN)</th>
+              <th>RR (kN)</th><th>W (kN)</th><th>RR/W</th><th>Kết quả</th>
+            </tr></thead>
+            <tbody>${detRows}</tbody>
+          </table>
+        </div>
+      </details>`;
+    }).join('');
+    document.getElementById('sw-nt2-detail-list').innerHTML = detailHtml;
+  }
+
   // ── Buttons ──
   document.getElementById('sw-btn-optimal')?.addEventListener('click', () => {
     _allRows.forEach(row => {
@@ -2892,7 +3159,7 @@ async function pageKeSw(el) {
   document.getElementById('sw-fc')?.addEventListener('change', _loadCatalog);
 
   await Promise.all([_loadCatalog(), _loadDesign()]);
-  await _loadProfile();
+  await Promise.all([_loadProfile(), _loadNTDetail(), _loadNT2Compare()]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

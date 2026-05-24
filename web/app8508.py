@@ -244,6 +244,267 @@ async def api_ke_sw_stability():
         con.close()
 
 
+@app.get("/api/ke-sw/winkler-profile")
+async def api_ke_sw_winkler_profile(bh: str, pile_type: str = "SW-840"):
+    """Full Winkler profile: earth pressure + nội lực per HK.
+
+    Trả về:
+      - ep: áp lực đất (elevs, sigma_h_active, sigma_h_passive, p_water_front/back, p_net)
+      - profile: nội lực (zs, u_mm, M_kNm, Q_kN, k_h, p_net_interp)
+      - summary: u_max_mm, M_max_kNm, Q_max_kN, Mcr_kNm, mcr_ratio, u_ok, mcr_ok
+      - geom: top_elev, Z_m, Zb_m, wlvl_front/back, q_kPa, su_front/back, H1_m
+    """
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    try:
+        from wall_internal_force import (
+            WallGeometry, EarthLayer, build_lateral_load, sw_pile_props,
+        )
+        from winkler_np import solve_numpy_dist, SoilLayer
+    except ImportError as e:
+        return JSONResponse({"error": f"Thiếu module solver: {e}"}, status_code=500)
+
+    con = _db()
+    try:
+        stab = con.execute(
+            "SELECT * FROM ke_sw_stability WHERE bh_name=? ORDER BY ts DESC LIMIT 1", (bh,)
+        ).fetchone()
+        wr = con.execute(
+            "SELECT * FROM ke_sw_winkler_results WHERE bh_name=? AND pile_type=? ORDER BY ts DESC LIMIT 1",
+            (bh, pile_type),
+        ).fetchone()
+        # Try nt2_layers via ke_sw_nt_detail join
+        nt_layers = con.execute(
+            """SELECT l.symbol, l.L_m, l.su_kPa, l.gamma_kNm3, l.layer_order
+               FROM ke_sw_nt2_layers l
+               JOIN ke_sw_nt_detail d ON l.sw_design_id = d.id
+               WHERE d.bh_name = ? ORDER BY l.layer_order""",
+            (bh,),
+        ).fetchall()
+    finally:
+        con.close()
+
+    if not stab:
+        return JSONResponse({"error": f"Không có dữ liệu ổn định cho {bh}"}, status_code=404)
+
+    s = dict(stab)
+    top_elev    = float(s.get("top_elev") or 2.7)
+    Z_m         = float(s.get("Z_m") or 0.0)
+    Zb_m        = float(s.get("Zb_m") or -1.5)
+    wlvl_front  = float(s.get("wlvl_front") or -0.5)
+    wlvl_back   = float(s.get("wlvl_back") or -1.5)
+    q_kPa       = float(s.get("q_kPa") or 15.0)
+    su_front    = float(s.get("su_front") or 12.0)
+    su_back     = float(s.get("su_back") or 12.0)
+    H1_m        = float(s.get("H1_m") or 20.0)
+
+    L_m = float(wr["L_m"]) if wr else 29.0
+    EI  = float(wr["EI_kNm2"]) if wr else 0.0
+    D_m = float(wr["D_mm"]) / 1000.0 if wr else 0.84
+    Mcr = float(wr["Mcr_kNm"]) if wr else 756.0
+
+    # ── Pile props ──
+    import math
+    pile_for_kh = type("P", (), {
+        "EI_kNm2": EI or 1.0, "D_m": D_m, "Mcr_kNm": Mcr, "Atd_m2": 0.0
+    })()
+
+    # ── SoilLayer list for Winkler springs ──
+    if nt_layers:
+        winkler_layers = [
+            SoilLayer(
+                symbol=r["symbol"],
+                thickness_m=float(r["L_m"]),
+                Su_kPa=float(r["su_kPa"] or 0.0),
+                gamma_kNm3=float(r["gamma_kNm3"] or 15.0),
+            )
+            for r in nt_layers if float(r["L_m"]) > 0
+        ]
+    else:
+        fill_m   = max(0.0, top_elev - Z_m)
+        dense_m  = max(0.5, L_m - fill_m - H1_m)
+        winkler_layers = [
+            SoilLayer("F",  max(0.1, fill_m),  Su_kPa=0,        gamma_kNm3=18.0),
+            SoilLayer("1",  max(0.1, H1_m),    Su_kPa=su_front, gamma_kNm3=15.0),
+            SoilLayer("2a", max(0.1, dense_m), Su_kPa=0,        gamma_kNm3=19.0),
+        ]
+
+    # ── EarthLayers for áp lực đất ──
+    pile_bot   = top_elev - L_m
+    # Front: fill + soft clay + dense
+    lay_fill   = EarthLayer(tip_elev=Z_m,              gamma=18.0, gamma_sub=8.0,  phi=25.0, c=0.0)
+    lay_soft_f = EarthLayer(tip_elev=Z_m - H1_m,       gamma=15.0, gamma_sub=5.0,  phi=8.0,  c=su_front * 0.5)
+    lay_dense_f= EarthLayer(tip_elev=pile_bot - 0.1,   gamma=19.0, gamma_sub=9.0,  phi=30.0, c=0.0)
+    front_layers = [lay_fill, lay_soft_f, lay_dense_f]
+
+    # Back: soft clay + dense below excavation
+    lay_soft_b = EarthLayer(tip_elev=Zb_m - H1_m,     gamma=15.0, gamma_sub=5.0,  phi=8.0,  c=su_back * 0.5)
+    lay_dense_b= EarthLayer(tip_elev=pile_bot - 0.1,   gamma=19.0, gamma_sub=9.0,  phi=30.0, c=0.0)
+    back_layers = [lay_soft_b, lay_dense_b]
+
+    # Fill on top (Front đất đắp)
+    fill_el = EarthLayer(tip_elev=Z_m, gamma=18.0, gamma_sub=8.0, phi=25.0, c=0.0)
+
+    geom = WallGeometry(
+        top_elev=top_elev, pile_length=L_m,
+        soil_level_front=Z_m, soil_level_back=Zb_m,
+        water_elev_front=wlvl_front, water_elev_back=wlvl_back,
+        surcharge_front=q_kPa,
+    )
+
+    # ── Earth pressure ──
+    ep = build_lateral_load(geom, front_layers, back_layers, fill=fill_el, N=120, mode="winkler")
+
+    # ── Winkler profile (distributed load) ──
+    try:
+        res = solve_numpy_dist(
+            winkler_layers, pile_for_kh, L_m,
+            zs_load=ep["zs_depth_m"].tolist(), p_load_kNm2=ep["p_net"].tolist(),
+            N=60, tip_fixity="free",
+        )
+    except Exception as e:
+        res = {"error": str(e)}
+
+    # ── Build response ──
+    ep_out = {
+        "elevs":            ep["elevs"].tolist(),
+        "zs_depth_m":       ep["zs_depth_m"].tolist(),
+        "sigma_h_active":   ep["sigma_h_active"].tolist(),
+        "sigma_h_passive":  ep["sigma_h_passive"].tolist(),
+        "p_water_front":    ep["p_water_front"].tolist(),
+        "p_water_back":     ep["p_water_back"].tolist(),
+        "p_net":            ep["p_net"].tolist(),
+        "F_active_kN":      round(ep["F_active"], 2),
+        "F_net_kN":         round(ep["F_net"], 2),
+    }
+
+    if "error" in res:
+        return JSONResponse({
+            "bh": bh, "pile_type": pile_type, "L_m": L_m,
+            "ep": ep_out, "profile": None, "error": res["error"],
+            "geom": {"top_elev": top_elev, "Z_m": Z_m, "Zb_m": Zb_m,
+                     "wlvl_front": wlvl_front, "wlvl_back": wlvl_back,
+                     "q_kPa": q_kPa, "su_front": su_front, "su_back": su_back, "H1_m": H1_m},
+        })
+
+    import numpy as np
+    zs    = res["zs"]
+    p_interp = np.interp(np.array(zs), ep["zs_depth_m"], ep["p_net"]).tolist()
+
+    # M array extended to node positions (midspan values → midspan depth)
+    zs_mid = [(zs[i] + zs[i + 1]) / 2 for i in range(len(zs) - 1)]
+
+    mcr_ratio = res["M_max_kNm"] / Mcr if Mcr > 0 else 0.0
+    u_allow   = 30.0  # mm — default allowable, can be parametrized
+
+    return JSONResponse({
+        "bh": bh, "pile_type": pile_type, "L_m": L_m, "top_elev": top_elev,
+        "ep": ep_out,
+        "profile": {
+            "zs":           zs,
+            "zs_mid":       zs_mid,
+            "u_mm":         res["ux"],
+            "M_kNm":        res["Ms"],
+            "Q_kN":         res["Qs"],
+            "k_h":          res["k_h"],
+            "p_net_interp": p_interp,
+        },
+        "summary": {
+            "u_top_mm":   round(res["u_top_mm"], 2),
+            "u_max_mm":   round(res["u_max_mm"], 2),
+            "M_max_kNm":  round(res["M_max_kNm"], 2),
+            "Q_max_kN":   round(res["Q_max_kN"], 2),
+            "Mcr_kNm":    round(Mcr, 2),
+            "mcr_ratio":  round(mcr_ratio, 3),
+            "u_ok":       res["u_max_mm"] <= u_allow,
+            "mcr_ok":     mcr_ratio <= 1.0,
+        },
+        "geom": {
+            "top_elev": top_elev, "Z_m": Z_m, "Zb_m": Zb_m,
+            "wlvl_front": wlvl_front, "wlvl_back": wlvl_back,
+            "q_kPa": q_kPa, "su_front": su_front, "su_back": su_back, "H1_m": H1_m,
+        },
+    })
+
+
+@app.get("/api/ke-sw/nt-layers")
+async def api_ke_sw_nt_layers():
+    """Chi tiết lớp đất NT2 cho TẤT CẢ HK trên alignment.
+    Trả về: { bh_name: [layers ...] } với mỗi lớp có symbol, L_m, method, su, alpha, N160, gamma, sigma'v, su_source, Rs.
+    """
+    con = _db()
+    try:
+        rows = con.execute(
+            """SELECT d.bh_name, l.layer_order, l.symbol, l.L_m, l.method,
+                      l.su_kPa, l.alpha, l.N160, l.gamma_kNm3,
+                      l.sigma_v_eff_kPa, l.su_source, l.Rs_kN
+               FROM ke_sw_nt2_layers l
+               JOIN ke_sw_nt_detail d ON l.sw_design_id = d.id
+               ORDER BY d.bh_name, l.layer_order"""
+        ).fetchall()
+    finally:
+        con.close()
+    grouped: dict = {}
+    for r in rows:
+        grouped.setdefault(r["bh_name"], []).append({
+            "layer_order": r["layer_order"], "symbol": r["symbol"],
+            "L_m": r["L_m"], "method": r["method"],
+            "su_kPa": r["su_kPa"], "alpha": r["alpha"], "N160": r["N160"],
+            "gamma_kNm3": r["gamma_kNm3"],
+            "sigma_v_eff_kPa": r["sigma_v_eff_kPa"],
+            "su_source": r["su_source"], "Rs_kN": r["Rs_kN"],
+        })
+    return JSONResponse({"layers_by_bh": grouped})
+
+
+@app.get("/api/ke-sw/nt2-compare")
+async def api_ke_sw_nt2_compare():
+    """So sánh 5 phương pháp NT2 (auto/alpha/beta/lambda/SPT) cho mọi HK trên alignment.
+    Trả về:
+      - rows: list bản ghi đầy đủ ke_sw_nt2_compare
+      - by_bh_pile: dict {(bh_name, pile_type, L_m): {method: {...}}}
+        + common: {L_clay_total_m, su_avg_clay_kPa, sigma_avg_clay_kPa, W_kN}
+    """
+    con = _db()
+    try:
+        rows = con.execute(
+            """SELECT bh_name, pile_type, L_m, method, Rs_kN, Rp_kN, RR_kN,
+                      W_kN, ratio, phi_stat, result,
+                      L_clay_total_m, su_avg_clay_kPa, sigma_avg_clay_kPa
+               FROM ke_sw_nt2_compare
+               ORDER BY bh_name, pile_type, L_m, method"""
+        ).fetchall()
+    finally:
+        con.close()
+
+    # Group by (bh_name, pile_type, L_m)
+    by_key: dict = {}
+    for r in rows:
+        key = f"{r['bh_name']}|{r['pile_type']}|{r['L_m']}"
+        if key not in by_key:
+            by_key[key] = {
+                "bh_name": r["bh_name"], "pile_type": r["pile_type"],
+                "L_m": r["L_m"],
+                "common": {
+                    "L_clay_total_m": r["L_clay_total_m"],
+                    "su_avg_clay_kPa": r["su_avg_clay_kPa"],
+                    "sigma_avg_clay_kPa": r["sigma_avg_clay_kPa"],
+                    "W_kN": r["W_kN"],
+                },
+                "methods": {},
+            }
+        by_key[key]["methods"][r["method"]] = {
+            "Rs_kN": r["Rs_kN"], "Rp_kN": r["Rp_kN"],
+            "RR_kN": r["RR_kN"], "W_kN": r["W_kN"],
+            "ratio": r["ratio"], "phi_stat": r["phi_stat"],
+            "result": r["result"],
+        }
+    return JSONResponse({
+        "rows": [dict(r) for r in rows],
+        "by_bh_pile": list(by_key.values()),
+    })
+
+
 @app.get("/api/ke-sw/profile-chainage")
 async def api_ke_sw_profile_chainage():
     """Trắc dọc địa chất + bình đồ HK theo tuyến kè SW.
