@@ -15402,6 +15402,147 @@ if _page == "tvtk_prep":
 
     _n_sel = int(_edited["Tính CDM"].sum())
     st.caption(f"Đã chọn **{_n_sel}** / {len(_edited)} hố khoan tham gia tính toán CDM.")
+
+    # ── Trắc dọc cao độ Kè KE ────────────────────────────────────────────────
+    import numpy as _np_e
+    _ke_bhs_e = sorted(
+        [b for b in _bhs_tv if b["name"] in _cdm_yes and b["name"].startswith("KE-")
+         and b["x_coord_m"] and b["y_coord_m"]],
+        key=lambda b: b["name"],
+    )
+    if len(_ke_bhs_e) >= 2:
+        _cdm_cfg_e  = _cv.execute("SELECT top_elev_m, penetration_m FROM tvtk_cdm_config WHERE id=1").fetchone()
+        _top_e      = float(_cdm_cfg_e["top_elev_m"])  if _cdm_cfg_e else 0.8
+        _pen_e      = float(_cdm_cfg_e["penetration_m"]) if _cdm_cfg_e else 1.0
+        _hsoft_e    = {r["bh_name"]: r["H_soft_m"] for r in _cv.execute(
+            "SELECT bh_name, H_soft_m FROM tvtk_bh_cdm WHERE bh_name LIKE 'KE-%'"
+        ).fetchall()}
+
+        # Chainage theo PCA – SVD
+        _xy_e   = _np_e.array([(b["x_coord_m"], b["y_coord_m"]) for b in _ke_bhs_e])
+        _ctr_e  = _xy_e.mean(axis=0)
+        _, _, _Vt_e = _np_e.linalg.svd(_xy_e - _ctr_e, full_matrices=False)
+        _ch_raw = ((_xy_e - _ctr_e) @ _Vt_e[0]).tolist()
+        _order_e = sorted(range(len(_ke_bhs_e)), key=lambda i: _ch_raw[i])
+        _bhs_e   = [_ke_bhs_e[i] for i in _order_e]
+        _ch_e    = [_ch_raw[i] - _ch_raw[_order_e[0]] for i in _order_e]  # bắt đầu từ 0
+
+        _elev_e  = [float(b["elevation_m"] or 0) for b in _bhs_e]
+        _bot_e   = [float(b["elevation_m"] or 0) - float(_hsoft_e.get(b["name"]) or 0) - _pen_e
+                    for b in _bhs_e]
+        _L_e     = [_top_e - b for b in _bot_e]
+        _lbl_e   = [b["name"].replace("KE-", "") for b in _bhs_e]
+        _n_e     = len(_bhs_e)
+        _ch_ext  = [_ch_e[0] - 10, _ch_e[-1] + 10]  # extend đường ngang
+
+        _fig_e = _go_tv.Figure()
+
+        # ── Vùng tô: đất đắp (mặt đất → cao độ TK) ──────────────────────────
+        if any(v < _des_ke for v in _elev_e):
+            _fig_e.add_trace(_go_tv.Scatter(
+                x=_ch_e + _ch_e[::-1],
+                y=[_des_ke] * _n_e + _elev_e[::-1],
+                fill="toself", fillcolor="rgba(210,180,100,0.22)",
+                line=dict(width=0), mode="lines",
+                name="Đất đắp", hoverinfo="skip",
+            ))
+
+        # ── Vùng tô: phạm vi xử lý CDM (đỉnh → đáy) ─────────────────────────
+        _fig_e.add_trace(_go_tv.Scatter(
+            x=_ch_e + _ch_e[::-1],
+            y=[_top_e] * _n_e + _bot_e[::-1],
+            fill="toself", fillcolor="rgba(30,120,200,0.15)",
+            line=dict(width=0), mode="lines",
+            name="Phạm vi xử lý CDM", hoverinfo="skip",
+        ))
+
+        # ── Cột CDM per HK (đứng, đứt) ──────────────────────────────────────
+        for i in range(_n_e):
+            _fig_e.add_trace(_go_tv.Scatter(
+                x=[_ch_e[i], _ch_e[i]], y=[_top_e, _bot_e[i]],
+                mode="lines", line=dict(color="#1a6fbd", width=1, dash="dot"),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+        # ── Mặt đất tự nhiên ─────────────────────────────────────────────────
+        _fig_e.add_trace(_go_tv.Scatter(
+            x=_ch_e, y=_elev_e,
+            mode="lines+markers+text",
+            name="Mặt đất tự nhiên",
+            line=dict(color="#7B3F00", width=2.5),
+            marker=dict(size=10, color="#7B3F00", symbol="circle",
+                        line=dict(color="white", width=1.5)),
+            text=_lbl_e, textposition="top center",
+            textfont=dict(size=10, color="#5a2000"),
+            hovertemplate="<b>%{text}</b><br>Chainage: %{x:.0f} m<br>Mặt đất: <b>%{y:+.3f} m</b><extra></extra>",
+        ))
+
+        # ── Cao độ thiết kế ───────────────────────────────────────────────────
+        _fig_e.add_trace(_go_tv.Scatter(
+            x=_ch_ext, y=[_des_ke, _des_ke],
+            mode="lines", name=f"Cao độ thiết kế ({_des_ke:+.2f} m)",
+            line=dict(color="#2ca02c", width=2.5, dash="dash"),
+            hovertemplate=f"Cao độ thiết kế: {_des_ke:+.2f} m<extra></extra>",
+        ))
+
+        # ── Đỉnh cọc CDM ─────────────────────────────────────────────────────
+        _fig_e.add_trace(_go_tv.Scatter(
+            x=_ch_ext, y=[_top_e, _top_e],
+            mode="lines", name=f"Đỉnh cọc CDM ({_top_e:+.2f} m)",
+            line=dict(color="#1a6fbd", width=2, dash="dash"),
+            hovertemplate=f"Đỉnh CDM: {_top_e:+.2f} m<extra></extra>",
+        ))
+
+        # ── Đáy cọc CDM ──────────────────────────────────────────────────────
+        _hov_bot = [
+            f"<b>{_lbl_e[i]}</b><br>Chainage: {_ch_e[i]:.0f} m<br>"
+            f"Đáy CDM: <b>{_bot_e[i]:+.2f} m</b><br>"
+            f"H_soft: {_hsoft_e.get(_bhs_e[i]['name'], 0):.1f} m  |  "
+            f"L_cọc: {_L_e[i]:.1f} m"
+            for i in range(_n_e)
+        ]
+        _fig_e.add_trace(_go_tv.Scatter(
+            x=_ch_e, y=_bot_e,
+            mode="lines+markers",
+            name="Đáy cọc CDM",
+            line=dict(color="#d62728", width=2.5),
+            marker=dict(size=9, color="#d62728", symbol="square",
+                        line=dict(color="white", width=1.5)),
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=_hov_bot,
+        ))
+
+        _y_lo = min(_bot_e) - 3
+        _y_hi = max(max(_elev_e), _des_ke) + 2
+        _fig_e.update_layout(
+            height=430,
+            margin=dict(l=65, r=20, t=55, b=60),
+            xaxis=dict(title="Chainage dọc tuyến Kè KE (m)", gridcolor="#ebebeb",
+                       tickfont=dict(size=11)),
+            yaxis=dict(title="Cao độ (m)", range=[_y_lo, _y_hi],
+                       gridcolor="#ebebeb", tickfont=dict(size=11),
+                       zeroline=True, zerolinecolor="#999", zerolinewidth=1),
+            legend=dict(orientation="h", x=0, y=-0.18, xanchor="left",
+                        font=dict(size=11)),
+            plot_bgcolor="white", paper_bgcolor="white",
+            hovermode="closest",
+            title=dict(
+                text=(
+                    f"Trắc dọc Kè KE – {_n_e} hố khoan  |  "
+                    f"L_CDM: {min(_L_e):.1f}–{max(_L_e):.1f} m"
+                ),
+                font=dict(size=13), x=0,
+            ),
+        )
+        st.plotly_chart(_fig_e, use_container_width=True)
+        st.caption(
+            f"Mặt đất tự nhiên: {min(_elev_e):+.3f} ÷ {max(_elev_e):+.3f} m  |  "
+            f"Đỉnh CDM: {_top_e:+.2f} m (cố định, từ Section 5)  |  "
+            f"Đáy CDM: {min(_bot_e):+.2f} ÷ {max(_bot_e):+.2f} m  |  "
+            f"Chiều dài cọc CDM: {min(_L_e):.1f}–{max(_L_e):.1f} m  |  "
+            "Trình tự HK theo hướng chính tuyến (PCA SVD trên tọa độ VN-2000)"
+        )
+
     st.divider()
 
     # ── 3. Hố khoan đại diện từng khu ───────────────────────────────────────
