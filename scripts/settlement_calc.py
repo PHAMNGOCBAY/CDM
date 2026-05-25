@@ -9,6 +9,8 @@ Hàm public:
   calc_time_series(params, t_months_list) -> list[dict]
   compare_methods(bh_name, H_fill_m, zone_params) -> list[dict]
   check_samples_vs_tccs41(zone_code) -> dict
+  classify_soft_soil(symbol, e0, c_kPa, phi_deg, Cu_VST_kPa, ...) -> dict
+  classify_zone_from_db(zone_code, db_path) -> list[dict]
 """
 
 from __future__ import annotations
@@ -773,7 +775,209 @@ def check_samples_vs_tccs41(zone_code: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────
-# 7. DEMO
+# 7. NHẬN DIỆN ĐẤT YẾU — TCCS 41:2022 ĐIỀU 4.1
+# ──────────────────────────────────────────────────────────────────
+
+# Ký hiệu luôn là đất yếu (không cần kiểm tra chỉ tiêu thí nghiệm)
+_ALWAYS_SOFT_SYMBOLS: tuple[str, ...] = ("1", "1b", "XMD")
+
+# Ngưỡng phân loại (Bảng 4, TCCS 41:2022 Điều 4.1)
+_SOFT_CRITERIA = {
+    "e_clay":      1.5,   # hệ số rỗng tối thiểu — đất sét
+    "e_silt":      1.0,   # hệ số rỗng tối thiểu — sét pha / bùn
+    "c_max_kPa":  15.0,   # lực dính tối đa
+    "phi_max_deg": 10.0,  # góc ma sát tối đa
+    "Cu_VST_max":  35.0,  # cường độ cắt cánh tối đa (kPa)
+    "N_SPT_max":    5,    # giá trị SPT tối đa
+    "qc_max_MPa":  0.1,   # sức kháng mũi CPT tối đa (MPa)
+}
+
+
+def classify_soft_soil(
+    symbol: str,
+    e0: float | None = None,
+    c_kPa: float | None = None,
+    phi_deg: float | None = None,
+    Cu_VST_kPa: float | None = None,
+    N_SPT: int | None = None,
+    qc_MPa: float | None = None,
+    is_clay: bool = True,
+) -> dict:
+    """Phân loại đất yếu theo TCCS 41:2022 Điều 4.1.
+
+    Thứ tự ưu tiên:
+      1. symbol trong _ALWAYS_SOFT_SYMBOLS → is_soft=True ngay lập tức
+      2. Kiểm tra từng chỉ tiêu thí nghiệm — bất kỳ 1 chỉ tiêu đạt → is_soft=True
+      3. Nếu không có dữ liệu nào → is_soft=None (không xác định)
+
+    Args:
+        symbol:     Ký hiệu lớp đất (vd '1', '2', 'F', 'XMD')
+        e0:         Hệ số rỗng tự nhiên
+        c_kPa:      Lực dính (kPa) — từ cắt phẳng hoặc UU
+        phi_deg:    Góc ma sát (độ)
+        Cu_VST_kPa: Cường độ cắt cánh hiện trường (kPa)
+        N_SPT:      Giá trị SPT (blow count)
+        qc_MPa:     Sức kháng mũi CPT (MPa)
+        is_clay:    True = sét (e_min=1.5), False = sét pha/bùn (e_min=1.0)
+
+    Returns:
+        dict với:
+          "is_soft":      bool | None
+          "reason":       str  — lý do phân loại
+          "criteria_met": list[str] — danh sách chỉ tiêu thỏa mãn
+          "symbol":       str
+    """
+    criteria_met: list[str] = []
+
+    # 1. Ký hiệu luôn mềm
+    if symbol in _ALWAYS_SOFT_SYMBOLS:
+        return {
+            "is_soft":      True,
+            "reason":       f"Ký hiệu '{symbol}' thuộc nhóm luôn là đất yếu (TCCS 41 §4.1)",
+            "criteria_met": [f"symbol={symbol}"],
+            "symbol":       symbol,
+        }
+
+    # 2. Kiểm tra từng chỉ tiêu
+    e_min = _SOFT_CRITERIA["e_clay"] if is_clay else _SOFT_CRITERIA["e_silt"]
+
+    if e0 is not None and e0 > 0:
+        if e0 >= e_min:
+            criteria_met.append(f"e0={e0:.2f} >= {e_min}")
+
+    if c_kPa is not None and c_kPa >= 0:
+        if c_kPa <= _SOFT_CRITERIA["c_max_kPa"]:
+            criteria_met.append(f"c={c_kPa:.1f} <= {_SOFT_CRITERIA['c_max_kPa']} kPa")
+
+    if phi_deg is not None and phi_deg >= 0:
+        if phi_deg < _SOFT_CRITERIA["phi_max_deg"]:
+            criteria_met.append(f"phi={phi_deg:.1f}° < {_SOFT_CRITERIA['phi_max_deg']}°")
+
+    if Cu_VST_kPa is not None and Cu_VST_kPa > 0:
+        if Cu_VST_kPa <= _SOFT_CRITERIA["Cu_VST_max"]:
+            criteria_met.append(f"Cu_VST={Cu_VST_kPa:.1f} <= {_SOFT_CRITERIA['Cu_VST_max']} kPa")
+
+    if N_SPT is not None and N_SPT >= 0:
+        if N_SPT <= _SOFT_CRITERIA["N_SPT_max"]:
+            criteria_met.append(f"N={N_SPT} <= {_SOFT_CRITERIA['N_SPT_max']}")
+
+    if qc_MPa is not None and qc_MPa > 0:
+        if qc_MPa <= _SOFT_CRITERIA["qc_max_MPa"]:
+            criteria_met.append(f"qc={qc_MPa:.3f} <= {_SOFT_CRITERIA['qc_max_MPa']} MPa")
+
+    # 3. Không có dữ liệu nào
+    has_data = any(v is not None for v in (e0, c_kPa, phi_deg, Cu_VST_kPa, N_SPT, qc_MPa))
+    if not has_data:
+        return {
+            "is_soft":      None,
+            "reason":       "Không có dữ liệu thí nghiệm để phân loại",
+            "criteria_met": [],
+            "symbol":       symbol,
+        }
+
+    is_soft = len(criteria_met) > 0
+    return {
+        "is_soft":      is_soft,
+        "reason":       ("Đạt " + str(len(criteria_met)) + " chỉ tiêu đất yếu")
+                        if is_soft else "Không đạt chỉ tiêu đất yếu nào",
+        "criteria_met": criteria_met,
+        "symbol":       symbol,
+    }
+
+
+def classify_zone_from_db(zone_code: str, db_path: Path | None = None) -> list[dict]:
+    """Phân loại toàn bộ mẫu lab của một zone từ SQLite.
+
+    Trả về list[dict] — mỗi dict là một mẫu với trường "is_soft".
+    Kết quả cũng được ghi vào bảng `soft_soil_classification` (upsert).
+    """
+    db = Path(db_path) if db_path else _DB
+    results: list[dict] = []
+
+    with sqlite3.connect(db) as con:
+        con.row_factory = sqlite3.Row
+
+        # Tạo bảng nếu chưa có
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS soft_soil_classification (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                borehole_name TEXT NOT NULL,
+                depth_from_m  REAL,
+                depth_to_m    REAL,
+                symbol        TEXT,
+                e0            REAL,
+                c_kPa         REAL,
+                phi_deg       REAL,
+                Cu_VST_kPa    REAL,
+                is_soft       INTEGER,
+                criteria_met  TEXT,
+                reason        TEXT,
+                classified_at TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+        con.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_ssc_unique
+            ON soft_soil_classification(borehole_name, depth_from_m, depth_to_m)
+        """)
+
+        rows = con.execute("""
+            SELECT b.name bh_name,
+                   lt.depth_from_m, lt.depth_to_m,
+                   lt.e0, lt.c_kPa, lt.phi_deg, lt.Cu_UU_kPa,
+                   ly.symbol
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            LEFT JOIN layers ly ON ly.borehole_id = b.id
+                AND lt.depth_from_m >= ly.depth_top_m
+                AND lt.depth_from_m <  ly.depth_bot_m
+            WHERE b.name LIKE ? || '-%'
+            ORDER BY b.name, lt.depth_from_m
+        """, (zone_code,)).fetchall()
+
+        for r in rows:
+            sym = r["symbol"] or "?"
+            res = classify_soft_soil(
+                symbol=sym,
+                e0=r["e0"],
+                c_kPa=r["c_kPa"],
+                phi_deg=r["phi_deg"],
+                Cu_VST_kPa=r["Cu_UU_kPa"],
+            )
+            entry = {
+                "borehole_name": r["bh_name"],
+                "depth_from_m":  r["depth_from_m"],
+                "depth_to_m":    r["depth_to_m"],
+                "symbol":        sym,
+                **res,
+            }
+            results.append(entry)
+            con.execute("""
+                INSERT INTO soft_soil_classification
+                    (borehole_name, depth_from_m, depth_to_m, symbol,
+                     e0, c_kPa, phi_deg, is_soft, criteria_met, reason)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(borehole_name, depth_from_m, depth_to_m)
+                DO UPDATE SET
+                    symbol=excluded.symbol, e0=excluded.e0,
+                    c_kPa=excluded.c_kPa, phi_deg=excluded.phi_deg,
+                    is_soft=excluded.is_soft,
+                    criteria_met=excluded.criteria_met,
+                    reason=excluded.reason,
+                    classified_at=datetime('now','localtime')
+            """, (
+                r["bh_name"], r["depth_from_m"], r["depth_to_m"], sym,
+                r["e0"], r["c_kPa"], r["phi_deg"],
+                1 if res["is_soft"] else (0 if res["is_soft"] is False else None),
+                ", ".join(res["criteria_met"]),
+                res["reason"],
+            ))
+        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    return results
+
+
+# ──────────────────────────────────────────────────────────────────
+# 8. DEMO
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import sys
