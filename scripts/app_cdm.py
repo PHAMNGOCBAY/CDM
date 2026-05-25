@@ -15731,21 +15731,31 @@ if _page == "tvtk_prep":
 
             # Chuẩn bị cột SQLite nếu chưa có
             for _col_s in ("Cu_VST_avg_kPa", "Es_kPa",
-                           "S1_pa1_cm", "S1_pa2_cm", "S1_pa3_cm"):
+                           "S1_pa1_cm", "S1_pa2_cm", "S1_pa3_cm",
+                           "Ip_avg", "bjerrum_mu", "Cu_corrected_kPa"):
                 try:
                     _cv.execute(f"ALTER TABLE tvtk_bh_cdm ADD COLUMN {_col_s} REAL")
                 except Exception:
                     pass
 
+            # Lazy import Bjerrum
+            try:
+                from scripts.settlement_calc import bjerrum_mu as _bj_mu
+            except Exception:
+                _bj_mu = None
+
+            _SOFT_SYM = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
+            _ph_sym = ",".join("?" * len(_SOFT_SYM))
+
             _s1_rows_e = []
             for _b3 in _bhs_e:
                 _nm3   = _b3["name"]
+                _bid3  = _b3["id"]
                 _H_p1  = float(_h_pa1_map.get(_nm3) or 0)
                 _H_p2  = float(_h_pa2_map.get(_nm3) or 0)
                 _H_p3  = float(_hsoft_e.get(_nm3) or 0)
 
-                # Cu_VST trung bình trong phạm vi lớp yếu (PA3 = sâu nhất)
-                # vst_locations.name = tên HK (không có borehole_id)
+                # Su trung bình từ VST trong phạm vi lớp yếu (PA3 = sâu nhất)
                 _vr = _cv.execute("""
                     SELECT AVG(v.Su_kPa) avg_su
                     FROM vane_shear_tests v
@@ -15753,8 +15763,21 @@ if _page == "tvtk_prep":
                     WHERE vl.name = ? AND v.Su_kPa > 0
                       AND v.depth_m <= ?
                 """, (_nm3, max(_H_p1, _H_p2, _H_p3))).fetchone()
-                _Cu_e  = float(_vr["avg_su"]) if _vr and _vr["avg_su"] else None
-                _Es_e  = 250.0 * _Cu_e if _Cu_e else None
+                _Su_e  = float(_vr["avg_su"]) if _vr and _vr["avg_su"] else None
+
+                # Ip trung bình từ lab_tests các lớp yếu của HK này
+                _ir = _cv.execute(f"""
+                    SELECT AVG(lt.Ip) avg_ip
+                    FROM lab_tests lt
+                    WHERE lt.borehole_id = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                      AND lt.symbol_tcvn IN ({_ph_sym})
+                """, (_bid3, *_SOFT_SYM)).fetchone()
+                _Ip_e = float(_ir["avg_ip"]) if _ir and _ir["avg_ip"] else None
+
+                # Bjerrum correction: Cu = μ × Su (TCCS 41 C.5)
+                _mu_e = _bj_mu(_Ip_e) if (_bj_mu is not None and _Ip_e is not None) else 1.0
+                _Cu_e = _Su_e * _mu_e if _Su_e is not None else None
+                _Es_e = 250.0 * _Cu_e if _Cu_e else None
 
                 def _s1_cm(H):
                     if not _Es_e or H <= 0:
@@ -15768,28 +15791,37 @@ if _page == "tvtk_prep":
 
                 # Lưu vào SQLite
                 _cv.execute("""
-                    INSERT INTO tvtk_bh_cdm (bh_name, Cu_VST_avg_kPa, Es_kPa,
-                                             S1_pa1_cm, S1_pa2_cm, S1_pa3_cm)
-                    VALUES (?,?,?,?,?,?)
+                    INSERT INTO tvtk_bh_cdm
+                        (bh_name, Cu_VST_avg_kPa, Es_kPa,
+                         S1_pa1_cm, S1_pa2_cm, S1_pa3_cm,
+                         Ip_avg, bjerrum_mu, Cu_corrected_kPa)
+                    VALUES (?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(bh_name) DO UPDATE SET
-                        Cu_VST_avg_kPa = excluded.Cu_VST_avg_kPa,
-                        Es_kPa         = excluded.Es_kPa,
-                        S1_pa1_cm      = excluded.S1_pa1_cm,
-                        S1_pa2_cm      = excluded.S1_pa2_cm,
-                        S1_pa3_cm      = excluded.S1_pa3_cm,
-                        updated_at     = datetime('now','localtime')
-                """, (_nm3, _Cu_e, _Es_e, _v1, _v2, _v3))
+                        Cu_VST_avg_kPa    = excluded.Cu_VST_avg_kPa,
+                        Es_kPa            = excluded.Es_kPa,
+                        S1_pa1_cm         = excluded.S1_pa1_cm,
+                        S1_pa2_cm         = excluded.S1_pa2_cm,
+                        S1_pa3_cm         = excluded.S1_pa3_cm,
+                        Ip_avg            = excluded.Ip_avg,
+                        bjerrum_mu        = excluded.bjerrum_mu,
+                        Cu_corrected_kPa  = excluded.Cu_corrected_kPa,
+                        updated_at        = datetime('now','localtime')
+                """, (_nm3, _Su_e, _Es_e, _v1, _v2, _v3,
+                      _Ip_e, _mu_e if _Su_e else None, _Cu_e))
 
                 _s1_rows_e.append({
-                    "Hố khoan":       _nm3.replace("KE-", ""),
-                    "Cu (kPa)":       round(_Cu_e, 1) if _Cu_e else "—",
-                    "Es (kPa)":       int(_Es_e)      if _Es_e else "—",
-                    "PA1 H (m)":      f"{_H_p1:.1f}",
-                    "PA1 S₁ (cm)":    _v1 if _v1 is not None else "—",
-                    "PA2 H (m)":      f"{_H_p2:.1f}",
-                    "PA2 S₁ (cm)":    _v2 if _v2 is not None else "—",
-                    "PA3 H (m)":      f"{_H_p3:.1f}",
-                    "PA3 S₁ (cm)":    _v3 if _v3 is not None else "—",
+                    "Hố khoan":         _nm3.replace("KE-", ""),
+                    "Su VST (kPa)":     round(_Su_e, 1) if _Su_e else "—",
+                    "Ip":               round(_Ip_e, 1) if _Ip_e else "—",
+                    "μ (Bjerrum)":      round(_mu_e, 3) if _Su_e and _Ip_e else "—",
+                    "Cu = μ·Su (kPa)":  round(_Cu_e, 1) if _Cu_e else "—",
+                    "Es (kPa)":         int(_Es_e)      if _Es_e else "—",
+                    "PA1 H (m)":        f"{_H_p1:.1f}",
+                    "PA1 S₁ (cm)":      _v1 if _v1 is not None else "—",
+                    "PA2 H (m)":        f"{_H_p2:.1f}",
+                    "PA2 S₁ (cm)":      _v2 if _v2 is not None else "—",
+                    "PA3 H (m)":        f"{_H_p3:.1f}",
+                    "PA3 S₁ (cm)":      _v3 if _v3 is not None else "—",
                 })
             _cv.commit()
 
@@ -15873,7 +15905,7 @@ if _page == "tvtk_prep":
                 f"TCVN 9403 Phụ lục C: S₁ = q·H / (a·Ec + (1−a)·Es)  |  "
                 f"q = {_q_cdm_e} kPa  |  a = {_a_e:.3f}  |  "
                 f"Ec = {_Ec_e:,.0f} kPa (k={int(_kEc_e)}×qu/2)  |  "
-                f"Es = 250·Cu_VST (từng hố khoan)"
+                f"Es = 250·Cu (Cu = μ·Su theo TCCS 41 Phụ lục C.3.2 — hệ số Bjerrum theo Ip)"
             )
             if _dS_info is not None:
                 st.caption(
@@ -16126,6 +16158,20 @@ if _page == "tvtk_prep":
             if r.get("_bh_name", "").startswith("KE-")
         }
 
+        # Bjerrum μ + Ip per HK (đã tính ở phần trắc dọc trên, lưu trong tvtk_bh_cdm)
+        _bj_per_bh = {
+            r["bh_name"]: {
+                "Ip": r["Ip_avg"],
+                "mu": r["bjerrum_mu"],
+                "Cu_corrected": r["Cu_corrected_kPa"],
+            }
+            for r in _cv.execute("""
+                SELECT bh_name, Ip_avg, bjerrum_mu, Cu_corrected_kPa
+                FROM tvtk_bh_cdm
+                WHERE bh_name LIKE 'KE-%' AND bjerrum_mu IS NOT NULL
+            """).fetchall()
+        }
+
         _bh_names_sorted = sorted(_vst_by_bh.keys(),
                                   key=lambda n: int(n.replace("KE-HK", "") or 0))
         _n_bh  = len(_bh_names_sorted)
@@ -16137,6 +16183,7 @@ if _page == "tvtk_prep":
         _all_uu  = [r["Cu_UU_kPa"] for r in _uu_data]
         _x_max   = max((_all_su + _all_uu) or [40]) * 1.15
         _x_max   = max(_x_max, 40)
+        # μ < 1 nên Cu_corrected ≤ Su → không cần mở rộng x range
 
         _fig_sub = _make_subplots(
             rows=_NROWS, cols=_NCOLS,
@@ -16209,6 +16256,56 @@ if _page == "tvtk_prep":
                     marker=dict(size=5, symbol="x", color="#1a6fbd"),
                     hovertemplate=f"<b>{_bh_n}</b><br>Sp: %{{x:.1f}} kPa | %{{y:.1f}} m<extra></extra>",
                 ), row=_row, col=_col)
+
+            # ── Cu hiệu chỉnh Bjerrum (TCCS 41 C.5: Cu = μ·Su) ───────────────
+            _bj_e   = _bj_per_bh.get(_bh_n, {})
+            _mu_bh  = _bj_e.get("mu")
+            _Ip_bh  = _bj_e.get("Ip")
+            if _mu_bh is not None and _vd:
+                _vs_cu = [s * _mu_bh for s in _vs]
+                _hov_cu = [
+                    f"<b>{_bh_n}</b><br>Chiều sâu: {d:.1f} m<br>"
+                    f"<b>Cu = μ·Su = {cu:.1f} kPa</b><br>"
+                    f"Su gốc: {s:.1f}  |  μ = {_mu_bh:.3f}"
+                    + (f"  (Ip ≈ {_Ip_bh:.0f})" if _Ip_bh else "")
+                    for d, cu, s in zip(_vd, _vs_cu, _vs)
+                ]
+                _fig_sub.add_trace(_go_tv.Scatter(
+                    x=_vs_cu, y=_vd,
+                    mode="lines+markers",
+                    name="Cu = μ·Su (TCCS 41 C.5)"
+                         if _i == 0 else "Cu = μ·Su (TCCS 41 C.5)",
+                    legendgroup="cu_corr",
+                    showlegend=(_i == 0),
+                    line=dict(color="#16a34a", width=2.2),
+                    marker=dict(size=8, symbol="diamond", color="#16a34a",
+                                line=dict(color="white", width=1)),
+                    hovertemplate="%{customdata}<extra></extra>",
+                    customdata=_hov_cu,
+                ), row=_row, col=_col)
+                # Annotation giá trị Cu trung bình ở giữa lớp yếu
+                _vs_cu_soft = [
+                    cu for d, cu in zip(_vd, _vs_cu)
+                    if _h_soft is None or d <= _h_soft
+                ]
+                if _vs_cu_soft:
+                    _Cu_avg = sum(_vs_cu_soft) / len(_vs_cu_soft)
+                    _y_ann  = (_h_soft * 0.5) if _h_soft else (max(_vd) * 0.4)
+                    _ann_txt = (
+                        f"<b>Cu_TB = {_Cu_avg:.1f} kPa</b><br>"
+                        f"μ = {_mu_bh:.3f}"
+                        + (f"  (Ip = {_Ip_bh:.0f})" if _Ip_bh else "")
+                    )
+                    _fig_sub.add_annotation(
+                        x=_Cu_avg, y=_y_ann, text=_ann_txt,
+                        showarrow=True, arrowhead=2, arrowsize=1,
+                        arrowwidth=1.4, arrowcolor="#16a34a",
+                        ax=40, ay=-25,
+                        font=dict(size=9, color="#14532d", family="Arial"),
+                        bgcolor="rgba(220,252,231,0.92)",
+                        bordercolor="#16a34a", borderwidth=1.2, borderpad=3,
+                        row=_row, col=_col,
+                    )
 
             # ── Cu_UU – marker kim cương ──────────────────────────────────────
             if _upts:
@@ -16286,8 +16383,9 @@ if _page == "tvtk_prep":
         )
         st.plotly_chart(_fig_sub, use_container_width=True)
         st.caption(
-            "Su (đường xanh liền): cắt cánh hiện trường (VST)  |  "
-            "Sp (xanh chấm): độ bền sau phá hoại  |  "
+            "Su (đường xanh dương liền): cắt cánh hiện trường (VST)  |  "
+            "Sp (xanh dương chấm): độ bền sau phá hoại  |  "
+            "**Cu = μ·Su (đường xanh lá): cường độ kháng cắt TÍNH TOÁN — TCCS 41 Phụ lục C.3.2 (Công thức C.5, Bảng C.1)**  |  "
             "Cu (kim cương cam): thí nghiệm cắt 3 trục UU trong phòng  |  "
             "Đường đỏ đứt: ngưỡng Su = 25 kPa  |  Vùng xanh nhạt: phạm vi đất yếu"
         )

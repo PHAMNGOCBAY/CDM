@@ -1766,3 +1766,63 @@ Vị trí: `app_cdm.py` ~line 15796, ngay sau `#### Độ lún khối gia cố C
 **Quy ước "Đạt"/"Không đạt":** `S₁ ≤ ΔS_limit` → "Đạt" (compliant); ngược lại "Không đạt".
 
 **Lưu ý vật lý:** S₁ ở tab này là **lún đàn hồi tức thì của khối gia cố CDM** (TCVN 9403 Phụ lục C); ΔS theo TCCS 41 là **lún cố kết còn lại** sau t năm. Cọc CDM cắm tới lớp cứng nên lún cố kết phần dưới mũi cọc ≈ 0, do đó so sánh trực tiếp S₁ với ΔS_limit là cách đánh giá nhanh tính khả thi của 3 phương án chiều sâu.
+
+---
+
+### 36. Hiệu chỉnh Bjerrum cho Su (VST) — TCCS 41:2022 Phụ lục C.3.2 (Công thức C.5, Bảng C.1)
+
+**Phạm vi:** Đối với các lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp — sử dụng kết quả VST, **cường độ kháng cắt TÍNH TOÁN** $c_u$ được xác định:
+
+$$c_u^i = \mu \cdot S_u^i \qquad \text{(C.5, xem }\varphi=0\text{)}$$
+
+**File engine:** `scripts/settlement_calc.py` — section 6a (trước section 6b)
+**Reference:** [38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md) mục 3b
+**JSON:** `data/tccs41_params.json` → `tccs41_limits.bjerrum_correction`
+
+#### Bảng C.1 — μ theo Ip
+
+| $I_p$ | 10 | 20 | 30 | 40 | 50 | 60 | 70 |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| $\mu$ | 1,09 | 1,00 | 0,925 | 0,86 | 0,80 | 0,75 | 0,70 |
+
+**Nội suy bậc nhất** giữa các khoảng; **clamp** đầu/cuối khi ngoài bảng.
+
+#### Hàm public — `scripts/settlement_calc.py`
+
+| Hàm | Vai trò |
+| --- | --- |
+| `bjerrum_mu(Ip)` | Trả về μ; clamp đầu/cuối; `Ip None/≤0` → 1.0 (safe default) |
+| `apply_bjerrum_correction(Su_kPa, Ip)` | Dict `{Su_kPa, Ip, mu, Cu_kPa}` |
+| `get_Ip_avg_for_bh(bh_name, soft_symbols, db_path)` | Query AVG(Ip) từ lab_tests cho HK |
+
+#### SQLite — Cột mới trong `tvtk_bh_cdm`
+
+| Cột | Vai trò |
+| --- | --- |
+| `Ip_avg` | Ip trung bình của HK (lớp yếu) |
+| `bjerrum_mu` | μ tra bảng C.1 |
+| `Cu_corrected_kPa` | $c_u = \mu \cdot S_u$ |
+
+Pre-migrate trước commit (idempotent ALTER TABLE try/except trong app).
+
+#### Áp dụng trong dự án
+
+| Tính toán | Trước hiệu chỉnh | Sau hiệu chỉnh (BẮT BUỘC) |
+|---|---|---|
+| Mô đun đàn hồi đất yếu $E_s$ | $E_s = 250 \cdot S_u$ | $E_s = 250 \cdot c_u = 250 \cdot \mu \cdot S_u$ |
+| Sức kháng ma sát thân cọc (sét) | $R_s = \alpha \cdot S_u \cdot P \cdot L$ | $R_s = \alpha \cdot c_u \cdot P \cdot L$ |
+| Bishop/Fellenius lớp yếu | $c = S_u$, $\varphi = 0$ | $c = c_u$, $\varphi = 0$ |
+| Tính lún cố kết (Cc, e₀, PC) | giữ nguyên | giữ nguyên (không liên quan) |
+
+#### Tích hợp UI — Tab `tvtk_prep` section 2
+
+**Bảng 3 PA** ([app_cdm.py:15783](scripts/app_cdm.py:15783)) thêm 4 cột mới:
+- "Su VST (kPa)" (trước là "Cu (kPa)") · "Ip" · "μ (Bjerrum)" · "Cu = μ·Su (kPa)"
+
+**Biểu đồ VST** ([app_cdm.py:16252](scripts/app_cdm.py:16252)) thêm:
+- Trace `Cu = μ·Su (TCCS 41 C.5)` — màu xanh lá `#16a34a`, marker diamond, lines+markers
+- Annotation hộp xanh lá hiển thị `Cu_TB` ở giữa lớp yếu (mũi tên + giá trị + μ + Ip)
+
+**Soft symbols** mặc định: `("1", "1b", "CH", "MH", "CH-OH", "MH-OH")` — query Ip TB từ `lab_tests.Ip` theo `symbol_tcvn`.
+
+**Fallback an toàn:** Nếu import `bjerrum_mu` fail → μ=1.0 → Cu=Su (giữ nguyên hành vi cũ, không vỡ app).

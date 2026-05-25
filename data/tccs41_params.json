@@ -55,6 +55,27 @@
       "construction": 1.10,
       "cat2_general":  1.20,
       "cat1_highway":  1.40
+    },
+    "bjerrum_correction": {
+      "_ref": "TCCS 41:2022/TCĐBVN — Phụ lục C.3.2 — Bảng C.1 — Công thức C.5",
+      "_note": "Cường độ kháng cắt tính toán c_u = μ · S_u (VST). Áp dụng cho lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp; xem góc ma sát φ = 0.",
+      "formula_C5": "c_u^i = mu * S_u^i",
+      "interpolation": "linear",
+      "out_of_range": "clamp_to_endpoints",
+      "mu_by_Ip": [
+        { "Ip": 10, "mu": 1.09  },
+        { "Ip": 20, "mu": 1.00  },
+        { "Ip": 30, "mu": 0.925 },
+        { "Ip": 40, "mu": 0.86  },
+        { "Ip": 50, "mu": 0.80  },
+        { "Ip": 60, "mu": 0.75  },
+        { "Ip": 70, "mu": 0.70  }
+      ],
+      "applies_to": [
+        "Es = 250 * Cu (Mesri & Olson 1974) - dùng Cu sau hiệu chỉnh thay vì Su gốc",
+        "Rs = alpha * Cu * P * L (sức kháng ma sát thân cọc trong sét)",
+        "Bishop / Fellenius lớp yếu: c = Cu, phi = 0"
+      ]
     }
   },
 

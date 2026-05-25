@@ -185,6 +185,43 @@ trong đó $S_c$ = tổng lún cố kết sơ cấp dự báo (theo Điều 9), 
 
 ---
 
+## 3b. Cường độ kháng cắt tính toán $c_u$ — Hiệu chỉnh Bjerrum (Phụ lục C.3.2)
+
+**Phạm vi:** Đối với các lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp — sử dụng kết quả thí nghiệm cắt cánh hiện trường (VST), trị số cường độ kháng cắt **tính toán** $c_u^i$ được xác định theo công thức C.5 (xem góc ma sát $\varphi = 0$):
+
+$$c_u^i = \mu \cdot S_u^i \qquad \text{(C.5)}$$
+
+**Trong đó:**
+
+| Ký hiệu | Ý nghĩa | Đơn vị |
+|---|---|---|
+| $S_u^i$ | Cường độ kháng cắt nguyên trạng không thoát nước của lớp $i$ — từ VST | kPa |
+| $\mu$ | Hệ số hiệu chỉnh Bjerrum (Bảng C.1) — xét ảnh hưởng bất đẳng hướng, tốc độ cắt và tính phá hoại liên tiếp của đất yếu | — |
+| $c_u^i$ | Cường độ kháng cắt **tính toán** dùng cho tính ổn định, sức chịu tải | kPa |
+
+### Bảng C.1 — Trị số μ theo chỉ số dẻo $I_p$
+
+| $I_p$ | 10 | 20 | 30 | 40 | 50 | 60 | 70 |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| $\mu$ | **1,09** | **1,00** | **0,925** | **0,86** | **0,80** | **0,75** | **0,70** |
+
+**Quy tắc nội suy:**
+- Giữa các khoảng → **nội suy bậc nhất** ($I_p = 25 \Rightarrow \mu = 0{,}9625$).
+- Ngoài bảng → clamp đầu/cuối ($I_p < 10 \Rightarrow \mu = 1{,}09$; $I_p > 70 \Rightarrow \mu = 0{,}70$).
+
+**Phương án thay thế (C.5b):** Có thể dùng đặc trưng sức kháng cắt theo thí nghiệm cắt không cố kết không thoát nước trong phòng ($c_i, \varphi_i$) thay vì VST — đưa vào tính toán theo công thức (C.1) hoặc (C.2).
+
+**Áp dụng trong dự án:**
+
+| Tính toán | Trước hiệu chỉnh | Sau hiệu chỉnh |
+|---|---|---|
+| Mô đun đàn hồi đất yếu $E_s$ | $E_s = 250 \cdot S_u$ (Mesri 1974) | $E_s = 250 \cdot c_u = 250 \cdot \mu \cdot S_u$ |
+| Sức kháng ma sát thân cọc trong sét | $R_s = \alpha \cdot S_u \cdot P \cdot L$ | $R_s = \alpha \cdot c_u \cdot P \cdot L$ |
+| Hệ số ổn định Bishop / Fellenius (lớp yếu) | $c = S_u$, $\varphi = 0$ | $c = c_u = \mu \cdot S_u$, $\varphi = 0$ |
+| Bishop với áp lực nước lỗ rỗng (cố kết) | giữ nguyên $c', \varphi'$ | giữ nguyên |
+
+---
+
 ## 4. Công thức tính lún cố kết (Điều 9 + Phụ lục A)
 
 ### 4.1 Tổng lún cố kết sơ cấp

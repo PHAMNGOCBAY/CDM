@@ -773,6 +773,83 @@ def check_samples_vs_tccs41(zone_code: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────
+# 6a. TCCS 41 PHỤ LỤC C.3.2 — HIỆU CHỈNH BJERRUM CHO Su (VST)
+# ──────────────────────────────────────────────────────────────────
+# Công thức C.5:  c_u^i = μ · S_u^i
+#   S_u — cường độ kháng cắt nguyên trạng không thoát nước (VST), kPa
+#   μ   — hệ số hiệu chỉnh Bjerrum theo chỉ số dẻo Ip (Bảng C.1)
+#   c_u — cường độ kháng cắt TÍNH TOÁN (xem góc ma sát φ = 0)
+#
+# Bảng C.1 — Trị số μ theo Ip (nội suy bậc nhất giữa các khoảng)
+_BJERRUM_MU_TABLE = [
+    (10, 1.09),
+    (20, 1.00),
+    (30, 0.925),
+    (40, 0.86),
+    (50, 0.80),
+    (60, 0.75),
+    (70, 0.70),
+]
+
+
+def bjerrum_mu(Ip: float) -> float:
+    """Hệ số hiệu chỉnh Bjerrum μ theo chỉ số dẻo Ip (TCCS 41 Bảng C.1).
+
+    Nội suy bậc nhất giữa các điểm Ip = 10, 20, 30, 40, 50, 60, 70.
+    Ngoài bảng → clamp đầu/cuối (Ip < 10 → 1.09; Ip > 70 → 0.70).
+    """
+    if Ip is None or Ip <= 0:
+        return 1.0
+    if Ip <= _BJERRUM_MU_TABLE[0][0]:
+        return _BJERRUM_MU_TABLE[0][1]
+    if Ip >= _BJERRUM_MU_TABLE[-1][0]:
+        return _BJERRUM_MU_TABLE[-1][1]
+    for i in range(len(_BJERRUM_MU_TABLE) - 1):
+        Ip1, mu1 = _BJERRUM_MU_TABLE[i]
+        Ip2, mu2 = _BJERRUM_MU_TABLE[i + 1]
+        if Ip1 <= Ip <= Ip2:
+            return mu1 + (mu2 - mu1) * (Ip - Ip1) / (Ip2 - Ip1)
+    return 1.0
+
+
+def apply_bjerrum_correction(Su_kPa: float, Ip: float) -> dict:
+    """Áp dụng C.5: Cu = μ · Su. Trả về dict đầy đủ phục vụ tracing.
+
+    Returns:
+        {'Su_kPa': float, 'Ip': float, 'mu': float, 'Cu_kPa': float}
+    """
+    mu = bjerrum_mu(Ip)
+    return {
+        "Su_kPa": float(Su_kPa) if Su_kPa is not None else None,
+        "Ip":     float(Ip)     if Ip     is not None else None,
+        "mu":     float(mu),
+        "Cu_kPa": float(Su_kPa) * mu if Su_kPa is not None else None,
+    }
+
+
+def get_Ip_avg_for_bh(bh_name: str, soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
+                      db_path: Optional[Path] = None) -> Optional[float]:
+    """Trả về Ip trung bình của các mẫu lab thuộc lớp đất yếu của HK.
+
+    soft_symbols mặc định gồm symbol_tcvn của lớp yếu (CH/MH/đất hữu cơ).
+    """
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+        ph = ",".join("?" * len(soft_symbols))
+        r = con.execute(f"""
+            SELECT AVG(lt.Ip) AS Ip_avg, COUNT(lt.Ip) AS n
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+              AND lt.symbol_tcvn IN ({ph})
+        """, (bh_name, *soft_symbols)).fetchone()
+        if r and r["n"] > 0 and r["Ip_avg"] is not None:
+            return float(r["Ip_avg"])
+        return None
+
+
+# ──────────────────────────────────────────────────────────────────
 # 6b. TCCS 41 — BẢNG 1 GIỚI HẠN ĐỘ LÚN CỐ KẾT CHO PHÉP CÒN LẠI ΔS
 # ──────────────────────────────────────────────────────────────────
 
