@@ -640,11 +640,13 @@ Hàm `draw_pile_schematic(...)` copy từ `app_coc_tai_ngang.py`, đặt trên c
   - `Rs = α × Su × P × L_soil`  |  `Rp = 9 × Su × Ap`
   - `W_cọc = (TL_T × 9,81 / L_std) × L_des`
 - **Su ưu tiên:** VST (`vane_shear_tests`) > lab (`lab_tests`) > `SU_BY_SYMBOL` mặc định (cảnh báo)
-- **SQLite schema:** `ke_sw_nt_detail` (cột `D_bottom_soft_m`, `D_source`) + `ke_sw_nt2_layers` + `ke_sw_winkler_results` (nội lực Winkler — PRIMARY KEY `(bh_name, pile_type, L_m, load_case)`, cột chính `u_max_mm`, `M_max_kNm`, `Mcr_kNm`, `Q_max_kN`, `mcr_ratio`, `u_ok`, `mcr_ok`, `solver`, `ts`). Hàm `save_winkler_results_to_db()` / `load_winkler_results()` trong `scripts/wall_internal_force.py` — INSERT OR REPLACE, idempotent, tự create table
+- **SQLite schema:** `ke_sw_nt_detail` (cột `D_bottom_soft_m`, `D_source`, + 4 cột PA2: `D_bottom_soft_1b_m`, `L_req_nt1_1b_m`, `margin_nt1_1b_m`, `nt1_1b_result`) + `ke_sw_nt2_layers` + `ke_sw_winkler_results` (nội lực Winkler — PRIMARY KEY `(bh_name, pile_type, L_m, load_case)`, cột chính `u_max_mm`, `M_max_kNm`, `Mcr_kNm`, `Q_max_kN`, `mcr_ratio`, `u_ok`, `mcr_ok`, `solver`, `ts`). Hàm `save_winkler_results_to_db()` / `load_winkler_results()` trong `scripts/wall_internal_force.py` — INSERT OR REPLACE, idempotent, tự create table
+- **PA2 — lớp 1b:** `SOFT_SYMBOLS_WITH_1B = frozenset({"1","1b","XMD"})` — hàm `_get_D_bottom_soft_with_1b()` tính D_bot xét thêm lớp 1b. Hiển thị 3 cột bổ sung trong Mục B: "D_bot+1b (m)", "L req+1b (m)", "NT1 (+1b)".
 
-#### Kết quả TTHC (Kè KE, cập nhật 2026-05-19)
+#### Kết quả TTHC (Kè KE, cập nhật 2026-05-26)
 
-- **HK kiểm soát NT1: KE-HK10 — KHÔNG ĐẠT** với SW-940 L=29m (biên=−0,1m) → cần L≥29,5m
+- **PA1 (lớp 1 only) — HK kiểm soát NT1: KE-HK10 — KHÔNG ĐẠT** (biên=−0,1m) → cần L≥29,5m
+- **PA2 (lớp 1+1b) — thêm 3 HK KHÔNG ĐẠT: KE-HK8** (L_yc=29,9m), **KE-HK9** (L_yc=29,5m), **KE-HK11** (L_yc=29,1m); **KE-HK10** tăng lên L_yc=31,1m
 - HK kiểm soát NT2: KE-HK7 (ratio=1,96 — nhỏ nhất)
 - Không hiển thị "BETON 6" trong app — chỉ hiển thị thông số kỹ thuật trung tính
 

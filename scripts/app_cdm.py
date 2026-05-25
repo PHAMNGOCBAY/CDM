@@ -8426,25 +8426,32 @@ if _page == "ke_sw":
                 _w_val   = _ntd_row.get("W_kN")     or _bh.get("W_pile_kN")
                 _rat_val = _ntd_row.get("ratio_nt2") or _nt2.get("ratio")
 
+            # PA2: xét thêm lớp 1b vào L yêu cầu (từ SQLite)
+            _d_1b  = _ntd_row.get("D_bottom_soft_1b_m")
+            _lr_1b = _ntd_row.get("L_req_nt1_1b_m")
+            _nt1_1b = _ntd_row.get("nt1_1b_result")
             _ke_rows.append({
-                "Hố khoan":          _bh["name"],
-                "Z (m)":             _z_for_calc,
-                "H lớp 1 (m)":       _h1_for_calc,
-                "L yêu cầu (m)":     _L_req,
-                "Cọc tối ưu":        _opt_name,
-                "L_max (m)":         _opt_Lmax,
-                "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
-                "Cọc kiến nghị":     _rec,
-                "L thiết kế (m)":    _ltk_f,
-                "NT1":               _nt1_val,
-                "NT2":               _nt2_val,
-                "Rs (kN)":           round(_rs_val, 1) if _rs_val is not None else "–",
-                "Rp (kN)":           round(_rp_val, 1) if _rp_val is not None else "–",
-                "RR (kN)":           round(_rr_val, 1) if _rr_val is not None else "–",
-                "W (kN)":            round(_w_val or 0, 1),
-                "RR/W":              round(_rat_val or 0, 2) if _rat_val is not None else "–",
-                "Ghi chú":           ("Tính lại theo cọc user chọn" if _need_recalc
-                                       else _bh.get("note", "")),
+                "Hố khoan":              _bh["name"],
+                "Z (m)":                 _z_for_calc,
+                "H lớp 1 (m)":           _h1_for_calc,
+                "L yêu cầu (m)":         _L_req,
+                "Cọc tối ưu":            _opt_name,
+                "L_max (m)":             _opt_Lmax,
+                "Đủ chiều dài":          "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
+                "Cọc kiến nghị":         _rec,
+                "L thiết kế (m)":        _ltk_f,
+                "NT1":                   _nt1_val,
+                "NT2":                   _nt2_val,
+                "Rs (kN)":               round(_rs_val, 1) if _rs_val is not None else "–",
+                "Rp (kN)":               round(_rp_val, 1) if _rp_val is not None else "–",
+                "RR (kN)":               round(_rr_val, 1) if _rr_val is not None else "–",
+                "W (kN)":                round(_w_val or 0, 1),
+                "RR/W":                  round(_rat_val or 0, 2) if _rat_val is not None else "–",
+                "D_bot+1b (m)":          round(_d_1b, 1) if _d_1b else "–",
+                "L req+1b (m)":          round(_lr_1b, 2) if _lr_1b else "–",
+                "NT1 (+1b)":             _nt1_1b or "–",
+                "Ghi chú":               ("Tính lại theo cọc user chọn" if _need_recalc
+                                           else _bh.get("note", "")),
             })
 
         if not _ke_rows:
@@ -8479,6 +8486,23 @@ if _page == "ke_sw":
                         step=0.5, format="%.1f", width="small",
                     ),
                     "Đủ chiều dài": st.column_config.Column(width="small"),
+                    "D_bot+1b (m)": st.column_config.Column(
+                        "D_bot+1b (m)",
+                        help="Chiều sâu đáy vùng yếu khi xét thêm lớp 1b (bùn sét mềm chuyển tiếp). "
+                             "Lớn hơn hoặc bằng H lớp 1.",
+                        width="small",
+                    ),
+                    "L req+1b (m)": st.column_config.Column(
+                        "L req+1b (m)",
+                        help="Chiều dài cọc yêu cầu NT1 khi xét thêm lớp 1b. "
+                             "So sánh với 'L yêu cầu' để thấy ảnh hưởng của lớp 1b.",
+                        width="small",
+                    ),
+                    "NT1 (+1b)": st.column_config.Column(
+                        "NT1 (+1b)",
+                        help="Kết quả NT1 khi xét lớp 1b vào chiều dài cọc tối thiểu.",
+                        width="small",
+                    ),
                 },
                 disabled=_disabled_b,
                 hide_index=True,

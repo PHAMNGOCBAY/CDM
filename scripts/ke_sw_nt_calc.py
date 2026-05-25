@@ -38,6 +38,8 @@ SU_BY_SYMBOL: dict[str, float] = {
 SAND_SYMBOLS = frozenset({"F", "2a", "2b", "2c", "4", "5a", "6", "7"})
 # Lớp yếu xử lý — tính là vùng mềm trong NT1
 SOFT_SYMBOLS = frozenset({"1", "XMD"})
+# PA2: xét thêm lớp 1b vào vùng yếu (bùn sét mềm chuyển tiếp)
+SOFT_SYMBOLS_WITH_1B = frozenset({"1", "1b", "XMD"})
 
 # Cọc SW = cọc bê tông DUL chữ U lõi đặc → cọc CHIẾM CHỖ
 SW_IS_DISPLACING = True
@@ -450,6 +452,28 @@ def _get_D_bottom_soft(bh_name: str, db_path: Path = DB_PATH) -> tuple[float, st
         return round(d_final, 3), src
     if d_layer > 0:
         return round(d_layer, 3), "layer (no SPT)"
+    if d_spt > 0:
+        return round(d_spt, 3), "SPT (no soft layer marked)"
+    return 0.0, "missing"
+
+
+def _get_D_bottom_soft_with_1b(bh_name: str, db_path: Path = DB_PATH) -> tuple[float, str]:
+    """PA2 — xét thêm lớp 1b vào vùng yếu.
+
+    Giống _get_D_bottom_soft nhưng dùng SOFT_SYMBOLS_WITH_1B = {'1','1b','XMD'}.
+    Dùng để so sánh L_req khi lớp 1b hiện diện sau lớp 1.
+    """
+    layers = _load_layers(bh_name, db_path)
+    soft_bottoms = [bot for _, bot, sym in layers if sym in SOFT_SYMBOLS_WITH_1B]
+    d_layer = max(soft_bottoms) if soft_bottoms else 0.0
+    d_spt, _ = _get_D_bottom_soft_by_spt(bh_name, db_path)
+
+    if d_layer > 0 and d_spt > 0:
+        d_final = max(d_layer, d_spt)
+        src = f"layer+1b={d_layer:.1f} | SPT={d_spt:.1f} → max"
+        return round(d_final, 3), src
+    if d_layer > 0:
+        return round(d_layer, 3), "layer+1b (no SPT)"
     if d_spt > 0:
         return round(d_spt, 3), "SPT (no soft layer marked)"
     return 0.0, "missing"
@@ -958,6 +982,9 @@ def calc_all_alignment_hks(
             D_source = "JSON (cảnh báo: lớp '1'/'XMD' không có trong SQLite.layers)"
             print(f"  [CẢNH BÁO] {db_name}: D_bottom_soft lấy từ JSON, không có layers trong SQLite")
 
+        # ── PA2 — D_bottom_soft xét thêm lớp 1b ──────────────────────────────
+        D_bot_1b, _ = _get_D_bottom_soft_with_1b(db_name, db_path)
+
         rec_pile = bh.get("recommended_pile", "SW-840")
         if rec_pile not in catalog:
             rec_pile = "SW-840"
@@ -972,14 +999,24 @@ def calc_all_alignment_hks(
             for w in nt2["warnings"]:
                 print(f"  [CẢNH BÁO su] {db_name}: {w}")
 
+        # PA2 — NT1 xét thêm lớp 1b
+        nt1_1b = calc_nt1(db_name, Z_m, D_bot_1b, rec_pile, L_design,
+                          D_source="layer+1b")
+        L_req_1b  = nt1_1b["L_req_m"]
+        margin_1b = nt1_1b["margin_m"]
+
         results.append({
-            "bh_name":          db_name,
-            "Z_m":              Z_m,
-            "Z_source":         Z_source,
-            "D_bottom_soft_m":  D_bot,
-            "D_source":         D_source,
-            "nt1":              nt1,
-            "nt2":              nt2,
+            "bh_name":              db_name,
+            "Z_m":                  Z_m,
+            "Z_source":             Z_source,
+            "D_bottom_soft_m":      D_bot,
+            "D_source":             D_source,
+            "D_bottom_soft_1b_m":   D_bot_1b,
+            "L_req_nt1_1b_m":       L_req_1b,
+            "margin_nt1_1b_m":      margin_1b,
+            "nt1_1b_result":        "Đạt" if margin_1b >= 0 else "Không đạt",
+            "nt1":                  nt1,
+            "nt2":                  nt2,
         })
 
     return results
@@ -1045,6 +1082,17 @@ def create_nt_tables(db_path: Path = DB_PATH) -> None:
             FOREIGN KEY (sw_design_id) REFERENCES ke_sw_nt_detail(id)
         );
     """)
+    # Thêm cột PA2 (lớp 1b) — idempotent qua try/except
+    for col_sql in [
+        "ALTER TABLE ke_sw_nt_detail ADD COLUMN D_bottom_soft_1b_m REAL",
+        "ALTER TABLE ke_sw_nt_detail ADD COLUMN L_req_nt1_1b_m REAL",
+        "ALTER TABLE ke_sw_nt_detail ADD COLUMN margin_nt1_1b_m REAL",
+        "ALTER TABLE ke_sw_nt_detail ADD COLUMN nt1_1b_result TEXT",
+    ]:
+        try:
+            con.execute(col_sql)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     con.commit()
     con.close()
 
@@ -1069,8 +1117,9 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
              Rs_kN, Rs_clay_kN, Rs_sand_kN,
              tip_symbol, tip_method, tip_su_kNm2, tip_N160,
              Rp_kN, phi_stat, phi_basis, RR_kN, W_kN,
-             ratio_nt2, nt2_result, su_warnings, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             ratio_nt2, nt2_result, su_warnings, created_at,
+             D_bottom_soft_1b_m, L_req_nt1_1b_m, margin_nt1_1b_m, nt1_1b_result)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             "202605-TTHC", "KE",
             n1["bh_name"], n1["pile_name"], n1["L_design_m"],
@@ -1085,6 +1134,8 @@ def save_nt_results(results: list[dict], db_path: Path = DB_PATH) -> None:
             n2["RR_kN"], n2["W_kN"],
             n2["ratio"], n2["result"],
             warnings_txt, now,
+            r.get("D_bottom_soft_1b_m"), r.get("L_req_nt1_1b_m"),
+            r.get("margin_nt1_1b_m"), r.get("nt1_1b_result"),
         ))
         detail_id = cur.lastrowid
 
@@ -1134,6 +1185,10 @@ def save_nt_detail_single(
     n1: dict,
     n2: dict,
     db_path: Path = DB_PATH,
+    D_bottom_soft_1b_m: float | None = None,
+    L_req_nt1_1b_m: float | None = None,
+    margin_nt1_1b_m: float | None = None,
+    nt1_1b_result: str | None = None,
 ) -> None:
     """Lưu kết quả NT1+NT2 của một HK vào ke_sw_nt_detail (INSERT OR REPLACE)."""
     create_nt_tables(db_path)
@@ -1149,8 +1204,9 @@ def save_nt_detail_single(
              Rs_kN, Rs_clay_kN, Rs_sand_kN,
              tip_symbol, tip_method, tip_su_kNm2, tip_N160,
              Rp_kN, phi_stat, phi_basis, RR_kN, W_kN,
-             ratio_nt2, nt2_result, su_warnings, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+             ratio_nt2, nt2_result, su_warnings, created_at,
+             D_bottom_soft_1b_m, L_req_nt1_1b_m, margin_nt1_1b_m, nt1_1b_result)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             "202605-TTHC", "KE",
             n1["bh_name"], n1["pile_name"], n1["L_design_m"],
@@ -1165,6 +1221,7 @@ def save_nt_detail_single(
             n2["RR_kN"], n2["W_kN"],
             n2["ratio"], n2["result"],
             warnings_txt, now,
+            D_bottom_soft_1b_m, L_req_nt1_1b_m, margin_nt1_1b_m, nt1_1b_result,
         ))
         con.commit()
 
