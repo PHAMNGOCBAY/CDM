@@ -156,14 +156,32 @@ def check_samples_vs_tccs41(zone_code) -> dict:
 
 ---
 
-## 3. Tiêu chuẩn độ lún còn lại sau thi công (Bảng 1 — Điều 6.1)
+## 3. Tiêu chuẩn độ lún cố kết cho phép còn lại ΔS (Bảng 1 — Điều 6.2.3)
 
-| Loại đường | Đoạn gần mố cầu (m) | Đoạn hai bên cầu/cống chui | Đoạn thông thường |
+**Điều 6.2.3:** Sau khi hoàn thành công trình nền mặt đường xây dựng trên vùng đất yếu, phần độ lún cố kết $\Delta S$ tiếp tục xảy ra sau đó tại mọi vị trí của nền đường trong thời hạn khai thác sử dụng $t$ năm với:
+
+- **$t = 15$ năm** — kết cấu mặt đường **mềm** (bê tông nhựa, láng nhựa)
+- **$t = 30$ năm** — kết cấu mặt đường **cứng** (bê tông xi măng)
+
+được cho phép như sau:
+
+### Bảng 1 — Phần độ lún cố kết cho phép còn lại ΔS
+
+| Loại, cấp đường | Đoạn gần mố cầu | Đoạn hai bên cống / cống chui | Các đoạn nền đắp thông thường |
 |---|:---:|:---:|:---:|
-| Cao tốc ≥ 80 km/h, tăng mặt cao A1 | **≤ 10 cm** | **≤ 20 cm** | **≤ 30 cm** |
-| Đường cấp ≤ 60 km/h, tăng mặt cao A2 | **≤ 20 cm** | **≤ 30 cm** | **≤ 40 cm** |
+| **1.** Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế $\geq 80$ km/h và có tầng mặt cấp cao A1 | **≤ 10 cm** | **≤ 20 cm** | **≤ 30 cm** |
+| **2.** Đường có tốc độ thiết kế $\leq 60$ km/h và có tầng mặt cấp cao A1 | **≤ 20 cm** | **≤ 30 cm** | **≤ 40 cm** |
 
-**Tốc độ lún còn lại:** ≤ 2 cm/năm sau khi làm xong mặt đường
+**Chú thích:**
+
+- Phần độ lún cố kết còn lại $\Delta S$ là phần lún cố kết **chưa hết** sau khi làm xong áo đường của đoạn nền đắp trên đất yếu.
+- Trị số $\Delta S$ được xác định theo công thức **(36)** tùy thuộc độ cố kết $U$ đạt được vào thời điểm làm xong kết cấu mặt đường:
+
+$$\Delta S = S_c \cdot (1 - U_t)$$
+
+trong đó $S_c$ = tổng lún cố kết sơ cấp dự báo (theo Điều 9), $U_t$ = độ cố kết đạt được tại thời điểm $t$ làm xong mặt đường.
+
+**Tốc độ lún còn lại:** $\leq 2$ cm/năm sau khi làm xong mặt đường (Điều 6.2.4)
 
 ---
 

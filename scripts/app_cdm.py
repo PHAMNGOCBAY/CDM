@@ -15794,6 +15794,78 @@ if _page == "tvtk_prep":
             _cv.commit()
 
             st.markdown("#### Độ lún khối gia cố CDM theo 3 phương án chiều sâu")
+
+            # ── Giới hạn ΔS cho phép theo TCCS 41:2022 Bảng 1 — Điều 6.2.3 ──
+            # Tạo bảng + populate nếu chưa có (idempotent)
+            try:
+                from scripts.settlement_calc import (
+                    create_tccs41_limits_table as _make_tccs41_lim,
+                    get_allowable_residual_settlement as _get_ds_limit,
+                )
+                _make_tccs41_lim()
+            except Exception:
+                _get_ds_limit = None
+
+            # Migrate tvtk_cdm_config thêm 2 cột chọn cấp đường + vị trí
+            for _col_lim, _def_lim in [("road_class_code", "'cat1'"),
+                                        ("position_code",   "'general'")]:
+                try:
+                    _cv.execute(
+                        f"ALTER TABLE tvtk_cdm_config ADD COLUMN {_col_lim} TEXT DEFAULT {_def_lim}"
+                    )
+                except Exception:
+                    pass
+            _cv.commit()
+            _lim_cfg = _cv.execute(
+                "SELECT road_class_code, position_code FROM tvtk_cdm_config WHERE id=1"
+            ).fetchone()
+            _rc_def  = (_lim_cfg["road_class_code"] if _lim_cfg and _lim_cfg["road_class_code"]
+                        else "cat1")
+            _pos_def = (_lim_cfg["position_code"]   if _lim_cfg and _lim_cfg["position_code"]
+                        else "general")
+
+            _RC_OPTS  = [
+                ("cat1", "Cao tốc / ≥ 80 km/h / A1"),
+                ("cat2", "≤ 60 km/h / A1"),
+            ]
+            _POS_OPTS = [
+                ("general",      "Đoạn nền đắp thông thường"),
+                ("side_culvert", "Đoạn hai bên cống / cống chui"),
+                ("near_bridge",  "Đoạn gần mố cầu"),
+            ]
+            _c_lim1, _c_lim2, _c_lim3 = st.columns([1.4, 1.4, 1.0])
+            _rc_pick = _c_lim1.selectbox(
+                "Cấp đường (TCCS 41 Bảng 1)",
+                options=[k for k, _ in _RC_OPTS],
+                format_func=lambda k: dict(_RC_OPTS)[k],
+                index=[k for k, _ in _RC_OPTS].index(_rc_def) if _rc_def in dict(_RC_OPTS) else 0,
+                key="_tv_tccs41_rc",
+            )
+            _pos_pick = _c_lim2.selectbox(
+                "Vị trí đoạn nền đắp",
+                options=[k for k, _ in _POS_OPTS],
+                format_func=lambda k: dict(_POS_OPTS)[k],
+                index=[k for k, _ in _POS_OPTS].index(_pos_def) if _pos_def in dict(_POS_OPTS) else 0,
+                key="_tv_tccs41_pos",
+            )
+            # Persist lựa chọn
+            _cv.execute(
+                "UPDATE tvtk_cdm_config SET road_class_code=?, position_code=? WHERE id=1",
+                (_rc_pick, _pos_pick),
+            )
+            _cv.commit()
+
+            _dS_lim = None
+            _dS_info = None
+            if _get_ds_limit is not None:
+                try:
+                    _dS_info = _get_ds_limit(_rc_pick, _pos_pick)
+                    _dS_lim  = float(_dS_info["delta_S_cm_max"])
+                except Exception:
+                    _dS_info = None
+            if _dS_lim is not None:
+                _c_lim3.metric("ΔS cho phép (cm)", f"≤ {_dS_lim:.0f}")
+
             _Ecomp_repr = (f"{_a_e * _Ec_e + (1 - _a_e) * 3000:.0f}"
                            if not _s1_rows_e
                            else "—")
@@ -15803,10 +15875,32 @@ if _page == "tvtk_prep":
                 f"Ec = {_Ec_e:,.0f} kPa (k={int(_kEc_e)}×qu/2)  |  "
                 f"Es = 250·Cu_VST (từng hố khoan)"
             )
+            if _dS_info is not None:
+                st.caption(
+                    f"TCCS 41:2022 Bảng 1 — Điều 6.2.3:  "
+                    f"{_dS_info['road_class_desc']}  |  "
+                    f"{_dS_info['position_desc']}  →  "
+                    f"**ΔS ≤ {_dS_lim:.0f} cm**  "
+                    f"(thời hạn t = {_dS_info['t_years_flexible']} năm mặt đường mềm / "
+                    f"{_dS_info['t_years_rigid']} năm mặt đường cứng)"
+                )
+
+            # Thêm cột Đạt/Không đạt cho mỗi PA — so sánh S₁ vs ΔS_limit
+            if _dS_lim is not None and _s1_rows_e:
+                for _row in _s1_rows_e:
+                    for _pa_k, _col_k in (("PA1", "PA1 S₁ (cm)"),
+                                           ("PA2", "PA2 S₁ (cm)"),
+                                           ("PA3", "PA3 S₁ (cm)")):
+                        _v = _row.get(_col_k)
+                        if isinstance(_v, (int, float)):
+                            _row[f"Đạt {_pa_k}"] = "Đạt" if _v <= _dS_lim else "Không đạt"
+                        else:
+                            _row[f"Đạt {_pa_k}"] = "—"
+
             if _s1_rows_e:
                 _df_s1 = _pd_tv.DataFrame(_s1_rows_e)
                 st.table(_df_s1)
-                # Tổng hợp min–max
+                # Tổng hợp min–max + đếm Đạt/Không đạt
                 _get_nums = lambda col: [
                     r[col] for r in _s1_rows_e if isinstance(r[col], (int, float))
                 ]
@@ -15815,10 +15909,19 @@ if _page == "tvtk_prep":
                                       ("PA3", "PA3 S₁ (cm)")):
                     _vals = _get_nums(_col)
                     if _vals:
-                        st.caption(
+                        _line = (
                             f"{_pa_lbl}: S₁ = {min(_vals):.1f} ÷ {max(_vals):.1f} cm  "
                             f"(TB {sum(_vals)/len(_vals):.1f} cm)"
                         )
+                        if _dS_lim is not None:
+                            _n_pass = sum(1 for v in _vals if v <= _dS_lim)
+                            _n_fail = len(_vals) - _n_pass
+                            _line += (
+                                f"  |  Đạt {_n_pass}/{len(_vals)} HK"
+                                + (f"  |  Không đạt {_n_fail} HK" if _n_fail else "")
+                                + f"  (ngưỡng ΔS ≤ {_dS_lim:.0f} cm)"
+                            )
+                        st.caption(_line)
 
     st.divider()
 

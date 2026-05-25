@@ -773,6 +773,140 @@ def check_samples_vs_tccs41(zone_code: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────
+# 6b. TCCS 41 — BẢNG 1 GIỚI HẠN ĐỘ LÚN CỐ KẾT CHO PHÉP CÒN LẠI ΔS
+# ──────────────────────────────────────────────────────────────────
+
+def create_tccs41_limits_table(db_path: Optional[Path] = None) -> None:
+    """Tạo bảng tccs41_settlement_limits trong TTHC.sqlite — idempotent.
+
+    Bảng 1 — Điều 6.2.3 TCCS 41:2022/TCĐBVN.
+    Phần độ lún cố kết cho phép còn lại ΔS tại mọi vị trí của đoạn nền đắp
+    trên đất yếu trong thời hạn t năm sau khi thi công xong mặt đường.
+
+      t = 15 năm — kết cấu mặt đường mềm
+      t = 30 năm — kết cấu mặt đường cứng
+    """
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tccs41_settlement_limits (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                road_class_code   TEXT NOT NULL,
+                road_class_desc   TEXT NOT NULL,
+                position_code     TEXT NOT NULL,
+                position_desc     TEXT NOT NULL,
+                delta_S_cm_max    REAL NOT NULL,
+                t_years_flexible  INTEGER DEFAULT 15,
+                t_years_rigid     INTEGER DEFAULT 30,
+                source            TEXT DEFAULT 'TCCS 41:2022 Bảng 1 — Điều 6.2.3',
+                updated_at        TEXT DEFAULT (datetime('now','localtime')),
+                UNIQUE (road_class_code, position_code)
+            )
+        """)
+        # Populate 6 ô từ Bảng 1
+        _rows = [
+            # cat1 — Cao tốc / ≥ 80 km/h / A1
+            ("cat1", "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+             "near_bridge",  "Đoạn gần mố cầu",                       10.0),
+            ("cat1", "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+             "side_culvert", "Đoạn hai bên cống hoặc cống chui",      20.0),
+            ("cat1", "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+             "general",      "Các đoạn nền đắp thông thường",         30.0),
+            # cat2 — ≤ 60 km/h / A1
+            ("cat2", "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+             "near_bridge",  "Đoạn gần mố cầu",                       20.0),
+            ("cat2", "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+             "side_culvert", "Đoạn hai bên cống hoặc cống chui",      30.0),
+            ("cat2", "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+             "general",      "Các đoạn nền đắp thông thường",         40.0),
+        ]
+        for rc, rd, pc, pd_, dS in _rows:
+            con.execute("""
+                INSERT INTO tccs41_settlement_limits
+                    (road_class_code, road_class_desc, position_code, position_desc, delta_S_cm_max)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (road_class_code, position_code) DO UPDATE SET
+                    road_class_desc = excluded.road_class_desc,
+                    position_desc   = excluded.position_desc,
+                    delta_S_cm_max  = excluded.delta_S_cm_max,
+                    updated_at      = datetime('now','localtime')
+            """, (rc, rd, pc, pd_, dS))
+        con.commit()
+
+
+def get_allowable_residual_settlement(
+    road_class_code: str = "cat1",
+    position_code: str = "general",
+    db_path: Optional[Path] = None,
+) -> dict:
+    """Tra cứu giới hạn ΔS cho phép từ bảng TCCS 41:2022 Bảng 1.
+
+    Args:
+        road_class_code: 'cat1' (≥80 km/h, A1) hoặc 'cat2' (≤60 km/h, A1)
+        position_code:   'near_bridge' | 'side_culvert' | 'general'
+
+    Returns:
+        {'delta_S_cm_max': float, 'road_class_desc': str, 'position_desc': str,
+         't_years_flexible': 15, 't_years_rigid': 30}
+        Raises ValueError nếu không tìm thấy.
+    """
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+        # Tự tạo bảng nếu chưa có (idempotent)
+        try:
+            r = con.execute("""
+                SELECT road_class_desc, position_desc, delta_S_cm_max,
+                       t_years_flexible, t_years_rigid
+                FROM tccs41_settlement_limits
+                WHERE road_class_code = ? AND position_code = ?
+            """, (road_class_code, position_code)).fetchone()
+        except sqlite3.OperationalError:
+            create_tccs41_limits_table(_p)
+            r = con.execute("""
+                SELECT road_class_desc, position_desc, delta_S_cm_max,
+                       t_years_flexible, t_years_rigid
+                FROM tccs41_settlement_limits
+                WHERE road_class_code = ? AND position_code = ?
+            """, (road_class_code, position_code)).fetchone()
+        if not r:
+            raise ValueError(
+                f"Không tìm thấy giới hạn ΔS cho road_class={road_class_code!r}, "
+                f"position={position_code!r}. Dùng cat1/cat2 + near_bridge/side_culvert/general."
+            )
+        return {
+            "delta_S_cm_max":  float(r["delta_S_cm_max"]),
+            "road_class_desc": r["road_class_desc"],
+            "position_desc":   r["position_desc"],
+            "t_years_flexible": int(r["t_years_flexible"]),
+            "t_years_rigid":    int(r["t_years_rigid"]),
+        }
+
+
+def list_tccs41_limits(db_path: Optional[Path] = None) -> list[dict]:
+    """Trả về tất cả 6 ô của Bảng 1 dưới dạng list[dict] — phục vụ UI hiển thị bảng."""
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+        try:
+            rows = con.execute("""
+                SELECT road_class_code, road_class_desc, position_code,
+                       position_desc, delta_S_cm_max
+                FROM tccs41_settlement_limits
+                ORDER BY road_class_code, position_code
+            """).fetchall()
+        except sqlite3.OperationalError:
+            create_tccs41_limits_table(_p)
+            rows = con.execute("""
+                SELECT road_class_code, road_class_desc, position_code,
+                       position_desc, delta_S_cm_max
+                FROM tccs41_settlement_limits
+                ORDER BY road_class_code, position_code
+            """).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ──────────────────────────────────────────────────────────────────
 # 7. DEMO
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":

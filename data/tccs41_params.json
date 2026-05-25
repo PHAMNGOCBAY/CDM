@@ -14,6 +14,42 @@
       "cat2_side_bridge":   30,
       "cat2_general":       40
     },
+    "residual_settlement_table": {
+      "_ref": "TCCS 41:2022/TCĐBVN — Bảng 1 — Điều 6.2.3",
+      "_note": "Phần độ lún cố kết cho phép còn lại ΔS tại mọi vị trí của đoạn nền đắp trên đất yếu trong thời hạn t năm sau khi thi công xong kết cấu mặt đường",
+      "t_years_flexible_pavement": 15,
+      "t_years_rigid_pavement": 30,
+      "formula_36": "ΔS = Sc × (1 - Ut)",
+      "rows": [
+        {
+          "road_class_code": "cat1",
+          "road_class_desc": "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+          "speed_min_kmh": 80,
+          "pavement_grade": "A1",
+          "limits_cm": {
+            "near_bridge":   10,
+            "side_culvert":  20,
+            "general":       30
+          }
+        },
+        {
+          "road_class_code": "cat2",
+          "road_class_desc": "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+          "speed_max_kmh": 60,
+          "pavement_grade": "A1",
+          "limits_cm": {
+            "near_bridge":   20,
+            "side_culvert":  30,
+            "general":       40
+          }
+        }
+      ],
+      "position_labels_vi": {
+        "near_bridge":  "Đoạn gần mố cầu",
+        "side_culvert": "Đoạn hai bên cống hoặc cống chui",
+        "general":      "Các đoạn nền đắp thông thường"
+      }
+    },
     "settlement_rate_max_cm_per_year": 2.0,
     "stability_Fs_min": {
       "construction": 1.10,

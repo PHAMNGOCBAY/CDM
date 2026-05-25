@@ -1718,3 +1718,51 @@ Khi bấm "Lưu": (1) UPDATE `tvtk_cdm_config`, (2) recalculate S1 per zone, (3)
 | `cdm_design` | **Computed** | **SQLite BẮT BUỘC** — sau mỗi "Lưu" |
 | `tvtk_soil_params` | **Computed** | SQLite |
 | `tvtk_bh_cdm` | **Config** | SQLite |
+
+---
+
+### 35. Giới hạn Độ Lún Cố Kết Còn Lại ΔS — TCCS 41:2022 Bảng 1 (Điều 6.2.3)
+
+**File engine:** `scripts/settlement_calc.py` — section 6b (cuối file trước DEMO)
+**Reference:** [38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md) mục 3
+**JSON:** `data/tccs41_params.json` → `tccs41_limits.residual_settlement_table`
+**SQLite:** `tccs41_settlement_limits` (6 rows: cat1/cat2 × near_bridge/side_culvert/general)
+
+#### Bảng 1 — Giới hạn ΔS cho phép còn lại (cm)
+
+| Loại đường | Gần mố cầu | Hai bên cống | Đoạn thông thường |
+|---|:---:|:---:|:---:|
+| **cat1** — Cao tốc / ≥ 80 km/h / A1 | ≤ 10 | ≤ 20 | ≤ 30 |
+| **cat2** — ≤ 60 km/h / A1 | ≤ 20 | ≤ 30 | ≤ 40 |
+
+**Thời hạn t:** 15 năm (mặt đường mềm) · 30 năm (mặt đường cứng).
+**Công thức (36):** $\Delta S = S_c \cdot (1 - U_t)$
+
+#### Hàm public — `scripts/settlement_calc.py`
+
+| Hàm | Vai trò |
+| --- | --- |
+| `create_tccs41_limits_table(db_path=None)` | Tạo bảng + populate 6 ô (idempotent, ON CONFLICT) |
+| `get_allowable_residual_settlement(road_class_code, position_code, db_path=None)` | Trả về dict `{delta_S_cm_max, road_class_desc, position_desc, t_years_flexible, t_years_rigid}`. Auto-create bảng nếu chưa có. |
+| `list_tccs41_limits(db_path=None)` | Liệt kê toàn bộ 6 ô — phục vụ UI |
+
+**Code codes hợp lệ:**
+- `road_class_code`: `'cat1'` · `'cat2'`
+- `position_code`: `'near_bridge'` · `'side_culvert'` · `'general'`
+
+#### Tích hợp UI — Tab `tvtk_prep` section 2 (bảng 3 PA)
+
+Vị trí: `app_cdm.py` ~line 15796, ngay sau `#### Độ lún khối gia cố CDM theo 3 phương án chiều sâu`.
+
+**Pattern:**
+
+1. Lazy import `create_tccs41_limits_table` + `get_allowable_residual_settlement` (try/except → `_get_ds_limit = None` nếu fail)
+2. ALTER TABLE `tvtk_cdm_config` ADD COLUMN `road_class_code TEXT DEFAULT 'cat1'`, `position_code TEXT DEFAULT 'general'` (try/except idempotent)
+3. 2 selectbox: cấp đường + vị trí đoạn nền đắp → UPDATE `tvtk_cdm_config` ngay khi thay đổi
+4. Metric "ΔS cho phép (cm)" + caption mô tả road_class + position + thời hạn t
+5. Bổ sung 3 cột "Đạt PA1/PA2/PA3" vào `_s1_rows_e` (so sánh `S₁ ≤ ΔS_limit` → "Đạt"/"Không đạt")
+6. Tổng hợp dưới bảng: số HK Đạt/Không đạt mỗi PA + caption ngưỡng ΔS
+
+**Quy ước "Đạt"/"Không đạt":** `S₁ ≤ ΔS_limit` → "Đạt" (compliant); ngược lại "Không đạt".
+
+**Lưu ý vật lý:** S₁ ở tab này là **lún đàn hồi tức thì của khối gia cố CDM** (TCVN 9403 Phụ lục C); ΔS theo TCCS 41 là **lún cố kết còn lại** sau t năm. Cọc CDM cắm tới lớp cứng nên lún cố kết phần dưới mũi cọc ≈ 0, do đó so sánh trực tiếp S₁ với ΔS_limit là cách đánh giá nhanh tính khả thi của 3 phương án chiều sâu.
