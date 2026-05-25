@@ -15947,6 +15947,174 @@ if _page == "tvtk_prep":
                             f"(TB {sum(_vals)/len(_vals):.1f} cm)"
                         )
 
+            # ── Biểu đồ S1+S2 theo phương án ──────────────────────────────
+            st.markdown("#### Phân tích S₁ + S₂ theo hố khoan và phương án CDM")
+            _pa_sel = st.radio(
+                "Phương án chiều sâu CDM",
+                ["PA1", "PA2", "PA3"],
+                horizontal=True,
+                key="_tvtk_s1s2_pa",
+                help="PA1 = qua lớp 1/1b/XMD  |  PA2 = PA1 + nhóm e₀>1 đầu tiên  |  PA3 = hết đất yếu (S₂=0)",
+            )
+            _s2_tbl = _cv.execute("""
+                SELECT t.bh_name,
+                       b.zone_id,
+                       COALESCE(t.S1_pa1_cm, 0.0) s1_1,
+                       COALESCE(t.S1_pa2_cm, 0.0) s1_2,
+                       COALESCE(t.S1_pa3_cm, 0.0) s1_3,
+                       COALESCE(s1.S2_cm, 0.0)    s2_1,
+                       COALESCE(s2.S2_cm, 0.0)    s2_2,
+                       0.0                          s2_3,
+                       COALESCE(s1.H_below_m, 0.0) hb1,
+                       COALESCE(s2.H_below_m, 0.0) hb2,
+                       COALESCE(s1.has_fallback, 0) fb1,
+                       COALESCE(s2.has_fallback, 0) fb2
+                FROM tvtk_bh_cdm t
+                JOIN boreholes b ON b.name = t.bh_name
+                LEFT JOIN tvtk_cdm_s2 s1 ON s1.bh_name = t.bh_name AND s1.pa = 'PA1'
+                LEFT JOIN tvtk_cdm_s2 s2 ON s2.bh_name = t.bh_name AND s2.pa = 'PA2'
+                WHERE t.selected = 1
+                ORDER BY b.zone_id, t.bh_name
+            """).fetchall()
+
+            if _s2_tbl:
+                _zone_colors = {"KE": "#4e9af1", "BXN": "#f0a742", "NHC": "#52c97a"}
+                _pa_idx = {"PA1": 1, "PA2": 2, "PA3": 3}[_pa_sel]
+
+                _bh_labels, _s1_vals, _s2_vals, _zone_tags, _fb_tags, _hb_vals = (
+                    [], [], [], [], [], []
+                )
+                for _r in _s2_tbl:
+                    _bh_labels.append(_r["bh_name"])
+                    _s1_vals.append(float(_r[f"s1_{_pa_idx}"]))
+                    _s2_vals.append(float(_r[f"s2_{_pa_idx}"] if _pa_idx < 3 else 0.0))
+                    _hb_vals.append(float(_r[f"hb{_pa_idx}"] if _pa_idx < 3 else 0.0))
+                    _fb_tags.append(bool(_r[f"fb{_pa_idx}"] if _pa_idx < 3 else 0))
+                    # zone name from bh prefix
+                    _zcode = next(
+                        (k for k in ("KE", "BXN", "NHC") if _r["bh_name"].startswith(k)),
+                        "?",
+                    )
+                    _zone_tags.append(_zcode)
+
+                _s_total = [s1 + s2 for s1, s2 in zip(_s1_vals, _s2_vals)]
+
+                import plotly.graph_objects as _pgo
+
+                _fig_s1s2 = _pgo.Figure()
+
+                # S1 bars — grouped by zone color
+                for _zc in ("KE", "BXN", "NHC"):
+                    _idx_z = [i for i, z in enumerate(_zone_tags) if z == _zc]
+                    if not _idx_z:
+                        continue
+                    _bh_z = [_bh_labels[i] for i in _idx_z]
+                    _s1_z = [_s1_vals[i] for i in _idx_z]
+                    _s2_z = [_s2_vals[i] for i in _idx_z]
+                    _hb_z = [_hb_vals[i] for i in _idx_z]
+                    _fb_z = [_fb_tags[i] for i in _idx_z]
+
+                    _hover_s1 = [
+                        f"<b>{b}</b><br>S₁ = {s:.1f} cm<br>Khu vực: {_zc}"
+                        for b, s in zip(_bh_z, _s1_z)
+                    ]
+                    _hover_s2 = [
+                        f"<b>{b}</b><br>S₂ = {s:.1f} cm<br>H bên dưới: {h:.1f} m"
+                        + (" [fallback]" if fb else "")
+                        for b, s, h, fb in zip(_bh_z, _s2_z, _hb_z, _fb_z)
+                    ]
+
+                    _fig_s1s2.add_trace(_pgo.Bar(
+                        name=f"S₁ {_zc}",
+                        x=_bh_z,
+                        y=_s1_z,
+                        marker_color=_zone_colors.get(_zc, "#888"),
+                        hovertext=_hover_s1,
+                        hoverinfo="text",
+                        legendgroup=_zc,
+                    ))
+                    _fig_s1s2.add_trace(_pgo.Bar(
+                        name=f"S₂ {_zc}",
+                        x=_bh_z,
+                        y=_s2_z,
+                        marker_color="#e05454",
+                        marker_pattern_shape="/",
+                        hovertext=_hover_s2,
+                        hoverinfo="text",
+                        legendgroup=_zc,
+                        legendgrouptitle_text=_zc if _zc == "KE" else None,
+                    ))
+
+                # S_total scatter
+                _fig_s1s2.add_trace(_pgo.Scatter(
+                    name="S_tổng",
+                    x=_bh_labels,
+                    y=_s_total,
+                    mode="markers+text",
+                    marker=dict(symbol="diamond", size=9, color="#f5e642",
+                                line=dict(color="#888", width=1)),
+                    text=[f"{v:.1f}" for v in _s_total],
+                    textposition="top center",
+                    textfont=dict(size=9),
+                    hovertemplate="<b>%{x}</b><br>S_tổng = %{y:.2f} cm<extra></extra>",
+                ))
+
+                _fig_s1s2.update_layout(
+                    barmode="stack",
+                    template="plotly_dark",
+                    height=420,
+                    margin=dict(t=30, b=10, l=50, r=10),
+                    legend=dict(orientation="h", y=-0.18, x=0),
+                    yaxis_title="Độ lún (cm)",
+                    xaxis=dict(tickangle=-35, tickfont=dict(size=10)),
+                    plot_bgcolor="#1a1a1a",
+                    paper_bgcolor="#1a1a1a",
+                )
+
+                # Zone separator lines
+                _prev_z = None
+                for _i, _zc in enumerate(_zone_tags):
+                    if _prev_z and _zc != _prev_z:
+                        _fig_s1s2.add_vline(
+                            x=_i - 0.5,
+                            line_dash="dot",
+                            line_color="gray",
+                            line_width=1,
+                        )
+                    _prev_z = _zc
+
+                st.plotly_chart(_fig_s1s2, use_container_width=True)
+
+                # Metric summary per zone
+                _m_cols = st.columns(3)
+                for _ci, _zc in enumerate(("KE", "BXN", "NHC")):
+                    _idx_z = [i for i, z in enumerate(_zone_tags) if z == _zc]
+                    if not _idx_z:
+                        continue
+                    _st_z = [_s_total[i] for i in _idx_z]
+                    _s2_nonzero = [_s2_vals[i] for i in _idx_z if _s2_vals[i] > 0]
+                    with _m_cols[_ci]:
+                        st.metric(
+                            f"{_zc} — {_pa_sel}",
+                            f"S_max = {max(_st_z):.1f} cm",
+                            f"TB {sum(_st_z)/len(_st_z):.1f} cm  |  S₂ > 0: {len(_s2_nonzero)}/{len(_idx_z)} HK",
+                        )
+
+                # Note on data coverage
+                _s1_missing = [_bh_labels[i] for i, v in enumerate(_s1_vals) if v == 0.0]
+                if _s1_missing:
+                    st.caption(
+                        f"Lưu ý: {len(_s1_missing)} hố khoan chưa có dữ liệu S₁ "
+                        f"({', '.join(_s1_missing[:5])}{'...' if len(_s1_missing) > 5 else ''}) "
+                        "— S₁ sẽ được tính sau khi nhập đủ thông số CDM cho khu vực đó."
+                    )
+                _fb_bhs = [_bh_labels[i] for i, f in enumerate(_fb_tags) if f]
+                if _fb_bhs:
+                    st.caption(
+                        f"[Fallback] {len(_fb_bhs)} hố khoan dùng Cc/Cs từ hố khoan lân cận: "
+                        f"{', '.join(_fb_bhs)}"
+                    )
+
     st.divider()
 
     # ── 3. Hố khoan đại diện từng khu ───────────────────────────────────────
