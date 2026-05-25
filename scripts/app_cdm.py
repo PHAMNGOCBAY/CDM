@@ -8427,9 +8427,11 @@ if _page == "ke_sw":
                 _rat_val = _ntd_row.get("ratio_nt2") or _nt2.get("ratio")
 
             # PA2: xét thêm lớp 1b vào L yêu cầu (từ SQLite)
-            _d_1b  = _ntd_row.get("D_bottom_soft_1b_m")
-            _lr_1b = _ntd_row.get("L_req_nt1_1b_m")
-            _nt1_1b = _ntd_row.get("nt1_1b_result")
+            _d_1b      = _ntd_row.get("D_bottom_soft_1b_m")
+            _lr_1b     = _ntd_row.get("L_req_nt1_1b_m")
+            _nt1_1b    = _ntd_row.get("nt1_1b_result")
+            _lmin_pa2  = _ntd_row.get("L_min_pa2_m")
+            _pile_pa2  = _ntd_row.get("pile_pa2")
             _ke_rows.append({
                 "Hố khoan":              _bh["name"],
                 "Z (m)":                 _z_for_calc,
@@ -8450,6 +8452,8 @@ if _page == "ke_sw":
                 "D_bot+1b (m)":          round(_d_1b, 1) if _d_1b else "–",
                 "L req+1b (m)":          round(_lr_1b, 2) if _lr_1b else "–",
                 "NT1 (+1b)":             _nt1_1b or "–",
+                "L min PA2 (m)":         round(_lmin_pa2, 1) if _lmin_pa2 else "–",
+                "Cọc PA2":               _pile_pa2 or "–",
                 "Ghi chú":               ("Tính lại theo cọc user chọn" if _need_recalc
                                            else _bh.get("note", "")),
             })
@@ -8501,6 +8505,19 @@ if _page == "ke_sw":
                     "NT1 (+1b)": st.column_config.Column(
                         "NT1 (+1b)",
                         help="Kết quả NT1 khi xét lớp 1b vào chiều dài cọc tối thiểu.",
+                        width="small",
+                    ),
+                    "L min PA2 (m)": st.column_config.NumberColumn(
+                        "L min PA2 (m)",
+                        help="Chiều dài cọc tối thiểu để đạt NT1 khi xét thêm lớp 1b "
+                             "(làm tròn lên bội số 0,5 m theo catalog).",
+                        format="%.1f",
+                        width="small",
+                    ),
+                    "Cọc PA2": st.column_config.Column(
+                        "Cọc PA2",
+                        help="Loại cọc nhỏ nhất (theo H_mm) đáp ứng L min PA2. "
+                             "Dùng để so sánh với 'Cọc tối ưu' của PA1.",
                         width="small",
                     ),
                 },
