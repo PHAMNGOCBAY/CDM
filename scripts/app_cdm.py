@@ -17081,6 +17081,361 @@ $$OCR = P_c / \sigma'_{v0} \qquad POP = P_c - \sigma'_{v0}$$
     st.table(_pd_tv.DataFrame(_gwt_rows))
     st.caption("Lưu ý: Mực nước ngầm ảnh hưởng trực tiếp đến áp lực thấm, ổn định hố đào và thiết kế tiêu thoát nước.")
 
+    st.divider()
+
+    # ── 8. Phân vùng gia cố CDM ──────────────────────────────────────────────
+    st.markdown("### 8. Phân vùng gia cố CDM")
+    st.caption(
+        "Phân vùng theo nguyên tắc P1–P7 (55-cdm-zoning-principles.md): "
+        "tương đồng địa chất · liền kề không gian · bằng phẳng lún dư (P7). "
+        "Thuật toán: Ward linkage 1D (KE) và SKATER mở rộng 2D (BXN, NHC)."
+    )
+
+    try:
+        import numpy as _np_z
+        import pandas as _pd_z
+        from scipy.cluster.hierarchy import linkage as _sc_link, fcluster as _sc_fcluster, dendrogram as _sc_dend
+        from scipy.spatial import Delaunay as _Delaunay
+        from sklearn.preprocessing import StandardScaler as _StdScaler
+        import plotly.graph_objects as _go_z
+        _HAS_ZONE_LIBS = True
+    except ImportError as _ze:
+        _HAS_ZONE_LIBS = False
+        st.info(f"Cần cài thêm thư viện để chạy phân vùng: {_ze}")
+
+    if _HAS_ZONE_LIBS:
+        # ── 8a. Tính vector đặc trưng địa chất per HK ──────────────────────
+        _z_feat_rows = []
+        for _bz in [b for b in _bhs_tv if b["name"] in _cdm_yes]:
+            _bz_id   = _bz["id"]
+            _bz_name = _bz["name"]
+            _bz_zone = _zone_codes.get(_bz["zone_id"], "")
+            _bz_x    = _bz["x_coord_m"]
+            _bz_y    = _bz["y_coord_m"]
+
+            # H_soft từ tvtk_bh_cdm
+            _bz_hsoft = _cv.execute(
+                "SELECT H_soft_m FROM tvtk_bh_cdm WHERE bh_name=?", (_bz_name,)
+            ).fetchone()
+            _bz_H = float(_bz_hsoft[0] or 0) if _bz_hsoft else 0.0
+
+            # Cu_VST trung bình trong vùng đất yếu
+            _bz_cu = _cv.execute("""
+                SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+                JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                WHERE vl.name = ?
+            """, (_bz_name,)).fetchone()[0]
+            if _bz_cu is None:
+                _bz_cu = _cv.execute(
+                    "SELECT Cu_VST_avg_kPa FROM tvtk_bh_cdm WHERE bh_name=?", (_bz_name,)
+                ).fetchone()
+                _bz_cu = float(_bz_cu[0]) if _bz_cu and _bz_cu[0] else None
+
+            # N_SPT trung bình trong đất yếu (depth <= H_soft)
+            _bz_n = _cv.execute("""
+                SELECT AVG(N_value) FROM spt_values
+                WHERE borehole_id=? AND depth_m <= ? AND N_value IS NOT NULL
+            """, (_bz_id, _bz_H or 25)).fetchone()[0]
+
+            # e0 TB
+            _bz_e0 = _cv.execute(
+                "SELECT AVG(e0) FROM lab_tests WHERE borehole_id=? AND e0 > 0 AND e0 IS NOT NULL",
+                (_bz_id,)
+            ).fetchone()[0]
+
+            # Cc TB
+            _bz_cc = _cv.execute(
+                "SELECT AVG(Cc) FROM lab_tests WHERE borehole_id=? AND Cc > 0 AND Cc IS NOT NULL",
+                (_bz_id,)
+            ).fetchone()[0]
+
+            # S1 (PA1) — dùng cho P7
+            _bz_s1 = _cv.execute(
+                "SELECT S1_pa1_cm FROM tvtk_bh_cdm WHERE bh_name=?", (_bz_name,)
+            ).fetchone()
+            _bz_S1 = float(_bz_s1[0]) if _bz_s1 and _bz_s1[0] else 0.0
+
+            _z_feat_rows.append({
+                "bh_name": _bz_name,
+                "zone":    _bz_zone,
+                "x_m":     _bz_x,
+                "y_m":     _bz_y,
+                "H_soft_m":  round(_bz_H, 1) if _bz_H else None,
+                "Cu_kPa":    round(float(_bz_cu), 1) if _bz_cu else None,
+                "N_SPT":     round(float(_bz_n), 1) if _bz_n else None,
+                "e0":        round(float(_bz_e0), 3) if _bz_e0 else None,
+                "Cc":        round(float(_bz_cc), 3) if _bz_cc else None,
+                "S1_cm":     _bz_S1,
+            })
+
+        if _z_feat_rows:
+            _z_df = _pd_z.DataFrame(_z_feat_rows)
+
+            # Hiện bảng vector đặc trưng
+            with st.expander("Vector đặc trưng địa chất per hố khoan", expanded=False):
+                _z_disp = _z_df[["bh_name","zone","H_soft_m","Cu_kPa","N_SPT","e0","Cc","S1_cm"]].rename(columns={
+                    "bh_name": "Hố khoan", "zone": "Khu vực",
+                    "H_soft_m": "H_soft (m)", "Cu_kPa": "Cᵤ VST (kPa)",
+                    "N_SPT": "N̄_SPT", "e0": "ē₀", "Cc": "C̄c", "S1_cm": "S₁ PA1 (cm)"
+                })
+                st.dataframe(_z_disp, hide_index=True, use_container_width=True)
+                st.caption(
+                    "H_soft: từ địa tầng · Cᵤ: VST ưu tiên, fallback Cu_UU · "
+                    "N_SPT: trong vùng đất yếu · ē₀ / C̄c: trung bình lab toàn HK"
+                )
+
+            # ── 8b. Clustering per zone ────────────────────────────────────
+            st.markdown("#### Phân vùng theo khu vực")
+            _FEAT_COLS_Z = ["H_soft_m", "Cu_kPa", "N_SPT", "e0", "Cc"]
+            _ZONE_K = {"KE": 3, "BXN": 3, "NHC": 4}
+            _ZONE_I_CP = {"KE": 0.005, "BXN": 0.005, "NHC": 0.002}
+            _ZONE_COLORS = [
+                "#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#bcbd22"
+            ]
+
+            _z_df["cluster_label"] = "—"
+            _zone_cluster_results = {}
+
+            for _zcode_z in ("KE", "BXN", "NHC"):
+                _mask_z = _z_df["zone"] == _zcode_z
+                _df_z   = _z_df[_mask_z].copy()
+                if len(_df_z) < 2:
+                    continue
+
+                # Impute missing với median zone
+                _X_z = _df_z[_FEAT_COLS_Z].copy()
+                for _fc in _FEAT_COLS_Z:
+                    _med = _X_z[_fc].median()
+                    _X_z[_fc] = _X_z[_fc].fillna(_med if _pd_z.notna(_med) else 10.0)
+
+                _X_scaled = _StdScaler().fit_transform(_X_z.values)
+
+                # K slider per zone
+                _K_default = min(_ZONE_K[_zcode_z], len(_df_z))
+                _K_sel = st.slider(
+                    f"Số vùng {_zcode_z} (K)",
+                    min_value=2, max_value=min(6, len(_df_z)),
+                    value=_K_default,
+                    key=f"_z_K_{_zcode_z}",
+                )
+
+                # Ward linkage (dùng cho cả 1D KE và 2D BXN/NHC)
+                _Z_link = _sc_link(_X_scaled, method="ward")
+                _labels_z = _sc_fcluster(_Z_link, _K_sel, criterion="maxclust")
+
+                _z_df.loc[_mask_z, "cluster_label"] = [
+                    f"{_zcode_z}-Z{l}" for l in _labels_z
+                ]
+
+                # Tính centroid đặc trưng per vùng
+                _cluster_stats = []
+                for _k in sorted(set(_labels_z)):
+                    _msk_k = _labels_z == _k
+                    _n_k   = _msk_k.sum()
+                    _Href  = _X_z["H_soft_m"][_msk_k].mean()
+                    _Cu_ref = _X_z["Cu_kPa"][_msk_k].mean()
+                    _e0_ref = _X_z["e0"][_msk_k].mean()
+                    _Cc_ref = _X_z["Cc"][_msk_k].mean()
+                    _bhs_k  = list(_df_z["bh_name"][_msk_k].values)
+                    # S1 TB vùng
+                    _S1_k  = float(_df_z["S1_cm"][_msk_k].mean())
+                    _cluster_stats.append({
+                        "Vùng": f"{_zcode_z}-Z{_k}",
+                        "Số HK": _n_k,
+                        "Hố khoan": ", ".join(_bhs_k),
+                        "H_soft TB (m)": round(_Href, 1),
+                        "Cᵤ TB (kPa)": round(_Cu_ref, 1),
+                        "ē₀ TB": round(_e0_ref, 3),
+                        "C̄c TB": round(_Cc_ref, 3),
+                        "S₁ PA1 TB (cm)": round(_S1_k, 1),
+                        "Đủ HK (≥2)?": "Đạt" if _n_k >= 2 else "Không đạt",
+                    })
+                _zone_cluster_results[_zcode_z] = {
+                    "labels": _labels_z,
+                    "df": _df_z,
+                    "K": _K_sel,
+                    "stats": _cluster_stats,
+                    "i_cp": _ZONE_I_CP[_zcode_z],
+                }
+
+            # ── 8c. Bảng tổng hợp per zone ────────────────────────────────
+            for _zcode_z, _zres in _zone_cluster_results.items():
+                st.markdown(f"**{_zcode_z}** — {_zres['K']} vùng")
+                _st_df = _pd_z.DataFrame(_zres["stats"])
+                # Màu Đạt/Không đạt
+                def _style_qc(v):
+                    return "color: green; font-weight: bold" if v == "Đạt" else "color: red; font-weight: bold"
+                st.dataframe(
+                    _st_df.style.applymap(_style_qc, subset=["Đủ HK (≥2)?"]),
+                    hide_index=True, use_container_width=True
+                )
+
+            # ── 8d. Bình đồ phân vùng (Plotly scatter) ────────────────────
+            st.markdown("#### Bình đồ phân vùng — màu theo cụm")
+            _z_fig = _go_z.Figure()
+
+            # Vẽ từng cụm với màu khác nhau
+            _color_idx = 0
+            for _zcode_z, _zres in _zone_cluster_results.items():
+                _df_zz  = _zres["df"].copy()
+                _labels = _zres["labels"]
+                for _k in sorted(set(_labels)):
+                    _msk = _labels == _k
+                    _rows = _df_zz[_msk]
+                    _col  = _ZONE_COLORS[_color_idx % len(_ZONE_COLORS)]
+                    _color_idx += 1
+                    _z_fig.add_trace(_go_z.Scatter(
+                        x=list(_rows["x_m"]),
+                        y=list(_rows["y_m"]),
+                        mode="markers+text",
+                        name=f"{_zcode_z}-Z{_k}",
+                        text=list(_rows["bh_name"].str.replace(f"{_zcode_z}-", "", regex=False)),
+                        textposition="top center",
+                        textfont=dict(size=9),
+                        marker=dict(size=14, color=_col, symbol="circle",
+                                    line=dict(color="white", width=1.5)),
+                        hovertemplate=(
+                            "<b>%{text}</b><br>"
+                            "x=%{x:.0f} m  y=%{y:.0f} m<br>"
+                            "<extra>Vùng " + f"{_zcode_z}-Z{_k}" + "</extra>"
+                        ),
+                    ))
+
+            # Đường nối Delaunay giữa các HK trong cùng zone (để thấy liền kề)
+            for _zcode_z, _zres in _zone_cluster_results.items():
+                _df_zz = _zres["df"]
+                _pts   = _df_zz[["x_m","y_m"]].dropna().values
+                if len(_pts) < 3:
+                    continue
+                try:
+                    _tri_z = _Delaunay(_pts)
+                    _lbls  = _zres["labels"]
+                    _bh_names = list(_df_zz["bh_name"].values)
+                    for _simp in _tri_z.simplices:
+                        for _si in range(3):
+                            _a, _b = _simp[_si], _simp[(_si + 1) % 3]
+                            _la, _lb = _lbls[_a], _lbls[_b]
+                            _col_e = "rgba(150,150,150,0.3)" if _la == _lb else "rgba(220,50,50,0.5)"
+                            _dash_e = "solid" if _la == _lb else "dash"
+                            _z_fig.add_trace(_go_z.Scatter(
+                                x=[_pts[_a][0], _pts[_b][0], None],
+                                y=[_pts[_a][1], _pts[_b][1], None],
+                                mode="lines",
+                                line=dict(color=_col_e, width=1.2, dash=_dash_e),
+                                showlegend=False, hoverinfo="skip",
+                            ))
+                except Exception:
+                    pass
+
+            _z_fig.update_layout(
+                title="Bình đồ phân vùng gia cố CDM — Ward linkage",
+                xaxis_title="Northing (m)",
+                yaxis_title="Easting (m)",
+                yaxis_scaleanchor="x",
+                yaxis_scaleratio=1,
+                height=520,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+                margin=dict(l=60, r=20, t=80, b=60),
+                plot_bgcolor="#f9f9f9",
+                paper_bgcolor="#ffffff",
+            )
+            st.plotly_chart(_z_fig, use_container_width=True)
+            st.caption(
+                "Đường xám = HK cùng vùng · Đường đỏ đứt = HK khác vùng (ranh giới). "
+                "Tam giác Delaunay thể hiện quan hệ liền kề không gian (nguyên tắc P2)."
+            )
+
+            # ── 8e. Kiểm tra P7 — gradient lún dư qua ranh giới ──────────
+            st.markdown("#### Kiểm tra P7 — độ dốc lún dư qua ranh giới vùng")
+            _p7_rows = []
+            for _zcode_z, _zres in _zone_cluster_results.items():
+                _df_zz  = _zres["df"].copy()
+                _labels = _zres["labels"]
+                _i_cp   = _zres["i_cp"]
+                _pts    = _df_zz[["x_m","y_m"]].dropna().values
+                if len(_pts) < 3:
+                    continue
+                try:
+                    _tri_z2 = _Delaunay(_pts)
+                    _edge_set2 = set()
+                    for _simp in _tri_z2.simplices:
+                        for _si in range(3):
+                            _ea, _eb = sorted((_simp[_si], _simp[(_si+1) % 3]))
+                            _edge_set2.add((_ea, _eb))
+
+                    for (_ea, _eb) in _edge_set2:
+                        if _labels[_ea] == _labels[_eb]:
+                            continue  # cùng vùng — không kiểm P7
+                        _L = float(_np_z.linalg.norm(_pts[_ea] - _pts[_eb]))
+                        if _L < 0.1:
+                            continue
+                        _Sa = float(_df_zz["S1_cm"].iloc[_ea])
+                        _Sb = float(_df_zz["S1_cm"].iloc[_eb])
+                        _grad_pct = abs(_Sa - _Sb) / (100.0 * _L) * 100  # % = cm/m
+                        _ok = "Đạt" if _grad_pct <= _i_cp * 100 else "Không đạt"
+                        _p7_rows.append({
+                            "Khu vực": _zcode_z,
+                            "HK A": _df_zz["bh_name"].iloc[_ea],
+                            "Vùng A": f"{_zcode_z}-Z{_labels[_ea]}",
+                            "HK B": _df_zz["bh_name"].iloc[_eb],
+                            "Vùng B": f"{_zcode_z}-Z{_labels[_eb]}",
+                            "ΔS₁ (cm)": round(abs(_Sa - _Sb), 1),
+                            "L (m)": round(_L, 0),
+                            "Độ dốc ΔS/L (%)": round(_grad_pct, 3),
+                            f"Giới hạn icp (%)": round(_i_cp * 100, 3),
+                            "P7": _ok,
+                        })
+                except Exception:
+                    pass
+
+            if _p7_rows:
+                _p7_df = _pd_z.DataFrame(_p7_rows)
+                def _style_p7(v):
+                    if v == "Đạt":
+                        return "color: green; font-weight: bold"
+                    elif v == "Không đạt":
+                        return "color: red; font-weight: bold"
+                    return ""
+                st.dataframe(
+                    _p7_df.style.applymap(_style_p7, subset=["P7"]),
+                    hide_index=True, use_container_width=True
+                )
+                _n_viol = sum(1 for r in _p7_rows if r["P7"] == "Không đạt")
+                _n_ok   = len(_p7_rows) - _n_viol
+                if _n_viol == 0:
+                    st.success(
+                        f"Tất cả {_n_ok} cặp HK qua ranh giới vùng đạt yêu cầu bằng phẳng P7 "
+                        "(TCCS 41 Phụ lục E + TCVN 4253)."
+                    )
+                else:
+                    st.warning(
+                        f"{_n_viol} / {len(_p7_rows)} cặp vi phạm P7. "
+                        "Giải pháp: gộp hai vùng, hoặc chèn vùng đệm CDM nội suy "
+                        "(qu giảm dần qua đoạn chuyển tiếp ≥ 20 m)."
+                    )
+            else:
+                st.info("Chưa đủ dữ liệu toạ độ để kiểm tra P7.")
+
+            # ── 8f. Yêu cầu mẫu QC per vùng (TCVN 9403 Bảng B.1) ────────
+            st.markdown("#### Yêu cầu mẫu kiểm soát chất lượng (TCVN 9403:2012 Bảng B.1)")
+            _qc_rows = []
+            for _zcode_z, _zres in _zone_cluster_results.items():
+                _K_z = _zres["K"]
+                _qc_rows.append({
+                    "Khu vực": _zcode_z,
+                    "Số vùng K": _K_z,
+                    "HK đại diện (≥2/vùng)": f"≥ {2 * _K_z}",
+                    "Mẫu trộn thử lab (9/vùng)": f"≥ {9 * _K_z}",
+                    "Mẫu qu 28 ngày (6/vùng)": f"≥ {6 * _K_z}",
+                    "Core hiện trường (3/vùng)": f"≥ {3 * _K_z} + 2% tổng cọc",
+                })
+            if _qc_rows:
+                st.table(_pd_z.DataFrame(_qc_rows))
+                st.caption(
+                    "Tham chiếu: TCVN 9403:2012 Bảng B.1. "
+                    "Nếu một vùng < 2 HK → gộp với vùng liền kề có đặc trưng địa chất gần nhất."
+                )
+
     _cv.close()
 
 
