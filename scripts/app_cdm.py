@@ -15508,6 +15508,168 @@ if _page == "tvtk_prep":
     else:
         st.info("Chưa có dữ liệu địa tầng.")
 
+    # ── Biểu đồ VST – Su theo chiều sâu – Kè KE ─────────────────────────────
+    st.markdown("#### Biểu đồ cắt cánh (VST) – Cường độ cắt không thoát nước theo chiều sâu")
+
+    _ke_bhs_cdm = sorted(
+        [b for b in _bhs_tv if b["name"] in _cdm_yes and b["name"].startswith("KE-")],
+        key=lambda b: b["name"],
+    )
+    _vst_data = _cv.execute("""
+        SELECT vl.name, vl.Z_ground_m, v.depth_m, v.Su_kPa, v.Sp_kPa, v.St
+        FROM vane_shear_tests v
+        JOIN vst_locations vl ON v.vst_loc_id = vl.id
+        WHERE vl.name LIKE 'KE-%'
+        ORDER BY vl.name, v.depth_m
+    """).fetchall()
+
+    if _vst_data:
+        # Nhóm theo tên HK
+        _vst_by_bh: dict = {}
+        for _vr in _vst_data:
+            _vst_by_bh.setdefault(_vr["name"], []).append(_vr)
+
+        # Chiều sâu đáy lớp yếu per HK (để vẽ đường giới hạn)
+        _soft_bot = {
+            r["_bh_name"]: r["_h_soft"]
+            for r in _soft_rows
+            if r.get("_bh_name", "").startswith("KE-")
+        }
+
+        # 12 màu chuẩn, dễ phân biệt
+        _PAL = [
+            "#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd",
+            "#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf",
+            "#aec7e8","#ffbb78",
+        ]
+        _bh_names_sorted = sorted(_vst_by_bh.keys())
+
+        _fig_vst = _go_tv.Figure()
+
+        # Một trace Su per HK
+        for _i, _bh_n in enumerate(_bh_names_sorted):
+            _pts = _vst_by_bh[_bh_n]
+            _col = _PAL[_i % len(_PAL)]
+            _depths = [p["depth_m"] for p in _pts]
+            _sus    = [p["Su_kPa"]  for p in _pts]
+            _sps    = [p["Sp_kPa"]  for p in _pts if p["Sp_kPa"]]
+            _dp_sp  = [p["depth_m"] for p in _pts if p["Sp_kPa"]]
+            _sts    = [f"St={p['St']:.1f}" if p["St"] else "" for p in _pts]
+            _hover  = [
+                f"<b>{_bh_n}</b><br>Chiều sâu: {d:.1f} m<br>Su: {s:.1f} kPa"
+                + (f"<br>Sp: {sp:.1f} kPa<br>{st}" if sp else f"<br>{st}")
+                for d, s, sp, st in zip(
+                    _depths, _sus,
+                    [p["Sp_kPa"] or 0 for p in _pts],
+                    _sts,
+                )
+            ]
+            _short = _bh_n.replace("KE-", "")
+            _fig_vst.add_trace(_go_tv.Scatter(
+                x=_sus, y=_depths,
+                mode="lines+markers",
+                name=_short,
+                line=dict(color=_col, width=2),
+                marker=dict(size=7, symbol="circle", color=_col,
+                            line=dict(color="white", width=1)),
+                hovertemplate="%{customdata}<extra></extra>",
+                customdata=_hover,
+                legendgroup=_bh_n,
+            ))
+            # Sp (độ bền cắt sau khi phá hoại) — đường đứt
+            if _sps:
+                _fig_vst.add_trace(_go_tv.Scatter(
+                    x=_sps, y=_dp_sp,
+                    mode="lines+markers",
+                    name=f"{_short} Sp",
+                    line=dict(color=_col, width=1.5, dash="dot"),
+                    marker=dict(size=5, symbol="x", color=_col),
+                    hovertemplate=f"<b>{_bh_n}</b> Sp<br>%{{y:.1f}} m | %{{x:.1f}} kPa<extra></extra>",
+                    legendgroup=_bh_n,
+                    showlegend=True,
+                    visible="legendonly",
+                ))
+
+        # Đường xu hướng Su trung bình tất cả HK (linear fit)
+        import numpy as _np_vst
+        _all_d = [p["depth_m"]  for p in _vst_data]
+        _all_s = [p["Su_kPa"]   for p in _vst_data]
+        if len(_all_d) >= 3:
+            _coef = _np_vst.polyfit(_all_d, _all_s, 1)
+            _d_fit = [min(_all_d), max(_all_d)]
+            _s_fit = [_coef[0]*d + _coef[1] for d in _d_fit]
+            _eq    = f"Su ≈ {_coef[0]:+.2f}·z + {_coef[1]:.1f} kPa"
+            _fig_vst.add_trace(_go_tv.Scatter(
+                x=_s_fit, y=_d_fit,
+                mode="lines",
+                name=f"Xu hướng TB ({_eq})",
+                line=dict(color="black", width=2, dash="dash"),
+                hovertemplate=f"{_eq}<extra></extra>",
+            ))
+
+        # Vùng tô màu phạm vi lớp yếu (lấy depth trung bình min–max)
+        _all_soft_vals = list(_soft_bot.values())
+        if _all_soft_vals:
+            _mean_soft = sum(_all_soft_vals) / len(_all_soft_vals)
+            _fig_vst.add_hrect(
+                y0=0, y1=_mean_soft,
+                fillcolor="rgba(173,216,230,0.12)",
+                line_width=0,
+                annotation_text=f"Phạm vi lớp yếu TB ≈ {_mean_soft:.1f} m",
+                annotation_position="top left",
+                annotation_font_size=11,
+                annotation_font_color="#2c6fad",
+            )
+
+        # Giới hạn tham chiếu Su < 25 kPa → "đất yếu"
+        _fig_vst.add_vline(
+            x=25, line_dash="dash", line_color="red", line_width=1,
+            annotation_text="Su = 25 kPa", annotation_position="top right",
+            annotation_font_color="red", annotation_font_size=11,
+        )
+
+        _fig_vst.update_layout(
+            height=560,
+            margin=dict(l=60, r=20, t=50, b=60),
+            xaxis=dict(
+                title="Su – Cường độ cắt không thoát nước (kPa)",
+                range=[0, max(_all_s) * 1.1],
+                gridcolor="#e8e8e8",
+                zeroline=True, zerolinecolor="#aaa",
+                tickfont=dict(size=12),
+            ),
+            yaxis=dict(
+                title="Chiều sâu (m)",
+                autorange="reversed",
+                gridcolor="#e8e8e8",
+                tickfont=dict(size=12),
+            ),
+            legend=dict(
+                orientation="v",
+                x=1.01, y=1,
+                xanchor="left",
+                font=dict(size=11),
+                groupclick="toggleitem",
+            ),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            hovermode="closest",
+            title=dict(
+                text=f"VST – Kè KE: {len(_bh_names_sorted)} hố khoan, {len(_vst_data)} điểm đo",
+                font=dict(size=13),
+                x=0,
+            ),
+        )
+        st.plotly_chart(_fig_vst, use_container_width=True)
+        st.caption(
+            "Su: cường độ cắt không thoát nước (nguyên trạng)  |  "
+            "Sp: độ bền cắt sau phá hoại (ẩn mặc định, click legend để hiện)  |  "
+            "St = Su/Sp: độ nhạy  |  Đường đứt đen: xu hướng tuyến tính tất cả HK  |  "
+            "Vùng xanh nhạt: phạm vi lớp đất yếu cần xử lý nền"
+        )
+    else:
+        st.info("Chưa có dữ liệu cắt cánh cho khu vực Kè.")
+
     # ── Thống kê TN nén cố kết lớp 1 và 1b — chỉ HK tham gia CDM ───────────
     st.markdown("#### Thí nghiệm nén cố kết lớp 1 và lớp 1b")
     _cdm_yes_ids = [b["id"] for b in _bhs_tv if b["name"] in _cdm_yes]
