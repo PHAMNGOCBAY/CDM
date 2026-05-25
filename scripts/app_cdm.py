@@ -10575,6 +10575,79 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 f"_{_n_done}/{len(_e_rows)} HK đã tính — Fs trượt ≥ {_FS_SLIP_MIN_E}, "
                 f"Fs lật ≥ {_FS_OT_MIN_E}. Bảng tự cập nhật khi D.1 tính xong từng HK._"
             )
+
+            # ── Hình minh họa tải trọng gây lật quanh chân cừ (per HK) ──────
+            with st.expander("Sơ đồ minh họa tải trọng gây lật quanh chân cừ", expanded=False):
+                if _HAS_MPL:
+                    _hk_with_results = [r for r in _e_rows
+                                        if r.get("Fs lật") is not None]
+                    if _hk_with_results:
+                        _ot_bh_options = [r["HK"] for r in _hk_with_results]
+                        _ot_pick = st.selectbox(
+                            "Chọn hố khoan để vẽ hình minh họa lật:",
+                            options=_ot_bh_options,
+                            key="_ot_diag_bh_pick",
+                            help="Chỉ HK đã tính ổn định mới hiển thị trong danh sách",
+                        )
+                        try:
+                            from sw_global_stability import (
+                                draw_overturning_diagram as _draw_ot_diag,
+                                WallGeometry as _WG_ot,
+                                EarthLayer as _EL_ot,
+                                PileProps as _PP_ot,
+                            )
+                            # Lấy thông số HK đã chọn từ ke_sw_stability
+                            _ot_row = next((r for r in _hk_with_results
+                                            if r["HK"] == _ot_pick), None)
+                            if _ot_row:
+                                _ot_data = _con_e.execute("""
+                                    SELECT top_elev, Z_m, Zb_m, wlvl_front, wlvl_back,
+                                           q_kPa, M_giu_kNm, M_lat_kNm, Fs_overturning,
+                                           su_front, H1_m
+                                    FROM ke_sw_stability
+                                    WHERE bh_name=? AND pile_type=? AND ABS(L_m-?)<0.1
+                                    LIMIT 1
+                                """, (_ot_pick, _ot_row.get("Cọc"), _ot_row.get("L (m)"))).fetchone()
+                                if _ot_data:
+                                    _geom_ot = _WG_ot(
+                                        top_elev=float(_ot_data["top_elev"] or 2.7),
+                                        pile_length=float(_ot_row["L (m)"]),
+                                        soil_level_front=float(_ot_data["Z_m"] or 2.7),
+                                        soil_level_back=float(_ot_data["Zb_m"] or -1.5),
+                                        water_elev_front=float(_ot_data["wlvl_front"] or -0.5),
+                                        water_elev_back=float(_ot_data["wlvl_back"] or -1.5),
+                                        surcharge_front=float(_ot_data["q_kPa"] or 15.0),
+                                    )
+                                    # Lớp đất đơn giản — sét bùn yếu chung
+                                    _fl_ot = [_EL_ot(tip_elev=_geom_ot.bot_elev - 2,
+                                                     gamma=14.8, gamma_sub=4.99, phi=2.0, c=10.0)]
+                                    _bl_ot = [_EL_ot(tip_elev=_geom_ot.bot_elev - 2,
+                                                     gamma=14.8, gamma_sub=4.99, phi=2.0, c=10.0)]
+                                    _fill_ot = _EL_ot(tip_elev=_geom_ot.soil_level_front,
+                                                       gamma=18.0, gamma_sub=8.0, phi=25.0, c=0.0)
+                                    _pile_ot = _PP_ot(name=str(_ot_row.get("Cọc","SW")),
+                                                       D_m=0.74, EI_kNm2=45200, Mcr_kNm=600)
+                                    _fig_ot = _draw_ot_diag(
+                                        _geom_ot, _fl_ot, _bl_ot, _fill_ot, None, _pile_ot,
+                                        M_giu_kNm=float(_ot_data["M_giu_kNm"] or 0),
+                                        M_lat_kNm=float(_ot_data["M_lat_kNm"] or 0),
+                                        Fs=float(_ot_data["Fs_overturning"] or 0),
+                                        bh_name=f"{_ot_pick} / {_ot_row.get('Cọc')} / L={_ot_row['L (m)']}m",
+                                        Fs_min=_FS_OT_MIN_E,
+                                    )
+                                    st.pyplot(_fig_ot, use_container_width=True)
+                                    plt.close(_fig_ot)
+                                else:
+                                    st.warning(
+                                        f"Không tìm thấy dữ liệu hình học cho {_ot_pick} "
+                                        "trong bảng kết quả ổn định. Tính lại Mục E.1 trước."
+                                    )
+                        except Exception as _exc_ot:
+                            st.error(f"Lỗi vẽ hình minh họa: {_exc_ot}")
+                    else:
+                        st.info("Chưa có HK nào tính xong Fs lật để vẽ hình minh họa.")
+                else:
+                    st.info("Thiếu môi trường biểu đồ — không vẽ được hình minh họa.")
         else:
             st.info("Chưa có kết quả ổn định. Tính từ D.1 chi tiết từng HK bên dưới → tự cập nhật ở đây.")
 

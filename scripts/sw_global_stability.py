@@ -720,6 +720,303 @@ def check_all(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# HÌNH MINH HỌA LẬT QUANH CHÂN CỪ (matplotlib)
+# Tài liệu: 49-ke-sw-overturning-diagram.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def draw_overturning_diagram(
+    geom: WallGeometry,
+    front_layers: list,
+    back_layers: list,
+    fill: Optional[EarthLayer] = None,
+    cdm: Optional[CDMBlock] = None,
+    pile: Optional[PileProps] = None,
+    M_giu_kNm: float = 0.0,
+    M_lat_kNm: float = 0.0,
+    Fs: float = 0.0,
+    bh_name: str = "",
+    figsize: tuple = (11, 8),
+    Fs_min: float = 1.20,
+):
+    """Vẽ hình minh họa các tải trọng gây lật quanh chân cừ.
+
+    Quy ước Front/Back (CLAUDE.md §20):
+        Front = TRÁI  = đất đắp + tải → Active (Ka) đẩy cừ về Back
+        Back  = PHẢI  = đáy đào / sông → Passive (Kp) kháng cừ
+
+    Bao gồm:
+        - Sheet pile dọc + chân cừ (pivot point)
+        - Đất đắp (fill) + lớp đất Front + mực nước Front
+        - Đáy đào Back + lớp đất Back + mực nước Back
+        - Áp lực Active tam giác (mũi tên đẩy sang phải)
+        - Áp lực Passive tam giác (mũi tên đẩy sang trái dưới đáy đào)
+        - Tay đòn z_a, z_p từ chân cừ
+        - Mũi tên cong M_lật (CW) + M_giữ (CCW)
+        - Bảng kết quả: Fs = M_giữ / M_lật
+
+    Returns: matplotlib.Figure
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    from matplotlib.patches import FancyArrowPatch, FancyArrow, Polygon
+    from matplotlib.lines import Line2D
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Cao độ chính
+    top_elev   = geom.top_elev
+    pile_tip   = geom.bot_elev
+    soil_f     = geom.soil_level_front
+    soil_b     = geom.soil_level_back
+    wlvl_f     = geom.water_elev_front
+    wlvl_b     = geom.water_elev_back
+    L          = geom.pile_length
+    q          = geom.surcharge_front
+
+    # Tay đòn (lấy từ engine để hiển thị)
+    P_a, z_a = _integrate_active_back_to_tip(geom, front_layers, fill, cdm,
+                                              n_slices=120)
+    P_p, z_p = _integrate_passive_back_below_dredge(geom, back_layers, cdm,
+                                                     n_slices=60)
+    z_p = abs(z_p)
+
+    # Khung
+    x_left  = -7.0   # phía Front
+    x_right =  7.0   # phía Back
+    x_pile  =  0.0   # tâm cừ
+
+    # ── Đất đắp Fill phía Front ─────────────────────────────────────────────
+    if fill is not None and top_elev > soil_f:
+        ax.fill_between([x_left, x_pile], soil_f, top_elev,
+                        color="#D2B48C", alpha=0.55, ec="#7B3F00", lw=1.2,
+                        label="Đất đắp (Front)")
+    # ── Đất tự nhiên phía Front (sét bùn) ───────────────────────────────────
+    ax.fill_between([x_left, x_pile], pile_tip - 1.5, soil_f,
+                    color="#A4D2EB", alpha=0.5, ec="#3a8fbf", lw=1.0,
+                    label="Đất tự nhiên Front")
+    # ── Đất tự nhiên phía Back (dưới đáy đào) ───────────────────────────────
+    ax.fill_between([x_pile, x_right], pile_tip - 1.5, soil_b,
+                    color="#B8D8B8", alpha=0.5, ec="#558B2F", lw=1.0,
+                    label="Đất tự nhiên Back")
+
+    # ── Đường chia trên không khí phía Back ─────────────────────────────────
+    ax.plot([x_pile, x_right], [soil_b, soil_b],
+            color="#558B2F", lw=1.4)
+
+    # ── Sheet pile cừ (cọc) ─────────────────────────────────────────────────
+    pile_w = 0.35
+    ax.fill_between([x_pile - pile_w / 2, x_pile + pile_w / 2],
+                     pile_tip, top_elev,
+                     color="#1565C0", ec="#0d47a1", lw=1.5, zorder=10)
+    # Pivot point chân cừ
+    ax.plot(x_pile, pile_tip, "o", ms=14, mfc="#FF6B6B", mec="#a01010",
+            mew=2, zorder=12)
+    ax.annotate("Chân cừ\n(điểm xoay)",
+                xy=(x_pile, pile_tip),
+                xytext=(x_pile + 1.8, pile_tip - 1.0),
+                fontsize=10, fontweight="bold", color="#a01010",
+                ha="left", va="center",
+                arrowprops=dict(arrowstyle="->", color="#a01010", lw=1.2))
+
+    # ── Mực nước Front (đường xanh chấm) ────────────────────────────────────
+    if wlvl_f > pile_tip:
+        ax.plot([x_left, x_pile], [wlvl_f, wlvl_f],
+                color="#1E90FF", ls="--", lw=1.3, alpha=0.85)
+        ax.text(x_left + 0.3, wlvl_f + 0.2, f"MNN Front {wlvl_f:+.1f}",
+                fontsize=8, color="#1E90FF", va="bottom")
+    # Mực nước Back
+    if wlvl_b > pile_tip:
+        ax.plot([x_pile, x_right], [wlvl_b, wlvl_b],
+                color="#0066CC", ls="--", lw=1.3, alpha=0.85)
+        ax.text(x_right - 0.3, wlvl_b + 0.2, f"MN sông {wlvl_b:+.1f}",
+                fontsize=8, color="#0066CC", va="bottom", ha="right")
+
+    # ── Tải mặt phân bố q phía Front (mũi tên đỏ xuống) ────────────────────
+    if q > 0:
+        y_q = top_elev + 1.0
+        for x_q in [-5.5, -4.0, -2.5, -1.0]:
+            ax.annotate("", xy=(x_q, top_elev), xytext=(x_q, y_q),
+                        arrowprops=dict(arrowstyle="->", color="#D32F2F",
+                                        lw=1.4))
+        ax.plot([-6.0, -0.5], [y_q, y_q], color="#D32F2F", lw=2)
+        ax.text(-3.0, y_q + 0.4, f"q = {q:.1f} kN/m²",
+                fontsize=10, color="#D32F2F", ha="center", fontweight="bold")
+
+    # ── Áp lực Active tam giác phía Front (mũi tên ngang ĐẨY về Back) ──────
+    # Sức cánh tay đòn: từ pile_tip lên 1.5×z_a (hiển thị); base ở pile_tip
+    h_a = top_elev - pile_tip
+    n_arrows_a = 7
+    for i in range(n_arrows_a):
+        frac = (i + 0.5) / n_arrows_a   # vị trí tương đối
+        ya = pile_tip + frac * h_a
+        # Độ lớn mũi tên theo tam giác (lớn ở dưới chân cừ chỉ vùng nén nhiều)
+        # Đơn giản: scale theo distance from top (Ka × σv ~ tỷ lệ tuyến tính)
+        scale = 0.3 + 1.0 * frac     # mũi tên nhỏ trên, lớn dưới
+        x_start = x_pile - 0.18 - scale
+        ax.annotate("", xy=(x_pile - 0.18, ya), xytext=(x_start, ya),
+                    arrowprops=dict(arrowstyle="->", color="#D32F2F",
+                                    lw=1.3, alpha=0.85))
+    # Tam giác tổng hợp
+    tri_a = Polygon([(x_pile - 0.18, top_elev),
+                     (x_pile - 0.18, pile_tip),
+                     (x_pile - 0.18 - 2.0, pile_tip)],
+                    closed=True, facecolor="#FFCDD2",
+                    edgecolor="#D32F2F", lw=1.2, alpha=0.55, zorder=4)
+    ax.add_patch(tri_a)
+    ax.text(x_pile - 1.8, pile_tip + 0.5,
+            f"P_a = {P_a:.0f} kN/m",
+            fontsize=10, color="#a01010", fontweight="bold",
+            ha="right", va="center",
+            bbox=dict(facecolor="white", alpha=0.9,
+                      edgecolor="#D32F2F", lw=1.2, pad=3))
+
+    # ── Áp lực Passive tam giác phía Back (DƯỚI đáy đào) ───────────────────
+    if soil_b > pile_tip:
+        h_p = soil_b - pile_tip
+        n_arrows_p = 4
+        for i in range(n_arrows_p):
+            frac = (i + 0.5) / n_arrows_p
+            yp = pile_tip + frac * h_p
+            scale = 0.4 + 1.2 * (1.0 - frac)   # mũi tên lớn ở chân cừ
+            x_end = x_pile + 0.18 + scale
+            ax.annotate("", xy=(x_pile + 0.18, yp), xytext=(x_end, yp),
+                        arrowprops=dict(arrowstyle="->", color="#2E7D32",
+                                        lw=1.4, alpha=0.85))
+        # Tam giác Passive
+        tri_p = Polygon([(x_pile + 0.18, soil_b),
+                         (x_pile + 0.18, pile_tip),
+                         (x_pile + 0.18 + 2.2, pile_tip)],
+                        closed=True, facecolor="#C8E6C9",
+                        edgecolor="#2E7D32", lw=1.2, alpha=0.65, zorder=4)
+        ax.add_patch(tri_p)
+        ax.text(x_pile + 2.0, pile_tip + 0.5,
+                f"P_p = {P_p:.0f} kN/m",
+                fontsize=10, color="#1b5e20", fontweight="bold",
+                ha="left", va="center",
+                bbox=dict(facecolor="white", alpha=0.9,
+                          edgecolor="#2E7D32", lw=1.2, pad=3))
+
+    # ── Tay đòn z_a (Front) và z_p (Back) ───────────────────────────────────
+    # z_a: từ chân cừ lên điểm đặt lực active
+    z_a_pos = pile_tip + z_a
+    ax.annotate("", xy=(x_pile - 3.5, z_a_pos), xytext=(x_pile - 3.5, pile_tip),
+                arrowprops=dict(arrowstyle="<->", color="#a01010", lw=1.5))
+    ax.text(x_pile - 3.7, pile_tip + z_a / 2,
+            f"z_a = {z_a:.1f} m",
+            fontsize=9, color="#a01010", ha="right", va="center",
+            rotation=90, fontweight="bold")
+    # Dấu × đánh dấu điểm đặt P_a
+    ax.plot(x_pile - 0.18 - 1.0, z_a_pos, marker="x", ms=12,
+            mec="#a01010", mew=2.5, zorder=11)
+
+    # z_p: từ chân cừ lên điểm đặt lực passive (thấp hơn nhiều)
+    if soil_b > pile_tip and P_p > 0:
+        z_p_pos = pile_tip + z_p
+        ax.annotate("", xy=(x_pile + 3.5, z_p_pos), xytext=(x_pile + 3.5, pile_tip),
+                    arrowprops=dict(arrowstyle="<->", color="#1b5e20", lw=1.5))
+        ax.text(x_pile + 3.7, pile_tip + z_p / 2,
+                f"z_p = {z_p:.1f} m",
+                fontsize=9, color="#1b5e20", ha="left", va="center",
+                rotation=90, fontweight="bold")
+        ax.plot(x_pile + 0.18 + 1.2, z_p_pos, marker="x", ms=12,
+                mec="#1b5e20", mew=2.5, zorder=11)
+
+    # ── Mũi tên cong M_lật (CW - chiều kim đồng hồ) tại chân cừ ─────────────
+    from matplotlib.patches import Arc, FancyArrowPatch
+    arc_radius = 1.4
+    # M_lật: cung ngược kim đồng hồ phía dưới chân cừ (vì lực active đẩy chân cừ về Back)
+    # Cọc xoay quanh chân cừ → đỉnh cọc đi về Back (sang phải)
+    # Mũi tên cong CW
+    arc_lat = Arc((x_pile, pile_tip - 0.0),
+                  2 * arc_radius, 2 * arc_radius,
+                  theta1=130, theta2=220,
+                  color="#D32F2F", lw=2.6, zorder=13)
+    ax.add_patch(arc_lat)
+    # Arrowhead cuối arc
+    import numpy as np
+    th = np.radians(135)
+    ax.annotate("", xy=(x_pile + arc_radius * np.cos(th),
+                        pile_tip + arc_radius * np.sin(th) - 0.0),
+                xytext=(x_pile + arc_radius * np.cos(th) + 0.1,
+                        pile_tip + arc_radius * np.sin(th) + 0.5),
+                arrowprops=dict(arrowstyle="->", color="#D32F2F", lw=2.6))
+    ax.text(x_pile - arc_radius - 0.5, pile_tip - 0.1,
+            "M_lật", fontsize=11, color="#a01010",
+            fontweight="bold", ha="right", va="center",
+            bbox=dict(facecolor="#FFEBEE", edgecolor="#D32F2F", lw=1.3, pad=3))
+
+    # M_giữ: cung CCW (ngược chiều)
+    arc_giu = Arc((x_pile, pile_tip - 0.0),
+                  2 * arc_radius, 2 * arc_radius,
+                  theta1=-40, theta2=50,
+                  color="#2E7D32", lw=2.6, zorder=13)
+    ax.add_patch(arc_giu)
+    ax.text(x_pile + arc_radius + 0.5, pile_tip - 0.1,
+            "M_giữ", fontsize=11, color="#1b5e20",
+            fontweight="bold", ha="left", va="center",
+            bbox=dict(facecolor="#E8F5E9", edgecolor="#2E7D32", lw=1.3, pad=3))
+
+    # ── Bảng kết quả Fs ─────────────────────────────────────────────────────
+    pass_txt = "ĐẠT" if Fs >= Fs_min else "KHÔNG ĐẠT"
+    pass_color = "#2E7D32" if Fs >= Fs_min else "#D32F2F"
+    box_txt = (
+        f"$F_s = \\dfrac{{M_{{giữ}}}}{{M_{{lật}}}} = \\dfrac{{{M_giu_kNm:.1f}}}{{{M_lat_kNm:.1f}}} = "
+        f"{Fs:.3f}$\n"
+        f"Ngưỡng: $F_s \\geq {Fs_min:.2f}$ → {pass_txt}"
+    )
+    ax.text(x_left + 0.3, pile_tip - 2.5, box_txt,
+            fontsize=11, ha="left", va="top",
+            bbox=dict(facecolor="white", edgecolor=pass_color, lw=2, pad=8))
+
+    # ── Annotations cao độ chính ────────────────────────────────────────────
+    for (y, lbl, col) in [
+        (top_elev, f"Đỉnh cừ {top_elev:+.2f}", "#0d47a1"),
+        (soil_f, f"Mặt đất Front {soil_f:+.2f}", "#7B3F00"),
+        (soil_b, f"Đáy đào Back {soil_b:+.2f}", "#558B2F"),
+        (pile_tip, f"Chân cừ {pile_tip:+.2f}", "#a01010"),
+    ]:
+        ax.axhline(y, xmin=0, xmax=1, color=col, ls=":", lw=0.6, alpha=0.55)
+        ax.text(x_right + 0.2, y, lbl, fontsize=8, color=col, va="center")
+
+    # Layout
+    ax.set_xlim(x_left - 0.5, x_right + 3.5)
+    ax.set_ylim(pile_tip - 4.0, top_elev + 3.5)
+    ax.set_xlabel("Khoảng cách ngang (m)", fontsize=10)
+    ax.set_ylabel("Cao độ (m)", fontsize=10)
+    title_bh = f" — {bh_name}" if bh_name else ""
+    ax.set_title(
+        f"Sơ đồ minh họa tải trọng gây lật quanh chân cừ SW{title_bh}\n"
+        f"(Front = TRÁI: Active đẩy  |  Back = PHẢI: Passive kháng)",
+        fontsize=11, fontweight="bold",
+    )
+    ax.grid(True, ls=":", alpha=0.3)
+    ax.set_aspect("auto")
+
+    # Legend: chỉ các patches chính
+    legend_elements = [
+        mpatches.Patch(facecolor="#D2B48C", edgecolor="#7B3F00",
+                       label="Đất đắp Front", alpha=0.55),
+        mpatches.Patch(facecolor="#A4D2EB", edgecolor="#3a8fbf",
+                       label="Đất tự nhiên Front", alpha=0.5),
+        mpatches.Patch(facecolor="#B8D8B8", edgecolor="#558B2F",
+                       label="Đất tự nhiên Back", alpha=0.5),
+        mpatches.Patch(facecolor="#1565C0", label="Cừ SW"),
+        mpatches.Patch(facecolor="#FFCDD2", edgecolor="#D32F2F",
+                       label="Áp lực Active (gây lật)", alpha=0.6),
+        mpatches.Patch(facecolor="#C8E6C9", edgecolor="#2E7D32",
+                       label="Áp lực Passive (giữ)", alpha=0.7),
+        Line2D([0], [0], marker="o", color="w", mfc="#FF6B6B",
+               mec="#a01010", ms=10, label="Chân cừ (pivot)"),
+    ]
+    ax.legend(handles=legend_elements, loc="upper right",
+              fontsize=8, framealpha=0.92)
+
+    fig.tight_layout()
+    return fig
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Tìm L cừ SW tối ưu — Thuật toán lặp +1m (tài liệu 48-ke-sw-L-optimal-search.md)
 # ─────────────────────────────────────────────────────────────────────────────
 

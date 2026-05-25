@@ -2020,3 +2020,57 @@ Re-run cùng `run_id` → ON CONFLICT UPDATE, không tạo duplicate row.
 #### Tích hợp app (kế hoạch)
 
 UI nút "Tìm L tối ưu cho HK chưa đạt" trong Mục E khi có ≥ 1 HK không đạt → hiển thị bảng history per HK qua expander.
+
+---
+
+### 40. Hình minh họa tải trọng gây lật quanh chân cừ (Mục E)
+
+**File tài liệu:** [49-ke-sw-overturning-diagram.md](49-ke-sw-overturning-diagram.md)
+**JSON config:** `data/tccs41_params.json` → `tccs41_limits.sw_overturning_diagram`
+**Python:** `scripts/sw_global_stability.py` — `draw_overturning_diagram()` (matplotlib)
+**UI:** `scripts/app_cdm.py` Mục E expander "Sơ đồ minh họa tải trọng gây lật quanh chân cừ"
+
+#### Thành phần đồ họa (BẮT BUỘC đầy đủ 10 lớp)
+
+1. **Đất đắp Front** (nâu `#D2B48C`) + **Đất tự nhiên Front** (xanh nhạt) + **Đất tự nhiên Back** (xanh lá nhạt)
+2. **Cừ SW** dải xanh dương `#1565C0` dọc giữa
+3. **Chân cừ (pivot)** vòng tròn `#FF6B6B` viền `#a01010` ms 14 + annotation
+4. **Mực nước** Front + Back (đường đứt 2 màu xanh)
+5. **Tải mặt $q$** Front (mũi tên đỏ xuống + thanh + label)
+6. **Tam giác Active** Front (`#FFCDD2` viền `#D32F2F`) + 7 mũi tên đẩy về Back
+7. **Tam giác Passive** Back dưới đáy đào (`#C8E6C9` viền `#2E7D32`) + 4 mũi tên kháng về Front
+8. **Tay đòn** $z_a$ (Front) + $z_p$ (Back) — mũi tên đôi + label dọc
+9. **Mũi tên cong** **M_lật** (CCW, đỏ) + **M_giữ** (CW, xanh lá) quanh chân cừ
+10. **Bảng kết quả** $F_s$ (LaTeX) hộp viền theo trạng thái Đạt/Không đạt vs ngưỡng 1,20
+
+#### API
+
+```python
+from sw_global_stability import draw_overturning_diagram
+fig = draw_overturning_diagram(
+    geom, front_layers, back_layers, fill, cdm, pile,
+    M_giu_kNm=..., M_lat_kNm=..., Fs=...,
+    bh_name='...', figsize=(11, 8), Fs_min=1.20,
+)
+st.pyplot(fig, use_container_width=True); plt.close(fig)
+```
+
+#### Schema SQLite query (BẮT BUỘC tên cột ngắn)
+
+`ke_sw_stability` dùng tên ngắn — **KHÔNG** có suffix `_m`:
+- `top_elev` (KHÔNG phải `top_elev_m`)
+- `Z_m` = `soil_level_front` · `Zb_m` = `soil_level_back`
+- `wlvl_front` / `wlvl_back` · `q_kPa` · `M_giu_kNm` / `M_lat_kNm`
+
+#### Sample verify
+
+KE-HK1 / SW-740 / L=28m với đất yếu chung (phi=2°, c=10):
+- M_giu = 64104 kNm/m · M_lat = 63817 kNm/m → Fs = 1,004
+- Render PNG 135 KB · 62 elements (patches, lines, texts)
+
+#### Quy ước Front/Back (BẮT BUỘC tuân §20)
+
+| Phía | Vị trí trên hình | Áp lực | Vai trò |
+|---|---|---|---|
+| Front | **TRÁI** | Active (Ka) | **Gây lật** |
+| Back | **PHẢI** | Passive (Kp) | **Giữ ổn định** |

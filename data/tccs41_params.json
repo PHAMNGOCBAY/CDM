@@ -153,6 +153,55 @@
         "_note": "E.4.1 — chiều cao đất đắp sau mố cầu, cạnh cống nên chọn nhỏ hơn các giá trị này"
       }
     },
+    "sw_overturning_diagram": {
+      "_ref": "49-ke-sw-overturning-diagram.md — Hình minh họa tải trọng gây lật quanh chân cừ",
+      "_note": "Cấu hình matplotlib diagram cho expander 'Sơ đồ minh họa' Mục E tab ke_sw",
+      "figsize_inches":      [11, 8],
+      "dpi_streamlit":       110,
+      "Fs_min_overturning":  1.20,
+      "colors": {
+        "fill_front":         "#D2B48C",
+        "natural_front":      "#A4D2EB",
+        "natural_back":       "#B8D8B8",
+        "pile":               "#1565C0",
+        "pivot":              "#FF6B6B",
+        "pivot_edge":         "#a01010",
+        "active_pressure":    "#D32F2F",
+        "active_tri_fill":    "#FFCDD2",
+        "passive_pressure":   "#2E7D32",
+        "passive_tri_fill":   "#C8E6C9",
+        "moment_lat":         "#D32F2F",
+        "moment_giu":         "#2E7D32",
+        "water_front":        "#1E90FF",
+        "water_back":         "#0066CC",
+        "surcharge":          "#D32F2F"
+      },
+      "components": [
+        "earth_layers (fill_front, natural_front, natural_back)",
+        "sheet_pile (vertical strip)",
+        "pivot_point (toe)",
+        "water_table_lines (front + back)",
+        "surcharge_arrows (q on front top)",
+        "active_pressure_triangle + arrows (front)",
+        "passive_pressure_triangle + arrows (back, below dredge)",
+        "lever_arms z_a + z_p (annotation arrows)",
+        "moment_arcs M_lat (CCW) + M_giu (CW) around toe",
+        "Fs_result_box (LaTeX, color-coded pass/fail)"
+      ],
+      "default_soil_for_demo": {
+        "_note": "Khi không có dữ liệu lớp cụ thể — dùng sét bùn yếu chung",
+        "phi_deg": 2.0,
+        "c_kPa":   10.0,
+        "gamma_kNm3":     14.8,
+        "gamma_sub_kNm3": 4.99
+      },
+      "default_fill_for_demo": {
+        "phi_deg": 25.0,
+        "c_kPa":   0.0,
+        "gamma_kNm3":     18.0,
+        "gamma_sub_kNm3": 8.0
+      }
+    },
     "sw_stability_search": {
       "_ref": "48-ke-sw-L-optimal-search.md — Thuật toán tìm L cừ SW tối ưu lặp +1m",
       "_note": "Áp dụng trong Mục E tab ke_sw khi HK có Fs không đạt — tự động lặp tăng L",
