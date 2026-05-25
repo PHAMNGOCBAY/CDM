@@ -15414,9 +15414,33 @@ if _page == "tvtk_prep":
         _cdm_cfg_e  = _cv.execute("SELECT top_elev_m, penetration_m FROM tvtk_cdm_config WHERE id=1").fetchone()
         _top_e      = float(_cdm_cfg_e["top_elev_m"])  if _cdm_cfg_e else 0.8
         _pen_e      = float(_cdm_cfg_e["penetration_m"]) if _cdm_cfg_e else 1.0
-        _hsoft_e    = {r["bh_name"]: r["H_soft_m"] for r in _cv.execute(
-            "SELECT bh_name, H_soft_m FROM tvtk_bh_cdm WHERE bh_name LIKE 'KE-%'"
-        ).fetchall()}
+        # Tính H_soft trực tiếp theo nguyên tắc mới (cùng logic Section 4):
+        # lớp 1/1b luôn tính; lớp khác chỉ tính khi AVG(e₀) > 1 từ thí nghiệm nén
+        _hsoft_e = {}
+        for _b2 in _ke_bhs_e:
+            _lyrs2 = _cv.execute("""
+                SELECT symbol, depth_top_m, depth_bot_m,
+                       COALESCE(thickness_m, depth_bot_m - depth_top_m) AS thick
+                FROM layers WHERE borehole_id = ? ORDER BY depth_top_m
+            """, (_b2["id"],)).fetchall()
+            _h1_v = _h1b_v = _hx_v = 0.0
+            for _l2 in _lyrs2:
+                _s2 = _l2["symbol"]; _t2 = float(_l2["thick"] or 0)
+                if _t2 <= 0:
+                    continue
+                if _s2 == "1":
+                    _h1_v += _t2
+                elif _s2 == "1b":
+                    _h1b_v += _t2
+                else:
+                    _e0r2 = _cv.execute("""
+                        SELECT AVG(e0) avg_e0 FROM lab_tests
+                        WHERE borehole_id=? AND depth_from_m>=? AND depth_from_m<?
+                          AND e0 IS NOT NULL AND e0 > 0
+                    """, (_b2["id"], _l2["depth_top_m"], _l2["depth_bot_m"])).fetchone()
+                    if _e0r2 and _e0r2["avg_e0"] and _e0r2["avg_e0"] > 1.0:
+                        _hx_v += _t2
+            _hsoft_e[_b2["name"]] = round(_h1_v + _h1b_v + _hx_v, 2)
 
         # Chainage theo PCA – SVD
         _xy_e   = _np_e.array([(b["x_coord_m"], b["y_coord_m"]) for b in _ke_bhs_e])
