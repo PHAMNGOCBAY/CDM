@@ -15418,7 +15418,9 @@ if _page == "tvtk_prep":
         # _SOFT_ALWAYS: lớp 1, 1b, XMD luôn tính (XMD = lớp bùn tại KE-HK8)
         # lớp khác chỉ tính khi AVG(e₀) > 1 từ thí nghiệm nén cố kết
         _SOFT_ALWAYS_E = ("1", "1b", "XMD")
-        _hsoft_e = {}
+        _hsoft_e   = {}   # PA3: lớp 1 + 1b + XMD + lớp khác có e₀>1
+        _h_pa1_map = {}   # PA1: lớp 1 only
+        _h_pa2_map = {}   # PA2: lớp 1 + 1b
         for _b2 in _ke_bhs_e:
             _lyrs2 = _cv.execute("""
                 SELECT symbol, depth_top_m, depth_bot_m,
@@ -15442,7 +15444,9 @@ if _page == "tvtk_prep":
                     """, (_b2["id"], _l2["depth_top_m"], _l2["depth_bot_m"])).fetchone()
                     if _e0r2 and _e0r2["avg_e0"] and _e0r2["avg_e0"] > 1.0:
                         _hx_v += _t2
-            _hsoft_e[_b2["name"]] = round(_h1_v + _h1b_v + _hx_v, 2)
+            _hsoft_e[_b2["name"]]   = round(_h1_v + _h1b_v + _hx_v, 2)
+            _h_pa1_map[_b2["name"]] = round(_h1_v, 2)
+            _h_pa2_map[_b2["name"]] = round(_h1_v + _h1b_v, 2)
 
         # Chainage theo PCA – SVD
         _xy_e   = _np_e.array([(b["x_coord_m"], b["y_coord_m"]) for b in _ke_bhs_e])
@@ -15453,13 +15457,40 @@ if _page == "tvtk_prep":
         _bhs_e   = [_ke_bhs_e[i] for i in _order_e]
         _ch_e    = [_ch_raw[i] - _ch_raw[_order_e[0]] for i in _order_e]  # bắt đầu từ 0
 
-        _elev_e  = [float(b["elevation_m"] or 0) for b in _bhs_e]
-        _bot_e   = [float(b["elevation_m"] or 0) - float(_hsoft_e.get(b["name"]) or 0) - _pen_e
-                    for b in _bhs_e]
-        _L_e     = [_top_e - b for b in _bot_e]
-        _lbl_e   = [b["name"].replace("KE-", "") for b in _bhs_e]
-        _n_e     = len(_bhs_e)
-        _ch_ext  = [_ch_e[0] - 10, _ch_e[-1] + 10]
+        _elev_e     = [float(b["elevation_m"] or 0) for b in _bhs_e]
+        _bot_e      = [float(b["elevation_m"] or 0) - float(_hsoft_e.get(b["name"]) or 0) - _pen_e
+                       for b in _bhs_e]
+        _bot_pa1_e  = [float(b["elevation_m"] or 0) - float(_h_pa1_map.get(b["name"]) or 0) - _pen_e
+                       for b in _bhs_e]
+        _bot_pa2_e  = [float(b["elevation_m"] or 0) - float(_h_pa2_map.get(b["name"]) or 0) - _pen_e
+                       for b in _bhs_e]
+        _L_e        = [_top_e - b for b in _bot_e]
+        _L_pa1_e    = [_top_e - b for b in _bot_pa1_e]
+        _L_pa2_e    = [_top_e - b for b in _bot_pa2_e]
+        _lbl_e      = [b["name"].replace("KE-", "") for b in _bhs_e]
+        _n_e        = len(_bhs_e)
+        _ch_ext     = [_ch_e[0] - 10, _ch_e[-1] + 10]
+
+        # Lưu 3 phương án vào SQLite
+        try:
+            _cv.execute("ALTER TABLE tvtk_bh_cdm ADD COLUMN H_pa1_m REAL")
+        except Exception:
+            pass
+        try:
+            _cv.execute("ALTER TABLE tvtk_bh_cdm ADD COLUMN H_pa2_m REAL")
+        except Exception:
+            pass
+        for _b2 in _bhs_e:
+            _nm2 = _b2["name"]
+            _cv.execute("""
+                INSERT INTO tvtk_bh_cdm (bh_name, H_pa1_m, H_pa2_m)
+                VALUES (?, ?, ?)
+                ON CONFLICT(bh_name) DO UPDATE SET
+                    H_pa1_m = excluded.H_pa1_m,
+                    H_pa2_m = excluded.H_pa2_m,
+                    updated_at = datetime('now','localtime')
+            """, (_nm2, _h_pa1_map.get(_nm2), _h_pa2_map.get(_nm2)))
+        _cv.commit()
 
         # Cao độ đáy lớp 1 và 1b (deepest segment per HK)
         _bh_names_e = [b["name"] for b in _bhs_e]
@@ -15578,17 +15609,59 @@ if _page == "tvtk_prep":
                 customdata=_lbl_1b,
             ))
 
-        # ── Đáy cọc CDM ──────────────────────────────────────────────────────
+        # ── PA1: Đáy CDM qua lớp 1 ───────────────────────────────────────────
+        _hov_pa1 = [
+            f"<b>{_lbl_e[i]}</b><br>Chainage: {_ch_e[i]:.0f} m<br>"
+            f"<b>PA1</b> Đáy CDM: <b>{_bot_pa1_e[i]:+.2f} m</b><br>"
+            f"H_lớp1: {_h_pa1_map.get(_bhs_e[i]['name'], 0):.1f} m  |  L_cọc: {_L_pa1_e[i]:.1f} m"
+            for i in range(_n_e)
+        ]
+        _fig_e.add_trace(_go_tv.Scatter(
+            x=_ch_e, y=_bot_pa1_e,
+            mode="lines+markers+text",
+            name="PA1 – đáy qua lớp 1",
+            line=dict(color="#ff7f0e", width=2, dash="dash"),
+            marker=dict(size=8, color="#ff7f0e", symbol="diamond-open",
+                        line=dict(color="#ff7f0e", width=2)),
+            text=[f"{v:+.2f}" for v in _bot_pa1_e],
+            textposition="top left",
+            textfont=dict(size=8, color="#c55100"),
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=_hov_pa1,
+        ))
+
+        # ── PA2: Đáy CDM qua lớp 1 + 1b ─────────────────────────────────────
+        _hov_pa2 = [
+            f"<b>{_lbl_e[i]}</b><br>Chainage: {_ch_e[i]:.0f} m<br>"
+            f"<b>PA2</b> Đáy CDM: <b>{_bot_pa2_e[i]:+.2f} m</b><br>"
+            f"H_1+1b: {_h_pa2_map.get(_bhs_e[i]['name'], 0):.1f} m  |  L_cọc: {_L_pa2_e[i]:.1f} m"
+            for i in range(_n_e)
+        ]
+        _fig_e.add_trace(_go_tv.Scatter(
+            x=_ch_e, y=_bot_pa2_e,
+            mode="lines+markers+text",
+            name="PA2 – đáy qua lớp 1+1b",
+            line=dict(color="#9467bd", width=2, dash="dashdot"),
+            marker=dict(size=8, color="#9467bd", symbol="diamond",
+                        line=dict(color="white", width=1.5)),
+            text=[f"{v:+.2f}" for v in _bot_pa2_e],
+            textposition="bottom left",
+            textfont=dict(size=8, color="#6b3fa0"),
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=_hov_pa2,
+        ))
+
+        # ── PA3: Đáy CDM đầy đủ (1+1b+XMD+e₀>1) ────────────────────────────
         _hov_bot = [
             f"<b>{_lbl_e[i]}</b><br>Chainage: {_ch_e[i]:.0f} m<br>"
-            f"Đáy CDM: <b>{_bot_e[i]:+.2f} m</b><br>"
+            f"<b>PA3</b> Đáy CDM: <b>{_bot_e[i]:+.2f} m</b><br>"
             f"H_soft: {_hsoft_e.get(_bhs_e[i]['name'], 0):.1f} m  |  L_cọc: {_L_e[i]:.1f} m"
             for i in range(_n_e)
         ]
         _fig_e.add_trace(_go_tv.Scatter(
             x=_ch_e, y=_bot_e,
             mode="lines+markers+text",
-            name="Đáy cọc CDM",
+            name="PA3 – đáy qua lớp yếu đầy đủ",
             line=dict(color="#d62728", width=2.5),
             marker=dict(size=9, color="#d62728", symbol="square",
                         line=dict(color="white", width=1.5)),
@@ -15599,36 +15672,39 @@ if _page == "tvtk_prep":
             customdata=_hov_bot,
         ))
 
-        _all_vals = _elev_e + _bot_e + [v for v in _val_1 + _val_1b if v is not None]
+        _all_vals = (_elev_e + _bot_e + _bot_pa1_e + _bot_pa2_e
+                     + [v for v in _val_1 + _val_1b if v is not None])
         _y_lo = min(_all_vals) - 3
         _y_hi = max(max(_elev_e), _des_ke) + 3.5
         _fig_e.update_layout(
-            height=520,
-            margin=dict(l=65, r=20, t=55, b=70),
+            height=580,
+            margin=dict(l=65, r=20, t=60, b=90),
             xaxis=dict(title="Chainage dọc tuyến Kè KE (m)", gridcolor="#ebebeb",
                        tickfont=dict(size=11)),
             yaxis=dict(title="Cao độ (m)", range=[_y_lo, _y_hi],
                        gridcolor="#ebebeb", tickfont=dict(size=11),
                        zeroline=True, zerolinecolor="#999", zerolinewidth=1),
-            legend=dict(orientation="h", x=0, y=-0.16, xanchor="left",
-                        font=dict(size=11)),
+            legend=dict(orientation="h", x=0, y=-0.20, xanchor="left",
+                        font=dict(size=10)),
             plot_bgcolor="white", paper_bgcolor="white",
             hovermode="closest",
             title=dict(
                 text=(
                     f"Trắc dọc Kè KE – {_n_e} hố khoan  |  "
-                    f"L_CDM: {min(_L_e):.1f}–{max(_L_e):.1f} m"
+                    f"PA1 L: {min(_L_pa1_e):.1f}–{max(_L_pa1_e):.1f} m  |  "
+                    f"PA2 L: {min(_L_pa2_e):.1f}–{max(_L_pa2_e):.1f} m  |  "
+                    f"PA3 L: {min(_L_e):.1f}–{max(_L_e):.1f} m"
                 ),
-                font=dict(size=13), x=0,
+                font=dict(size=12), x=0,
             ),
         )
         st.plotly_chart(_fig_e, use_container_width=True)
         _n_1b = sum(1 for v in _bot1b_e if v is not None)
         st.caption(
-            f"Mặt đất tự nhiên: {min(_elev_e):+.2f} ÷ {max(_elev_e):+.2f} m  |  "
-            f"Đáy lớp 1: {min(_val_1):+.2f} ÷ {max(_val_1):+.2f} m ({len(_val_1)} HK)  |  "
-            + (f"Đáy lớp 1b: {min(_val_1b):+.2f} ÷ {max(_val_1b):+.2f} m ({_n_1b} HK)  |  " if _val_1b else "Không có lớp 1b  |  ")
-            + f"Đáy CDM: {min(_bot_e):+.2f} ÷ {max(_bot_e):+.2f} m  |  L_CDM: {min(_L_e):.1f}–{max(_L_e):.1f} m"
+            f"PA1 (lớp 1): đáy {min(_bot_pa1_e):+.2f}÷{max(_bot_pa1_e):+.2f} m  |  "
+            f"PA2 (lớp 1+1b): đáy {min(_bot_pa2_e):+.2f}÷{max(_bot_pa2_e):+.2f} m  |  "
+            f"PA3 (đầy đủ): đáy {min(_bot_e):+.2f}÷{max(_bot_e):+.2f} m  |  "
+            + (f"Lớp 1b có tại {_n_1b} HK" if _n_1b else "Không có lớp 1b")
         )
 
     st.divider()
