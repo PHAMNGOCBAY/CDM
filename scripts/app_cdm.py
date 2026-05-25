@@ -15433,7 +15433,26 @@ if _page == "tvtk_prep":
         _L_e     = [_top_e - b for b in _bot_e]
         _lbl_e   = [b["name"].replace("KE-", "") for b in _bhs_e]
         _n_e     = len(_bhs_e)
-        _ch_ext  = [_ch_e[0] - 10, _ch_e[-1] + 10]  # extend đường ngang
+        _ch_ext  = [_ch_e[0] - 10, _ch_e[-1] + 10]
+
+        # Cao độ đáy lớp 1 và 1b (deepest segment per HK)
+        _bh_names_e = [b["name"] for b in _bhs_e]
+        _ph_e = ",".join("?" * _n_e)
+        _lyr1_map = {r["name"]: float(r["elev_bot"]) for r in _cv.execute(f"""
+            SELECT b.name, b.elevation_m - MAX(lyr.depth_bot_m) AS elev_bot
+            FROM layers lyr JOIN boreholes b ON lyr.borehole_id = b.id
+            WHERE b.name IN ({_ph_e}) AND lyr.symbol = '1'
+            GROUP BY b.name, b.elevation_m
+        """, _bh_names_e).fetchall()}
+        _lyr1b_map = {r["name"]: float(r["elev_bot"]) for r in _cv.execute(f"""
+            SELECT b.name, b.elevation_m - MAX(lyr.depth_bot_m) AS elev_bot
+            FROM layers lyr JOIN boreholes b ON lyr.borehole_id = b.id
+            WHERE b.name IN ({_ph_e}) AND lyr.symbol = '1b'
+            GROUP BY b.name, b.elevation_m
+        """, _bh_names_e).fetchall()}
+
+        _bot1_e  = [_lyr1_map.get(b["name"])  for b in _bhs_e]  # None nếu không có lớp
+        _bot1b_e = [_lyr1b_map.get(b["name"]) for b in _bhs_e]
 
         _fig_e = _go_tv.Figure()
 
@@ -15472,9 +15491,11 @@ if _page == "tvtk_prep":
             line=dict(color="#7B3F00", width=2.5),
             marker=dict(size=10, color="#7B3F00", symbol="circle",
                         line=dict(color="white", width=1.5)),
-            text=_lbl_e, textposition="top center",
-            textfont=dict(size=10, color="#5a2000"),
-            hovertemplate="<b>%{text}</b><br>Chainage: %{x:.0f} m<br>Mặt đất: <b>%{y:+.3f} m</b><extra></extra>",
+            text=[f"{n}<br><b>{v:+.2f}</b>" for n, v in zip(_lbl_e, _elev_e)],
+            textposition="top center",
+            textfont=dict(size=9, color="#5a2000"),
+            hovertemplate="<b>%{customdata}</b><br>Chainage: %{x:.0f} m<br>Mặt đất: <b>%{y:+.3f} m</b><extra></extra>",
+            customdata=_lbl_e,
         ))
 
         # ── Cao độ thiết kế ───────────────────────────────────────────────────
@@ -15493,36 +15514,77 @@ if _page == "tvtk_prep":
             hovertemplate=f"Đỉnh CDM: {_top_e:+.2f} m<extra></extra>",
         ))
 
+        # ── Đáy lớp 1 ────────────────────────────────────────────────────────
+        _ch_1  = [_ch_e[i] for i in range(_n_e) if _bot1_e[i] is not None]
+        _val_1 = [_bot1_e[i] for i in range(_n_e) if _bot1_e[i] is not None]
+        _lbl_1 = [_lbl_e[i] for i in range(_n_e) if _bot1_e[i] is not None]
+        if _ch_1:
+            _fig_e.add_trace(_go_tv.Scatter(
+                x=_ch_1, y=_val_1,
+                mode="lines+markers+text",
+                name="Đáy lớp 1",
+                line=dict(color="#8c564b", width=2, dash="longdash"),
+                marker=dict(size=8, symbol="triangle-down", color="#8c564b",
+                            line=dict(color="white", width=1)),
+                text=[f"{v:+.2f}" for v in _val_1],
+                textposition="top right",
+                textfont=dict(size=9, color="#5D3317"),
+                hovertemplate="<b>%{customdata}</b><br>Đáy lớp 1: <b>%{y:+.2f} m</b><extra></extra>",
+                customdata=_lbl_1,
+            ))
+
+        # ── Đáy lớp 1b ───────────────────────────────────────────────────────
+        _ch_1b  = [_ch_e[i] for i in range(_n_e) if _bot1b_e[i] is not None]
+        _val_1b = [_bot1b_e[i] for i in range(_n_e) if _bot1b_e[i] is not None]
+        _lbl_1b = [_lbl_e[i] for i in range(_n_e) if _bot1b_e[i] is not None]
+        if _ch_1b:
+            _fig_e.add_trace(_go_tv.Scatter(
+                x=_ch_1b, y=_val_1b,
+                mode="lines+markers+text",
+                name="Đáy lớp 1b",
+                line=dict(color="#e377c2", width=2, dash="longdashdot"),
+                marker=dict(size=8, symbol="triangle-down-open", color="#e377c2",
+                            line=dict(color="#e377c2", width=2)),
+                text=[f"{v:+.2f}" for v in _val_1b],
+                textposition="bottom right",
+                textfont=dict(size=9, color="#b5367f"),
+                hovertemplate="<b>%{customdata}</b><br>Đáy lớp 1b: <b>%{y:+.2f} m</b><extra></extra>",
+                customdata=_lbl_1b,
+            ))
+
         # ── Đáy cọc CDM ──────────────────────────────────────────────────────
         _hov_bot = [
             f"<b>{_lbl_e[i]}</b><br>Chainage: {_ch_e[i]:.0f} m<br>"
             f"Đáy CDM: <b>{_bot_e[i]:+.2f} m</b><br>"
-            f"H_soft: {_hsoft_e.get(_bhs_e[i]['name'], 0):.1f} m  |  "
-            f"L_cọc: {_L_e[i]:.1f} m"
+            f"H_soft: {_hsoft_e.get(_bhs_e[i]['name'], 0):.1f} m  |  L_cọc: {_L_e[i]:.1f} m"
             for i in range(_n_e)
         ]
         _fig_e.add_trace(_go_tv.Scatter(
             x=_ch_e, y=_bot_e,
-            mode="lines+markers",
+            mode="lines+markers+text",
             name="Đáy cọc CDM",
             line=dict(color="#d62728", width=2.5),
             marker=dict(size=9, color="#d62728", symbol="square",
                         line=dict(color="white", width=1.5)),
+            text=[f"{v:+.2f}" for v in _bot_e],
+            textposition="bottom center",
+            textfont=dict(size=9, color="#a01010"),
             hovertemplate="%{customdata}<extra></extra>",
             customdata=_hov_bot,
         ))
 
-        _y_lo = min(_bot_e) - 3
-        _y_hi = max(max(_elev_e), _des_ke) + 2
+        _all_vals = _elev_e + _bot_e + [v for v in _val_1 + _val_1b if v is not None]
+        _y_lo = min(_all_vals) - 3
+        _y_hi = max(max(_elev_e), _des_ke) + 3.5
         _fig_e.update_layout(
-            height=430,
-            margin=dict(l=65, r=20, t=55, b=60),
+            height=520,
+            margin=dict(l=65, r=20, t=55, b=70),
             xaxis=dict(title="Chainage dọc tuyến Kè KE (m)", gridcolor="#ebebeb",
                        tickfont=dict(size=11)),
             yaxis=dict(title="Cao độ (m)", range=[_y_lo, _y_hi],
                        gridcolor="#ebebeb", tickfont=dict(size=11),
                        zeroline=True, zerolinecolor="#999", zerolinewidth=1),
-            legend=dict(orientation="h", x=0, y=-0.18, xanchor="left",
+            legend=dict(orientation="h", x=0, y=-0.16, xanchor="left",
                         font=dict(size=11)),
             plot_bgcolor="white", paper_bgcolor="white",
             hovermode="closest",
@@ -15535,12 +15597,12 @@ if _page == "tvtk_prep":
             ),
         )
         st.plotly_chart(_fig_e, use_container_width=True)
+        _n_1b = sum(1 for v in _bot1b_e if v is not None)
         st.caption(
-            f"Mặt đất tự nhiên: {min(_elev_e):+.3f} ÷ {max(_elev_e):+.3f} m  |  "
-            f"Đỉnh CDM: {_top_e:+.2f} m (cố định, từ Section 5)  |  "
-            f"Đáy CDM: {min(_bot_e):+.2f} ÷ {max(_bot_e):+.2f} m  |  "
-            f"Chiều dài cọc CDM: {min(_L_e):.1f}–{max(_L_e):.1f} m  |  "
-            "Trình tự HK theo hướng chính tuyến (PCA SVD trên tọa độ VN-2000)"
+            f"Mặt đất tự nhiên: {min(_elev_e):+.2f} ÷ {max(_elev_e):+.2f} m  |  "
+            f"Đáy lớp 1: {min(_val_1):+.2f} ÷ {max(_val_1):+.2f} m ({len(_val_1)} HK)  |  "
+            + (f"Đáy lớp 1b: {min(_val_1b):+.2f} ÷ {max(_val_1b):+.2f} m ({_n_1b} HK)  |  " if _val_1b else "Không có lớp 1b  |  ")
+            + f"Đáy CDM: {min(_bot_e):+.2f} ÷ {max(_bot_e):+.2f} m  |  L_CDM: {min(_L_e):.1f}–{max(_L_e):.1f} m"
         )
 
     st.divider()
