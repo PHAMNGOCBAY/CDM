@@ -17287,8 +17287,8 @@ $$E_c = k \times \frac{q_{u,\text{design}}}{2} \quad (k = 100)$$
 
             # N_SPT trung bình trong đất yếu (depth <= H_soft)
             _bz_n = _cv.execute("""
-                SELECT AVG(N_value) FROM spt_values
-                WHERE borehole_id=? AND depth_m <= ? AND N_value IS NOT NULL
+                SELECT AVG(N) FROM spt_values
+                WHERE borehole_id=? AND depth_m <= ? AND N IS NOT NULL
             """, (_bz_id, _bz_H or 25)).fetchone()[0]
 
             # e0 TB
