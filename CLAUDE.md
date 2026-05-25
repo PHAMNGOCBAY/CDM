@@ -1904,3 +1904,58 @@ Cho phép tạo "vồng" trước với độ dốc tối đa **1/125**.
 | Khoảng cách cọc tăng dần | 1,2 – 1,5 lần |
 | $H_{\max}$ không đất yếu | < 6 m |
 | $H_{\max}$ có đất yếu | < 4 m |
+
+---
+
+### 38. Trắc dọc CDM + Bảng L_CDM (đào/đắp) + Cu tính toán trên biểu đồ VST
+
+**File tài liệu:** [47-tvtk-cdm-trac-doc-luong-chinh.md](47-tvtk-cdm-trac-doc-luong-chinh.md)
+**JSON config:** `data/tccs41_params.json` → `tccs41_limits.cdm_profile_plot`
+**Helper public:** `scripts.settlement_calc.build_mu_by_loc(loc_names, soft_symbols, db_path)`
+
+#### Bảng thống kê L_CDM — quy ước đào/đắp (BẮT BUỘC)
+
+Công thức $L_{CDM} = z_{top} - z_{tự\_nhiên} + H_{soft} + z_{ngàm}$ giả định ngầm **đào bỏ** phần đất yếu phía trên đỉnh cọc khi $z_{top} < z_{tự\_nhiên}$.
+
+**Bảng phải có 9 cột:** Hố khoan · Khu vực · Cao độ TN · Đỉnh cọc TK · **Đào/Đắp** · H đất yếu · **L (không đào) m** · L CDM · Ghi chú.
+
+**Cảnh báo tự động:** `st.warning()` nếu có HK nào có $|z_{tự\_nhiên} - z_{top}| > z_{ngàm}$ → gợi ý xem lại top_elev_m per zone.
+
+**Bảng tổng hợp** thêm cột `L TB không đào (m) = H_soft + pen`.
+
+#### Trắc dọc CDM 3 zone (KE/BXN/NHC)
+
+8 trace bắt buộc per biểu đồ:
+1. Vùng tô đất đắp (`elev → des_elev`, nâu mờ)
+2. Vùng tô phạm vi xử lý CDM (`top → bot_cdm`, xanh mờ)
+3. Cột CDM đứng mỗi HK (`#1a6fbd` đứt mảnh)
+4. Mặt đất tự nhiên (`#7B3F00` line+marker+text)
+5. Cao độ thiết kế ngang (`#2ca02c` đứt)
+6. Đỉnh cọc CDM ngang (`#1a6fbd` đứt)
+7. **Đáy lớp đất yếu** (`#e377c2` longdash + kim cương + text)
+8. **Đáy cọc CDM** (`#d62728` lw 2.6 + tam giác `#ff7f0e` + text bold)
+
+Chainage **PCA-SVD per zone** trên (x, y) — bắt đầu từ 0.
+
+#### Cu tính toán trên biểu đồ VST tab `ke_sw`
+
+**Helper module-level:** `_build_mu_by_loc` (wrapper) → `settlement_calc.build_mu_by_loc` (public).
+
+**Param `show_cu_corrected: bool = True`** thêm vào cả `_chart_su_profile()` (Plotly) và `_chart_su_profile_mpl()` (Matplotlib). Mặc định BẬT.
+
+**Style Cu tính toán (chuẩn toàn dự án):**
+- Color: `#15803d` (xanh lá đậm)
+- Marker: diamond size 8–9 (Plotly) / `D` ms 6 (MPL)
+- Line width: 2.2–2.6 liền
+- Vạch đứng `Cu_TB` dashdot + annotation box `#dcfce7` viền `#15803d`
+
+**3 caller tự động kế thừa:** `app_cdm.py:4488` (Plotly), `4492` (MPL fallback), `9537` (MPL trong panel NT1/NT2 per HK).
+
+#### Quy tắc đọc lớp đất yếu (BẮT BUỘC nhất quán)
+
+| Mục đích | Symbol filter | Bảng SQLite |
+|---|---|---|
+| Tính H_soft (chiều dày tổng) | `('1','1b','2','XMD')` | `layers.symbol` |
+| Tính Ip TB cho Bjerrum μ | `('1','1b','CH','MH','CH-OH','MH-OH')` | `lab_tests.symbol_tcvn` |
+
+**KHÔNG trộn lẫn 2 bộ symbol** — `layers.symbol` (số La Mã: 1, 1b, 2) khác `lab_tests.symbol_tcvn` (TCVN: CH, MH, CL...).

@@ -1865,37 +1865,15 @@ def _build_mu_by_loc(
     loc_names: list[str],
     soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
 ) -> dict:
-    """Xây dict {loc_name: {'Ip': float, 'mu': float}} từ lab_tests.
+    """Wrapper backward-compat — chuyển tiếp sang public function trong settlement_calc.
 
     Phục vụ vẽ Cu = μ·Su trên biểu đồ VST theo TCCS 41 Phụ lục C.3.2.
-    loc_name khớp với boreholes.name (vd 'KE-HK1', 'BXN-CV-HK1').
     """
-    if not loc_names:
-        return {}
     try:
-        from scripts.settlement_calc import bjerrum_mu as _bj_mu
+        from scripts.settlement_calc import build_mu_by_loc as _build_pub
+        return _build_pub(loc_names, soft_symbols, db_path=_DB)
     except Exception:
         return {}
-    import sqlite3 as _sq_mu
-    out: dict = {}
-    ph = ",".join("?" * len(soft_symbols))
-    ph_loc = ",".join("?" * len(loc_names))
-    with _sq_mu.connect(_DB) as _con_mu:
-        _con_mu.row_factory = _sq_mu.Row
-        rows = _con_mu.execute(f"""
-            SELECT b.name AS bh_name, AVG(lt.Ip) AS Ip_avg
-            FROM lab_tests lt
-            JOIN boreholes b ON lt.borehole_id = b.id
-            WHERE b.name IN ({ph_loc})
-              AND lt.Ip IS NOT NULL AND lt.Ip > 0
-              AND lt.symbol_tcvn IN ({ph})
-            GROUP BY b.name
-        """, (*loc_names, *soft_symbols)).fetchall()
-        for r in rows:
-            _Ip = float(r["Ip_avg"]) if r["Ip_avg"] is not None else None
-            if _Ip is not None:
-                out[r["bh_name"]] = {"Ip": _Ip, "mu": float(_bj_mu(_Ip))}
-    return out
 
 
 def _chart_su_profile_mpl(

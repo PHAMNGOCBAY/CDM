@@ -827,6 +827,50 @@ def apply_bjerrum_correction(Su_kPa: float, Ip: float) -> dict:
     }
 
 
+def build_mu_by_loc(
+    loc_names: list[str],
+    soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
+    db_path: Optional[Path] = None,
+) -> dict:
+    """Tính Ip TB + μ Bjerrum cho danh sách hố khoan — phục vụ vẽ Cu = μ·Su.
+
+    Query batch (1 query) — tránh N+1 trên lab_tests.
+
+    Args:
+        loc_names: ['KE-HK1', 'KE-HK2', 'BXN-CV-HK1', ...]
+        soft_symbols: lọc lớp yếu theo `symbol_tcvn`
+        db_path: optional, mặc định dùng `_DB`
+
+    Returns:
+        {bh_name: {'Ip': float, 'mu': float}} — chỉ chứa HK có Ip > 0
+    """
+    if not loc_names:
+        return {}
+    _p = db_path or _DB
+    out: dict = {}
+    ph_sym = ",".join("?" * len(soft_symbols))
+    ph_loc = ",".join("?" * len(loc_names))
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute(f"""
+            SELECT b.name AS bh_name, AVG(lt.Ip) AS Ip_avg
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name IN ({ph_loc})
+              AND lt.Ip IS NOT NULL AND lt.Ip > 0
+              AND lt.symbol_tcvn IN ({ph_sym})
+            GROUP BY b.name
+        """, (*loc_names, *soft_symbols)).fetchall()
+        for r in rows:
+            _Ip = float(r["Ip_avg"]) if r["Ip_avg"] is not None else None
+            if _Ip is not None:
+                out[r["bh_name"]] = {
+                    "Ip": _Ip,
+                    "mu": float(bjerrum_mu(_Ip)),
+                }
+    return out
+
+
 def get_Ip_avg_for_bh(bh_name: str, soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
                       db_path: Optional[Path] = None) -> Optional[float]:
     """Trả về Ip trung bình của các mẫu lab thuộc lớp đất yếu của HK.

@@ -153,6 +153,35 @@
         "_note": "E.4.1 — chiều cao đất đắp sau mố cầu, cạnh cống nên chọn nhỏ hơn các giá trị này"
       }
     },
+    "cdm_profile_plot": {
+      "_ref": "scripts/app_cdm.py — tab tvtk_prep section 5 + ke_sw VST charts",
+      "_doc": "47-tvtk-cdm-trac-doc-luong-chinh.md",
+      "_note": "Quy ước hiển thị trắc dọc CDM 3 zone + bảng L_CDM đào/đắp + Cu tính toán trên VST charts",
+      "soft_symbols_for_H_calc": ["1", "1b", "2", "XMD"],
+      "soft_symbols_for_Ip_avg": ["1", "1b", "CH", "MH", "CH-OH", "MH-OH"],
+      "excavation_warning_rule": "warn nếu (elev - top) > penetration_m — gợi ý xem lại top_elev_m cho từng zone",
+      "profile_chart_colors": {
+        "natural_ground":      "#7B3F00",
+        "design_elev":         "#2ca02c",
+        "cdm_top":             "#1a6fbd",
+        "soft_layer_bottom":   "#e377c2",
+        "cdm_pile_bottom":     "#d62728",
+        "cdm_pile_tip_marker": "#ff7f0e",
+        "fill_area":           "rgba(210,180,100,0.22)",
+        "cdm_treatment_area":  "rgba(30,120,200,0.16)",
+        "cu_corrected":        "#15803d"
+      },
+      "vst_chart_traces": {
+        "Su_VST":        { "color": "borehole_color", "marker": "circle", "linewidth": 1.8 },
+        "Cu_corrected":  { "color": "#15803d",        "marker": "diamond", "linewidth": 2.4,
+                           "formula": "Cu = mu * Su (TCCS 41 C.5)" },
+        "Cu_TB_line":    { "color": "#15803d", "dash": "dashdot", "linewidth": 1.5 }
+      },
+      "L_CDM_table_columns": [
+        "Hố khoan", "Khu vực", "Cao độ TN (m)", "Đỉnh cọc TK (m)",
+        "Đào/Đắp (m)", "H đất yếu (m)", "L (không đào) m", "L CDM (m)", "Ghi chú"
+      ]
+    },
     "bjerrum_correction": {
       "_ref": "TCCS 41:2022/TCĐBVN — Phụ lục C.3.2 — Bảng C.1 — Công thức C.5",
       "_note": "Cường độ kháng cắt tính toán c_u = μ · S_u (VST). Áp dụng cho lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp; xem góc ma sát φ = 0.",
