@@ -16700,11 +16700,18 @@ if _page == "tvtk_prep":
     # ── Bảng thống kê chiều dài cọc CDM theo nguyên tắc thiết kế ──────────────
     st.markdown("#### Thống kê chiều dài cọc CDM theo nguyên tắc thiết kế")
     st.caption(
-        f"L = (Cao độ đỉnh cọc +{_top:.1f} m) − Cao độ đáy lớp yếu + Ngàm {_pen:.1f} m  "
-        f"= +{_top:.1f} − Cao_độ_tự_nhiên + H_đất_yếu + {_pen:.1f}"
+        f"**Công thức:** L = (Cao độ đỉnh cọc {_top:+.1f} m) − Cao độ đáy lớp yếu + Ngàm {_pen:.1f} m  "
+        f"= {_top:+.1f} − Cao_độ_tự_nhiên + H_đất_yếu + {_pen:.1f}  \n"
+        f"**Quy ước đào/đắp:**  "
+        f"Đào = Cao_độ_tự_nhiên − {_top:+.1f}  (dương → đào bỏ đất trước khi thi công cọc; "
+        f"âm → đắp thêm lên đỉnh cọc).  "
+        f"Khi đào lớn hơn 0, lớp đất yếu phía TRÊN đỉnh cọc CDM coi như đã được đào bỏ — "
+        f"không cần xử lý → L_CDM < H_đất_yếu là hợp lý."
     )
     _len_rows = []
-    _len_zone_agg = {}  # zone -> list of L_cdm values
+    _len_zone_agg   = {}   # zone -> list of L_cdm values
+    _len_zone_noexc = {}   # zone -> list of L_no_excav (không đào)
+    _n_excav_warn   = 0    # số HK có đào > pen (cảnh báo)
     for b in [b for b in _bhs_tv if b["name"] in _cdm_yes]:
         _elev_b = b["elevation_m"]
         # H_soft: sum of ALL soft symbols from layers table
@@ -16716,39 +16723,70 @@ if _page == "tvtk_prep":
             _len_rows.append({
                 "Hố khoan":        b["name"],
                 "Khu vực":         _zone_codes.get(b["zone_id"], ""),
-                "Cao độ (m)":      f"{_elev_b:.2f}" if _elev_b is not None else "—",
+                "Cao độ TN (m)":   f"{_elev_b:.2f}" if _elev_b is not None else "—",
+                "Đỉnh cọc TK (m)": f"{_top:+.2f}",
+                "Đào/Đắp (m)":     "—",
                 "H đất yếu (m)":   f"{_hs_val:.1f}" if _hs_val > 0 else "—",
+                "L (không đào) m": "—",
                 "L CDM (m)":       "—",
+                "Ghi chú":         "Thiếu dữ liệu",
             })
             continue
-        _L_cdm = _top - _elev_b + _hs_val + _pen
-        _zcode = _zone_codes.get(b["zone_id"], "")
+        _excav     = _elev_b - _top                 # >0: đào,  <0: đắp
+        _L_no_exc  = _hs_val + _pen                 # L tối thiểu nếu không đào
+        _L_cdm     = _top - _elev_b + _hs_val + _pen
+        _zcode     = _zone_codes.get(b["zone_id"], "")
         _len_zone_agg.setdefault(_zcode, []).append(_L_cdm)
+        _len_zone_noexc.setdefault(_zcode, []).append(_L_no_exc)
+
+        # Ghi chú: cảnh báo khi đào lớn
+        if _excav > _pen:        # đào nhiều hơn cả phần ngàm
+            _note = f"Cảnh báo: đào {_excav:.1f} m"
+            _n_excav_warn += 1
+        elif _excav > 0:
+            _note = f"Đào {_excav:.1f} m trước khi thi công"
+        elif _excav < 0:
+            _note = f"Đắp {-_excav:.1f} m lên đỉnh cọc"
+        else:
+            _note = "Đỉnh cọc = mặt đất tự nhiên"
+
         _len_rows.append({
             "Hố khoan":        b["name"],
             "Khu vực":         _zcode,
-            "Cao độ (m)":      f"{_elev_b:.2f}",
+            "Cao độ TN (m)":   f"{_elev_b:.2f}",
+            "Đỉnh cọc TK (m)": f"{_top:+.2f}",
+            "Đào/Đắp (m)":     f"{_excav:+.2f}",
             "H đất yếu (m)":   f"{_hs_val:.1f}",
+            "L (không đào) m": f"{_L_no_exc:.1f}",
             "L CDM (m)":       f"{_L_cdm:.1f}",
+            "Ghi chú":         _note,
         })
 
     if _len_rows:
         # Sort: zone then bh_name
         _len_df = _pd_tv.DataFrame(_len_rows).sort_values(["Khu vực", "Hố khoan"])
         st.table(_len_df.reset_index(drop=True))
+        if _n_excav_warn > 0:
+            st.warning(
+                f"Có **{_n_excav_warn} hố khoan** có chiều cao đào lớn hơn chiều sâu ngàm "
+                f"({_pen:.1f} m) — cần xem xét lại cao độ đỉnh cọc CDM ({_top:+.1f} m) "
+                f"cho phù hợp với cao độ tự nhiên của từng khu vực."
+            )
 
     # Tổng hợp theo zone
     if _len_zone_agg:
         _agg_rows = []
         for _zc in ("KE", "BXN", "NHC"):
             if _zc not in _len_zone_agg: continue
-            _ls = _len_zone_agg[_zc]
+            _ls    = _len_zone_agg[_zc]
+            _ls_ne = _len_zone_noexc.get(_zc, [])
             _agg_rows.append({
-                "Khu vực":    _zc,
-                "Số HK":      len(_ls),
-                "L min (m)":  f"{min(_ls):.1f}",
-                "L TB (m)":   f"{sum(_ls)/len(_ls):.1f}",
-                "L max (m)":  f"{max(_ls):.1f}",
+                "Khu vực":               _zc,
+                "Số HK":                 len(_ls),
+                "L min (m)":             f"{min(_ls):.1f}",
+                "L TB (m)":              f"{sum(_ls)/len(_ls):.1f}",
+                "L max (m)":             f"{max(_ls):.1f}",
+                "L TB không đào (m)":    f"{sum(_ls_ne)/len(_ls_ne):.1f}" if _ls_ne else "—",
             })
         st.table(_pd_tv.DataFrame(_agg_rows))
 
