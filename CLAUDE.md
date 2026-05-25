@@ -2074,3 +2074,56 @@ KE-HK1 / SW-740 / L=28m với đất yếu chung (phi=2°, c=10):
 |---|---|---|---|
 | Front | **TRÁI** | Active (Ka) | **Gây lật** |
 | Back | **PHẢI** | Passive (Kp) | **Giữ ổn định** |
+
+---
+
+### 41. Thủy văn trạm Phú An sông Sài Gòn 1977–2024 (48 năm)
+
+**File tài liệu:** [50-thuyvan-phuan-1977-2024.md](50-thuyvan-phuan-1977-2024.md)
+**Module Python:** `scripts/thuyvan_phuan_import.py` + `scripts/thuyvan_phuan_plots.py`
+**SQLite:** `thuyvan_daily` (17,530) · `thuyvan_annual_summary` (48) · `thuyvan_tidal_peaks` (13)
+**JSON:** `data/thuyvan_phuan_daily_77-24.json`, `data/thuyvan_phuan_summary.json`, `data/thuyvan_phuan_stats.json`
+
+#### Mực nước thiết kế khuyến nghị (P95/P99)
+
+| Trường hợp | MNTB (cm, cao độ Quốc gia) |
+|---|:---:|
+| Mực nước thấp khai thác | **−25** (P5) |
+| Trung bình | **+13** (P50) |
+| **Thiết kế cao (tải nước)** | **+48** (P95) |
+| Cực đại hiếm | **+59** (P99) — đến **+177** (đỉnh triều 2019) |
+
+#### Xu thế dài hạn (BẮT BUỘC tính dự phòng)
+
+| Đại lượng | Tốc độ tăng | Dự phòng 50 năm |
+|---|:---:|:---:|
+| MNTB năm | +3,66 cm/decade | +18 cm |
+| **Max năm (đỉnh triều)** | **+11,63 cm/decade** | **+58 cm** |
+| MNTB TB thập kỷ 80 → 2020s | từ 6,6 → **20,2 cm** (gấp **3 lần**) | — |
+
+#### Pattern mùa (TB 48 năm)
+
+| Mùa | Tháng | MNTB TB |
+|---|:---:|:---:|
+| **Mùa lũ cao nhất** | XI | **+35 cm** |
+| Lũ | X, XII | +31, +33 |
+| Chuyển | I–IV | +28 → +8 |
+| **Mùa khô thấp nhất** | VI | **−13 cm** |
+| Khô | VII, VIII | −12, −7 |
+
+→ **Biên độ mùa ~48 cm**; mùa lũ XI–XII–I là thời điểm thiết kế cừ.
+
+#### Schema SQLite
+
+```sql
+-- thuyvan_daily: 17,530 rows, UNIQUE(year, month, day)
+-- thuyvan_annual_summary: 48 rows UNIQUE(year),
+--   monthly_avg/max/min_cm là JSON array 12 phần tử
+-- thuyvan_tidal_peaks: 13 rows UNIQUE(year)
+```
+
+#### Áp dụng
+
+- Mực nước Front (sông) thiết kế: **+48 cm** (P95) cho công trình dân dụng, **+59 cm** (P99) cho tuổi thọ ≥ 50 năm.
+- Mực nước Back (đất) thường thấp hơn Front 1–1,5 m do gradient thấm.
+- Tính toán Winkler / đẩy nổi / ổn định dùng các cao độ trên — KHÔNG dùng giá trị cố định cũ (vd −1,5 m).
