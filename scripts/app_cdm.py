@@ -10733,8 +10733,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 10.0, 1.0,
                                                          key=f"dpy_q_w_{_hk_iter}",
                                                          help="Mặc định 10m — bộ chuẩn dự án (làn xe + lề). w ≥ 100m ≈ tải vô hạn.")
-                    _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
-                                                         key=f"dpy_wlvl_{_hk_iter}")
+                    _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, 1.8, 0.5,
+                                                         key=f"dpy_wlvl_{_hk_iter}",
+                                                         help="Mực nước phía Front (đất đắp). "
+                                                              "Mặc định +1.80m — bộ chuẩn dự án "
+                                                              "(mực nước cao triều / nước ngầm đất đắp kè).")
                     _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"],
                                                     key=f"dpy_bc_{_hk_iter}")
 

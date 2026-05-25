@@ -1581,7 +1581,7 @@ Mỗi page function là `async function pageName(el)` — nhận container `el`,
   },
   "geom": {
     "top_elev": 2.7, "Z_m": 0.5, "Zb_m": -1.5,
-    "wlvl_front": -0.5, "wlvl_back": -1.5,
+    "wlvl_front": 1.8, "wlvl_back": -2.0,
     "q_kPa": 15.0, "su_front": 12.0, "su_back": 10.0, "H1_m": 22.0
   }
 }
