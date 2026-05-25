@@ -16158,19 +16158,45 @@ if _page == "tvtk_prep":
             if r.get("_bh_name", "").startswith("KE-")
         }
 
-        # Bjerrum μ + Ip per HK (đã tính ở phần trắc dọc trên, lưu trong tvtk_bh_cdm)
-        _bj_per_bh = {
-            r["bh_name"]: {
-                "Ip": r["Ip_avg"],
-                "mu": r["bjerrum_mu"],
-                "Cu_corrected": r["Cu_corrected_kPa"],
-            }
+        # Bjerrum μ + Ip per HK — TÍNH ON-THE-FLY cho TẤT CẢ HK trong biểu đồ
+        # (Không phụ thuộc tvtk_bh_cdm vì biểu đồ có thể có HK ngoài tuyến CDM)
+        try:
+            from scripts.settlement_calc import bjerrum_mu as _bj_mu_vst
+        except Exception:
+            _bj_mu_vst = None
+
+        # Query Ip TB cho TẤT CẢ KE HK 1 lần (batch — tránh N+1 queries)
+        _SOFT_SYM_VST = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
+        _ph_sym_vst   = ",".join("?" * len(_SOFT_SYM_VST))
+        _ip_rows = _cv.execute(f"""
+            SELECT b.name AS bh_name, AVG(lt.Ip) AS Ip_avg
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name LIKE 'KE-%'
+              AND lt.Ip IS NOT NULL AND lt.Ip > 0
+              AND lt.symbol_tcvn IN ({_ph_sym_vst})
+            GROUP BY b.name
+        """, _SOFT_SYM_VST).fetchall()
+
+        # Ưu tiên giá trị đã lưu trong tvtk_bh_cdm (giữ tính nhất quán với bảng 3 PA)
+        _bj_saved = {
+            r["bh_name"]: {"Ip": r["Ip_avg"], "mu": r["bjerrum_mu"]}
             for r in _cv.execute("""
-                SELECT bh_name, Ip_avg, bjerrum_mu, Cu_corrected_kPa
+                SELECT bh_name, Ip_avg, bjerrum_mu
                 FROM tvtk_bh_cdm
                 WHERE bh_name LIKE 'KE-%' AND bjerrum_mu IS NOT NULL
             """).fetchall()
         }
+
+        _bj_per_bh = {}
+        for _r_ip in _ip_rows:
+            _bh_k = _r_ip["bh_name"]
+            _Ip_k = float(_r_ip["Ip_avg"]) if _r_ip["Ip_avg"] is not None else None
+            # Ưu tiên giá trị đã lưu
+            if _bh_k in _bj_saved and _bj_saved[_bh_k]["mu"] is not None:
+                _bj_per_bh[_bh_k] = _bj_saved[_bh_k]
+            elif _Ip_k is not None and _bj_mu_vst is not None:
+                _bj_per_bh[_bh_k] = {"Ip": _Ip_k, "mu": float(_bj_mu_vst(_Ip_k))}
 
         _bh_names_sorted = sorted(_vst_by_bh.keys(),
                                   key=lambda n: int(n.replace("KE-HK", "") or 0))
@@ -16257,53 +16283,76 @@ if _page == "tvtk_prep":
                     hovertemplate=f"<b>{_bh_n}</b><br>Sp: %{{x:.1f}} kPa | %{{y:.1f}} m<extra></extra>",
                 ), row=_row, col=_col)
 
-            # ── Cu hiệu chỉnh Bjerrum (TCCS 41 C.5: Cu = μ·Su) ───────────────
+            # ── Cu TÍNH TOÁN (TCCS 41 Phụ lục C.3.2 — Công thức C.5: Cu = μ·Su) ──
             _bj_e   = _bj_per_bh.get(_bh_n, {})
             _mu_bh  = _bj_e.get("mu")
             _Ip_bh  = _bj_e.get("Ip")
             if _mu_bh is not None and _vd:
                 _vs_cu = [s * _mu_bh for s in _vs]
+                # Text label hiển thị giá trị Cu trên mỗi marker
+                _txt_cu = [f"{cu:.1f}" for cu in _vs_cu]
                 _hov_cu = [
                     f"<b>{_bh_n}</b><br>Chiều sâu: {d:.1f} m<br>"
                     f"<b>Cu = μ·Su = {cu:.1f} kPa</b><br>"
-                    f"Su gốc: {s:.1f}  |  μ = {_mu_bh:.3f}"
-                    + (f"  (Ip ≈ {_Ip_bh:.0f})" if _Ip_bh else "")
+                    f"Su gốc (VST): {s:.1f} kPa<br>"
+                    f"μ (Bjerrum) = {_mu_bh:.3f}"
+                    + (f"<br>Ip TB lớp yếu = {_Ip_bh:.0f}" if _Ip_bh else "")
                     for d, cu, s in zip(_vd, _vs_cu, _vs)
                 ]
+                # Trace Cu tính toán — đường liền xanh lá đậm + text giá trị bên marker
                 _fig_sub.add_trace(_go_tv.Scatter(
                     x=_vs_cu, y=_vd,
-                    mode="lines+markers",
-                    name="Cu = μ·Su (TCCS 41 C.5)"
-                         if _i == 0 else "Cu = μ·Su (TCCS 41 C.5)",
+                    mode="lines+markers+text",
+                    name="Cu tính toán (Cu = μ·Su — TCCS 41 C.5)"
+                         if _i == 0 else "Cu tính toán (Cu = μ·Su — TCCS 41 C.5)",
                     legendgroup="cu_corr",
                     showlegend=(_i == 0),
-                    line=dict(color="#16a34a", width=2.2),
-                    marker=dict(size=8, symbol="diamond", color="#16a34a",
-                                line=dict(color="white", width=1)),
+                    line=dict(color="#16a34a", width=2.6),
+                    marker=dict(size=9, symbol="diamond", color="#16a34a",
+                                line=dict(color="white", width=1.2)),
+                    text=_txt_cu,
+                    textposition="middle right",
+                    textfont=dict(size=8, color="#14532d", family="Arial"),
                     hovertemplate="%{customdata}<extra></extra>",
                     customdata=_hov_cu,
                 ), row=_row, col=_col)
-                # Annotation giá trị Cu trung bình ở giữa lớp yếu
+                # Vạch đứng Cu_TB trong phạm vi lớp yếu
                 _vs_cu_soft = [
                     cu for d, cu in zip(_vd, _vs_cu)
                     if _h_soft is None or d <= _h_soft
                 ]
                 if _vs_cu_soft:
                     _Cu_avg = sum(_vs_cu_soft) / len(_vs_cu_soft)
-                    _y_ann  = (_h_soft * 0.5) if _h_soft else (max(_vd) * 0.4)
+                    _y_top  = (_h_soft if _h_soft else max(_vd))
+                    # Đường đứng Cu_TB (xanh lá nhạt)
+                    _fig_sub.add_trace(_go_tv.Scatter(
+                        x=[_Cu_avg, _Cu_avg], y=[0, _y_top],
+                        mode="lines",
+                        line=dict(color="#16a34a", width=1.5, dash="dashdot"),
+                        name=("Cu_TB tính toán (μ·Su_TB lớp yếu)"
+                              if _i == 0 else "Cu_TB tính toán (μ·Su_TB lớp yếu)"),
+                        legendgroup="cu_avg",
+                        showlegend=(_i == 0),
+                        hovertemplate=(f"<b>{_bh_n}</b><br>"
+                                       f"Cu TB = {_Cu_avg:.1f} kPa<br>"
+                                       f"trong phạm vi lớp yếu<extra></extra>"),
+                    ), row=_row, col=_col)
+                    # Annotation hộp xanh lá ở 0.3·H_soft (trên cao, dễ thấy)
+                    _y_ann  = (_h_soft * 0.30) if _h_soft else (max(_vd) * 0.3)
                     _ann_txt = (
                         f"<b>Cu_TB = {_Cu_avg:.1f} kPa</b><br>"
                         f"μ = {_mu_bh:.3f}"
-                        + (f"  (Ip = {_Ip_bh:.0f})" if _Ip_bh else "")
+                        + (f"  Ip = {_Ip_bh:.0f}" if _Ip_bh else "")
                     )
                     _fig_sub.add_annotation(
                         x=_Cu_avg, y=_y_ann, text=_ann_txt,
                         showarrow=True, arrowhead=2, arrowsize=1,
-                        arrowwidth=1.4, arrowcolor="#16a34a",
-                        ax=40, ay=-25,
-                        font=dict(size=9, color="#14532d", family="Arial"),
-                        bgcolor="rgba(220,252,231,0.92)",
-                        bordercolor="#16a34a", borderwidth=1.2, borderpad=3,
+                        arrowwidth=1.5, arrowcolor="#16a34a",
+                        ax=45, ay=-30,
+                        font=dict(size=9.5, color="#14532d",
+                                  family="Arial Black"),
+                        bgcolor="rgba(220,252,231,0.95)",
+                        bordercolor="#16a34a", borderwidth=1.4, borderpad=4,
                         row=_row, col=_col,
                     )
 
@@ -16383,11 +16432,13 @@ if _page == "tvtk_prep":
         )
         st.plotly_chart(_fig_sub, use_container_width=True)
         st.caption(
-            "Su (đường xanh dương liền): cắt cánh hiện trường (VST)  |  "
-            "Sp (xanh dương chấm): độ bền sau phá hoại  |  "
-            "**Cu = μ·Su (đường xanh lá): cường độ kháng cắt TÍNH TOÁN — TCCS 41 Phụ lục C.3.2 (Công thức C.5, Bảng C.1)**  |  "
-            "Cu (kim cương cam): thí nghiệm cắt 3 trục UU trong phòng  |  "
-            "Đường đỏ đứt: ngưỡng Su = 25 kPa  |  Vùng xanh nhạt: phạm vi đất yếu"
+            "**Su (xanh dương liền):** cắt cánh hiện trường (VST) — cường độ kháng cắt nguyên trạng.  "
+            "**Sp (xanh dương chấm):** độ bền sau phá hoại.  "
+            "**Cu tính toán (xanh lá đậm, kim cương):** Cu = μ·Su theo TCCS 41 Phụ lục C.3.2 — Công thức C.5; μ nội suy từ Bảng C.1 theo Ip TB lớp yếu của từng hố khoan.  "
+            "**Vạch xanh lá đứng (dashdot):** Cu_TB tính toán trong phạm vi lớp yếu.  "
+            "**Cu (kim cương cam):** thí nghiệm cắt 3 trục UU trong phòng (tham khảo so sánh).  "
+            "**Đường đỏ đứt:** ngưỡng Su = 25 kPa.  "
+            "**Vùng xanh nhạt:** phạm vi lớp đất yếu."
         )
     else:
         st.info("Chưa có dữ liệu cắt cánh cho khu vực Kè.")
