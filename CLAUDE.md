@@ -310,6 +310,7 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 | Trụ đất xi măng CDM | `cdm_` | `cdm_column_calc.py`, `tcvn9403_params.json`, `cdm_design`, `cdm_lab_results` |
 | Tính lún nền | `settlement_` | `settlement_calc.py`, `settlement_scenarios`, `settlement_layers`, `settlement_time_series` |
 | Khoảng cách hố khoan | `borehole_` | `borehole_spacing.py`, `borehole_distances` |
+| Khoảng cách BH → CDM (Kè KE) | `ke_cdm_` | `ke_cdm_dist.py`, `ke_cdm_distances_202605_TTHC.json`, `ke_cdm_distances`, `43-ke-cdm-distances.md` |
 | Cọc ván SW — catalog chung | `sw_` | `sw_pile_catalog.json` |
 
 **Quy tắc áp dụng:**
@@ -1883,3 +1884,59 @@ E_cdm = k × (qu_design/2),  k=100 (TCVN 9403)  → E_cdm = 40 000 kPa khi qu=80
 - Expander công thức chung (LaTeX block)
 - Bảng PA2 `st.dataframe` — 36 rows (12 symbol × 3 zone)
 - Expander per zone — bảng per-BH với model type + E_ref / E50 / Ecdm tùy lớp
+
+---
+
+### 38. Module Khoảng Cách Hố Khoan KE → Tim Cọc CDM (cập nhật 2026-05-26)
+
+**File engine:** `scripts/ke_cdm_dist.py` — tính khoảng cách từ 12 HK KE đến 8 201 tim cọc CDM zone KE  
+**Tài liệu:** [43-ke-cdm-distances.md](43-ke-cdm-distances.md)  
+**JSON snapshot:** `data/ke_cdm_distances_202605_TTHC.json`  
+**Bảng SQLite:** `ke_cdm_distances` (UNIQUE `bh_name`, 21 cột)
+
+#### Phương pháp PCA
+
+1. Tính trục tuyến kè `axis_u` bằng SVD của 8 HK alignment (KE-HK2/3/6/7/8/9/10/11)
+2. Pháp tuyến `axis_n = (-axis_u[E], axis_u[N])` (xoay 90° CCW)
+3. Cho mỗi HK: chiếu vector BH→CDM lên `axis_u` (d∥) và `axis_n` (d⊥)
+4. **Metric chính:** `dist_perp_at_eucl_m` = |d⊥| của vector đến CDM Euclid-nearest — đo độ đại diện HK với vùng CDM
+
+**Kết quả trục PCA:** `axis_u = (0.9934; 0.1151)` [Northing, Easting]; góc ≈ 6,6° với trục Bắc
+
+#### Kết quả TTHC (12 HK, từ nhỏ đến lớn d⊥)
+
+| Hố khoan | Trên tuyến | d⊥ (m) | Đánh giá |
+|---|:---:|---:|---|
+| KE-HK7 | Có | **1,9** | Đặc trưng tốt nhất cho CDM zone |
+| KE-HK1 | Không | 0,7 (perp) → 20,1 (eucl) | Gần CDM nhất theo d⊥ thuần |
+| KE-HK2 | Có | 9,2 | Sử dụng được |
+| KE-HK6 | Có | 11,8 | Sử dụng được |
+| KE-HK8 | Có | 11,1 | Sử dụng được |
+| KE-HK9 | Có | 12,4 | Sử dụng được |
+| **KE-HK3** | **Có** | **28,6** | Landward offset +171m — xa |
+| **KE-HK10** | **Có** | **34,1** | Seaward offset −110m — xa (kiểm soát NT1) |
+| **KE-HK11** | **Có** | **75,3** | Ngoài CDM zone — seaward offset −85m |
+
+**Pitfall quan trọng:** Vì CDM zone có 8 201 tim cọc phủ đều, `dist_perp_abs_m` (nearest by d⊥ search) luôn ≈ 0 cho mọi HK — không phải metric có ý nghĩa. Chỉ dùng `dist_perp_at_eucl_m` làm metric chính.
+
+#### Hàm công khai
+
+| Hàm | Mô tả |
+|---|---|
+| `calc_ke_axis_pca(bhs)` | SVD của 8 HK alignment → (axis_u, ref_pt) |
+| `perp_vec(axis_u)` | Xoay 90° CCW → axis_n |
+| `calc_cdm_distances(db_path)` | Tính tất cả 12 HK × 8 201 CDM → (results, axis_info) |
+| `save_to_sqlite(results)` | INSERT OR REPLACE vào `ke_cdm_distances` |
+| `save_to_json(results, axis_info)` | Ghi JSON snapshot |
+| `load_cdm_distances(db_path)` | Đọc `ke_cdm_distances` → dict `{bh_name: row}` |
+
+#### SQLite — schema `ke_cdm_distances`
+
+Primary metric: `dist_perp_at_eucl_m` (|d⊥| tại CDM Euclid-nearest). Các cột khác: `dist_perp_abs_m` (nearest by pure perpendicular search — ít dùng), `dist_eucl_m`, `dist_along_at_eucl_m`, `chainage_m`, `bh_offset_m`.
+
+#### Bình đồ trong app (Mục B — ke_sw page)
+
+Section 7 của Mục B hiển thị:
+- Bảng thống kê 12 HK (d⊥, d∥, d Euclid, CDM gần nhất)
+- Plotly bình đồ: CDM zone (subsampled 1/60, xám mờ) + BH (vàng) + đường BH→CDM (đỏ/xám theo alignment) + annotate d⊥ tại midpoint + polyline kè đen
+- 3 metric cards: d⊥ lớn nhất, nhỏ nhất, trung bình

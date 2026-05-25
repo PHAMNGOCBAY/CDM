@@ -8753,6 +8753,24 @@ if _page == "ke_sw":
                     ).fetchall()
                 except Exception:
                     _binhdo_rows = []
+                # Khoảng cách HK → CDM gần nhất
+                try:
+                    _cdm_dist_rows_pf = _con_pf.execute(
+                        "SELECT bh_name, bh_northing_m, bh_easting_m, on_alignment, "
+                        "       nearest_cdm_eucl_north_m, nearest_cdm_eucl_east_m, "
+                        "       dist_eucl_m, dist_perp_at_eucl_m, dist_along_at_eucl_m "
+                        "FROM ke_cdm_distances ORDER BY bh_name"
+                    ).fetchall()
+                except Exception:
+                    _cdm_dist_rows_pf = []
+                # CDM toado subsampled (mỗi 60 hàng ~ 137 điểm để vẽ vùng CDM)
+                try:
+                    _cdm_sub_rows = _con_pf.execute(
+                        "SELECT northing_m, easting_m FROM cdm_toado "
+                        "WHERE zone='KE' AND rowid % 60 = 0"
+                    ).fetchall()
+                except Exception:
+                    _cdm_sub_rows = []
 
             _ntd_by_bh = {r[0]: {"D_bot": r[1], "L_des": r[2], "pile": r[3]}
                           for r in _ntd_rows}
@@ -9307,6 +9325,178 @@ if _page == "ke_sw":
                     f"**{_total:.2f} m**"
                 )
                 st.table(_df_dist)
+
+            # ── 7. Khoảng cách HK → CDM gần nhất (vuông góc trục tuyến kè) ──
+            if _cdm_dist_rows_pf:
+                st.divider()
+                st.markdown("#### Khoảng cách hố khoan → vùng CDM gần nhất theo phương vuông góc")
+                st.caption(
+                    "Khoảng cách theo phương vuông góc (d⊥) = thành phần ngang "
+                    "của vectơ hố khoan→CDM gần nhất, đo vuông góc với trục tuyến kè SW. "
+                    "Trục tuyến kè xác định bằng phân tích thành phần chính (PCA) của 8 HK trên tuyến."
+                )
+
+                # Bảng thống kê
+                _cdm_tbl_rows = []
+                for _cr in _cdm_dist_rows_pf:
+                    (_cbh, _cn_m, _ce_m, _caln,
+                     _cdm_n, _cdm_e,
+                     _d_eucl, _d_perp, _d_along) = _cr
+                    _cdm_tbl_rows.append({
+                        "Hố khoan":          _cbh.replace("KE-", ""),
+                        "Trên tuyến kè":     "Có" if _caln else "Không",
+                        "d⊥ (m)":            round(_d_perp, 1),
+                        "d∥ (m)":            round(_d_along, 1),
+                        "d Euclid (m)":      round(_d_eucl, 1),
+                    })
+                _cdm_df = pd.DataFrame(_cdm_tbl_rows).sort_values("d⊥ (m)", ascending=False)
+                st.dataframe(
+                    _cdm_df,
+                    hide_index=True,
+                    use_container_width=True,
+                    column_config={
+                        "Hố khoan":      st.column_config.TextColumn(width="small"),
+                        "Trên tuyến kè": st.column_config.TextColumn(width="small"),
+                        "d⊥ (m)":        st.column_config.NumberColumn(
+                            "d⊥ (m)", format="%.1f",
+                            help="Khoảng cách theo phương vuông góc trục tuyến kè",
+                            width="small"),
+                        "d∥ (m)":        st.column_config.NumberColumn(
+                            "d∥ (m)", format="%.1f",
+                            help="Khoảng cách theo phương dọc trục tuyến kè",
+                            width="small"),
+                        "d Euclid (m)":  st.column_config.NumberColumn(
+                            "d Euclid (m)", format="%.1f",
+                            help="Khoảng cách thẳng (Euclid) đến CDM gần nhất",
+                            width="small"),
+                    },
+                )
+
+                # Bình đồ CDM distances
+                if _HAS_PLOTLY:
+                    _fig_cdm_pl = go.Figure()
+
+                    # Vùng CDM (subsampled — nền xám nhạt)
+                    if _cdm_sub_rows:
+                        _fig_cdm_pl.add_trace(go.Scatter(
+                            x=[r[0] for r in _cdm_sub_rows],
+                            y=[r[1] for r in _cdm_sub_rows],
+                            mode="markers",
+                            marker=dict(size=4, color="#90CAF9", opacity=0.45,
+                                        symbol="circle"),
+                            name="Vùng CDM (lấy mẫu)",
+                            hoverinfo="skip",
+                        ))
+
+                    # Line BH → CDM gần nhất + nhãn d⊥
+                    for _cr in _cdm_dist_rows_pf:
+                        (_cbh, _bn, _be, _caln,
+                         _cdm_n, _cdm_e,
+                         _d_eucl, _d_perp, _d_along) = _cr
+                        _lcolor = "#E53935" if _caln else "#9E9E9E"
+                        _fig_cdm_pl.add_trace(go.Scatter(
+                            x=[_bn, _cdm_n, None],
+                            y=[_be, _cdm_e, None],
+                            mode="lines",
+                            line=dict(color=_lcolor, width=1.5, dash="dot"),
+                            showlegend=False,
+                            hoverinfo="skip",
+                        ))
+                        # Nearest CDM column marker (đỏ nhỏ)
+                        _fig_cdm_pl.add_trace(go.Scatter(
+                            x=[_cdm_n], y=[_cdm_e],
+                            mode="markers",
+                            marker=dict(size=7, color="#E53935",
+                                        symbol="x", line=dict(width=2)),
+                            showlegend=False,
+                            hovertext=f"{_cbh} → CDM d⊥={_d_perp:.1f}m",
+                            hoverinfo="text",
+                        ))
+                        # Nhãn d⊥ tại midpoint
+                        _fig_cdm_pl.add_annotation(
+                            x=(_bn + _cdm_n) / 2,
+                            y=(_be + _cdm_e) / 2,
+                            text=f"<b>{_d_perp:.1f}m</b>",
+                            showarrow=False,
+                            font=dict(size=9,
+                                      color="#B71C1C" if _d_perp > 30 else "#1565C0"),
+                            bgcolor="rgba(255,255,255,0.88)",
+                            borderpad=1,
+                        )
+
+                    # Boreholes — trên tuyến (vàng) vs ngoài tuyến (xám)
+                    for _caln_flag, _clr, _sym_lbl in [
+                        (1, "#FFC107", "HK trên tuyến kè"),
+                        (0, "#90A4AE", "HK ngoài tuyến"),
+                    ]:
+                        _sub = [_cr for _cr in _cdm_dist_rows_pf if _cr[3] == _caln_flag]
+                        if not _sub:
+                            continue
+                        _fig_cdm_pl.add_trace(go.Scatter(
+                            x=[r[1] for r in _sub],
+                            y=[r[2] for r in _sub],
+                            mode="markers+text",
+                            marker=dict(symbol="circle", size=15, color=_clr,
+                                        line=dict(color="#1976D2", width=2)),
+                            text=[r[0].replace("KE-", "") for r in _sub],
+                            textposition="top center",
+                            textfont=dict(size=11, color="#0D47A1", family="Arial"),
+                            hovertext=[
+                                f"<b>{r[0]}</b><br>"
+                                f"d⊥ = {r[7]:.1f} m<br>"
+                                f"d Euclid = {r[6]:.1f} m"
+                                for r in _sub
+                            ],
+                            hoverinfo="text",
+                            name=_sym_lbl,
+                        ))
+
+                    # Ranh kè (DXF polyline)
+                    if _binhdo_cx:
+                        _fig_cdm_pl.add_trace(go.Scatter(
+                            x=_binhdo_cx, y=_binhdo_cy,
+                            mode="lines",
+                            line=dict(color="rgba(0,0,0,0.7)", width=1.5),
+                            name="Ranh kè SW", hoverinfo="skip",
+                            connectgaps=False,
+                        ))
+
+                    _fig_cdm_pl.update_layout(
+                        title="Bình đồ: khoảng cách hố khoan → CDM gần nhất (d⊥ vuông góc trục tuyến kè)",
+                        xaxis_title="X (Northing VN-2000, m)",
+                        yaxis_title="Y (Easting VN-2000, m)",
+                        height=640,
+                        hovermode="closest",
+                        plot_bgcolor="#F8F9FA",
+                        showlegend=True,
+                        legend=dict(x=0.01, y=0.99,
+                                    bgcolor="rgba(255,255,255,0.85)",
+                                    bordercolor="#CCC", borderwidth=1),
+                        margin=dict(t=70, b=60, l=60, r=20),
+                    )
+                    _fig_cdm_pl.update_yaxes(scaleanchor="x", scaleratio=1,
+                                             showgrid=True, gridcolor="#E0E0E0")
+                    _fig_cdm_pl.update_xaxes(showgrid=True, gridcolor="#E0E0E0")
+                    st.plotly_chart(_fig_cdm_pl, use_container_width=True)
+
+                    # Thống kê tóm tắt
+                    _max_perp = max(_cr[7] for _cr in _cdm_dist_rows_pf)
+                    _max_bh   = next(
+                        _cr[0].replace("KE-", "") for _cr in _cdm_dist_rows_pf
+                        if _cr[7] == _max_perp
+                    )
+                    _min_perp = min(_cr[7] for _cr in _cdm_dist_rows_pf)
+                    _min_bh   = next(
+                        _cr[0].replace("KE-", "") for _cr in _cdm_dist_rows_pf
+                        if _cr[7] == _min_perp
+                    )
+                    _c1, _c2, _c3 = st.columns(3)
+                    _c1.metric("d⊥ lớn nhất", f"{_max_perp:.1f} m",
+                               delta=f"HK{_max_bh}", delta_color="inverse")
+                    _c2.metric("d⊥ nhỏ nhất", f"{_min_perp:.1f} m",
+                               delta=f"HK{_min_bh}", delta_color="normal")
+                    _c3.metric("Trung bình d⊥",
+                               f"{sum(_cr[7] for _cr in _cdm_dist_rows_pf)/len(_cdm_dist_rows_pf):.1f} m")
 
         if _HAS_PLOTLY and _ke_rows:
             _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
