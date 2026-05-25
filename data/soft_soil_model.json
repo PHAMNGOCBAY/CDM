@@ -1,0 +1,157 @@
+{
+  "_meta": {
+    "source": "G:/My Drive/202605-TRUNG TAM HCM/IPNUT-SOFT SOIL MODEL.pdf",
+    "title": "PLAXIS Material Models Manual – Chapter 10: Soft Soil Model",
+    "updated": "2026-05-25",
+    "notes": "Trich xuat tu PDF 9 trang – mo hinh Soft Soil cho set men gan NC, but non, to set huu co"
+  },
+
+  "description": {
+    "vi": "Mo hinh Soft Soil phu hop cho dat set mem gan NC (normally consolidated), but non, va dat huu co. Dung ham nang luong logarit de mo ta bien dang the tich.",
+    "en": "Soft Soil model suitable for near-NC clays, soft clay, peat. Uses logarithmic volumetric strain law."
+  },
+
+  "parameters": {
+    "lambda_star": {
+      "symbol": "λ*",
+      "name": "Modified compression index",
+      "formula_oedometer": "Cc / (2.303 × (1 + e0))",
+      "formula_cam_clay":  "λ / (1 + e0)",
+      "typical_range": [0.05, 0.30],
+      "unit": "dimensionless",
+      "note": "Primary loading – equivalent to Cc in oedometer compression curve"
+    },
+    "kappa_star": {
+      "symbol": "κ*",
+      "name": "Modified swelling index",
+      "formula_oedometer": "2 × Cs / (2.303 × (1 + e0))",
+      "formula_cam_clay":  "κ / (1 + e0)",
+      "typical_range": [0.01, 0.05],
+      "unit": "dimensionless",
+      "note": "Factor 2 applied vs Cam-Clay formula because PLAXIS assumes isotropic K0=1 unloading; Cs from oedometer or swelling test"
+    },
+    "lambda_kappa_ratio": {
+      "symbol": "λ*/κ*",
+      "typical_range": [2.5, 7.0],
+      "note": "Usually 5–7 for soft clays, 2.5–4 for stiff OC clays"
+    },
+    "nu_ur": {
+      "symbol": "νur",
+      "name": "Poisson's ratio for unloading-reloading",
+      "default": 0.15,
+      "typical_range": [0.10, 0.20],
+      "unit": "dimensionless"
+    },
+    "c": {
+      "symbol": "c",
+      "name": "Effective cohesion",
+      "unit": "kN/m²",
+      "source_sqlite": "lab_tests.c_kPa"
+    },
+    "phi": {
+      "symbol": "φ",
+      "name": "Effective friction angle",
+      "unit": "degrees",
+      "source_sqlite": "lab_tests.phi_deg",
+      "note": "Use CU effective or CD direct shear"
+    },
+    "psi": {
+      "symbol": "ψ",
+      "name": "Dilatancy angle",
+      "default": 0.0,
+      "note": "Negligible for soft soils – always set to 0 for NC/soft clays"
+    },
+    "K0_nc": {
+      "symbol": "K0_nc",
+      "name": "NC lateral earth pressure coefficient",
+      "formula": "1 - sin(φ)",
+      "note": "Jaky (1944); PLAXIS computes this automatically from φ if not overridden"
+    },
+    "M": {
+      "symbol": "M",
+      "name": "Slope of critical state line in p'-q space",
+      "formula_approx": "3.0 - 2.8 × K0_nc",
+      "formula_exact": "Eq. 234 (Brinkgreve 1994): function of K0_nc, νur, λ*/κ*",
+      "note": "Eq. 235 (approximate) sufficient for most practical cases"
+    },
+    "OCR": {
+      "symbol": "OCR",
+      "name": "Over-Consolidation Ratio",
+      "formula": "PC / σ'v0",
+      "note": "Per layer at mid-depth; σ'v0 = effective overburden at layer midpoint"
+    },
+    "POP": {
+      "symbol": "POP",
+      "name": "Pre-Overburden Pressure",
+      "formula": "PC - σ'v0",
+      "unit": "kN/m²",
+      "note": "Alternative to OCR in PLAXIS; POP = 0 means NC, POP > 0 means OC"
+    }
+  },
+
+  "formulas": {
+    "lambda_star_from_oedometer": {
+      "latex": "\\lambda^* = \\frac{C_c}{2.303 \\times (1 + e_0)}",
+      "python": "lambda_star = Cc / (2.303 * (1 + e0))"
+    },
+    "kappa_star_from_oedometer": {
+      "latex": "\\kappa^* = \\frac{2 \\cdot C_s}{2.303 \\times (1 + e_0)}",
+      "python": "kappa_star = 2 * Cs / (2.303 * (1 + e0))",
+      "note": "Factor 2 = PLAXIS convention (assumes K0=1 during isotropic unloading)"
+    },
+    "Cs_fallback": {
+      "latex": "C_s = 0.15 \\times C_c",
+      "python": "Cs = 0.15 * Cc",
+      "note": "Fallback when Cs not measured; typical Cs/Cc ≈ 0.10–0.25 for soft clays"
+    },
+    "K0_nc": {
+      "latex": "K_0^{NC} = 1 - \\sin \\varphi'",
+      "python": "K0_nc = 1 - math.sin(math.radians(phi_deg))"
+    },
+    "M_approx": {
+      "latex": "M \\approx 3.0 - 2.8 \\times K_0^{NC}",
+      "python": "M = 3.0 - 2.8 * K0_nc",
+      "source": "Eq. 235 – PLAXIS Material Models Manual Ch. 10"
+    },
+    "M_exact": {
+      "latex": "M^2 = \\frac{3(3 - K_0^{NC})^2 (1 - 2\\nu_{ur}) \\cdot (\\lambda^*/\\kappa^* - 1)}{(1 + 2K_0^{NC})^2 (1 - 2\\nu_{ur}) (\\lambda^*/\\kappa^*) - (3 - K_0^{NC})(1 + \\nu_{ur})}",
+      "python_note": "Solve for M numerically; Eq. 234 Brinkgreve 1994",
+      "source": "Eq. 234 – PLAXIS Material Models Manual Ch. 10"
+    },
+    "OCR_at_depth": {
+      "latex": "OCR_i = \\frac{P_c}{\\sigma'_{v0,i}}",
+      "python": "OCR = PC_kPa / sigma_v0_kPa"
+    },
+    "sigma_v0_at_mid": {
+      "latex": "\\sigma'_{v0} = \\sum_{j<i} \\gamma'_j H_j + \\gamma'_i \\frac{H_i}{2}",
+      "python_note": "Integrate effective unit weight from surface to layer midpoint; subtract gamma_w below GWT"
+    }
+  },
+
+  "plaxis_input_mapping": {
+    "lambda_star": "λ* (Modified compression index)",
+    "kappa_star": "κ* (Modified swelling index)",
+    "nu_ur":      "νur (Poisson's ratio unloading)",
+    "c":          "c' (Effective cohesion, kN/m²)",
+    "phi":        "φ' (Friction angle, degrees)",
+    "psi":        "ψ (Dilatancy, = 0 for soft soils)",
+    "K0_nc":      "K0,nc (auto from φ or manual)",
+    "M":          "M (computed auto or from formula)",
+    "OCR":        "OCR (per stress point / per layer)",
+    "POP":        "POP alternative to OCR"
+  },
+
+  "typical_values_soft_clay": {
+    "lambda_star": {"min": 0.10, "max": 0.25, "typical": 0.15},
+    "kappa_star":  {"min": 0.01, "max": 0.05, "typical": 0.02},
+    "nu_ur":       {"min": 0.10, "max": 0.20, "typical": 0.15},
+    "phi_deg":     {"min": 15.0, "max": 30.0, "typical": 22.0},
+    "c_kPa":       {"min": 0.0,  "max": 5.0,  "typical": 1.0},
+    "M":           {"min": 0.7,  "max": 1.3,  "typical": 1.0}
+  },
+
+  "zone_PA2_defaults": {
+    "note": "Zone-representative params = weighted avg by layer thickness, all selected BHs per zone",
+    "gwt_depth_m": 0.0
+  }
+}

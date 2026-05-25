@@ -4,15 +4,14 @@
     "updated": "2026-05-19",
     "project": "202605-TTHC"
   },
-
   "tccs41_limits": {
     "residual_settlement_cm": {
-      "cat1_near_bridge":   10,
-      "cat1_side_bridge":   20,
-      "cat1_general":       30,
-      "cat2_near_bridge":   20,
-      "cat2_side_bridge":   30,
-      "cat2_general":       40
+      "cat1_near_bridge": 10,
+      "cat1_side_bridge": 20,
+      "cat1_general": 30,
+      "cat2_near_bridge": 20,
+      "cat2_side_bridge": 30,
+      "cat2_general": 40
     },
     "residual_settlement_table": {
       "_ref": "TCCS 41:2022/TCĐBVN — Bảng 1 — Điều 6.2.3",
@@ -281,7 +280,6 @@
       ]
     }
   },
-
   "tccs41_sampling_requirements": {
     "_note": "Bảng 7.4.2 + Điều 5.3.3 + Điều 5.3.2 — mẫu nén cố kết tối thiểu",
     "borehole_spacing_532": {
@@ -303,9 +301,9 @@
       }
     },
     "borehole_spacing_m": {
-      "survey":  500,
-      "TKKT":    250,
-      "BVTC":    100,
+      "survey": 500,
+      "TKKT": 250,
+      "BVTC": 100,
       "soft_ground_BVTC": 100
     },
     "min_borehole_per_cross_section": {
@@ -319,38 +317,34 @@
     "spt_spacing_m_deeper": 2.0,
     "undisturbed_sample_spacing_m": 1.5
   },
-
   "fill_defaults": {
-    "gamma_fill_kNm3":   20.0,
-    "H_fill_m":           3.0,
+    "gamma_fill_kNm3": 20.0,
+    "H_fill_m": 3.0,
     "H_surcharge_extra_m": 1.5,
-    "gamma_w_kNm3":       9.81,
-    "gwt_depth_m":         0.0
+    "gamma_w_kNm3": 9.81,
+    "gwt_depth_m": 0.0
   },
-
   "pvd_defaults": {
     "a_mm": 100,
     "b_mm": 5,
     "dw_m": 0.0668,
     "pattern": "triangular",
     "spacing_m": 1.2,
-    "de_m": 1.260,
+    "de_m": 1.26,
     "smear_zone_ratio": 2.0,
     "kh_ks_ratio": 3.0,
     "Ch_factor": 1.5,
     "_note": "de = 1.05×s (tam giác); Ch ≈ 1.5×Cv (sét nhạy)"
   },
-
   "sand_drain_defaults": {
     "D_mm": 400,
-    "dw_m": 0.400,
+    "dw_m": 0.4,
     "pattern": "triangular",
     "spacing_m": 1.5,
     "de_m": 1.575,
     "Ch_factor": 1.0,
     "_note": "de = 1.05×s; Giếng cát D=400mm, s=1.5m"
   },
-
   "zone_soil_params": {
     "_note": "Trung bình từ lab_tests TTHC.sqlite — soft clay layers",
     "NHC": {
@@ -359,12 +353,15 @@
       "e0_avg": 1.65,
       "Cc_avg": 0.499,
       "Cs_avg": 0.095,
-      "Cv_cm2s": 4.4e-4,
+      "Cv_cm2s": 0.00044,
       "Cv_m2yr": 138.7,
-      "Ch_cm2s": 6.6e-4,
+      "Ch_cm2s": 0.00066,
       "PC_avg_kPa": 74.4,
       "OCR_typical": 1.5,
-      "soft_clay_depth_m": [0, 35],
+      "soft_clay_depth_m": [
+        0,
+        35
+      ],
       "n_boreholes": 23,
       "n_consol_samples": 33,
       "drainage": "two_way",
@@ -381,12 +378,15 @@
       "e0_avg": 1.38,
       "Cc_avg": 0.461,
       "Cs_avg": 0.086,
-      "Cv_cm2s": 2.5e-4,
+      "Cv_cm2s": 0.00025,
       "Cv_m2yr": 78.9,
-      "Ch_cm2s": 3.75e-4,
+      "Ch_cm2s": 0.000375,
       "PC_avg_kPa": 152.7,
       "OCR_typical": 2.5,
-      "soft_clay_depth_m": [0, 30],
+      "soft_clay_depth_m": [
+        0,
+        30
+      ],
       "n_boreholes": 19,
       "n_consol_samples": 39,
       "drainage": "two_way",
@@ -400,15 +400,18 @@
     "KE": {
       "gamma_sat_kNm3": 16.5,
       "gamma_prime_kNm3": 6.69,
-      "e0_avg": 1.50,
+      "e0_avg": 1.5,
       "Cc_avg": 0.48,
       "Cs_avg": 0.09,
-      "Cv_cm2s": 4.0e-4,
+      "Cv_cm2s": 0.0004,
       "Cv_m2yr": 126.2,
-      "Ch_cm2s": 6.0e-4,
+      "Ch_cm2s": 0.0006,
       "PC_avg_kPa": 80.0,
       "OCR_typical": 1.4,
-      "soft_clay_depth_m": [0, 30],
+      "soft_clay_depth_m": [
+        0,
+        30
+      ],
       "n_boreholes": 12,
       "n_consol_samples": 0,
       "_note": "KE chưa có mẫu nén cố kết — dùng tham số NHC tương tự",
@@ -421,7 +424,6 @@
       "cdm_field_lab_ratio": 0.33
     }
   },
-
   "scenario_defaults": [
     {
       "id": "no_treat",
@@ -471,6 +473,61 @@
       "_note": "CDM giảm lún ~70-80% — dùng hệ số giảm lún từ tỷ lệ diện tích thay thế"
     }
   ],
-
-  "time_checkpoints_months": [1, 3, 6, 9, 12, 18, 24, 36, 48, 60, 84, 120, 180, 240]
+  "time_checkpoints_months": [
+    1,
+    3,
+    6,
+    9,
+    12,
+    18,
+    24,
+    36,
+    48,
+    60,
+    84,
+    120,
+    180,
+    240
+  ],
+  "soft_soil_identification": {
+    "_source": "TCCS 41:2022 Dieu 4.1",
+    "clay_silt": {
+      "description": "Set va set pha - dat yeu khi thoa it nhat 1 dieu kien",
+      "e_min_clay": 1.5,
+      "e_min_silt": 1.0,
+      "c_max_kPa": 15.0,
+      "phi_max_deg": 10.0,
+      "Cu_VST_max_kPa": 35.0,
+      "qc_max_MPa": 0.1,
+      "N_SPT_max": 5
+    },
+    "sandy_silt": {
+      "description": "Bun cat, bun cat min - dat yeu khi thoa ca 2",
+      "e_min": 1.0,
+      "Sr_min": 0.8
+    },
+    "organic": {
+      "description": "Dat huu co / dam lay than bun",
+      "peat_contaminated_pct": [
+        20,
+        30
+      ],
+      "peat_pct": [
+        30,
+        60
+      ],
+      "pure_peat_pct_min": 60
+    },
+    "tthc_always_soft_symbols": [
+      "1",
+      "1b",
+      "XMD"
+    ],
+    "tthc_check_e0_symbols": [
+      "2",
+      "2b",
+      "3"
+    ],
+    "tthc_e0_threshold": 1.0
+  }
 }

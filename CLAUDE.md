@@ -310,6 +310,7 @@ Mỗi module kỹ thuật dùng **tiền tố cố định** cho tất cả file
 | Trụ đất xi măng CDM | `cdm_` | `cdm_column_calc.py`, `tcvn9403_params.json`, `cdm_design`, `cdm_lab_results` |
 | Tính lún nền | `settlement_` | `settlement_calc.py`, `settlement_scenarios`, `settlement_layers`, `settlement_time_series` |
 | Khoảng cách hố khoan | `borehole_` | `borehole_spacing.py`, `borehole_distances` |
+| Khoảng cách BH → CDM (Kè KE) | `ke_cdm_` | `ke_cdm_dist.py`, `ke_cdm_distances_202605_TTHC.json`, `ke_cdm_distances`, `43-ke-cdm-distances.md` |
 | Cọc ván SW — catalog chung | `sw_` | `sw_pile_catalog.json` |
 
 **Quy tắc áp dụng:**
@@ -640,11 +641,13 @@ Hàm `draw_pile_schematic(...)` copy từ `app_coc_tai_ngang.py`, đặt trên c
   - `Rs = α × Su × P × L_soil`  |  `Rp = 9 × Su × Ap`
   - `W_cọc = (TL_T × 9,81 / L_std) × L_des`
 - **Su ưu tiên:** VST (`vane_shear_tests`) > lab (`lab_tests`) > `SU_BY_SYMBOL` mặc định (cảnh báo)
-- **SQLite schema:** `ke_sw_nt_detail` (cột `D_bottom_soft_m`, `D_source`) + `ke_sw_nt2_layers` + `ke_sw_winkler_results` (nội lực Winkler — PRIMARY KEY `(bh_name, pile_type, L_m, load_case)`, cột chính `u_max_mm`, `M_max_kNm`, `Mcr_kNm`, `Q_max_kN`, `mcr_ratio`, `u_ok`, `mcr_ok`, `solver`, `ts`). Hàm `save_winkler_results_to_db()` / `load_winkler_results()` trong `scripts/wall_internal_force.py` — INSERT OR REPLACE, idempotent, tự create table
+- **SQLite schema:** `ke_sw_nt_detail` (cột `D_bottom_soft_m`, `D_source`, + 6 cột PA2: `D_bottom_soft_1b_m`, `L_req_nt1_1b_m`, `margin_nt1_1b_m`, `nt1_1b_result`, `L_min_pa2_m`, `pile_pa2`) + `ke_sw_nt2_layers` + `ke_sw_winkler_results` (nội lực Winkler — PRIMARY KEY `(bh_name, pile_type, L_m, load_case)`, cột chính `u_max_mm`, `M_max_kNm`, `Mcr_kNm`, `Q_max_kN`, `mcr_ratio`, `u_ok`, `mcr_ok`, `solver`, `ts`). Hàm `save_winkler_results_to_db()` / `load_winkler_results()` trong `scripts/wall_internal_force.py` — INSERT OR REPLACE, idempotent, tự create table
+- **PA2 — lớp 1b:** `SOFT_SYMBOLS_WITH_1B = frozenset({"1","1b","XMD"})` — hàm `_get_D_bottom_soft_with_1b()` tính D_bot xét thêm lớp 1b. Hàm `min_L_to_pass_pa2(L_req_1b)` làm tròn lên bội 0,5 m; `optimal_pile_for_L(L_min, catalog)` chọn cọc nhỏ nhất đủ L_max. Hiển thị 5 cột bổ sung trong Mục B: "D_bot+1b (m)", "L req+1b (m)", "NT1 (+1b)", "L min PA2 (m)", "Cọc PA2".
 
-#### Kết quả TTHC (Kè KE, cập nhật 2026-05-19)
+#### Kết quả TTHC (Kè KE, cập nhật 2026-05-26)
 
-- **HK kiểm soát NT1: KE-HK10 — KHÔNG ĐẠT** với SW-940 L=29m (biên=−0,1m) → cần L≥29,5m
+- **PA1 (lớp 1 only) — HK kiểm soát NT1: KE-HK10 — KHÔNG ĐẠT** (biên=−0,1m) → cần L≥29,5m
+- **PA2 (lớp 1+1b) — thêm 3 HK KHÔNG ĐẠT: KE-HK8** (L_yc=29,9m→L_min=30,0m/**SW-940**), **KE-HK9** (L_yc=29,5m/**SW-940**), **KE-HK11** (L_yc=29,1m→L_min=29,5m/**SW-940**); **KE-HK10** tăng L_yc=31,1m→L_min=31,5m/**SW-1100**
 - HK kiểm soát NT2: KE-HK7 (ratio=1,96 — nhỏ nhất)
 - Không hiển thị "BETON 6" trong app — chỉ hiển thị thông số kỹ thuật trung tính
 
@@ -1478,3 +1481,462 @@ Hàm tính lún chính xác theo TCVN 9403 Phụ lục C là `calc_settlement_S1
 2. **CRS sai → HK lệch 25-50km** trên bản đồ. Mặc định EPSG:9210 cho TTHC, có dropdown selector phòng dự án khác.
 3. **`pyproj` axis_swap** — luôn dùng `always_xy=True` → input/output dạng (x=Easting/lon, y=Northing/lat). Dễ nhớ.
 4. **`contextily` / `rasterio`** — kéo GDAL ~40MB, KHÔNG đưa lên Cloud (đã ghi rõ trong requirements.txt).
+
+---
+
+### 33. App 8508 — FastAPI + Jinja2 SPA (LOCAL ONLY)
+
+**File backend:** `web/app8508.py`  
+**File frontend:** `web/templates/app.html` (single-page app, ~3 750+ dòng)  
+**Khởi động:** `start_dev_tools.bat` → chọn [1] hoặc chạy tay:
+
+```bat
+python -m uvicorn web.app8508:app --host 0.0.0.0 --port 8508 --reload
+```
+
+**URL:** `http://localhost:8508`  
+**Không deploy Cloud** — dùng local chỉ; SQLite read/write, scripts/, winkler_np.py v.v.
+
+#### Kiến trúc tổng thể
+
+- **Backend FastAPI** (`app8508.py`): chỉ phục vụ API JSON + serve template. Mọi tính toán tái sử dụng `scripts/` (wall_internal_force.py, winkler_np.py, ke_sw_nt_calc.py...). Route prefix `/api/ke-sw/*`.
+- **Frontend Jinja2 SPA** (`app.html`): router thuần JS — `ROUTES` map `page_id → async function(el)`. Navigation qua sidebar, không reload trang. Plotly + SVG cho charts/sơ đồ. Global `DARK` constant cho Plotly dark theme.
+- **Data flow:** JS → `fetch('/api/...')` → FastAPI → SQLite/scripts → JSON → JS renders DOM.
+
+#### Router JS — ROUTES table
+
+```javascript
+const ROUTES = {
+  ke_sw:    pageKeSw,    // Thiết kế cọc ván SW (TKCS)
+  sw_bvt:   pageBvtSw,   // TKBVTC Cọc ván SW
+  params:   pageParams,  // Thiết kế CDM
+  ...
+};
+```
+
+Mỗi page function là `async function pageName(el)` — nhận container `el`, tự gán `el.innerHTML`, tự gọi API, tự render.
+
+#### API endpoints đã có (`/api/ke-sw/*`)
+
+| Endpoint | Mô tả |
+|---|---|
+| `GET /api/ke-sw/winkler` | Bảng tổng hợp Winkler tất cả HK — từ `ke_sw_winkler_results` |
+| `GET /api/ke-sw/stability` | Bảng ổn định tổng thể — từ `ke_sw_stability` |
+| `GET /api/ke-sw/nt-layers` | Chi tiết lớp đất NT2 per HK — từ `ke_sw_nt2_layers` JOIN `ke_sw_nt_detail` |
+| `GET /api/ke-sw/winkler-profile?bh=KE-HK8&pile_type=SW-840` | Profile Winkler đầy đủ per HK (xem §33b) |
+
+#### pageBvtSw — 4 sections
+
+**File:** `web/templates/app.html`, function `pageBvtSw(el)` (~line 3165+)
+
+| Section | ID | Nội dung |
+|---|---|---|
+| A | `bvt-wkpi` / `bvt-wtbl-wrap` / `bvt-wch` | Tổng hợp Winkler tất cả HK: bảng + bar chart M vs Mcr |
+| B | `bvt-skpi` / `bvt-stbl-wrap` / `bvt-sch` | Ổn định Fellenius: bảng + bar chart Fs_slip/Fs_overturning |
+| C | `bvt-cond` | Grid thông số thiết kế cơ sở (top_elev, wlvl, q, CDM a/c) |
+| D | `bvt-d-*` | Phân tích nội lực per HK (xem §33c) |
+
+**Inner helper functions** (scope: `pageBvtSw`): `badge(ok)`, `kpi(val,label,color)`, `fmt1/fmt2/fmt3(v)`
+
+---
+
+### 33b. `/api/ke-sw/winkler-profile` — Response Structure
+
+```json
+{
+  "bh": "KE-HK8",
+  "pile_type": "SW-840",
+  "L_m": 29.0,
+  "top_elev": 2.7,
+  "EI_kNm2": 45200.0,
+  "D_m": 0.840,
+  "ep": {
+    "elevs": [...],
+    "zs_depth_m": [...],
+    "sigma_h_active": [...],
+    "sigma_h_passive": [...],
+    "p_water_front": [...],
+    "p_water_back": [...],
+    "p_net": [...],
+    "F_active_kN": 180.5,
+    "F_net_kN": 120.3
+  },
+  "profile": {
+    "zs": [...],
+    "zs_mid": [...],
+    "u_mm": [...],
+    "M_kNm": [...],
+    "Q_kN": [...],
+    "k_h": [...],
+    "p_net_interp": [...]
+  },
+  "summary": {
+    "u_top_mm": 12.3,
+    "u_max_mm": 18.7,
+    "M_max_kNm": 420.5,
+    "Q_max_kN": 85.2,
+    "Mcr_kNm": 756.0,
+    "mcr_ratio": 0.556,
+    "u_ok": true,
+    "mcr_ok": true
+  },
+  "geom": {
+    "top_elev": 2.7, "Z_m": 0.5, "Zb_m": -1.5,
+    "wlvl_front": 1.8, "wlvl_back": -2.0,
+    "q_kPa": 15.0, "su_front": 12.0, "su_back": 10.0, "H1_m": 22.0
+  }
+}
+```
+
+**Nguồn dữ liệu:** `ke_sw_stability` (geom params) + `ke_sw_winkler_results` (EI, D, Mcr, L) + `ke_sw_nt2_layers` JOIN `ke_sw_nt_detail` (SoilLayer list).  
+**Solver:** `winkler_np.solve_numpy_dist()` (NumPy thuần, Cloud-compatible).  
+**Earth pressure:** `wall_internal_force.build_lateral_load()`, mode=`'winkler'` → KHÔNG trừ Passive (lò xo tự xử lý).
+
+**Array lengths (N = số phần tử = 60):**
+
+| Array | Length | Mô tả |
+|---|---|---|
+| `zs`, `u_mm`, `k_h`, `p_net_interp` | N+1 = 61 | Node positions |
+| `M_kNm`, `Q_kN`, `zs_mid` | N = 60 | Element midspan |
+
+---
+
+### 33c. pageBvtSw Section D — Phân tích nội lực per HK
+
+**Vị trí:** `web/templates/app.html`, cuối `pageBvtSw`, ~line 3220–3748.  
+**8 HK trên tuyến:** KE-HK2, KE-HK4, KE-HK6, KE-HK7, KE-HK8, KE-HK9, KE-HK10, KE-HK11.  
+**Auto-load:** KE-HK8 / SW-840 khi vào trang. Đổi select → tự reload.
+
+#### DOM IDs Section D
+
+| ID | Loại | Nội dung |
+|---|---|---|
+| `bvt-d-bh` | `<select>` | Chọn hố khoan (8 HK alignment) |
+| `bvt-d-pile` | `<select>` | Chọn loại cọc (SW-840/SW-940/SW-1000) |
+| `bvt-d-load` | `<button>` | Nút tải lại |
+| `bvt-d-status` | `<span>` | Trạng thái loading / error |
+| `bvt-d-svg` | `<svg 240×360>` | Sơ đồ cọc GEO5-style (SVG thuần) |
+| `bvt-d-props` | `<div>` | Grid 8 thông số (EI, L, Mcr, q, Su, H1) |
+| `bvt-d-ep1` | Plotly `380px` | Áp lực đất & nước vs cao độ (4 traces) |
+| `bvt-d-ep2` | Plotly `380px` | p_net(+)/p_net(−)/tổng vs cao độ |
+| `bvt-d-ep-kpi` | `.bvt-kpi` | F_active, F_net (kN/m) |
+| `bvt-d-kpi5` | `.bvt-kpi` | u_max, u_ok, M_max, mcr_ratio, mcr_ok, Q_max |
+| `bvt-d-ch-p` | Plotly `420px` | p_net vs độ sâu |
+| `bvt-d-ch-u` | Plotly `420px` | Chuyển vị u (mm) + ±50 mm limit lines |
+| `bvt-d-ch-m` | Plotly `420px` | Mô men M + ±Mcr threshold lines |
+| `bvt-d-ch-q` | Plotly `420px` | Lực cắt Q |
+| `bvt-d-ch-k` | Plotly `420px` | Hệ số nền k_h Winkler |
+
+#### Inner functions Section D
+
+| Function | Mô tả |
+|---|---|
+| `_loadSectionD()` | async — fetch API, gọi 5 renderer |
+| `_drawDSvg(d)` | SVG sơ đồ cọc: fill/sét mềm/chặt Front+Back, MN, pile body+tip, nhãn TRƯỚC/SAU |
+| `_renderDProps(d)` | Grid 8 props từ `d.geom` + `d.summary` |
+| `_renderDEarthPressure(d)` | 2 Plotly charts ep1/ep2 — elevation trên Y |
+| `_renderDKpis(d)` | KPI badges ep-kpi + kpi5 |
+| `_renderD5Panels(d)` | 5 Plotly charts depth trên Y (autorange:reversed) |
+
+#### CSS classes Section D
+
+| Class | Mục đích |
+| --- | --- |
+| `.bvt-d-ctrl` | Controls row flex container |
+| `.bvt-theory-card` | Card lý thuyết (border, padding, line-height 1.6) |
+| `.tf` | Monospace formula block (màu `#a5f3fc`, nền tối) |
+| `.bvt-props-grid` | Grid 2 cột cho props |
+| `.bvt-prop` / `.pk` / `.pv` | Prop item: key (muted) + value (bold) |
+
+#### Quy tắc quan trọng Section D
+
+- **Y axis 5 panel charts:** `autorange:'reversed'` + `range:[0, L_m]` — độ sâu 0 (đỉnh cọc) ở trên, L_m (mũi) ở dưới.
+- **Y axis earth pressure charts:** elevation trên Y, `range:[elMin, elMax]` từ `ep.elevs`.
+- **M panel:** vẽ thêm ±Mcr threshold lines (vàng đứt) để so sánh trực quan.
+- **p_net mode winkler:** `ep_out.p_net` = σh_active + p_water_front − p_water_back (KHÔNG trừ Passive).
+- **EarthLayer `c`:** dùng `su * 0.5` làm cohesion proxy trong công thức Rankine phi-c.
+
+---
+
+### 34. Tab TKCS CDM — Chuẩn bị Tính Toán Sơ Bộ (page id = "tvtk_prep", cập nhật 2026-05-25)
+
+**Vị trí:** `app_cdm.py`, sidebar label "Thuyết minh TKCS"  
+**Tài liệu đầy đủ:** [54-tvtk-cdm-prep.md](54-tvtk-cdm-prep.md)  
+**JSON snapshot:** `data/tvtk_cdm_202605_TTHC.json`  
+**Bảng SQLite:** `tvtk_cdm_config` (config) · `cdm_design` (computed) · `tvtk_soil_params` · `tvtk_bh_cdm`
+
+#### Bố cục 5 section (trải phẳng, không st.tabs)
+
+| Section | Nội dung | Data source |
+| --- | --- | --- |
+| 1 | Lựa chọn HK thiết kế (multiselect) | `tvtk_bh_cdm.selected` |
+| 2 | Địa tầng & SPT | `layers`, `spt_values` |
+| 3 | Tóm tắt thí nghiệm | `lab_tests`, `vane_shear_tests` |
+| 4 | Lớp đất yếu — H_soft per HK | `layers WHERE symbol IN ('1','1b','2','XMD')` |
+| 5 | Thông số thiết kế CDM (editable + Lưu) | `tvtk_cdm_config` → `cdm_design` |
+
+#### Section 5 — 2 hàng nhập liệu
+
+**Hàng 1 (5 cột):** D_mm · Khoảng cách s · Bố trí lưới · Cao độ đỉnh cọc · Ngàm lớp cứng  
+**Hàng 2 (7 cột):** Hệ số k (Ec=k×Cc) · qu thiết kế · q tải · [metric: a] · [metric: Cc] · [metric: Ec] · [Lưu]
+
+Khi bấm "Lưu": (1) UPDATE `tvtk_cdm_config`, (2) recalculate S1 per zone, (3) UPDATE `cdm_design`, (4) `st.rerun()`.
+
+#### Công thức cốt lõi (TCVN 9403 Phụ lục C)
+
+- `S1 = q × H / (a × Ec + (1-a) × Es)` — lún đàn hồi trong vùng gia cố
+- `Ec = k × Cc_col` (k editable, mặc định 100; TCVN cho phép 50–100)
+- `Cc_col = qu_design / 2` (qu_design = cường độ thiết kế mục tiêu, KHÔNG phải qu_lab)
+- `Es = 250 × Cu_VST` (Mesri & Olson 1974)
+- `S_reduction = S1_CDM / S_no_treat` — lấy S_no_treat từ `settlement_scenarios`
+
+#### H_soft — Quy tắc bắt buộc
+
+**KHÔNG** dùng `_h1 + _h1b` (sai cho NHC có lớp 2, không có 1b).  
+**PHẢI** query: `SUM(depth_bot_m - depth_top_m) WHERE symbol IN ('1','1b','2','XMD')`
+
+| Zone | Lớp yếu thực tế | H_soft TB |
+| --- | --- | --- |
+| KE | 1 + 1b + XMD | 23.0 m |
+| BXN | 1 | 21.5 m |
+| NHC | 1 + 2 | 27.4 m |
+
+#### Kết quả TTHC hiện tại (D=800mm, s=1.8m, k=100, qu=800 kPa, q=40.8 kPa)
+
+| Zone | Ec (kPa) | S1_CDM (cm) | Giảm lún |
+| --- | --- | --- | --- |
+| KE | 40 000 | 10.3 | 93.7% |
+| BXN | 40 000 | 9.8 | 93.0% |
+| NHC | 40 000 | 11.9 | 92.5% |
+
+#### Chiều dài cọc CDM
+
+`L = top_elev_m − elevation_m + H_soft + penetration_m` — hiển thị bảng per HK + tổng hợp min/TB/max per zone.
+
+#### SQLite — Phân loại nguồn đọc (BẮT BUỘC)
+
+| Bảng | Loại | App đọc từ |
+| --- | --- | --- |
+| `tvtk_cdm_config` | **Config** | JSON/SQLite đều OK |
+| `cdm_design` | **Computed** | **SQLite BẮT BUỘC** — sau mỗi "Lưu" |
+| `tvtk_soil_params` | **Computed** | SQLite |
+| `tvtk_bh_cdm` | **Config** | SQLite |
+
+---
+
+### 35. Module Soft Soil PLAXIS — Mô hình PLAXIS Chapter 10 (cập nhật 2026-05-25)
+
+**File engine:** `scripts/soft_soil_calc.py` — batch tính λ*, κ*, M, OCR, POP cho tất cả HK  
+**Thông số tham chiếu:** `data/soft_soil_model.json` (trích từ PDF PLAXIS Manual Ch.10)  
+**Tài liệu:** [56-soft-soil-model-plaxis.md](56-soft-soil-model-plaxis.md)  
+**Bảng SQLite:** `soft_soil_params` (PRIMARY KEY `(bh_name, pa, symbol)`)
+
+#### Công thức cốt lõi
+
+| Thông số | Công thức | Ghi chú |
+|---|---|---|
+| λ* | `Cc / (2.303 × (1+e0))` | Modified compression index |
+| κ* | `2 × Cs / (2.303 × (1+e0))` | Factor 2 = PLAXIS K0=1 unloading convention |
+| Cs fallback | `0.15 × Cc` | Khi không đo Cs; `Cs_inferred=1` |
+| K0_nc | `1 − sin(φ')` | Jaky 1944 |
+| M (xấp xỉ) | `3.0 − 2.8 × K0_nc` | Eq. 235 PLAXIS Manual |
+| M (chính xác) | Eq. 234 Brinkgreve 1994 | Giải số từ K0_nc, νur, λ*/κ* |
+| OCR | `PC / σ'v0` | σ'v0 tại giữa lớp |
+| POP | `PC − σ'v0` | Thay thế OCR trong PLAXIS |
+
+#### Quy tắc match dữ liệu lab — BẮT BUỘC
+
+**KHÔNG** match `lab_tests.symbol_tcvn` (USCS: CH/MH) với `layers.symbol` (dự án: 1/1b/2).  
+**PHẢI** match bằng **depth range**: `lab_tests.depth_from_m >= layer.depth_top_m AND < layer.depth_bot_m`.
+
+Priority chain cho Cc/Cs/phi:
+```
+1. HK hiện tại (average all samples trong depth range lớp)
+2. HK gần nhất cùng zone, JOIN layers WHERE symbol=target_symbol (source = 'lab_fallback:BH-name(d=Xm)')
+3. Không có → skip row + WARNING
+```
+
+#### Lớp áp dụng Soft Soil
+
+`_SOFT_SYMBOLS = frozenset(["1", "1b", "2", "2b", "XMD"])` — không bao gồm cát (2a, 4, 5a, ...).
+
+**BXN đặc biệt:** lớp `'2'` (không phải `'1'`) là lớp bùn chính (depth 2.7–20+m). Lớp `'1'` BXN chỉ dày ~2.7m.
+
+#### PA2 Zone Representative
+
+Weighted-average by layer thickness across all selected BHs per zone:
+- `bh_name = 'KE_PA2'` / `'BXN_PA2'` / `'NHC_PA2'`, `pa = 'PA2'`
+- λ*, κ*, φ, c, e0 → weighted by H_i; OCR → arithmetic mean
+
+#### Kết quả TTHC (2026-05-25): 50 rows = 44 BH + 6 PA2
+
+| PA2 | Lớp | λ* | κ* |
+|---|---|---|---|
+| KE_PA2 | 1 | 0.1177 | 0.0174 |
+| KE_PA2 | 1b | 0.0695 | 0.0103 |
+| BXN_PA2 | 2 | 0.1529 | 0.0234 |
+| NHC_PA2 | 1 | 0.0789 | 0.0122 |
+| NHC_PA2 | 2 | 0.0837 | 0.0128 |
+
+#### UI (app_cdm.py, page "tvtk_prep", Section 6)
+
+- Expander công thức chung (LaTeX) — trước bảng, KHÔNG lặp mỗi HK
+- Bảng PA2 (`st.table`) — 3 zone × các lớp yếu
+- Expander per zone — `st.dataframe` bảng per-BH với `cc_source`, `phi_source`, `notes`
+
+---
+
+### 36. Phân vùng Gia cố CDM — 7 Nguyên tắc P1–P7 (cập nhật 2026-05-25)
+
+**Tài liệu:** [55-cdm-zoning-principles.md](55-cdm-zoning-principles.md)  
+**Vị trí app:** `app_cdm.py`, page "tvtk_prep", Section 8 (sau Section 7 GWT)  
+**Thư viện:** `scipy.cluster.hierarchy` (Ward linkage) + `scipy.spatial.Delaunay` + `sklearn.preprocessing`
+
+#### 7 Nguyên tắc Phân vùng
+
+| P | Nguyên tắc | Thực hiện |
+|---|---|---|
+| P1 | Đồng nhất địa chất | Feature vector `[H_soft, Cu, N_SPT, e0, Cc, S1]`, z-score normalized, Ward clustering |
+| P2 | Liên thông không gian | Delaunay triangulation — grey edges same zone, red-dashed cross-boundary |
+| P3 | Đồng nhất tải trọng / lún | S1 clustering feature |
+| P4 | Thi công được | Min area 100m², shape ratio ≥0.3, K∈[3,8] |
+| P5 | Đủ mẫu QC | ≥2 HK/zone, ≥6 qu samples/zone (TCVN 9403 B.1) |
+| P6 | Đa giác biểu diễn | DXF/Civil 3D polygon export (future) |
+| P7 | Phẳng độ lún | ΔSr/L_trans ≤ i_cp (TCCS 41 Phụ lục E): KE/BXN=0.5%, NHC=0.2% |
+
+#### Clustering
+
+- **Algorithm:** Ward linkage (`scipy.cluster.hierarchy.ward`) — minimizes within-cluster variance
+- **K default:** KE=3, BXN=3, NHC=4 (slider 2–6 per zone)
+- **Input features (6D):** H_soft_m · Cu_VST_kPa · N_SPT_avg · e0 · Cc · S1_cm — từ SQLite
+
+#### P7 Gradient Check
+
+```python
+_grad_pct = abs(S1_a - S1_b) / (100.0 * L_m) * 100  # % = cm/m
+_i_cp = {"KE": 0.005, "BXN": 0.005, "NHC": 0.002}[zone]
+_ok = "Đạt" if _grad_pct <= _i_cp * 100 else "Không đạt"
+```
+Kiểm tra cho mọi cặp BH cross-boundary (Delaunay edges qua ranh giới zone).
+
+#### P5 QC Check Table
+
+Per zone: `n_HK` · `n_qu_samples` · Ngưỡng (TCVN 9403 Bảng B.1 × K zones) · Đạt/Không đạt
+
+#### Bố cục Section 8
+
+- 8a: Feature vector table per BH (6 columns) — `st.dataframe`
+- 8b: K slider + Ward clustering per zone — Plotly scatter + Delaunay edges + legend
+- 8c: Cluster stats table (centroid 6 features + P5 HK count)
+- 8d: P7 gradient table (cross-boundary pairs + ΔS1/L vs threshold)
+- 8e: QC requirements table
+
+---
+
+### 37. Module Mô hình MC / HS / LE — PLAXIS TKCS + TKBVT (cập nhật 2026-05-26)
+
+**File engine:** `scripts/mc_hs_calc.py` — batch tính E_ref, E50, Eoed, Eur, m, K0 per lớp per HK  
+**Thông số cấu hình:** `data/plaxis_mc_hs_models.json` (formulas + typical ranges + model assignment)  
+**Tài liệu:** [57-soil-models-plaxis-tkcs-tkbvt.md](57-soil-models-plaxis-tkcs-tkbvt.md)  
+**Bảng SQLite:** `plaxis_mc_hs_params` (PRIMARY KEY `(bh_name, pa, symbol)`) — 419 records
+
+#### Gán mô hình theo giai đoạn
+
+| Giai đoạn | Lớp 1/1b | Lớp 2/3/4/5 (cát+sét) | XMD |
+|-----------|-----------|------------------------|-----|
+| TKCS | **MC** | **MC** | **LE** |
+| TKBVT | **HS + SS** (zoned) | **HS** | **LE** |
+
+#### Công thức MC E_ref (thứ tự ưu tiên)
+
+```
+1. Eoed = (1+e0)/(a12 × 0.01) từ oedometer  →  E_ref = Eoed × (1-2ν²)/(1-ν)
+2. E_ref = 250 × Cu (sét mềm)  |  600 × Cu (sét cứng)
+3. E_ref = 300 × N_SPT (cát)
+```
+
+#### Công thức HS — thêm so với MC
+
+```
+E50_ref  = 500×Cu (sét mềm) | 600×Cu (sét cứng) | 300×N_SPT (cát)
+Eoed_ref = Eoed_lab  hoặc  0.8 × E50
+Eur_ref  = 3×E50 (sét) | 5×E50 (cát)
+m        = 1.0 (sét mềm) | 0.8 (sét cứng) | 0.5 (cát)
+pref = 100 kPa, Rf = 0.9
+```
+
+#### LE (XMD/CDM)
+
+```
+E_cdm = k × (qu_design/2),  k=100 (TCVN 9403)  → E_cdm = 40 000 kPa khi qu=800 kPa
+ν_le  = 0.25
+```
+
+#### Pitfalls
+
+- `a12` trong `lab_tests` lưu là **cm²/kgf** (column `a12_cm2kgf`) — KHÔNG phải kPa^-1
+- VST join qua `vst_locations` (không có `borehole_id` trực tiếp) — match bằng zone + proximity ≤150m
+- SPT column tên `N` (không phải `N_value`)
+- `phi` trong `lab_tests` là CU/UU (không có cột `phi_direct_deg`)
+
+#### UI (app_cdm.py, page "tvtk_prep", Section 6b)
+
+- Expander công thức chung (LaTeX block)
+- Bảng PA2 `st.dataframe` — 36 rows (12 symbol × 3 zone)
+- Expander per zone — bảng per-BH với model type + E_ref / E50 / Ecdm tùy lớp
+
+---
+
+### 38. Module Khoảng Cách Hố Khoan KE → Tim Cọc CDM (cập nhật 2026-05-26)
+
+**File engine:** `scripts/ke_cdm_dist.py` — tính khoảng cách từ 12 HK KE đến 8 201 tim cọc CDM zone KE  
+**Tài liệu:** [43-ke-cdm-distances.md](43-ke-cdm-distances.md)  
+**JSON snapshot:** `data/ke_cdm_distances_202605_TTHC.json`  
+**Bảng SQLite:** `ke_cdm_distances` (UNIQUE `bh_name`, 21 cột)
+
+#### Phương pháp PCA
+
+1. Tính trục tuyến kè `axis_u` bằng SVD của 8 HK alignment (KE-HK2/3/6/7/8/9/10/11)
+2. Pháp tuyến `axis_n = (-axis_u[E], axis_u[N])` (xoay 90° CCW)
+3. Cho mỗi HK: chiếu vector BH→CDM lên `axis_u` (d∥) và `axis_n` (d⊥)
+4. **Metric chính:** `dist_perp_at_eucl_m` = |d⊥| của vector đến CDM Euclid-nearest — đo độ đại diện HK với vùng CDM
+
+**Kết quả trục PCA:** `axis_u = (0.9934; 0.1151)` [Northing, Easting]; góc ≈ 6,6° với trục Bắc
+
+#### Kết quả TTHC (12 HK, từ nhỏ đến lớn d⊥)
+
+| Hố khoan | Trên tuyến | d⊥ (m) | Đánh giá |
+|---|:---:|---:|---|
+| KE-HK7 | Có | **1,9** | Đặc trưng tốt nhất cho CDM zone |
+| KE-HK1 | Không | 0,7 (perp) → 20,1 (eucl) | Gần CDM nhất theo d⊥ thuần |
+| KE-HK2 | Có | 9,2 | Sử dụng được |
+| KE-HK6 | Có | 11,8 | Sử dụng được |
+| KE-HK8 | Có | 11,1 | Sử dụng được |
+| KE-HK9 | Có | 12,4 | Sử dụng được |
+| **KE-HK3** | **Có** | **28,6** | Landward offset +171m — xa |
+| **KE-HK10** | **Có** | **34,1** | Seaward offset −110m — xa (kiểm soát NT1) |
+| **KE-HK11** | **Có** | **75,3** | Ngoài CDM zone — seaward offset −85m |
+
+**Pitfall quan trọng:** Vì CDM zone có 8 201 tim cọc phủ đều, `dist_perp_abs_m` (nearest by d⊥ search) luôn ≈ 0 cho mọi HK — không phải metric có ý nghĩa. Chỉ dùng `dist_perp_at_eucl_m` làm metric chính.
+
+#### Hàm công khai
+
+| Hàm | Mô tả |
+|---|---|
+| `calc_ke_axis_pca(bhs)` | SVD của 8 HK alignment → (axis_u, ref_pt) |
+| `perp_vec(axis_u)` | Xoay 90° CCW → axis_n |
+| `calc_cdm_distances(db_path)` | Tính tất cả 12 HK × 8 201 CDM → (results, axis_info) |
+| `save_to_sqlite(results)` | INSERT OR REPLACE vào `ke_cdm_distances` |
+| `save_to_json(results, axis_info)` | Ghi JSON snapshot |
+| `load_cdm_distances(db_path)` | Đọc `ke_cdm_distances` → dict `{bh_name: row}` |
+
+#### SQLite — schema `ke_cdm_distances`
+
+Primary metric: `dist_perp_at_eucl_m` (|d⊥| tại CDM Euclid-nearest). Các cột khác: `dist_perp_abs_m` (nearest by pure perpendicular search — ít dùng), `dist_eucl_m`, `dist_along_at_eucl_m`, `chainage_m`, `bh_offset_m`.
+
+#### Bình đồ trong app (Mục B — ke_sw page)
+
+Section 7 của Mục B hiển thị:
+- Bảng thống kê 12 HK (d⊥, d∥, d Euclid, CDM gần nhất)
+- Plotly bình đồ: CDM zone (subsampled 1/60, xám mờ) + BH (vàng) + đường BH→CDM (đỏ/xám theo alignment) + annotate d⊥ tại midpoint + polyline kè đen
+- 3 metric cards: d⊥ lớn nhất, nhỏ nhất, trung bình

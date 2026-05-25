@@ -5,6 +5,75 @@
 
 ---
 
+## 0. Nhận dạng đất yếu (Điều 4) — ƯU TIÊN ĐỌC TRƯỚC
+
+### 0.1 Nhận dạng theo hệ số rỗng và cường độ kháng cắt (Điều 4.1)
+
+#### Sét và sét pha — đất yếu khi thỏa ÍT NHẤT MỘT điều kiện:
+
+| Chỉ tiêu | Ngưỡng đất yếu | Nguồn thí nghiệm | Cột SQLite |
+|----------|---------------|-----------------|------------|
+| Hệ số rỗng **e** | Sét: $e \geq 1{,}5$ · Sét pha: $e \geq 1{,}0$ | Nén cố kết (oedometer) | `lab_tests.e0` |
+| Lực kháng cắt **c** | $c \leq 15\ \text{kPa}$ | Cắt nhanh UU trong phòng | `lab_tests.c_kPa` |
+| Góc ma sát trong **φ** | $\varphi < 10°$ | Cắt nhanh UU trong phòng | `lab_tests.phi_deg` |
+| Cường độ cắt cánh **Cu** | $C_u \leq 35\ \text{kPa}$ | Cắt cánh hiện trường (VST) | `vane_shear_tests.Su_kPa` |
+| Xuyên tĩnh **qc** | $q_c \leq 0{,}1\ \text{MPa}$ | CPT | *(chưa có bảng)* |
+| SPT | $N < 5$ | SPT | `spt_values.N` |
+
+**Thêm điều kiện nhận dạng chung:**
+- Độ ẩm $W$ gần bằng hoặc cao hơn giới hạn chảy $W_L$
+
+#### Bùn cát và bùn cát mịn — đất yếu khi:
+
+$$e > 1{,}0 \quad \text{và} \quad G_s > 0{,}8$$
+
+#### Đất hữu cơ — đầm lầy than bùn:
+
+| Hàm lượng hữu cơ | Phân loại |
+|:-:|---|
+| 20 ÷ 30 % | Đất nhiễm than bùn |
+| 30 ÷ 60 % | Đất than bùn |
+| > 60 % | Than bùn |
+
+Đất hữu cơ được xem là đất yếu khi đồng thời đạt các trị số **e, c, φ, Cu** như mục trên.
+
+---
+
+### 0.2 Nhận dạng theo trạng thái tự nhiên (Điều 4.2)
+
+Chỉ số trạng thái (chỉ số chảy):
+
+$$B = \frac{W - W_p}{W_L - W_p}$$
+
+| Giá trị B | Trạng thái | Đánh giá |
+|:-:|---|---|
+| $B > 1$ | Chảy | Đất yếu — phải xử lý |
+| $0{,}75 < B \leq 1{,}0$ | Dẻo chảy | Đất yếu loại I |
+| $0{,}50 < B \leq 0{,}75$ | Dẻo mềm | Đất yếu loại II — cần kiểm tra |
+| $B \leq 0{,}5$ | Dẻo cứng → cứng | Không phải đất yếu |
+
+---
+
+### 0.3 Áp dụng cho dự án TTHC
+
+**Nguyên tắc phân loại layer trong SQLite `layers.symbol`:**
+
+| Symbol | Mô tả địa tầng | Phân loại mặc định | Ghi chú |
+|--------|---------------|-------------------|---------|
+| `1` | Bùn sét / sét mềm lớp trên | **Đất yếu** (luôn) | Cu_VST thực đo |
+| `1b` | Sét mềm dưới lớp 1 | **Đất yếu** (luôn) | Tiếp giáp lớp 1 |
+| `XMD` | Bùn xen mỏng (KE-HK8) | **Đất yếu** (luôn) | Đặc biệt, không có e0 |
+| `2`, `2b`, `3` | Sét dẻo / cứng hơn | **Kiểm tra e₀**: yếu nếu $e_0 > 1{,}0$ | Tra `lab_tests.e0` |
+| `4`, `5a`, `5b` | Cát / sét cứng | Không yếu | Bỏ qua |
+| `F` | Đất đắp | Không yếu | |
+
+**Hàm Python:** `scripts/settlement_calc.py::classify_soft_soil(lab_row, vst_su, spt_N)`  
+**Bảng SQLite:** `soft_soil_classification` — lưu kết quả phân loại per mẫu thí nghiệm
+
+---
+
+---
+
 ## 1. Phân loại đất yếu (Điều 4.1)
 
 | Loại | Chỉ số chảy B | Mô tả | Trạng thái chịu tải |

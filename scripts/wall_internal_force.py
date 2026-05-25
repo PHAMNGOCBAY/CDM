@@ -577,8 +577,8 @@ def _demo_distributed():
         top_elev=2.7, pile_length=29.0,
         soil_level_front=0.0,    # Front: mặt đất tự nhiên (có fill 2.7m bên trên)
         soil_level_back=-1.0,    # Back: đáy đào (phía hồ, thấp hơn 1m)
-        water_elev_front=-0.5,   # nước ngầm
-        water_elev_back=-0.5,    # mặt hồ
+        water_elev_front=1.8,    # mực nước cao triều / nước ngầm đất đắp (bộ chuẩn dự án)
+        water_elev_back=-2.0,    # mặt hồ / phía đào
         surcharge_front=10.0,    # tải hoạt xe/người 10 kPa
     )
     fill = EarthLayer(tip_elev=0.0, gamma=18.0, gamma_sub=8.0, phi=28.0, c=0.0)
