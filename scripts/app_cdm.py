@@ -16181,13 +16181,15 @@ if _page == "tvtk_prep":
             continue
 
         _h1 = _h1b = _h_extra = 0.0
-        _extra_syms = {}   # {symbol: thickness} cho lớp khác được tính
+        # {symbol: {"h": float, "e0_vals": [float], "desc": str, "always": bool}}
+        _extra_syms: dict = {}
 
         for _lyr in _lyrs_all:
             _sym   = _lyr["symbol"]
             _thick = float(_lyr["thick"] or 0)
             if _thick <= 0:
                 continue
+            _desc_l = _lyr["description"] or ""
 
             if _sym in _SOFT_ALWAYS_S4:
                 # Luôn tính: lớp 1, 1b, XMD (XMD = bùn tại KE-HK8)
@@ -16197,20 +16199,26 @@ if _page == "tvtk_prep":
                     _h1b   += _thick
                 else:  # XMD
                     _h_extra += _thick
-                    _extra_syms[_sym] = _extra_syms.get(_sym, 0) + _thick
+                    if _sym not in _extra_syms:
+                        _extra_syms[_sym] = {"h": 0.0, "e0_vals": [], "desc": _desc_l, "always": True}
+                    _extra_syms[_sym]["h"] += _thick
             else:
-                # Kiểm tra e0_TB của lớp này
-                _e0_row = _cv.execute("""
-                    SELECT AVG(lt.e0) avg_e0
+                # Kiểm tra e0_TB của lớp này + lấy danh sách e0 riêng
+                _e0_rows = _cv.execute("""
+                    SELECT lt.e0
                     FROM lab_tests lt
                     WHERE lt.borehole_id = ?
                       AND lt.depth_from_m >= ? AND lt.depth_from_m < ?
                       AND lt.e0 IS NOT NULL AND lt.e0 > 0
-                """, (b["id"], _lyr["depth_top_m"], _lyr["depth_bot_m"])).fetchone()
-                _e0_avg = _e0_row["avg_e0"] if _e0_row and _e0_row["avg_e0"] else None
+                """, (b["id"], _lyr["depth_top_m"], _lyr["depth_bot_m"])).fetchall()
+                _e0_list = [float(r["e0"]) for r in _e0_rows]
+                _e0_avg  = sum(_e0_list) / len(_e0_list) if _e0_list else None
                 if _e0_avg is not None and _e0_avg > 1.0:
                     _h_extra += _thick
-                    _extra_syms[_sym] = _extra_syms.get(_sym, 0) + _thick
+                    if _sym not in _extra_syms:
+                        _extra_syms[_sym] = {"h": 0.0, "e0_vals": [], "desc": _desc_l, "always": False}
+                    _extra_syms[_sym]["h"]       += _thick
+                    _extra_syms[_sym]["e0_vals"] += _e0_list
 
         _htot = _h1 + _h1b + _h_extra
 
@@ -16241,31 +16249,56 @@ if _page == "tvtk_prep":
             WHERE vl.name = ?
         """, (b["name"],)).fetchone()[0]
 
+        # Xây chuỗi chi tiết: "ký hiệu: Xm (e₀=Y.YY, Nn)" mỗi lớp
+        def _fmt_extra_sym(sym: str, info: dict) -> str:
+            h_str = f"{info['h']:.1f}m"
+            if info.get("always"):
+                return f"{sym}: {h_str} (luôn tính)"
+            vals = info["e0_vals"]
+            if vals:
+                e0_avg = sum(vals) / len(vals)
+                return f"{sym}: {h_str} (e₀={e0_avg:.2f}, {len(vals)}mẫu)"
+            return f"{sym}: {h_str}"
+
         _extra_str = (
-            "  ".join(f"{sym}:{h:.1f}m" for sym, h in sorted(_extra_syms.items()))
+            "  |  ".join(_fmt_extra_sym(sym, info)
+                         for sym, info in sorted(_extra_syms.items()))
             if _extra_syms else "—"
         )
+
+        # Tổng e₀ TB tất cả lớp e₀>1 (để sắp xếp / lọc)
+        _all_e0_vals = [
+            v for info in _extra_syms.values()
+            if not info.get("always") for v in info["e0_vals"]
+        ]
+        _e0_extra_avg = (
+            round(sum(_all_e0_vals) / len(_all_e0_vals), 2)
+            if _all_e0_vals else None
+        )
+
         _soft_rows.append({
-            "Hố khoan":             b["name"],
-            "Khu vực":              _zone_codes.get(b["zone_id"], ""),
-            "Từ (m)":               f"{_top_first:.1f}",
-            "Đến (m)":              f"{_bot_last:.1f}",
-            "Dày lớp 1 (m)":        f"{_h1:.1f}"   if _h1   else "—",
-            "Dày lớp 1b (m)":       f"{_h1b:.1f}"  if _h1b  else "—",
-            "Lớp khác (e₀>1) (m)":  _extra_str,
-            "H_soft (m)":           f"{_htot:.1f}",
-            "N-SPT TB":             f"{_spt_avg:.0f}" if _spt_avg else "—",
-            "Su TB-VST (kPa)":      f"{_su_avg:.1f}" if _su_avg else "—",
-            "_h_soft":              round(_htot, 2),
-            "_bh_name":             b["name"],
-            "Khu vực_":             _zone_codes.get(b["zone_id"], ""),
+            "Hố khoan":                 b["name"],
+            "Khu vực":                  _zone_codes.get(b["zone_id"], ""),
+            "Từ (m)":                   f"{_top_first:.1f}",
+            "Đến (m)":                  f"{_bot_last:.1f}",
+            "Dày lớp 1 (m)":            f"{_h1:.1f}"   if _h1   else "—",
+            "Dày lớp 1b (m)":           f"{_h1b:.1f}"  if _h1b  else "—",
+            "Lớp thêm vào H_soft":      _extra_str,
+            "e₀ TB lớp thêm":           f"{_e0_extra_avg:.2f}" if _e0_extra_avg else "—",
+            "H_soft (m)":               f"{_htot:.1f}",
+            "N-SPT TB":                 f"{_spt_avg:.0f}" if _spt_avg else "—",
+            "Su TB-VST (kPa)":          f"{_su_avg:.1f}" if _su_avg else "—",
+            "_h_soft":                  round(_htot, 2),
+            "_bh_name":                 b["name"],
+            "Khu vực_":                 _zone_codes.get(b["zone_id"], ""),
         })
     if _soft_rows:
         st.table(_pd_tv.DataFrame(_soft_rows).drop(columns=["_h_soft", "_bh_name", "Khu vực_"]))
         st.caption(
-            "Lớp 1: Bùn sét dẻo chảy  |  "
-            "Lớp 1b: Sét mềm xen kẹp cát  |  "
-            "Lớp khác (e₀>1): lớp không tên-1/1b nhưng còn rỗng, đủ điều kiện đất yếu"
+            "Lớp 1: Bùn sét dẻo chảy  |  Lớp 1b: Sét mềm xen kẹp cát  |  "
+            "Lớp thêm vào H_soft: lớp không phải 1/1b nhưng đủ điều kiện đất yếu "
+            "(e₀>1 từ thí nghiệm cố kết, hoặc XMD = bùn KE-HK8)  |  "
+            "e₀ TB lớp thêm: hệ số rỗng trung bình xác nhận mức độ yếu (e₀ > 1 = đất yếu)"
         )
     else:
         st.info("Chưa có dữ liệu địa tầng.")
