@@ -16880,8 +16880,180 @@ if _page == "tvtk_prep":
         st.info("Chưa có dữ liệu thí nghiệm.")
     st.divider()
 
-    # ── 6. Mực nước ngầm / điều kiện thủy lực ───────────────────────────────
-    st.markdown("### 6. Mực nước ngầm – điều kiện thủy lực")
+    # ── 6. Thông số mô hình Soft Soil (PLAXIS) ──────────────────────────────
+    st.markdown("### 6. Thông số mô hình Soft Soil — đầu vào PLAXIS")
+    st.caption(
+        "Tính từ thí nghiệm nén cố kết (Cc, Cs, e₀) và cắt phẳng (φ, c) "
+        "theo PLAXIS Material Models Manual Chương 10. "
+        "Tài liệu tham chiếu: 56-soft-soil-model-plaxis.md"
+    )
+
+    # Kiểm tra bảng soft_soil_params tồn tại chưa
+    _has_ss = _cv.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='soft_soil_params'"
+    ).fetchone()[0] > 0
+
+    if not _has_ss:
+        st.warning(
+            "Chưa có dữ liệu mô hình Soft Soil. "
+            "Chạy `scripts/soft_soil_calc.py` để tính toán."
+        )
+    else:
+        # Công thức — 1 expander chung (chung cho mọi HK)
+        with st.expander("Công thức chuyển đổi (chung cho mọi hố khoan)", expanded=False):
+            st.markdown(
+                r"""
+**Modified compression index** (từ thí nghiệm nén cố kết):
+
+$$\lambda^* = \frac{C_c}{2{,}303 \times (1 + e_0)}$$
+
+**Modified swelling index** (hệ số 2 = quy ước PLAXIS — giả thiết dỡ tải đẳng hướng):
+
+$$\kappa^* = \frac{2 \cdot C_s}{2{,}303 \times (1 + e_0)}$$
+
+**Nếu không có $C_s$:** $C_s = 0{,}15 \times C_c$ (tỷ lệ trung bình sét mềm, ghi nhãn *suy diễn*)
+
+**Hệ số áp lực ngang NC** (Jaky):
+
+$$K_0^{NC} = 1 - \sin \varphi'$$
+
+**Đường trạng thái tới hạn** (Eq. 235 PLAXIS — gần đúng):
+
+$$M \approx 3{,}0 - 2{,}8 \times K_0^{NC}$$
+
+**OCR và POP:**
+
+$$OCR = P_c / \sigma'_{v0} \qquad POP = P_c - \sigma'_{v0}$$
+"""
+            )
+
+        # ── Bảng PA2 đại diện per zone ─────────────────────────────────────
+        st.markdown("#### Thông số đại diện theo khu vực (PA2) — dùng cho mô hình PLAXIS tổng thể")
+        _ss_pa2 = _cv.execute("""
+            SELECT bh_name, symbol, H_i_m,
+                   ROUND(lambda_star, 4) lam,
+                   ROUND(kappa_star,  4) kap,
+                   ROUND(phi_deg,     1) phi,
+                   ROUND(c_kPa,       1) c,
+                   ROUND(OCR,         2) ocr,
+                   ROUND(POP_kPa,     1) pop,
+                   ROUND(nu_ur,       2) nu,
+                   ROUND(K0_nc,       3) K0,
+                   ROUND(M,           3) M,
+                   Cs_inferred,
+                   cc_source,
+                   notes
+            FROM soft_soil_params
+            WHERE pa = 'PA2'
+            ORDER BY bh_name, depth_top_m
+        """).fetchall()
+
+        if _ss_pa2:
+            _pa2_disp = []
+            for r in _ss_pa2:
+                _zone_lbl = r["bh_name"].replace("_PA2", "")
+                _cs_flag = " *" if r["Cs_inferred"] else ""
+                _pa2_disp.append({
+                    "Khu vực": _zone_lbl,
+                    "Lớp đất": r["symbol"],
+                    "H (m)": f"{r['H_i_m']:.1f}",
+                    "λ*": r["lam"],
+                    "κ*" + _cs_flag: r["kap"],
+                    "φ' (°)": r["phi"],
+                    "c' (kPa)": r["c"],
+                    "OCR": r["ocr"],
+                    "POP (kPa)": r["pop"],
+                    "νur": r["nu"],
+                    "K₀ᴺᶜ": r["K0"],
+                    "M": r["M"],
+                })
+            import pandas as _pd_ss
+            _df_pa2 = _pd_ss.DataFrame(_pa2_disp)
+            st.table(_df_pa2)
+            if any(r["Cs_inferred"] for r in _ss_pa2):
+                st.caption(
+                    "* κ* được tính từ Cs = 0,15 × Cc (suy diễn — không có thí nghiệm "
+                    "nén dỡ tải trực tiếp)"
+                )
+        else:
+            st.info("Chưa có dữ liệu PA2.")
+
+        # ── Chi tiết per HK ─────────────────────────────────────────────────
+        st.markdown("#### Chi tiết từng hố khoan")
+        _ss_bh_zones = _cv.execute("""
+            SELECT DISTINCT
+                CASE
+                    WHEN bh_name LIKE 'KE-%' THEN 'KE'
+                    WHEN bh_name LIKE 'BXN-%' THEN 'BXN'
+                    WHEN bh_name LIKE 'NHC-%' THEN 'NHC'
+                    ELSE 'Khác'
+                END zone_code
+            FROM soft_soil_params WHERE pa='BH'
+            ORDER BY zone_code
+        """).fetchall()
+
+        for _zz in _ss_bh_zones:
+            _zc_ss = _zz["zone_code"]
+            with st.expander(f"Khu vực {_zc_ss}", expanded=False):
+                _ss_rows = _cv.execute("""
+                    SELECT bh_name, symbol, depth_top_m, depth_bot_m,
+                           ROUND(e0,3) e0,
+                           ROUND(Cc,3) Cc,
+                           ROUND(Cs,3) Cs,
+                           ROUND(phi_deg,1) phi,
+                           ROUND(c_kPa,1) c,
+                           ROUND(sigma_v0_kPa,1) sv0,
+                           ROUND(PC_kPa,1) PC,
+                           ROUND(OCR,2) ocr,
+                           ROUND(lambda_star,4) lam,
+                           ROUND(kappa_star,4) kap,
+                           ROUND(M,3) M,
+                           Cs_inferred, cc_source, phi_source, notes
+                    FROM soft_soil_params
+                    WHERE pa='BH' AND bh_name LIKE ?
+                    ORDER BY bh_name, depth_top_m
+                """, (_zc_ss + "-%",)).fetchall()
+
+                if not _ss_rows:
+                    st.caption("Không có dữ liệu.")
+                    continue
+
+                _ss_disp = []
+                for r in _ss_rows:
+                    _cs_flag = " *" if r["Cs_inferred"] else ""
+                    _src = ""
+                    if r["cc_source"] and r["cc_source"] != "lab":
+                        _src = f" [{r['cc_source'][:20]}]"
+                    _ss_disp.append({
+                        "Hố khoan": r["bh_name"],
+                        "Lớp": r["symbol"],
+                        "Sâu (m)": f"{r['depth_top_m']:.1f}–{r['depth_bot_m']:.1f}",
+                        "e₀": r["e0"],
+                        "Cc": r["Cc"],
+                        "Cs" + _cs_flag: r["Cs"],
+                        "φ' (°)": r["phi"],
+                        "c'(kPa)": r["c"],
+                        "σ'v0(kPa)": r["sv0"],
+                        "Pc(kPa)": r["PC"],
+                        "OCR": r["ocr"],
+                        "λ*": r["lam"],
+                        "κ*": r["kap"],
+                        "M": r["M"],
+                        "Nguồn" + _src: "Thí nghiệm" if r["cc_source"] == "lab" else "Hố khoan lân cận",
+                    })
+                _df_bh = _pd_ss.DataFrame(_ss_disp)
+                st.dataframe(_df_bh, use_container_width=True, hide_index=True)
+
+                # Cảnh báo fallback + suy diễn
+                _warns = [r["notes"] for r in _ss_rows if r["notes"]]
+                if _warns:
+                    _uniq_warns = list(dict.fromkeys(_warns))
+                    st.caption("Lưu ý: " + " | ".join(_uniq_warns[:3]))
+
+    st.divider()
+
+    # ── 7. Mực nước ngầm / điều kiện thủy lực ───────────────────────────────
+    st.markdown("### 7. Mực nước ngầm – điều kiện thủy lực")
     _c6a, _c6b, _c6c, _c6d, _c6s = st.columns([1, 1, 1, 1, 0.6])
     _gwt_ke   = _c6a.number_input("MNN phía kè KE (m)",    value=_tv_load("KE",  "gwt_m", -0.5), step=0.1, format="%.1f", key="_tv_gwt_ke")
     _gwt_bxn  = _c6b.number_input("MNN tại BXN (m)",       value=_tv_load("BXN", "gwt_m",  0.0), step=0.1, format="%.1f", key="_tv_gwt_bxn")
