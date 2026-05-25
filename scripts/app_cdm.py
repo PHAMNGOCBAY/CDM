@@ -15414,8 +15414,10 @@ if _page == "tvtk_prep":
         _cdm_cfg_e  = _cv.execute("SELECT top_elev_m, penetration_m FROM tvtk_cdm_config WHERE id=1").fetchone()
         _top_e      = float(_cdm_cfg_e["top_elev_m"])  if _cdm_cfg_e else 0.8
         _pen_e      = float(_cdm_cfg_e["penetration_m"]) if _cdm_cfg_e else 1.0
-        # Tính H_soft trực tiếp theo nguyên tắc mới (cùng logic Section 4):
-        # lớp 1/1b luôn tính; lớp khác chỉ tính khi AVG(e₀) > 1 từ thí nghiệm nén
+        # Tính H_soft trực tiếp theo nguyên tắc (cùng logic Section 4):
+        # _SOFT_ALWAYS: lớp 1, 1b, XMD luôn tính (XMD = lớp bùn tại KE-HK8)
+        # lớp khác chỉ tính khi AVG(e₀) > 1 từ thí nghiệm nén cố kết
+        _SOFT_ALWAYS_E = ("1", "1b", "XMD")
         _hsoft_e = {}
         for _b2 in _ke_bhs_e:
             _lyrs2 = _cv.execute("""
@@ -15428,10 +15430,10 @@ if _page == "tvtk_prep":
                 _s2 = _l2["symbol"]; _t2 = float(_l2["thick"] or 0)
                 if _t2 <= 0:
                     continue
-                if _s2 == "1":
-                    _h1_v += _t2
-                elif _s2 == "1b":
-                    _h1b_v += _t2
+                if _s2 in _SOFT_ALWAYS_E:
+                    if _s2 == "1":       _h1_v  += _t2
+                    elif _s2 == "1b":    _h1b_v += _t2
+                    else:                _hx_v  += _t2  # XMD = bùn
                 else:
                     _e0r2 = _cv.execute("""
                         SELECT AVG(e0) avg_e0 FROM lab_tests
@@ -15668,14 +15670,15 @@ if _page == "tvtk_prep":
     st.caption(f"Chỉ hiển thị {len(_cdm_yes)} hố khoan tham gia tính toán xử lý nền CDM")
 
     # Nguyên tắc xác định đất yếu:
-    #   • Lớp 1 và 1b: luôn tính (phân loại địa tầng = đất yếu)
-    #   • Lớp khác (2b, XMD, 2…): tính NẾU e₀_TB > 1 từ thí nghiệm nén cố kết
+    #   • Lớp 1, 1b, XMD: luôn tính (XMD = lớp bùn tại KE-HK8, 6.7–22.4m)
+    #   • Lớp khác (2b, 2, 3…): tính NẾU e₀_TB > 1 từ thí nghiệm nén cố kết
     #   • Đáy cọc CDM = cao độ tự nhiên − H_soft − 1 m (ngàm lớp cứng)
+    _SOFT_ALWAYS_S4 = ("1", "1b", "XMD")
     with st.expander("Nguyên tắc xác định chiều dày lớp đất yếu H_soft", expanded=False):
         st.markdown(
-            "**Lớp 1 và lớp 1b** — luôn được tính vào H_soft "
-            "(phân loại địa tầng là đất yếu, bùn sét / sét mềm).\n\n"
-            "**Lớp khác (2b, XMD, lớp 2…)** — chỉ tính vào H_soft nếu "
+            "**Lớp 1, lớp 1b và lớp XMD** — luôn được tính vào H_soft "
+            "(phân loại địa tầng là đất yếu; lớp XMD là lớp bùn tại KE-HK8, sâu 6,7–22,4 m).\n\n"
+            "**Lớp khác (2b, lớp 2, lớp 3…)** — chỉ tính vào H_soft nếu "
             "hệ số rỗng trung bình e₀ > 1,0 từ thí nghiệm nén cố kết trong phòng "
             "(e₀ > 1 ↔ đất ở trạng thái rất rỗng, chưa cố kết hoặc dẻo chảy).\n\n"
             "**Đáy cọc CDM** = cao độ mặt đất tự nhiên tại hố khoan − H_soft − 1 m "
@@ -15702,12 +15705,15 @@ if _page == "tvtk_prep":
             if _thick <= 0:
                 continue
 
-            if _sym in ("1", "1b"):
-                # Luôn tính
+            if _sym in _SOFT_ALWAYS_S4:
+                # Luôn tính: lớp 1, 1b, XMD (XMD = bùn tại KE-HK8)
                 if _sym == "1":
-                    _h1  += _thick
-                else:
-                    _h1b += _thick
+                    _h1    += _thick
+                elif _sym == "1b":
+                    _h1b   += _thick
+                else:  # XMD
+                    _h_extra += _thick
+                    _extra_syms[_sym] = _extra_syms.get(_sym, 0) + _thick
             else:
                 # Kiểm tra e0_TB của lớp này
                 _e0_row = _cv.execute("""
