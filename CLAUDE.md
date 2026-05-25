@@ -1718,3 +1718,166 @@ Khi bấm "Lưu": (1) UPDATE `tvtk_cdm_config`, (2) recalculate S1 per zone, (3)
 | `cdm_design` | **Computed** | **SQLite BẮT BUỘC** — sau mỗi "Lưu" |
 | `tvtk_soil_params` | **Computed** | SQLite |
 | `tvtk_bh_cdm` | **Config** | SQLite |
+
+---
+
+### 35. Module Soft Soil PLAXIS — Mô hình PLAXIS Chapter 10 (cập nhật 2026-05-25)
+
+**File engine:** `scripts/soft_soil_calc.py` — batch tính λ*, κ*, M, OCR, POP cho tất cả HK  
+**Thông số tham chiếu:** `data/soft_soil_model.json` (trích từ PDF PLAXIS Manual Ch.10)  
+**Tài liệu:** [56-soft-soil-model-plaxis.md](56-soft-soil-model-plaxis.md)  
+**Bảng SQLite:** `soft_soil_params` (PRIMARY KEY `(bh_name, pa, symbol)`)
+
+#### Công thức cốt lõi
+
+| Thông số | Công thức | Ghi chú |
+|---|---|---|
+| λ* | `Cc / (2.303 × (1+e0))` | Modified compression index |
+| κ* | `2 × Cs / (2.303 × (1+e0))` | Factor 2 = PLAXIS K0=1 unloading convention |
+| Cs fallback | `0.15 × Cc` | Khi không đo Cs; `Cs_inferred=1` |
+| K0_nc | `1 − sin(φ')` | Jaky 1944 |
+| M (xấp xỉ) | `3.0 − 2.8 × K0_nc` | Eq. 235 PLAXIS Manual |
+| M (chính xác) | Eq. 234 Brinkgreve 1994 | Giải số từ K0_nc, νur, λ*/κ* |
+| OCR | `PC / σ'v0` | σ'v0 tại giữa lớp |
+| POP | `PC − σ'v0` | Thay thế OCR trong PLAXIS |
+
+#### Quy tắc match dữ liệu lab — BẮT BUỘC
+
+**KHÔNG** match `lab_tests.symbol_tcvn` (USCS: CH/MH) với `layers.symbol` (dự án: 1/1b/2).  
+**PHẢI** match bằng **depth range**: `lab_tests.depth_from_m >= layer.depth_top_m AND < layer.depth_bot_m`.
+
+Priority chain cho Cc/Cs/phi:
+```
+1. HK hiện tại (average all samples trong depth range lớp)
+2. HK gần nhất cùng zone, JOIN layers WHERE symbol=target_symbol (source = 'lab_fallback:BH-name(d=Xm)')
+3. Không có → skip row + WARNING
+```
+
+#### Lớp áp dụng Soft Soil
+
+`_SOFT_SYMBOLS = frozenset(["1", "1b", "2", "2b", "XMD"])` — không bao gồm cát (2a, 4, 5a, ...).
+
+**BXN đặc biệt:** lớp `'2'` (không phải `'1'`) là lớp bùn chính (depth 2.7–20+m). Lớp `'1'` BXN chỉ dày ~2.7m.
+
+#### PA2 Zone Representative
+
+Weighted-average by layer thickness across all selected BHs per zone:
+- `bh_name = 'KE_PA2'` / `'BXN_PA2'` / `'NHC_PA2'`, `pa = 'PA2'`
+- λ*, κ*, φ, c, e0 → weighted by H_i; OCR → arithmetic mean
+
+#### Kết quả TTHC (2026-05-25): 50 rows = 44 BH + 6 PA2
+
+| PA2 | Lớp | λ* | κ* |
+|---|---|---|---|
+| KE_PA2 | 1 | 0.1177 | 0.0174 |
+| KE_PA2 | 1b | 0.0695 | 0.0103 |
+| BXN_PA2 | 2 | 0.1529 | 0.0234 |
+| NHC_PA2 | 1 | 0.0789 | 0.0122 |
+| NHC_PA2 | 2 | 0.0837 | 0.0128 |
+
+#### UI (app_cdm.py, page "tvtk_prep", Section 6)
+
+- Expander công thức chung (LaTeX) — trước bảng, KHÔNG lặp mỗi HK
+- Bảng PA2 (`st.table`) — 3 zone × các lớp yếu
+- Expander per zone — `st.dataframe` bảng per-BH với `cc_source`, `phi_source`, `notes`
+
+---
+
+### 36. Phân vùng Gia cố CDM — 7 Nguyên tắc P1–P7 (cập nhật 2026-05-25)
+
+**Tài liệu:** [55-cdm-zoning-principles.md](55-cdm-zoning-principles.md)  
+**Vị trí app:** `app_cdm.py`, page "tvtk_prep", Section 8 (sau Section 7 GWT)  
+**Thư viện:** `scipy.cluster.hierarchy` (Ward linkage) + `scipy.spatial.Delaunay` + `sklearn.preprocessing`
+
+#### 7 Nguyên tắc Phân vùng
+
+| P | Nguyên tắc | Thực hiện |
+|---|---|---|
+| P1 | Đồng nhất địa chất | Feature vector `[H_soft, Cu, N_SPT, e0, Cc, S1]`, z-score normalized, Ward clustering |
+| P2 | Liên thông không gian | Delaunay triangulation — grey edges same zone, red-dashed cross-boundary |
+| P3 | Đồng nhất tải trọng / lún | S1 clustering feature |
+| P4 | Thi công được | Min area 100m², shape ratio ≥0.3, K∈[3,8] |
+| P5 | Đủ mẫu QC | ≥2 HK/zone, ≥6 qu samples/zone (TCVN 9403 B.1) |
+| P6 | Đa giác biểu diễn | DXF/Civil 3D polygon export (future) |
+| P7 | Phẳng độ lún | ΔSr/L_trans ≤ i_cp (TCCS 41 Phụ lục E): KE/BXN=0.5%, NHC=0.2% |
+
+#### Clustering
+
+- **Algorithm:** Ward linkage (`scipy.cluster.hierarchy.ward`) — minimizes within-cluster variance
+- **K default:** KE=3, BXN=3, NHC=4 (slider 2–6 per zone)
+- **Input features (6D):** H_soft_m · Cu_VST_kPa · N_SPT_avg · e0 · Cc · S1_cm — từ SQLite
+
+#### P7 Gradient Check
+
+```python
+_grad_pct = abs(S1_a - S1_b) / (100.0 * L_m) * 100  # % = cm/m
+_i_cp = {"KE": 0.005, "BXN": 0.005, "NHC": 0.002}[zone]
+_ok = "Đạt" if _grad_pct <= _i_cp * 100 else "Không đạt"
+```
+Kiểm tra cho mọi cặp BH cross-boundary (Delaunay edges qua ranh giới zone).
+
+#### P5 QC Check Table
+
+Per zone: `n_HK` · `n_qu_samples` · Ngưỡng (TCVN 9403 Bảng B.1 × K zones) · Đạt/Không đạt
+
+#### Bố cục Section 8
+
+- 8a: Feature vector table per BH (6 columns) — `st.dataframe`
+- 8b: K slider + Ward clustering per zone — Plotly scatter + Delaunay edges + legend
+- 8c: Cluster stats table (centroid 6 features + P5 HK count)
+- 8d: P7 gradient table (cross-boundary pairs + ΔS1/L vs threshold)
+- 8e: QC requirements table
+
+---
+
+### 37. Module Mô hình MC / HS / LE — PLAXIS TKCS + TKBVT (cập nhật 2026-05-26)
+
+**File engine:** `scripts/mc_hs_calc.py` — batch tính E_ref, E50, Eoed, Eur, m, K0 per lớp per HK  
+**Thông số cấu hình:** `data/plaxis_mc_hs_models.json` (formulas + typical ranges + model assignment)  
+**Tài liệu:** [57-soil-models-plaxis-tkcs-tkbvt.md](57-soil-models-plaxis-tkcs-tkbvt.md)  
+**Bảng SQLite:** `plaxis_mc_hs_params` (PRIMARY KEY `(bh_name, pa, symbol)`) — 419 records
+
+#### Gán mô hình theo giai đoạn
+
+| Giai đoạn | Lớp 1/1b | Lớp 2/3/4/5 (cát+sét) | XMD |
+|-----------|-----------|------------------------|-----|
+| TKCS | **MC** | **MC** | **LE** |
+| TKBVT | **HS + SS** (zoned) | **HS** | **LE** |
+
+#### Công thức MC E_ref (thứ tự ưu tiên)
+
+```
+1. Eoed = (1+e0)/(a12 × 0.01) từ oedometer  →  E_ref = Eoed × (1-2ν²)/(1-ν)
+2. E_ref = 250 × Cu (sét mềm)  |  600 × Cu (sét cứng)
+3. E_ref = 300 × N_SPT (cát)
+```
+
+#### Công thức HS — thêm so với MC
+
+```
+E50_ref  = 500×Cu (sét mềm) | 600×Cu (sét cứng) | 300×N_SPT (cát)
+Eoed_ref = Eoed_lab  hoặc  0.8 × E50
+Eur_ref  = 3×E50 (sét) | 5×E50 (cát)
+m        = 1.0 (sét mềm) | 0.8 (sét cứng) | 0.5 (cát)
+pref = 100 kPa, Rf = 0.9
+```
+
+#### LE (XMD/CDM)
+
+```
+E_cdm = k × (qu_design/2),  k=100 (TCVN 9403)  → E_cdm = 40 000 kPa khi qu=800 kPa
+ν_le  = 0.25
+```
+
+#### Pitfalls
+
+- `a12` trong `lab_tests` lưu là **cm²/kgf** (column `a12_cm2kgf`) — KHÔNG phải kPa^-1
+- VST join qua `vst_locations` (không có `borehole_id` trực tiếp) — match bằng zone + proximity ≤150m
+- SPT column tên `N` (không phải `N_value`)
+- `phi` trong `lab_tests` là CU/UU (không có cột `phi_direct_deg`)
+
+#### UI (app_cdm.py, page "tvtk_prep", Section 6b)
+
+- Expander công thức chung (LaTeX block)
+- Bảng PA2 `st.dataframe` — 36 rows (12 symbol × 3 zone)
+- Expander per zone — bảng per-BH với model type + E_ref / E50 / Ecdm tùy lớp
