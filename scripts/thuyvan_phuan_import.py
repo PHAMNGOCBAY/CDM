@@ -339,6 +339,150 @@ def save_to_json(daily: list[dict], annual: list[dict], peaks: list[dict]) -> No
                   f, ensure_ascii=False, indent=2)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Public API — tra cứu mực nước thiết kế (dùng từ app/modules khác)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Hệ thống dự phòng nước biển dâng — TCCS41 chưa quy định cụ thể, tham khảo
+# IPCC AR6 và Bộ TN&MT 2022 (kịch bản RCP4.5–8.5 cho HCM ~30–80 cm/50 năm)
+RISE_RATE_CM_PER_DECADE = 11.63   # từ trend annual max 1977–2024
+
+
+def get_design_water_level(
+    case: str = "P95",
+    design_life_years: int = 0,
+    db_path: Optional[Path] = None,
+) -> dict:
+    """Tra cứu mực nước thiết kế trạm Phú An — phục vụ thiết kế kè / công trình ven sông.
+
+    Args:
+        case: 'P5' | 'P50' | 'P95' | 'P99' | 'peak_max' | 'low_operation'
+              | 'design_normal' | 'design_high' | 'design_extreme'
+        design_life_years: số năm tuổi thọ thiết kế → cộng dự phòng nước dâng
+              theo xu thế +11,63 cm/decade (annual max). Mặc định 0 (không cộng).
+        db_path: optional, mặc định dùng _DB
+
+    Returns:
+        {'case': str, 'h_cm_current': float, 'h_cm_design': float,
+         'rise_added_cm': float, 'description': str}
+
+    Examples:
+        # Mực nước TK cho công trình dân dụng (P95, không cộng dự phòng)
+        get_design_water_level('P95')
+        # → h_cm_design = 48.0
+
+        # Tuổi thọ 50 năm cộng dự phòng đỉnh triều
+        get_design_water_level('P99', design_life_years=50)
+        # → h_cm_design = 59 + 58.15 = 117.15 cm
+
+        # Đỉnh triều lịch sử
+        get_design_water_level('peak_max')
+        # → h_cm_design = 177.0 (2019)
+    """
+    _p = db_path or _DB
+
+    # Aliases cho case
+    case_norm = case.upper().replace("-", "_")
+    alias = {
+        "LOW_OPERATION": "P5",
+        "DESIGN_LOW":    "P5",
+        "MEDIAN":        "P50",
+        "DESIGN_NORMAL": "P50",
+        "DESIGN_HIGH":   "P95",
+        "DESIGN_EXTREME": "P99",
+        "PEAK":          "PEAK_MAX",
+    }
+    case_norm = alias.get(case_norm, case_norm)
+
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+
+        if case_norm in ("P5", "P50", "P95", "P99"):
+            q = float(case_norm[1:]) / 100.0
+            # SQLite không có percentile native — query toàn bộ h_cm rồi tính
+            vals = [r[0] for r in con.execute(
+                "SELECT h_cm FROM thuyvan_daily ORDER BY h_cm"
+            ).fetchall()]
+            if not vals:
+                raise ValueError("Bảng thuyvan_daily rỗng.")
+            idx = int(q * (len(vals) - 1))
+            h_current = float(vals[idx])
+            desc = {
+                "P5":  "Mực nước thấp khai thác (5% thời gian)",
+                "P50": "Mực nước trung vị (50%)",
+                "P95": "Mực nước thiết kế cao (95% — vượt 5% thời gian)",
+                "P99": "Mực nước cực đại hiếm (99% — vượt 1% thời gian)",
+            }[case_norm]
+
+        elif case_norm in ("PEAK_MAX", "PEAK"):
+            r = con.execute(
+                "SELECT MAX(peak_cm) FROM thuyvan_tidal_peaks"
+            ).fetchone()
+            h_current = float(r[0]) if r and r[0] is not None else 0.0
+            desc = "Đỉnh triều lịch sử cao nhất (2019)"
+
+        elif case_norm == "MAX_HISTORICAL":
+            r = con.execute("SELECT MAX(h_cm) FROM thuyvan_daily").fetchone()
+            h_current = float(r[0]) if r and r[0] is not None else 0.0
+            desc = "MNTB ngày cao nhất trong chuỗi quan trắc"
+
+        elif case_norm == "MIN_HISTORICAL":
+            r = con.execute("SELECT MIN(h_cm) FROM thuyvan_daily").fetchone()
+            h_current = float(r[0]) if r and r[0] is not None else 0.0
+            desc = "MNTB ngày thấp nhất trong chuỗi quan trắc"
+
+        else:
+            raise ValueError(
+                f"case không hợp lệ: {case!r}. "
+                "Dùng: P5/P50/P95/P99/peak_max/max_historical/min_historical "
+                "hoặc alias low_operation/design_normal/design_high/design_extreme."
+            )
+
+    # Cộng dự phòng nước dâng theo tuổi thọ thiết kế
+    rise_added = (RISE_RATE_CM_PER_DECADE / 10.0) * float(design_life_years)
+    h_design   = h_current + rise_added
+
+    return {
+        "case":            case_norm,
+        "h_cm_current":    round(h_current, 1),
+        "h_cm_design":     round(h_design, 1),
+        "rise_added_cm":   round(rise_added, 1),
+        "design_life_years": int(design_life_years),
+        "description":     desc,
+        "rise_rate_cm_per_decade": RISE_RATE_CM_PER_DECADE,
+        "source":          "Trạm Phú An 1977–2024 (48 năm)",
+    }
+
+
+def get_seasonal_water_levels(db_path: Optional[Path] = None) -> dict:
+    """Tra cứu MNTB trung bình + max + min theo 12 tháng (TB toàn chuỗi).
+
+    Returns:
+        {month: {'avg_cm', 'max_cm', 'min_cm', 'season'}}
+    """
+    _p = db_path or _DB
+    seasons = {
+        1: "Cuối lũ", 2: "Cuối lũ", 3: "Hạ dần", 4: "Hạ dần",
+        5: "Đầu khô", 6: "Khô thấp", 7: "Khô thấp", 8: "Khô",
+        9: "Đầu lũ", 10: "Lũ", 11: "Lũ cao", 12: "Lũ cao",
+    }
+    out: dict = {}
+    with sqlite3.connect(_p) as con:
+        for m in range(1, 13):
+            r = con.execute("""
+                SELECT AVG(h_cm), MAX(h_cm), MIN(h_cm), COUNT(*)
+                FROM thuyvan_daily WHERE month = ?
+            """, (m,)).fetchone()
+            out[m] = {
+                "avg_cm":  round(float(r[0]), 2) if r[0] is not None else None,
+                "max_cm":  round(float(r[1]), 1) if r[1] is not None else None,
+                "min_cm":  round(float(r[2]), 1) if r[2] is not None else None,
+                "n_days":  int(r[3]),
+                "season":  seasons[m],
+            }
+    return out
+
+
 def main():
     import sys
     sys.stdout.reconfigure(encoding="utf-8")

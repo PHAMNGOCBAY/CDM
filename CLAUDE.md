@@ -2127,3 +2127,26 @@ KE-HK1 / SW-740 / L=28m với đất yếu chung (phi=2°, c=10):
 - Mực nước Front (sông) thiết kế: **+48 cm** (P95) cho công trình dân dụng, **+59 cm** (P99) cho tuổi thọ ≥ 50 năm.
 - Mực nước Back (đất) thường thấp hơn Front 1–1,5 m do gradient thấm.
 - Tính toán Winkler / đẩy nổi / ổn định dùng các cao độ trên — KHÔNG dùng giá trị cố định cũ (vd −1,5 m).
+
+#### Public API (Python)
+
+```python
+from thuyvan_phuan_import import get_design_water_level, get_seasonal_water_levels
+
+# Tra cứu mực nước TK
+r = get_design_water_level('P95')                          # → +48 cm
+r = get_design_water_level('P99', design_life_years=50)    # → +117 cm (cộng dự phòng)
+r = get_design_water_level('peak_max')                     # → +177 cm (đỉnh triều 2019)
+
+# Cases hợp lệ:
+#   'P5', 'P50', 'P95', 'P99' (percentile)
+#   'peak_max' (đỉnh triều annual max)
+#   'max_historical' / 'min_historical' (MNTB ngày)
+# Aliases: 'design_high'='P95', 'design_extreme'='P99', 'low_operation'='P5'
+
+# MNTB theo 12 tháng (TB 48 năm)
+seasonal = get_seasonal_water_levels()
+# seasonal[11] → {avg_cm: +35.3, max_cm: +74, min_cm: -9, season: 'Lũ cao'}
+```
+
+**RISE_RATE_CM_PER_DECADE = 11.63** (constant module-level — xu thế từ Max năm).
