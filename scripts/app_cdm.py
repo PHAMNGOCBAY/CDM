@@ -17227,6 +17227,242 @@ if _page == "tvtk_prep":
     ]
     st.table(_pd_tv.DataFrame(_gwt_rows))
     st.caption("Lưu ý: Mực nước ngầm ảnh hưởng trực tiếp đến áp lực thấm, ổn định hố đào và thiết kế tiêu thoát nước.")
+    st.divider()
+
+    # ── 8. Phân vùng gia cố CDM theo 7 nguyên tắc P1–P7 ───────────────────
+    st.markdown("### 8. Phân vùng gia cố CDM")
+
+    # 8.0 — Lý thuyết từ file 55-cdm-zoning-principles.md
+    with st.expander("Lý thuyết: 7 nguyên tắc phân vùng CDM (P1–P7)",
+                     expanded=False):
+        _md_zoning = _ROOT / "55-cdm-zoning-principles.md"
+        try:
+            if _md_zoning.exists():
+                with open(_md_zoning, "r", encoding="utf-8") as _f_md:
+                    _md_content = _f_md.read()
+                st.markdown(_md_content)
+            else:
+                st.warning("Không tìm thấy file 55-cdm-zoning-principles.md")
+        except Exception as _exc_md:
+            st.error(f"Lỗi đọc file lý thuyết: {_exc_md}")
+
+    # 8.1 — Tham số clustering
+    try:
+        from scripts.cdm_zoning import (
+            build_features_for_zone, run_clustering, delaunay_edges,
+            check_P5_qc, check_P7_gradient, save_clusters_to_db,
+            get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
+        )
+        _zone_pick_8 = st.radio(
+            "Khu vực phân tích:",
+            options=["KE", "BXN", "NHC"],
+            horizontal=True, key="_zoning_zone_pick",
+        )
+        _c8a, _c8b, _c8c = st.columns([1, 1, 2])
+        _K_default = K_DEFAULT_BY_ZONE.get(_zone_pick_8, 3)
+        _K_pick = _c8a.slider(
+            f"Số cụm K cho {_zone_pick_8}",
+            min_value=2, max_value=6, value=_K_default, step=1,
+            key=f"_zoning_K_{_zone_pick_8}",
+            help="Ward hierarchical clustering trên vector đặc trưng 6D",
+        )
+        _icp_default = I_CP_BY_ZONE.get(_zone_pick_8, 0.5)
+        _icp_pick = _c8b.number_input(
+            f"Ngưỡng i_cp (%)",
+            min_value=0.05, max_value=2.0, value=_icp_default, step=0.05,
+            format="%.2f",
+            key=f"_zoning_icp_{_zone_pick_8}",
+            help="P7 — gradient ΔS/L cho phép cross-boundary",
+        )
+        _c8c.caption(
+            f"K mặc định: KE=3 · BXN=3 · NHC=4  |  "
+            f"i_cp mặc định: KE/BXN=0,5% · NHC=0,2%"
+        )
+
+        # 8.2 — Tính features + clustering
+        _feats_8 = build_features_for_zone(_zone_pick_8)
+        if not _feats_8:
+            st.warning(f"Không có hố khoan có tọa độ cho khu vực {_zone_pick_8}.")
+        else:
+            _clusters_8 = run_clustering(_feats_8, K=_K_pick)
+            _coords_8 = [(f["x"], f["y"]) for f in _feats_8]
+            _edges_8 = delaunay_edges(_coords_8)
+
+            # 8a — Bảng feature vector 6D
+            st.markdown("#### 8a. Vector đặc trưng 6D per hố khoan")
+            _feat_table = []
+            for f, c in zip(_feats_8, _clusters_8):
+                _feat_table.append({
+                    "Hố khoan":    f["bh_name"],
+                    "Cụm":         f"Cụm {c}",
+                    "H_soft (m)":  f["H_soft"],
+                    "Cu (kPa)":    f["Cu"] if f["Cu"] is not None else "—",
+                    "N_SPT":       f["N_spt"] if f["N_spt"] is not None else "—",
+                    "e₀":          f["e0"] if f["e0"] is not None else "—",
+                    "Cc":          f["Cc"] if f["Cc"] is not None else "—",
+                    "S₁ (cm)":     f["S1"] if f["S1"] is not None else "—",
+                })
+            st.dataframe(_pd_tv.DataFrame(_feat_table),
+                         use_container_width=True, hide_index=True)
+
+            # 8b — Bình đồ phân vùng — màu theo cụm
+            st.markdown("#### 8b. Bình đồ phân vùng — màu theo cụm")
+            _CLUSTER_COLORS = [
+                "#1565C0", "#D32F2F", "#2E7D32", "#F57F17",
+                "#6A1B9A", "#00838F", "#AD1457", "#558B2F",
+            ]
+            _fig_z = _go_tv.Figure()
+
+            # Delaunay edges — xám nếu same-cluster, đỏ đứt nếu cross-boundary
+            for _i, _j, _L in _edges_8:
+                _ci, _cj = _clusters_8[_i], _clusters_8[_j]
+                _cross = _ci != _cj
+                _edge_color = "#D32F2F" if _cross else "#BBBBBB"
+                _edge_dash  = "dot" if _cross else "solid"
+                _edge_width = 2.0 if _cross else 1.2
+                _fig_z.add_trace(_go_tv.Scatter(
+                    x=[_feats_8[_i]["x"], _feats_8[_j]["x"]],
+                    y=[_feats_8[_i]["y"], _feats_8[_j]["y"]],
+                    mode="lines",
+                    line=dict(color=_edge_color, width=_edge_width,
+                              dash=_edge_dash),
+                    hovertemplate=(
+                        f"<b>{_feats_8[_i]['bh_name']} ↔ {_feats_8[_j]['bh_name']}</b><br>"
+                        f"L = {_L:.0f} m<br>"
+                        f"{'CROSS-ZONE (cụm khác)' if _cross else 'cùng cụm'}"
+                        "<extra></extra>"
+                    ),
+                    showlegend=False,
+                ))
+
+            # HK markers theo cluster
+            for _cid in sorted(set(_clusters_8)):
+                _idx_c = [i for i, c in enumerate(_clusters_8) if c == _cid]
+                _col_c = _CLUSTER_COLORS[(_cid - 1) % len(_CLUSTER_COLORS)]
+                _fig_z.add_trace(_go_tv.Scatter(
+                    x=[_feats_8[i]["x"] for i in _idx_c],
+                    y=[_feats_8[i]["y"] for i in _idx_c],
+                    mode="markers+text",
+                    name=f"Cụm {_cid} (n={len(_idx_c)})",
+                    text=[_feats_8[i]["bh_name"].split("-")[-1]
+                          for i in _idx_c],
+                    textposition="top center",
+                    textfont=dict(size=10, color=_col_c),
+                    marker=dict(size=16, color=_col_c, symbol="circle",
+                                line=dict(width=2, color="white")),
+                    hovertemplate=(
+                        "<b>%{customdata[0]}</b><br>"
+                        "X=%{x:.0f} Y=%{y:.0f}<br>"
+                        "H_soft=%{customdata[1]:.1f} m<br>"
+                        "S₁=%{customdata[2]}<br>"
+                        f"<b>Cụm {_cid}</b>"
+                        "<extra></extra>"
+                    ),
+                    customdata=[[_feats_8[i]["bh_name"],
+                                  _feats_8[i]["H_soft"],
+                                  _feats_8[i]["S1"]] for i in _idx_c],
+                ))
+
+            _fig_z.update_layout(
+                title=(f"Bình đồ phân vùng {_zone_pick_8} — K={_K_pick} cụm  |  "
+                       f"{len(_feats_8)} HK · {len(_edges_8)} cạnh Delaunay  |  "
+                       f"Đỏ đứt = cross-boundary"),
+                xaxis_title="X (Easting hoặc Northing — VN-2000)",
+                yaxis_title="Y",
+                yaxis=dict(scaleanchor="x", scaleratio=1),
+                height=560, hovermode="closest",
+                plot_bgcolor="white", paper_bgcolor="white",
+                legend=dict(orientation="h", x=0, y=-0.12),
+                margin=dict(l=60, r=20, t=70, b=80),
+            )
+            st.plotly_chart(_fig_z, use_container_width=True,
+                            key=f"_zoning_fig_{_zone_pick_8}")
+            st.caption(
+                "**Mỗi màu = 1 cụm CDM đồng nhất.**  "
+                "Cạnh **xám liền** = HK cùng cụm.  "
+                "Cạnh **đỏ đứt** = cross-boundary (cần kiểm tra P7 gradient bên dưới)."
+            )
+
+            # 8c — Cluster stats + P5 QC
+            st.markdown("#### 8c. Đặc trưng cụm + Kiểm tra P5 (mẫu QC)")
+            _p5 = check_P5_qc(_feats_8, _clusters_8, zone_code=_zone_pick_8)
+            _n_qu_zone = get_qu_samples_for_zone(_zone_pick_8)
+
+            _cstats = []
+            for _cid in sorted(set(_clusters_8)):
+                _idx_c = [i for i, c in enumerate(_clusters_8) if c == _cid]
+                _hs = [_feats_8[i]["H_soft"] for i in _idx_c]
+                _cu = [_feats_8[i]["Cu"] for i in _idx_c if _feats_8[i]["Cu"]]
+                _s1 = [_feats_8[i]["S1"] for i in _idx_c if _feats_8[i]["S1"]]
+                _p5r = next((r for r in _p5 if r["cluster_id"] == _cid), {})
+                _cstats.append({
+                    "Cụm":           f"Cụm {_cid}",
+                    "Số HK":         len(_idx_c),
+                    "H_soft TB":     f"{sum(_hs)/len(_hs):.1f}" if _hs else "—",
+                    "Cu TB (kPa)":   f"{sum(_cu)/len(_cu):.1f}" if _cu else "—",
+                    "S₁ TB (cm)":    f"{sum(_s1)/len(_s1):.1f}" if _s1 else "—",
+                    "Số mẫu qu (pro-rata)": _p5r.get("n_qu_total", 0),
+                    "P5 ≥2 HK":      "Đạt" if _p5r.get("pass_hk") else "Không đạt",
+                    "P5 ≥6 qu":      "Đạt" if _p5r.get("pass_qu") else "Không đạt",
+                    "P5 tổng":       "Đạt" if _p5r.get("pass_all") else "Không đạt",
+                })
+            st.table(_pd_tv.DataFrame(_cstats))
+            st.caption(
+                f"Tổng mẫu qu cho zone {_zone_pick_8}: **{_n_qu_zone} mẫu** "
+                f"(chia pro-rata theo số HK trong cụm).  "
+                f"Ngưỡng: ≥ 2 HK + ≥ 6 mẫu qu per cụm (TCVN 9403 B.1)."
+            )
+
+            # 8d — P7 gradient
+            st.markdown("#### 8d. Kiểm tra P7 — gradient chuyển tiếp cross-boundary")
+            _p7 = check_P7_gradient(_feats_8, _clusters_8, _edges_8,
+                                     icp_pct=_icp_pick)
+            _cross_edges = [r for r in _p7 if r["cross_zone"]]
+            if not _cross_edges:
+                st.success("Không có cạnh cross-boundary — toàn vùng đồng nhất.")
+            else:
+                _p7_rows = []
+                for r in _cross_edges:
+                    _grad = r["grad_pct"]
+                    _p7_rows.append({
+                        "HK A → HK B":   f"{r['bh_i']} → {r['bh_j']}",
+                        "Cụm A → B":     f"{r['cluster_i']} → {r['cluster_j']}",
+                        "L (m)":         f"{r['L_m']:.0f}",
+                        "S₁_A (cm)":     r["S1_a_cm"] if r["S1_a_cm"] is not None else "—",
+                        "S₁_B (cm)":     r["S1_b_cm"] if r["S1_b_cm"] is not None else "—",
+                        "Gradient (%)":  f"{_grad:.3f}" if _grad is not None else "—",
+                        "Ngưỡng i_cp":   f"{_icp_pick:.2f}%",
+                        "Đạt":           ("Đạt" if r["pass"] is True
+                                          else "Không đạt" if r["pass"] is False
+                                          else "—"),
+                    })
+                st.table(_pd_tv.DataFrame(_p7_rows))
+                _n_fail_p7 = sum(1 for r in _cross_edges if r["pass"] is False)
+                if _n_fail_p7 > 0:
+                    st.warning(
+                        f"Có **{_n_fail_p7}/{len(_cross_edges)} cặp cross-boundary** "
+                        f"vượt ngưỡng i_cp = {_icp_pick:.2f}% — cần xem lại "
+                        "thiết kế CDM tại khu vực biên giữa các cụm."
+                    )
+                else:
+                    st.success(
+                        f"Tất cả {len(_cross_edges)} cặp cross-boundary "
+                        f"đạt gradient ≤ {_icp_pick:.2f}%."
+                    )
+
+            # 8e — Lưu kết quả + nút commit SQLite
+            _c_save_8 = st.button(
+                f"Lưu kết quả phân vùng {_zone_pick_8} vào lịch sử",
+                key=f"_zoning_save_{_zone_pick_8}",
+                use_container_width=False, type="primary",
+            )
+            if _c_save_8:
+                _rid = save_clusters_to_db(
+                    _zone_pick_8, _feats_8, _clusters_8, _K_pick,
+                )
+                st.success(f"Đã lưu lịch sử phân vùng — run_id = `{_rid}`")
+    except Exception as _exc_z:
+        st.error(f"Lỗi module phân vùng CDM: {_exc_z}")
 
     _cv.close()
 

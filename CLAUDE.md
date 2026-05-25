@@ -2150,3 +2150,72 @@ seasonal = get_seasonal_water_levels()
 ```
 
 **RISE_RATE_CM_PER_DECADE = 11.63** (constant module-level — xu thế từ Max năm).
+
+---
+
+### 42. Phân vùng gia cố CDM — 7 nguyên tắc P1–P7
+
+**File tài liệu:** [55-cdm-zoning-principles.md](55-cdm-zoning-principles.md)
+**Module Python:** `scripts/cdm_zoning.py` (Ward clustering + Delaunay + P5/P7 check)
+**SQLite:** `cdm_zoning_clusters` (UNIQUE `(bh_name, run_id)`)
+**UI:** `scripts/app_cdm.py` tab `tvtk_prep` Section 8 — sau Section 6 (Mực nước ngầm)
+
+#### 7 nguyên tắc
+
+| Nguyên tắc | Nội dung |
+|---|---|
+| **P1 Địa chất đồng nhất** | Feature vector 6D `[H_soft, Cu, N_SPT, e0, Cc, S1]` → StandardScaler → Ward clustering (scipy.cluster.hierarchy) |
+| **P2 Liên thông không gian** | Delaunay triangulation (scipy.spatial) — edges xám same-cluster, đỏ đứt cross-boundary |
+| **P3 Tải/lún đồng nhất** | S₁ trong feature vector |
+| **P4 Thi công được** | 3 ≤ K ≤ 8, area ≥ 100 m², shape ratio ≥ 0,3 |
+| **P5 Mẫu QC** | ≥ 2 HK + ≥ 6 mẫu qu/cụm (TCVN 9403 Bảng B.1); qu samples chia pro-rata theo HK trong cụm |
+| **P6 Polygon DXF** | (tương lai) |
+| **P7 Gradient** | `|ΔS₁/L| ≤ i_cp` cho mọi cặp Delaunay cross-boundary; i_cp = 0,5% (KE/BXN) hoặc 0,2% (NHC — gần nhà cao tầng) |
+
+#### Symbols filter
+
+- **Lớp yếu cho H_soft:** `('1','1b','2','XMD')` (`layers.symbol`)
+- **Lớp yếu cho Ip:** `('1','1b','CH','MH','CH-OH','MH-OH')` (`lab_tests.symbol_tcvn`)
+
+#### Bố cục Section 8
+
+| Mục | Nội dung |
+|---|---|
+| **8.0** | **Lý thuyết** — expander render trực tiếp từ MD file 55-cdm-zoning-principles.md |
+| **8.1** | Radio chọn zone + slider K (2–6) + input i_cp (%) |
+| **8a** | Bảng feature vector 6D per HK + cột Cụm |
+| **8b** | **Bình đồ phân vùng — màu theo cụm** (Plotly scatter + Delaunay edges) |
+| **8c** | Đặc trưng cụm + P5 check (đạt/không đạt mỗi cụm + ngưỡng) |
+| **8d** | P7 gradient — bảng cross-boundary edges với pass/fail |
+| **8e** | Nút lưu kết quả vào `cdm_zoning_clusters` với run_id mới |
+
+#### API
+
+```python
+from scripts.cdm_zoning import (
+    build_features_for_zone, run_clustering, delaunay_edges,
+    check_P5_qc, check_P7_gradient, save_clusters_to_db,
+    I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
+)
+feats = build_features_for_zone('KE')         # list[dict] 6D
+clusters = run_clustering(feats, K=3)          # [1,2,3,...] Ward
+edges = delaunay_edges([(f['x'],f['y']) for f in feats])
+p5 = check_P5_qc(feats, clusters, zone_code='KE')
+p7 = check_P7_gradient(feats, clusters, edges, icp_pct=0.5)
+run_id = save_clusters_to_db('KE', feats, clusters, K=3)
+```
+
+#### Constants
+
+```python
+I_CP_BY_ZONE      = {"KE": 0.5, "BXN": 0.5, "NHC": 0.2}   # % per m
+K_DEFAULT_BY_ZONE = {"KE": 3,   "BXN": 3,   "NHC": 4}
+```
+
+#### Style hiển thị bình đồ
+
+- **Cụm 1–8:** màu `#1565C0 #D32F2F #2E7D32 #F57F17 #6A1B9A #00838F #AD1457 #558B2F`
+- **Marker HK:** circle size 16, viền trắng width 2
+- **Delaunay same-cluster:** line xám `#BBBBBB` width 1.2 liền
+- **Delaunay cross-boundary:** line đỏ `#D32F2F` width 2.0 đứt (dot)
+- **Aspect ratio:** `scaleanchor='x', scaleratio=1` (tỷ lệ thật)
