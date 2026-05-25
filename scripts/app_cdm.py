@@ -1861,11 +1861,49 @@ def _linreg(xs: list, ys: list) -> tuple[float, float]:
     return a, b
 
 
+def _build_mu_by_loc(
+    loc_names: list[str],
+    soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
+) -> dict:
+    """Xây dict {loc_name: {'Ip': float, 'mu': float}} từ lab_tests.
+
+    Phục vụ vẽ Cu = μ·Su trên biểu đồ VST theo TCCS 41 Phụ lục C.3.2.
+    loc_name khớp với boreholes.name (vd 'KE-HK1', 'BXN-CV-HK1').
+    """
+    if not loc_names:
+        return {}
+    try:
+        from scripts.settlement_calc import bjerrum_mu as _bj_mu
+    except Exception:
+        return {}
+    import sqlite3 as _sq_mu
+    out: dict = {}
+    ph = ",".join("?" * len(soft_symbols))
+    ph_loc = ",".join("?" * len(loc_names))
+    with _sq_mu.connect(_DB) as _con_mu:
+        _con_mu.row_factory = _sq_mu.Row
+        rows = _con_mu.execute(f"""
+            SELECT b.name AS bh_name, AVG(lt.Ip) AS Ip_avg
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name IN ({ph_loc})
+              AND lt.Ip IS NOT NULL AND lt.Ip > 0
+              AND lt.symbol_tcvn IN ({ph})
+            GROUP BY b.name
+        """, (*loc_names, *soft_symbols)).fetchall()
+        for r in rows:
+            _Ip = float(r["Ip_avg"]) if r["Ip_avg"] is not None else None
+            if _Ip is not None:
+                out[r["bh_name"]] = {"Ip": _Ip, "mu": float(_bj_mu(_Ip))}
+    return out
+
+
 def _chart_su_profile_mpl(
     df_vst: pd.DataFrame,
     selected_locs: list[str] | None = None,
     figsize: tuple = (7, 6),
     font_scale: float = 1.0,
+    show_cu_corrected: bool = True,
 ):
     """Matplotlib fallback cho biểu đồ Su–VST khi không có plotly.
     `font_scale`: ×1 mặc định; ×2 khi đặt cạnh soil column trong cột hẹp."""
@@ -1885,6 +1923,9 @@ def _chart_su_profile_mpl(
     _colors = ["#E53935","#1565C0","#2E7D32","#F57F17","#6A1B9A",
                "#00838F","#AD1457","#558B2F","#4527A0","#00695C"]
 
+    # Bjerrum μ cho từng loc — TCCS 41 Phụ lục C.3.2
+    _mu_dict = _build_mu_by_loc(list(show_locs)) if show_cu_corrected else {}
+
     for i, loc in enumerate(all_locs):
         if loc not in show_locs:
             continue
@@ -1893,7 +1934,7 @@ def _chart_su_profile_mpl(
         depths = grp["depth_m"].tolist()
         sus    = grp["Su_kPa"].tolist()
         y_plot = [-d for d in depths]
-        ax.plot(sus, y_plot, "-o", color=color, lw=1.5, ms=5, label=loc)
+        ax.plot(sus, y_plot, "-o", color=color, lw=1.5, ms=5, label=f"Su (VST) {loc}")
         for x, y in zip(sus, y_plot):
             ax.annotate(f"{x:.1f}", (x, y), xytext=(4, 0), textcoords="offset points",
                         fontsize=_fs_anno, color=color, va="center")
@@ -1908,9 +1949,32 @@ def _chart_su_profile_mpl(
             ax.text(a*dd[-1] + b, -dd[-1], eq, fontsize=_fs_anno, color=color,
                     bbox=dict(facecolor="white", alpha=0.75, edgecolor=color, lw=0.5, pad=1))
 
-    ax.set_xlabel("Su (kPa)", fontsize=_fs_axis)
+        # Cu tính toán (TCCS 41 C.5: Cu = μ·Su) — màu xanh lá đậm
+        _bj = _mu_dict.get(loc)
+        if _bj is not None:
+            _mu = _bj["mu"]; _Ip = _bj["Ip"]
+            cus = [s * _mu for s in sus]
+            _cu_color = "#15803d"
+            ax.plot(cus, y_plot, "-D", color=_cu_color, lw=1.8, ms=6,
+                    label=f"Cu = μ·Su {loc} (μ={_mu:.3f}, Ip≈{_Ip:.0f})")
+            for x, y in zip(cus, y_plot):
+                ax.annotate(f"{x:.1f}", (x, y), xytext=(4, -10),
+                            textcoords="offset points",
+                            fontsize=_fs_anno, color=_cu_color, va="center")
+            # Vạch đứng Cu_TB
+            if cus:
+                _Cu_avg = sum(cus) / len(cus)
+                ax.axvline(_Cu_avg, color=_cu_color, ls="-.", lw=1.2, alpha=0.75)
+                ax.text(_Cu_avg, max(y_plot) + 0.5,
+                        f"Cu_TB={_Cu_avg:.1f}",
+                        fontsize=_fs_anno + 1, color=_cu_color,
+                        ha="left", va="bottom",
+                        bbox=dict(facecolor="#dcfce7", alpha=0.92,
+                                  edgecolor=_cu_color, lw=1.0, pad=2))
+
+    ax.set_xlabel("Su, Cu (kPa)", fontsize=_fs_axis)
     ax.set_ylabel("Cao độ (m)", fontsize=_fs_axis)
-    title = "Biểu đồ Su – Cắt cánh (VST)"
+    title = "Biểu đồ Su – Cắt cánh (VST) + Cu tính toán (TCCS 41 C.5)"
     title += f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ"
     ax.set_title(title, fontsize=_fs_title)
     ax.grid(True, ls=":", color="#CCC", lw=0.5)
@@ -2035,6 +2099,7 @@ def _draw_soil_column_mpl(
 def _chart_su_profile(
     df_vst: pd.DataFrame,
     selected_locs: list[str] | None = None,
+    show_cu_corrected: bool = True,
 ) -> go.Figure:
     if df_vst.empty:
         return go.Figure()
@@ -2046,6 +2111,10 @@ def _chart_su_profile(
         "#E53935","#1565C0","#2E7D32","#F57F17","#6A1B9A",
         "#00838F","#AD1457","#558B2F","#4527A0","#00695C",
     ]
+    _CU_COLOR = "#15803d"   # xanh lá đậm cho Cu = μ·Su
+
+    # Bjerrum μ per loc (TCCS 41 Phụ lục C.3.2)
+    _mu_dict = _build_mu_by_loc(list(show_locs)) if show_cu_corrected else {}
 
     fig = go.Figure()
     reg_lines = []   # (loc, a, b, color, y_min, y_max)
@@ -2059,11 +2128,12 @@ def _chart_su_profile(
         sus    = grp["Su_kPa"].tolist()
         y_plot = [-d for d in depths]
 
-        # Đường + markers + nhãn giá trị
+        # Đường Su VST + markers + nhãn giá trị
         fig.add_trace(go.Scatter(
             x=sus, y=y_plot,
             mode="lines+markers+text",
-            name=loc,
+            name=f"Su (VST) {loc}",
+            legendgroup=f"su_{loc}",
             line=dict(color=color, width=1.8),
             marker=dict(size=7, color=color),
             text=[f"{v:.1f}" for v in sus],
@@ -2081,6 +2151,59 @@ def _chart_su_profile(
         if len(depths) >= 2:
             a, b = _linreg(depths, sus)
             reg_lines.append((loc, a, b, color, min(depths), max(depths)))
+
+        # Cu tính toán = μ·Su (TCCS 41 Phụ lục C.3.2 — Công thức C.5)
+        _bj = _mu_dict.get(loc)
+        if _bj is not None:
+            _mu = _bj["mu"]; _Ip = _bj["Ip"]
+            cus = [s * _mu for s in sus]
+            _hov_cu = [
+                f"<b>{loc}</b><br>Sâu: {d:.1f} m<br>"
+                f"<b>Cu = μ·Su = {cu:.1f} kPa</b><br>"
+                f"Su gốc: {s:.1f}  |  μ = {_mu:.3f}  (Ip ≈ {_Ip:.0f})"
+                for d, cu, s in zip(depths, cus, sus)
+            ]
+            fig.add_trace(go.Scatter(
+                x=cus, y=y_plot,
+                mode="lines+markers+text",
+                name=f"Cu = μ·Su {loc} (TCCS 41 C.5)",
+                legendgroup=f"cu_{loc}",
+                line=dict(color=_CU_COLOR, width=2.4),
+                marker=dict(size=9, color=_CU_COLOR, symbol="diamond",
+                            line=dict(color="white", width=1.2)),
+                text=[f"{v:.1f}" for v in cus],
+                textposition="middle left",
+                textfont=dict(size=9, color=_CU_COLOR),
+                hovertemplate="%{customdata}<extra></extra>",
+                customdata=_hov_cu,
+            ))
+            # Vạch đứng Cu_TB
+            if cus:
+                _Cu_avg = sum(cus) / len(cus)
+                _y_top  = max(y_plot)
+                _y_bot  = min(y_plot)
+                fig.add_trace(go.Scatter(
+                    x=[_Cu_avg, _Cu_avg], y=[_y_bot, _y_top],
+                    mode="lines",
+                    line=dict(color=_CU_COLOR, width=1.5, dash="dashdot"),
+                    name=f"Cu_TB = {_Cu_avg:.1f} kPa {loc}",
+                    legendgroup=f"cu_{loc}",
+                    showlegend=False,
+                    hovertemplate=(
+                        f"<b>{loc}</b><br>"
+                        f"Cu TB = {_Cu_avg:.1f} kPa<br>"
+                        f"μ = {_mu:.3f}  Ip = {_Ip:.0f}<extra></extra>"
+                    ),
+                ))
+                fig.add_annotation(
+                    x=_Cu_avg, y=_y_top + 0.3,
+                    text=(f"<b>Cu_TB={_Cu_avg:.1f}</b><br>"
+                          f"μ={_mu:.3f}  Ip={_Ip:.0f}"),
+                    showarrow=False, xanchor="left", yanchor="bottom",
+                    font=dict(size=9, color="#14532d"),
+                    bgcolor="rgba(220,252,231,0.92)",
+                    bordercolor=_CU_COLOR, borderwidth=1.2, borderpad=3,
+                )
 
     # Vẽ đường hồi quy + annotation phương trình
     for loc, a, b, color, d_min, d_max in reg_lines:
@@ -2110,10 +2233,9 @@ def _chart_su_profile(
         )
 
     fig.update_layout(
-        title="Biểu đồ Su – Cắt cánh (VST)" + (
-            f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ"
-        ),
-        xaxis_title="Su (kPa)",
+        title=("Biểu đồ Su – Cắt cánh (VST) + Cu tính toán (TCCS 41 C.5)"
+               + (f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ")),
+        xaxis_title="Su, Cu (kPa)",
         yaxis_title="Cao độ (m)",
         height=500,
         legend=dict(font_size=10, orientation="v", x=1.01, y=1),
