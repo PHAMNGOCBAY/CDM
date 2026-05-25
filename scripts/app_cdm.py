@@ -15337,6 +15337,133 @@ if _page == "tvtk_prep":
                             "modeBarButtonsToAdd": ["zoom2d", "pan2d", "resetScale2d"]})
     st.divider()
 
+    # ── 1b. Nhận diện đất yếu — TCCS 41:2022 §4.1 ──────────────────────────
+    st.markdown("### 1b. Nhận diện đất yếu — TCCS 41:2022 §4.1")
+
+    _c1b_l, _c1b_r = st.columns(2, gap="large")
+
+    with _c1b_l:
+        st.markdown("**Tiêu chí phân loại** *(thỏa ít nhất 1 điều kiện)*")
+        st.table(_pd_tv.DataFrame([
+            {"Chỉ tiêu": "Hệ số rỗng e₀",               "Đơn vị": "—",    "Sét": "≥ 1,5", "Sét pha / bùn": "≥ 1,0"},
+            {"Chỉ tiêu": "Lực dính c",                   "Đơn vị": "kPa",  "Sét": "≤ 15",  "Sét pha / bùn": "≤ 15"},
+            {"Chỉ tiêu": "Góc ma sát φ",                 "Đơn vị": "°",    "Sét": "< 10",  "Sét pha / bùn": "< 10"},
+            {"Chỉ tiêu": "Cắt cánh Cu (VST)",            "Đơn vị": "kPa",  "Sét": "≤ 35",  "Sét pha / bùn": "≤ 35"},
+            {"Chỉ tiêu": "Sức kháng mũi qc",             "Đơn vị": "MPa",  "Sét": "≤ 0,1", "Sét pha / bùn": "≤ 0,1"},
+            {"Chỉ tiêu": "Chỉ số xuyên tiêu chuẩn N",   "Đơn vị": "búa",  "Sét": "< 5",   "Sét pha / bùn": "< 5"},
+        ]))
+
+    with _c1b_r:
+        st.markdown("**Phân loại ký hiệu đất dự án TTHC**")
+        st.table(_pd_tv.DataFrame([
+            {"Ký hiệu": "1  (Bùn sét)",        "Phân loại": "Luôn là đất yếu",           "Cơ sở": "TCCS 41 §4.1 — bùn"},
+            {"Ký hiệu": "1b (Bùn sét pha)",    "Phân loại": "Luôn là đất yếu",           "Cơ sở": "TCCS 41 §4.1 — bùn"},
+            {"Ký hiệu": "XMD",                 "Phân loại": "Luôn là đất yếu",           "Cơ sở": "Khảo sát thực địa — lớp bùn sâu"},
+            {"Ký hiệu": "2 / 2b",              "Phân loại": "Kiểm tra e₀ (≥ 1,0)",       "Cơ sở": "Sét pha chuyển tiếp"},
+            {"Ký hiệu": "3",                   "Phân loại": "Kiểm tra e₀ (≥ 1,0)",       "Cơ sở": "Sét dẻo — e₀ thay đổi"},
+            {"Ký hiệu": "4 / 5a / F / 6+",    "Phân loại": "Không phải đất yếu",        "Cơ sở": "Đất cứng / cát / sỏi"},
+        ]))
+
+    # ── Biểu đồ tổng hợp per HK — số lớp yếu và chiều dày ──────────────────
+    _ssc_rows = _cv.execute("""
+        SELECT b.name bh_name, b.zone_id,
+               l.symbol, l.depth_top_m, l.depth_bot_m,
+               COALESCE(l.thickness_m, l.depth_bot_m - l.depth_top_m) thick,
+               CASE WHEN l.symbol IN ('1','1b','XMD') THEN 1 ELSE 0 END always_soft,
+               (
+                   SELECT CASE WHEN AVG(lt.e0) >= 1.0 THEN 1 ELSE 0 END
+                   FROM lab_tests lt WHERE lt.borehole_id = b.id
+                     AND lt.depth_from_m >= l.depth_top_m
+                     AND lt.depth_from_m <  l.depth_bot_m
+                     AND lt.e0 IS NOT NULL AND lt.e0 > 0
+               ) soft_e0
+        FROM layers l
+        JOIN boreholes b ON l.borehole_id = b.id
+        WHERE b.zone_id IN (1,2,3)
+        ORDER BY b.zone_id, b.name, l.depth_top_m
+    """).fetchall()
+
+    # Tổng hợp per HK: H_soft (m) chia theo nguồn
+    from collections import defaultdict as _dd
+    _bh_soft = _dd(lambda: {"h_always": 0.0, "h_e0": 0.0, "zone": 1, "cdm": False})
+    for _sr in _ssc_rows:
+        _nm = _sr["bh_name"]; _tk = float(_sr["thick"] or 0)
+        _bh_soft[_nm]["zone"] = _sr["zone_id"]
+        _bh_soft[_nm]["cdm"] = _nm in _cdm_yes
+        if _sr["always_soft"]:
+            _bh_soft[_nm]["h_always"] += _tk
+        elif _sr["soft_e0"]:
+            _bh_soft[_nm]["h_e0"] += _tk
+
+    # Sắp xếp: KE→BXN→NHC, trong zone theo tên
+    _bh_order = sorted(_bh_soft.keys(), key=lambda n: (_bh_soft[n]["zone"], n))
+    _bar_names  = [b.split("-")[-1] for b in _bh_order]
+    _bar_labels = _bh_order
+    _bar_always = [round(_bh_soft[b]["h_always"], 2) for b in _bh_order]
+    _bar_e0     = [round(_bh_soft[b]["h_e0"], 2)     for b in _bh_order]
+    _bar_total  = [round(_bh_soft[b]["h_always"] + _bh_soft[b]["h_e0"], 2) for b in _bh_order]
+    _bar_cdm    = ["Tham gia CDM" if _bh_soft[b]["cdm"] else "Không tính CDM" for b in _bh_order]
+
+    # Màu zone theo vị trí cột
+    _zone_color_map = {1: "#f97316", 2: "#3b82f6", 3: "#22c55e"}
+    _bar_zcolors = [_zone_color_map[_bh_soft[b]["zone"]] for b in _bh_order]
+
+    _fig_ssc = _go_tv.Figure()
+    _fig_ssc.add_trace(_go_tv.Bar(
+        x=_bar_labels, y=_bar_always,
+        name="Lớp luôn yếu (1 / 1b / XMD)",
+        marker_color="#ef4444",
+        hovertemplate="%{x}<br>Lớp luôn yếu: %{y:.1f} m<extra></extra>",
+    ))
+    _fig_ssc.add_trace(_go_tv.Bar(
+        x=_bar_labels, y=_bar_e0,
+        name="Lớp kiểm tra e₀ ≥ 1,0",
+        marker_color="#fb923c",
+        hovertemplate="%{x}<br>Kiểm tra e₀: %{y:.1f} m<extra></extra>",
+    ))
+    # Đường nối tổng H_soft
+    _fig_ssc.add_trace(_go_tv.Scatter(
+        x=_bar_labels, y=_bar_total,
+        mode="markers+lines+text",
+        name="H_soft tổng (m)",
+        text=[f"{v:.1f}" if v > 0 else "" for v in _bar_total],
+        textposition="top center", textfont=dict(size=9, color="#fbbf24"),
+        line=dict(color="#fbbf24", width=1.5, dash="dot"),
+        marker=dict(size=7, color="#fbbf24"),
+        hovertemplate="%{x}<br>H_soft = %{y:.1f} m<extra></extra>",
+        yaxis="y",
+    ))
+    _fig_ssc.update_layout(
+        barmode="stack",
+        height=360,
+        template="plotly_dark",
+        title="Chiều dày đất yếu H_soft — phân loại theo TCCS 41:2022 §4.1",
+        xaxis=dict(title=None, tickfont=dict(size=10), tickangle=-30),
+        yaxis=dict(title="H_soft (m)"),
+        legend=dict(orientation="h", y=1.10, font=dict(size=10)),
+        margin=dict(l=50, r=20, t=70, b=80),
+    )
+    st.plotly_chart(_fig_ssc, use_container_width=True)
+
+    # Tóm tắt per zone
+    _z_names_map = {1: "KE", 2: "BXN", 3: "NHC"}
+    _zsumcols = st.columns(3)
+    for _zi, (_zid_sum, _zcol_sum) in enumerate(zip((1, 2, 3), _zsumcols)):
+        _bhs_z_sum = [b for b in _bh_order if _bh_soft[b]["zone"] == _zid_sum]
+        if not _bhs_z_sum:
+            _zcol_sum.caption(f"{_z_names_map[_zid_sum]} — chưa có địa tầng")
+            continue
+        _h_vals    = [_bh_soft[b]["h_always"] + _bh_soft[b]["h_e0"] for b in _bhs_z_sum]
+        _n_soft_bh = sum(1 for v in _h_vals if v > 0)
+        _zcol_sum.metric(
+            f"{_z_names_map[_zid_sum]} — H_soft trung bình",
+            f"{sum(_h_vals)/len(_h_vals):.1f} m",
+            f"{_n_soft_bh}/{len(_bhs_z_sum)} HK có lớp đất yếu",
+            delta_color="off",
+        )
+
+    st.divider()
+
     # ── 2. Cao độ tự nhiên – cao độ thiết kế ────────────────────────────────
     st.markdown("### 2. Cao độ tự nhiên – cao độ thiết kế")
     _c2a, _c2b, _c2c, _c2s = st.columns([1, 1, 1, 0.6])
