@@ -8147,6 +8147,29 @@ if _page == "ke_sw":
             if _k not in st.session_state:
                 st.session_state[_k] = {}
 
+        # Khôi phục lựa chọn đã lưu từ lần trước (chỉ nếu session mới, chưa có data)
+        if not st.session_state[_rec_key]:
+            try:
+                import sqlite3 as _sq3_uc
+                with _sq3_uc.connect(str(_DB), timeout=5) as _c_uc:
+                    _uc_rows = _c_uc.execute(
+                        "SELECT bh_name, recommended_pile, recommended_L_m, "
+                        "       z_custom_m, h1_custom_m "
+                        "FROM ke_sw_user_config"
+                    ).fetchall()
+                for _r_uc in _uc_rows:
+                    _nm_uc = _r_uc[0].replace("KE-", "")
+                    if _r_uc[1]:
+                        st.session_state[_rec_key][_nm_uc]   = _r_uc[1]
+                    if _r_uc[2] is not None:
+                        st.session_state[_ltk_key][_nm_uc]   = float(_r_uc[2])
+                    if _r_uc[3] is not None:
+                        st.session_state[_zcust_key][_nm_uc] = float(_r_uc[3])
+                    if _r_uc[4] is not None:
+                        st.session_state[_h1cust_key][_nm_uc] = float(_r_uc[4])
+            except Exception:
+                pass  # bảng chưa tồn tại hoặc lỗi đọc → dùng mặc định tối ưu
+
         # ── Cho phép user chọn HK trên tuyến kè SW ──────────────────────────────
         _all_bh_names = [b["name"] for b in _bhs_ke]
         _sw_align_key = "ke_sw_alignment_picks"
@@ -8295,8 +8318,8 @@ if _page == "ke_sw":
                 st.session_state[_rec_key][_bh_nm] = _on
                 st.session_state[_ltk_key][_bh_nm] = _olmax
 
-        # Nút reset thủ công + nút giả định Z=0
-        _btn_b1, _btn_b2 = st.columns([1, 1])
+        # Nút reset thủ công + nút giả định Z=0 + nút lưu lựa chọn
+        _btn_b1, _btn_b2, _btn_b3 = st.columns([1, 1, 1])
         with _btn_b1:
             if st.button("Đặt lại cọc tối ưu cho tất cả", key="btn_use_optimal",
                          help="Ghi đè lựa chọn hiện tại về cọc tối ưu (nhỏ nhất có L_max ≥ L_req)"):
@@ -8321,7 +8344,53 @@ if _page == "ke_sw":
                 if st.button("Hủy giả định Z", key="btn_z0_off", type="primary",
                              help="Xóa mọi giả định Z — dùng lại Z thực từ dữ liệu khảo sát"):
                     st.session_state[_zcust_key] = {}
-                    st.rerun()
+        with _btn_b3:
+            if st.button("Lưu lựa chọn", key="btn_save_user_config", type="primary",
+                         help="Ghi lại Cọc kiến nghị, L thiết kế và điều chỉnh Z/H lớp 1 — "
+                              "tự động khôi phục khi mở lại"):
+                try:
+                    import sqlite3 as _sq3_sv
+                    with _sq3_sv.connect(str(_DB), timeout=10) as _c_sv:
+                        _c_sv.execute("""
+                            CREATE TABLE IF NOT EXISTS ke_sw_user_config (
+                                bh_name          TEXT PRIMARY KEY,
+                                recommended_pile TEXT,
+                                recommended_L_m  REAL,
+                                z_custom_m       REAL,
+                                h1_custom_m      REAL,
+                                updated_at       TEXT
+                            )
+                        """)
+                        _now_sv = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        for _bh_sv in _bhs_on_alignment:
+                            _nm_sv   = _bh_sv["name"]
+                            _pile_sv = st.session_state[_rec_key].get(_nm_sv)
+                            _L_sv    = st.session_state[_ltk_key].get(_nm_sv)
+                            _z_sv    = st.session_state[_zcust_key].get(_nm_sv)
+                            _h1_sv   = st.session_state[_h1cust_key].get(_nm_sv)
+                            _c_sv.execute("""
+                                INSERT OR REPLACE INTO ke_sw_user_config
+                                    (bh_name, recommended_pile, recommended_L_m,
+                                     z_custom_m, h1_custom_m, updated_at)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (f"KE-{_nm_sv}", _pile_sv, _L_sv, _z_sv, _h1_sv, _now_sv))
+                        _c_sv.commit()
+                    # Đồng bộ sang JSON config (chỉ 2 trường config: pile + L)
+                    _ke_j = json.loads(_KE_JSON.read_text(encoding="utf-8"))
+                    for _bh_j in _ke_j.get("boreholes", []):
+                        _nm_j = _bh_j["name"]
+                        if _nm_j in st.session_state[_rec_key]:
+                            _bh_j["recommended_pile"] = st.session_state[_rec_key][_nm_j]
+                        if _nm_j in st.session_state[_ltk_key]:
+                            _bh_j["recommended_L_m"]  = float(st.session_state[_ltk_key][_nm_j])
+                    _KE_JSON.write_text(
+                        json.dumps(_ke_j, ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+                    _load_ke_sw.clear()
+                    st.success("Đã lưu. Khi mở lại app sẽ tự khôi phục lựa chọn này.")
+                except Exception as _e_sv:
+                    st.error(f"Không lưu được: {_e_sv}")
 
         _z_cust_active = st.session_state.get(_zcust_key, {})
         if _z_cust_active:
