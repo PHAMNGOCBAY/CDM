@@ -1826,3 +1826,81 @@ Pre-migrate trước commit (idempotent ALTER TABLE try/except trong app).
 **Soft symbols** mặc định: `("1", "1b", "CH", "MH", "CH-OH", "MH-OH")` — query Ip TB từ `lab_tests.Ip` theo `symbol_tcvn`.
 
 **Fallback an toàn:** Nếu import `bjerrum_mu` fail → μ=1.0 → Cu=Su (giữ nguyên hành vi cũ, không vỡ app).
+
+---
+
+### 37. Đoạn chuyển tiếp Đường ↔ Cầu (Cống) — TCCS 41:2022 Phụ lục E
+
+**File tài liệu:** [46-tccs41-phuluc-E-doan-chuyen-tiep.md](46-tccs41-phuluc-E-doan-chuyen-tiep.md)
+**File engine:** `scripts/settlement_calc.py` — section 6c (cuối file trước DEMO)
+**JSON:** `data/tccs41_params.json` → `tccs41_limits.appendix_E_transition_zone`
+**SQLite:** `tccs41_smoothness_limits` (20 rows) · `tccs41_approach_slab` (3 rows)
+
+#### Phạm vi áp dụng (E.3.2.1)
+
+| Tình huống | Bắt buộc thiết kế chuyển tiếp? |
+|---|---|
+| Cầu/cống đường cấp V, VI | KHÔNG |
+| Cống cấp I–IV có đất đắp trên đỉnh > 1,0 m | KHÔNG |
+| Cầu/cống đường cao tốc | **CÓ** |
+| Cầu đường cấp I–IV | **CÓ** |
+| Cống cấp I–IV đất đắp < 1,0 m | **CÓ** |
+
+#### Bảng E.1 — Độ bằng phẳng $i$ dọc tim đường
+
+| Cấp đường | Công trình | v=40 | v=60 | v=80 | v=100 | v=120 |
+|---|---|:---:|:---:|:---:|:---:|:---:|
+| Cao tốc (TCVN 5729) | Cầu | — | 1/175 | 1/200 | 1/250 | 1/250 |
+| Cao tốc | Cống | — | 1/150 | 1/150 | 1/150 | 1/150 |
+| Cấp I–IV (TCVN 4054) | Cầu | 1/125 | 1/150 | 1/175 | 1/200 | 1/200 |
+| Cấp I–IV | Cống | 1/125 | 1/125 | 1/150 | 1/150 | 1/150 |
+
+Cho phép tạo "vồng" trước với độ dốc tối đa **1/125**.
+
+#### Công thức E.1–E.4 — Chiều dài đoạn chuyển tiếp
+
+| Công thức | Trường hợp | Biểu thức |
+|---|---|---|
+| E.1 | Tổng | $L_{ct} \geq L_1 + L_2$ |
+| E.2 | Cầu | $L_1 \geq (\Delta S_f - \Delta S_c)/S$, min $= 3H + (3\div 5)$ m |
+| E.3 | Cống | $L_1 \geq (\Delta S_f - \Delta S_{cg})/S$, min $= D + 2H$ |
+| E.4 | Đoạn dài | $L_2 \geq (\Delta S_1 - \Delta S_f)/S$ |
+
+**Hằng số:** $\Delta S_c$ (TCVN 11823) = 25,4 mm/100 năm; 3,8 mm/15 năm.
+
+#### Bảng E.2 — Chiều dài bản quá độ
+
+| Loại cầu | $L$ tham khảo |
+|---|:---:|
+| Cầu nhỏ | $\geq 5$ m |
+| Cầu trung | 8 ÷ 12 m |
+| Cầu lớn | 8 ÷ 12 m |
+
+**Chiều dày:** $t \geq \max(L/20,\ 300\ \text{mm})$. Đặt sâu **700 mm** dưới mặt đường, dốc dọc 4–10%, **cốt thép 2 lớp**.
+
+#### Hàm public — `scripts/settlement_calc.py`
+
+| Hàm | Vai trò |
+| --- | --- |
+| `get_smoothness_limit(road_class_code, structure, speed_kmh)` | Tra Bảng E.1 — trả về `{denominator, i_value, i_text}` |
+| `calc_transition_length(deltaSf_m, deltaS1_m, S_denominator, H_m, structure, D_m, deltaSc_m, deltaScg_m, extra_m)` | Tính $L_1, L_2, L_{ct}$ theo E.1–E.4. Auto chọn E.2 (cầu) hoặc E.3 (cống). Trả về `{L1_calc, L1_min, L1, L2, Lct, governs_L1, formula_id}` |
+| `get_approach_slab_length(bridge_type_code)` | Tra Bảng E.2 — `'small' / 'medium' / 'large'` |
+| `calc_approach_slab_thickness(L_m)` | $t = \max(L/20, 300\ \text{mm})$ — trả về `{t_m, governs}` |
+| `create_appendix_E_tables(db_path)` | Tạo 2 bảng SQLite + populate (idempotent) |
+
+**Mã code hợp lệ:**
+- `road_class_code`: `'cao_toc'` · `'cap_I_IV'`
+- `structure`: `'cau'` · `'cong'`
+- `speed_kmh`: 40 / 60 / 80 / 100 / 120
+- `bridge_type_code`: `'small'` · `'medium'` · `'large'`
+
+#### Giải pháp xử lý đất yếu (E.4.2)
+
+| Tham số | Giá trị |
+|---|---|
+| Chia đoạn nhỏ | 5 – 15 m |
+| Cố kết tối thiểu trước thi công mố | **90%** |
+| Bước giảm chiều sâu cọc (bậc thang) | 10 – 15% chiều dài |
+| Khoảng cách cọc tăng dần | 1,2 – 1,5 lần |
+| $H_{\max}$ không đất yếu | < 6 m |
+| $H_{\max}$ có đất yếu | < 4 m |

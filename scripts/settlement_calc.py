@@ -984,6 +984,235 @@ def list_tccs41_limits(db_path: Optional[Path] = None) -> list[dict]:
 
 
 # ──────────────────────────────────────────────────────────────────
+# 6c. TCCS 41 PHỤ LỤC E — ĐOẠN CHUYỂN TIẾP ĐƯỜNG ↔ CẦU (CỐNG)
+# ──────────────────────────────────────────────────────────────────
+# Bảng E.1 (độ bằng phẳng i) — lưu denominator: i = 1/denominator.
+_SMOOTHNESS_TABLE_E1 = {
+    # (road_class, structure, speed_kmh) → denominator (None = không quy định)
+    ("cao_toc",  "cau",  40):  None,
+    ("cao_toc",  "cau",  60):  175,
+    ("cao_toc",  "cau",  80):  200,
+    ("cao_toc",  "cau", 100):  250,
+    ("cao_toc",  "cau", 120):  250,
+    ("cao_toc",  "cong", 40):  None,
+    ("cao_toc",  "cong", 60):  150,
+    ("cao_toc",  "cong", 80):  150,
+    ("cao_toc",  "cong",100):  150,
+    ("cao_toc",  "cong",120):  150,
+    ("cap_I_IV", "cau",  40):  125,
+    ("cap_I_IV", "cau",  60):  150,
+    ("cap_I_IV", "cau",  80):  175,
+    ("cap_I_IV", "cau", 100):  200,
+    ("cap_I_IV", "cau", 120):  200,
+    ("cap_I_IV", "cong", 40):  125,
+    ("cap_I_IV", "cong", 60):  125,
+    ("cap_I_IV", "cong", 80):  150,
+    ("cap_I_IV", "cong",100):  150,
+    ("cap_I_IV", "cong",120):  150,
+}
+
+# Bảng E.2 (chiều dài bản quá độ) — (min, max) m
+_APPROACH_SLAB_E2 = {
+    "small":  (5.0,  None),   # Cầu nhỏ ≥ 5 m
+    "medium": (8.0,  12.0),   # Cầu trung 8–12 m
+    "large":  (8.0,  12.0),   # Cầu lớn 8–12 m
+}
+
+# Độ lún dư mố cầu theo TCVN 11823 — Điều E.3.2.2.2
+DELTA_SC_TCVN11823_100YR_M = 0.0254   # 25,4 mm
+DELTA_SC_TCVN11823_15YR_M  = 0.0038   # 3,8 mm
+
+
+def get_smoothness_limit(road_class_code: str, structure: str,
+                         speed_kmh: int) -> dict:
+    """Tra Bảng E.1 → trả về (i, denominator).
+
+    Args:
+        road_class_code: 'cao_toc' (TCVN 5729) hoặc 'cap_I_IV' (TCVN 4054)
+        structure:       'cau' hoặc 'cong'
+        speed_kmh:       40 / 60 / 80 / 100 / 120
+
+    Returns:
+        {'denominator': int|None, 'i_value': float|None, 'i_text': str}
+        Ví dụ: denominator=200 → i = 1/200 = 0.005
+    """
+    key = (road_class_code, structure, int(speed_kmh))
+    denom = _SMOOTHNESS_TABLE_E1.get(key)
+    if denom is None:
+        return {"denominator": None, "i_value": None, "i_text": "—"}
+    return {
+        "denominator": int(denom),
+        "i_value":     1.0 / denom,
+        "i_text":      f"1/{denom}",
+    }
+
+
+def get_approach_slab_length(bridge_type_code: str) -> dict:
+    """Tra Bảng E.2 → trả về (L_min, L_max) m.
+
+    bridge_type_code: 'small' | 'medium' | 'large'
+    """
+    if bridge_type_code not in _APPROACH_SLAB_E2:
+        raise ValueError(
+            f"bridge_type_code không hợp lệ: {bridge_type_code!r}. "
+            "Dùng 'small' / 'medium' / 'large'."
+        )
+    Lmin, Lmax = _APPROACH_SLAB_E2[bridge_type_code]
+    return {
+        "L_min_m":      float(Lmin),
+        "L_max_m":      float(Lmax) if Lmax is not None else None,
+        "L_text":       (f">= {Lmin:.0f} m" if Lmax is None
+                         else f"{Lmin:.0f} ÷ {Lmax:.0f} m"),
+        "thickness_rule": "t >= max(L/20, 300 mm)",
+    }
+
+
+def calc_approach_slab_thickness(L_m: float) -> dict:
+    """E.3.3.2.2: t = max(L/20, 300 mm)."""
+    t_L20_m = L_m / 20.0
+    t_min_m = 0.300
+    t_m     = max(t_L20_m, t_min_m)
+    governs = "L/20" if t_L20_m >= t_min_m else "300 mm tối thiểu"
+    return {
+        "L_m":     float(L_m),
+        "t_L20_m": float(t_L20_m),
+        "t_min_m": t_min_m,
+        "t_m":     float(t_m),
+        "governs": governs,
+    }
+
+
+def calc_transition_length(
+    deltaSf_m: float,
+    deltaS1_m: float,
+    S_denominator: float,
+    H_m: float,
+    structure: str = "cau",
+    D_m: Optional[float] = None,
+    deltaSc_m: float = DELTA_SC_TCVN11823_15YR_M,
+    deltaScg_m: float = 0.0,
+    extra_m: float = 4.0,
+) -> dict:
+    """Tính chiều dài đoạn chuyển tiếp Lct theo công thức E.1–E.4.
+
+    Args:
+        deltaSf_m:    Độ lún dư đoạn gần mố/cống (m) — sau 15/30 năm
+        deltaS1_m:    Độ lún dư đoạn nền thông thường (m) — sau 15/30 năm
+        S_denominator: Mẫu số độ bằng phẳng Bảng E.1 (S = 1/denominator)
+        H_m:          Chiều cao đất đắp sau mố / cạnh cống (m)
+        structure:    'cau' (dùng E.2) hoặc 'cong' (dùng E.3)
+        D_m:          Khẩu độ cống (m) — bắt buộc khi structure='cong'
+        deltaSc_m:    Độ lún dư mố cầu — mặc định 3,8 mm (TCVN 11823 — 15 năm)
+        deltaScg_m:   Độ lún dư thiết kế cống (m) — mặc định 0
+        extra_m:      Số m cộng thêm (3 ÷ 5 m) cho min của L1 đoạn gần mố
+
+    Returns:
+        dict gồm L1_calc, L1_min, L1, L2, Lct, governs_L1, formula_id
+    """
+    S = 1.0 / float(S_denominator)
+
+    if structure == "cau":
+        # E.2: đoạn gần mố cầu
+        L1_calc = max(0.0, (deltaSf_m - deltaSc_m) / S)
+        L1_min  = 3.0 * H_m + float(extra_m)
+        formula_id = "E.2"
+        ref_value = deltaSc_m
+    elif structure == "cong":
+        if D_m is None or D_m <= 0:
+            raise ValueError("structure='cong' yêu cầu D_m (khẩu độ cống) > 0")
+        # E.3: đoạn cạnh cống
+        L1_calc = max(0.0, (deltaSf_m - deltaScg_m) / S)
+        L1_min  = float(D_m) + 2.0 * H_m
+        formula_id = "E.3"
+        ref_value = deltaScg_m
+    else:
+        raise ValueError(f"structure không hợp lệ: {structure!r}. Dùng 'cau' hoặc 'cong'.")
+
+    L1 = max(L1_calc, L1_min)
+    governs_L1 = "công thức" if L1_calc >= L1_min else "giá trị tối thiểu"
+
+    # E.4: L2 = (ΔS1 − ΔSf) / S
+    L2 = max(0.0, (deltaS1_m - deltaSf_m) / S)
+
+    Lct = L1 + L2
+
+    return {
+        "L1_calc_m":    round(L1_calc, 2),
+        "L1_min_m":     round(L1_min, 2),
+        "L1_m":         round(L1, 2),
+        "L2_m":         round(L2, 2),
+        "Lct_m":        round(Lct, 2),
+        "S":            S,
+        "S_text":       f"1/{int(S_denominator)}",
+        "governs_L1":   governs_L1,
+        "formula_id":   formula_id,
+        "ref_deltaS_m": ref_value,
+    }
+
+
+def create_appendix_E_tables(db_path: Optional[Path] = None) -> None:
+    """Tạo + populate 2 bảng SQLite cho Phụ lục E — idempotent."""
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        # Bảng E.1 — độ bằng phẳng
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tccs41_smoothness_limits (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                road_class_code TEXT NOT NULL,
+                structure       TEXT NOT NULL,
+                speed_kmh       INTEGER NOT NULL,
+                i_denominator   INTEGER,
+                source          TEXT DEFAULT 'TCCS 41:2022 Bảng E.1',
+                updated_at      TEXT DEFAULT (datetime('now','localtime')),
+                UNIQUE (road_class_code, structure, speed_kmh)
+            )
+        """)
+        for (rc, struct, v), denom in _SMOOTHNESS_TABLE_E1.items():
+            con.execute("""
+                INSERT INTO tccs41_smoothness_limits
+                    (road_class_code, structure, speed_kmh, i_denominator)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (road_class_code, structure, speed_kmh) DO UPDATE SET
+                    i_denominator = excluded.i_denominator,
+                    updated_at    = datetime('now','localtime')
+            """, (rc, struct, v, denom))
+
+        # Bảng E.2 — chiều dài bản quá độ
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tccs41_approach_slab (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                bridge_type_code    TEXT NOT NULL UNIQUE,
+                bridge_type_desc    TEXT NOT NULL,
+                L_min_m             REAL NOT NULL,
+                L_max_m             REAL,
+                thickness_rule      TEXT DEFAULT 't >= max(L/20, 300 mm)',
+                depth_below_pvmt_mm INTEGER DEFAULT 700,
+                slope_pct_min       REAL DEFAULT 4.0,
+                slope_pct_max       REAL DEFAULT 10.0,
+                source              TEXT DEFAULT 'TCCS 41:2022 Bảng E.2',
+                updated_at          TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+        _slab_rows = [
+            ("small",  "Cầu nhỏ",  5.0,  None),
+            ("medium", "Cầu trung", 8.0, 12.0),
+            ("large",  "Cầu lớn",  8.0, 12.0),
+        ]
+        for code, desc, lmin, lmax in _slab_rows:
+            con.execute("""
+                INSERT INTO tccs41_approach_slab
+                    (bridge_type_code, bridge_type_desc, L_min_m, L_max_m)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (bridge_type_code) DO UPDATE SET
+                    bridge_type_desc = excluded.bridge_type_desc,
+                    L_min_m          = excluded.L_min_m,
+                    L_max_m          = excluded.L_max_m,
+                    updated_at       = datetime('now','localtime')
+            """, (code, desc, lmin, lmax))
+        con.commit()
+
+
+# ──────────────────────────────────────────────────────────────────
 # 7. DEMO
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":

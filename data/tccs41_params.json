@@ -56,6 +56,103 @@
       "cat2_general":  1.20,
       "cat1_highway":  1.40
     },
+    "appendix_E_transition_zone": {
+      "_ref": "TCCS 41:2022/TCĐBVN — Phụ lục E — Đoạn chuyển tiếp giữa đường và cầu (cống)",
+      "_note": "Quy định về độ bằng phẳng, chiều dài đoạn chuyển tiếp, bản quá độ và giải pháp xử lý đất yếu",
+      "delta_Sc_TCVN11823_m": {
+        "100_years": 0.0254,
+        "15_years":  0.0038,
+        "_note": "Độ lún dư mố cầu TCVN 11823: 25,4 mm trong 100 năm; 3,8 mm trong 15 năm"
+      },
+      "t_years_pavement": {
+        "flexible": 15,
+        "rigid":    30
+      },
+      "smoothness_table_E1": {
+        "_ref": "Bảng E.1 — Quy định độ bằng phẳng i theo phương dọc tim đường",
+        "_value_format": "i_denominator (i = 1/denominator)",
+        "rows": [
+          {
+            "road_class_code": "cao_toc",
+            "road_class_desc": "Đường cao tốc (TCVN 5729)",
+            "structure": "cau",
+            "limits_by_speed_kmh": { "40": null, "60": 175, "80": 200, "100": 250, "120": 250 }
+          },
+          {
+            "road_class_code": "cao_toc",
+            "road_class_desc": "Đường cao tốc (TCVN 5729)",
+            "structure": "cong",
+            "limits_by_speed_kmh": { "40": null, "60": 150, "80": 150, "100": 150, "120": 150 }
+          },
+          {
+            "road_class_code": "cap_I_IV",
+            "road_class_desc": "Đường ô tô cấp I–IV (TCVN 4054)",
+            "structure": "cau",
+            "limits_by_speed_kmh": { "40": 125, "60": 150, "80": 175, "100": 200, "120": 200 }
+          },
+          {
+            "road_class_code": "cap_I_IV",
+            "road_class_desc": "Đường ô tô cấp I–IV (TCVN 4054)",
+            "structure": "cong",
+            "limits_by_speed_kmh": { "40": 125, "60": 125, "80": 150, "100": 150, "120": 150 }
+          }
+        ],
+        "precamber_max_slope_inv": 125,
+        "_precamber_note": "Cho phép tạo 'vồng' trước với độ dốc dọc tối đa 1/125"
+      },
+      "transition_length_formulas": {
+        "_ref": "Công thức E.1, E.2, E.3, E.4",
+        "E1_Lct_total":          "Lct >= L1 + L2",
+        "E2_L1_near_bridge":     "L1 >= (DeltaSf - DeltaSc)/S, min = 3*H + (3..5) m",
+        "E3_L1_side_culvert":    "L1 >= (DeltaSf - DeltaScg)/S, min = D + 2*H",
+        "E4_L2":                 "L2 >= (DeltaS1 - DeltaSf)/S",
+        "min_extra_m_range":     [3.0, 5.0],
+        "fill_slope_ratio":      "1:2"
+      },
+      "approach_slab_E2": {
+        "_ref": "Bảng E.2 — Chiều dài bản quá độ",
+        "_unit": "m",
+        "rows": [
+          { "bridge_type_code": "small",  "bridge_type_desc": "Cầu nhỏ",  "length_min_m":  5,   "length_max_m": null },
+          { "bridge_type_code": "medium", "bridge_type_desc": "Cầu trung", "length_min_m":  8,   "length_max_m":   12 },
+          { "bridge_type_code": "large",  "bridge_type_desc": "Cầu lớn",  "length_min_m":  8,   "length_max_m":   12 }
+        ],
+        "thickness_rule": "t >= max(L/20, 300 mm)",
+        "depth_below_pavement_mm": 700,
+        "slope_pct_range": [4, 10],
+        "reinforcement": "Cốt thép 2 lớp trên và dưới",
+        "split_segment_m_range": [4, 8],
+        "_split_note": "Khi L quá lớn → chia nhiều đoạn (4–8) m"
+      },
+      "soft_soil_treatment_E422": {
+        "_ref": "E.4.2 — Giải pháp xử lý đất yếu trong đoạn chuyển tiếp",
+        "segment_length_m_range": [5, 15],
+        "min_consolidation_pct_before_abutment": 90,
+        "methods": [
+          "Thay đất",
+          "Chất tải tạm / gia tải khử lún",
+          "Bấc thấm + cọc cát thoát nước thẳng đứng",
+          "Bơm hút chân không",
+          "Đầm rung nền",
+          "Cọc đất xi măng / cọc đất vôi",
+          "Cọc vật liệu hạt (cọc cát, cọc đá dăm)"
+        ],
+        "alternative_when_infeasible": [
+          "Sàn giảm tải trên hệ móng cọc BTCT",
+          "Cống hộp dọc thay thế phần nền đắp đầu cầu"
+        ],
+        "pile_step_design": {
+          "depth_reduction_step_pct": [10, 15],
+          "spacing_increase_factor":   [1.2, 1.5],
+          "_note": "Khi dùng cọc gia cố — thay đổi chiều sâu + mật độ cọc theo bậc thang để đảm bảo độ bằng phẳng Bảng E.1"
+        }
+      },
+      "H_max_recommended_m": {
+        "no_soft_soil":   6.0,
+        "with_soft_soil": 4.0,
+        "_note": "E.4.1 — chiều cao đất đắp sau mố cầu, cạnh cống nên chọn nhỏ hơn các giá trị này"
+      }
+    },
     "bjerrum_correction": {
       "_ref": "TCCS 41:2022/TCĐBVN — Phụ lục C.3.2 — Bảng C.1 — Công thức C.5",
       "_note": "Cường độ kháng cắt tính toán c_u = μ · S_u (VST). Áp dụng cho lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp; xem góc ma sát φ = 0.",
