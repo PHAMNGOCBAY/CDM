@@ -15642,72 +15642,117 @@ if _page == "tvtk_prep":
     # ── 4. Đất yếu – phạm vi xử lý nền ─────────────────────────────────────
     st.markdown("### 4. Nhận diện đất yếu – phạm vi xử lý nền")
     st.caption(f"Chỉ hiển thị {len(_cdm_yes)} hố khoan tham gia tính toán xử lý nền CDM")
-    _SOFT_SYMS = ("1", "1b", "2", "XMD")
+
+    # Nguyên tắc xác định đất yếu:
+    #   • Lớp 1 và 1b: luôn tính (phân loại địa tầng = đất yếu)
+    #   • Lớp khác (2b, XMD, 2…): tính NẾU e₀_TB > 1 từ thí nghiệm nén cố kết
+    #   • Đáy cọc CDM = cao độ tự nhiên − H_soft − 1 m (ngàm lớp cứng)
+    with st.expander("Nguyên tắc xác định chiều dày lớp đất yếu H_soft", expanded=False):
+        st.markdown(
+            "**Lớp 1 và lớp 1b** — luôn được tính vào H_soft "
+            "(phân loại địa tầng là đất yếu, bùn sét / sét mềm).\n\n"
+            "**Lớp khác (2b, XMD, lớp 2…)** — chỉ tính vào H_soft nếu "
+            "hệ số rỗng trung bình e₀ > 1,0 từ thí nghiệm nén cố kết trong phòng "
+            "(e₀ > 1 ↔ đất ở trạng thái rất rỗng, chưa cố kết hoặc dẻo chảy).\n\n"
+            "**Đáy cọc CDM** = cao độ mặt đất tự nhiên tại hố khoan − H_soft − 1 m "
+            "(1 m ngàm vào lớp đất cứng phía dưới lớp yếu)."
+        )
+
     _soft_rows = []
     for b in [b for b in _bhs_tv if b["name"] in _cdm_yes]:
-        _lyrs = _cv.execute("""
-            SELECT symbol, description, depth_top_m, depth_bot_m, thickness_m
-            FROM layers WHERE borehole_id = ? AND symbol IN ('1','1b','2','XMD')
-            ORDER BY depth_top_m
+        # Lấy TẤT CẢ lớp địa tầng để phân loại lại
+        _lyrs_all = _cv.execute("""
+            SELECT symbol, description, depth_top_m, depth_bot_m,
+                   COALESCE(thickness_m, depth_bot_m - depth_top_m) AS thick
+            FROM layers WHERE borehole_id = ? ORDER BY depth_top_m
         """, (b["id"],)).fetchall()
-        if not _lyrs:
+        if not _lyrs_all:
             continue
-        _top_first = _lyrs[0]["depth_top_m"]
-        _bot_last  = _lyrs[-1]["depth_bot_m"]
 
-        # Mô tả đại diện: lấy description của lớp '1' đầu tiên, bỏ phần trùng lặp
-        _desc_raw = next((l["description"] for l in _lyrs if l["symbol"] == "1" and l["description"]), None)
-        if not _desc_raw:
-            _desc_raw = next((l["description"] for l in _lyrs if l["description"]), "")
-        # Rút gọn: giữ phần trước dấu phẩy đầu tiên nếu quá dài
-        _desc = _desc_raw.split(",")[0].strip() if _desc_raw and len(_desc_raw) > 40 else (_desc_raw or "—")
+        _h1 = _h1b = _h_extra = 0.0
+        _extra_syms = {}   # {symbol: thickness} cho lớp khác được tính
 
-        # Chiều dày riêng từng ký hiệu
-        def _h_sym(sym):
-            return sum(
-                (l["thickness_m"] or (l["depth_bot_m"] - l["depth_top_m"]))
-                for l in _lyrs if l["symbol"] == sym
-            )
-        _h1   = _h_sym("1")
-        _h1b  = _h_sym("1b")
-        _h2   = _h_sym("2")
-        _hxmd = _h_sym("XMD")
-        _htot = _h1 + _h1b + _h2 + _hxmd
+        for _lyr in _lyrs_all:
+            _sym   = _lyr["symbol"]
+            _thick = float(_lyr["thick"] or 0)
+            if _thick <= 0:
+                continue
 
-        # SPT trung bình trong phạm vi lớp yếu
+            if _sym in ("1", "1b"):
+                # Luôn tính
+                if _sym == "1":
+                    _h1  += _thick
+                else:
+                    _h1b += _thick
+            else:
+                # Kiểm tra e0_TB của lớp này
+                _e0_row = _cv.execute("""
+                    SELECT AVG(lt.e0) avg_e0
+                    FROM lab_tests lt
+                    WHERE lt.borehole_id = ?
+                      AND lt.depth_from_m >= ? AND lt.depth_from_m < ?
+                      AND lt.e0 IS NOT NULL AND lt.e0 > 0
+                """, (b["id"], _lyr["depth_top_m"], _lyr["depth_bot_m"])).fetchone()
+                _e0_avg = _e0_row["avg_e0"] if _e0_row and _e0_row["avg_e0"] else None
+                if _e0_avg is not None and _e0_avg > 1.0:
+                    _h_extra += _thick
+                    _extra_syms[_sym] = _extra_syms.get(_sym, 0) + _thick
+
+        _htot = _h1 + _h1b + _h_extra
+
+        # Lấy lớp soft thực tế (chỉ lớp được tính) để xác định từ–đến
+        _soft_depths = (
+            [l["depth_top_m"] for l in _lyrs_all if l["symbol"] in ("1","1b")]
+            + [l["depth_top_m"] for l in _lyrs_all
+               if l["symbol"] not in ("1","1b") and l["symbol"] in _extra_syms]
+        )
+        _soft_bots = (
+            [l["depth_bot_m"] for l in _lyrs_all if l["symbol"] in ("1","1b")]
+            + [l["depth_bot_m"] for l in _lyrs_all
+               if l["symbol"] not in ("1","1b") and l["symbol"] in _extra_syms]
+        )
+        _top_first = min(_soft_depths) if _soft_depths else 0
+        _bot_last  = max(_soft_bots)  if _soft_bots  else 0
+
+        # SPT và VST
         _spt_avg = _cv.execute("""
-            SELECT ROUND(AVG(s.N), 1)
-            FROM spt_values s
+            SELECT ROUND(AVG(s.N), 1) FROM spt_values s
             WHERE s.borehole_id = ?
               AND s.depth_m >= ? AND s.depth_m <= ?
               AND s.N IS NOT NULL AND s.N > 0
         """, (b["id"], _top_first, _bot_last)).fetchone()[0]
-
         _su_avg = _cv.execute("""
             SELECT ROUND(AVG(v.Su_kPa),1) FROM vane_shear_tests v
             JOIN vst_locations vl ON v.vst_loc_id = vl.id
             WHERE vl.name = ?
         """, (b["name"],)).fetchone()[0]
 
+        _extra_str = (
+            "  ".join(f"{sym}:{h:.1f}m" for sym, h in sorted(_extra_syms.items()))
+            if _extra_syms else "—"
+        )
         _soft_rows.append({
-            "Hố khoan":          b["name"],
-            "Khu vực":           _zone_codes.get(b["zone_id"], ""),
-            "Từ (m)":            f"{_top_first:.1f}",
-            "Đến (m)":           f"{_bot_last:.1f}",
-            "Dày lớp 1 (m)":     f"{_h1:.1f}"   if _h1   else "—",
-            "Dày lớp 1b (m)":    f"{_h1b:.1f}"  if _h1b  else "—",
-            "Dày lớp 2 (m)":     f"{_h2:.1f}"   if _h2   else "—",
-            "Dày XMD (m)":       f"{_hxmd:.1f}" if _hxmd else "—",
-            "Tổng dày (m)":      f"{_htot:.1f}",
-            "N-SPT TB":          f"{_spt_avg:.0f}" if _spt_avg else "—",
-            "su TB_VST (kPa)":   f"{_su_avg:.1f}" if _su_avg else "—",
-            "_desc":             _desc,
-            "_h_soft":           round(_htot, 2),
-            "_bh_name":          b["name"],
+            "Hố khoan":             b["name"],
+            "Khu vực":              _zone_codes.get(b["zone_id"], ""),
+            "Từ (m)":               f"{_top_first:.1f}",
+            "Đến (m)":              f"{_bot_last:.1f}",
+            "Dày lớp 1 (m)":        f"{_h1:.1f}"   if _h1   else "—",
+            "Dày lớp 1b (m)":       f"{_h1b:.1f}"  if _h1b  else "—",
+            "Lớp khác (e₀>1) (m)":  _extra_str,
+            "H_soft (m)":           f"{_htot:.1f}",
+            "N-SPT TB":             f"{_spt_avg:.0f}" if _spt_avg else "—",
+            "Su TB-VST (kPa)":      f"{_su_avg:.1f}" if _su_avg else "—",
+            "_h_soft":              round(_htot, 2),
+            "_bh_name":             b["name"],
+            "Khu vực_":             _zone_codes.get(b["zone_id"], ""),
         })
     if _soft_rows:
-        st.table(_pd_tv.DataFrame(_soft_rows).drop(columns=["_desc", "_h_soft", "_bh_name"]))
-        st.caption("Lớp 1: Bùn sét dẻo chảy, màu xám xanh  |  Lớp 1b: Sét ít dẻo xen kẹp cát lẫn sét, trạng thái dẻo chảy đến dẻo mềm")
+        st.table(_pd_tv.DataFrame(_soft_rows).drop(columns=["_h_soft", "_bh_name", "Khu vực_"]))
+        st.caption(
+            "Lớp 1: Bùn sét dẻo chảy  |  "
+            "Lớp 1b: Sét mềm xen kẹp cát  |  "
+            "Lớp khác (e₀>1): lớp không tên-1/1b nhưng còn rỗng, đủ điều kiện đất yếu"
+        )
     else:
         st.info("Chưa có dữ liệu địa tầng.")
 
