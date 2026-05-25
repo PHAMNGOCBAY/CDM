@@ -16790,6 +16790,190 @@ if _page == "tvtk_prep":
             })
         st.table(_pd_tv.DataFrame(_agg_rows))
 
+    # ── Trắc dọc CDM 3 khu vực ─────────────────────────────────────────────
+    st.markdown("#### Trắc dọc CDM theo khu vực")
+    st.caption(
+        f"Đỉnh cọc CDM thiết kế: **{_top:+.2f} m**  |  Ngàm lớp cứng: **{_pen:.1f} m**  |  "
+        "H đất yếu tính từ các lớp 1, 1b, 2, XMD."
+    )
+    import numpy as _np_pf
+    _des_map_pf = {1: _des_ke, 2: _des_bxn, 3: _des_nhc}
+    _zone_titles = {1: "KE — Kè Công Viên",
+                    2: "BXN — Bãi Đỗ Xe Ngầm",
+                    3: "NHC — Nhà Hành Chính"}
+
+    for _zid_pf in (1, 2, 3):
+        _zcode_pf = _zone_codes.get(_zid_pf, "")
+        _des_pf   = _des_map_pf.get(_zid_pf, 2.5)
+
+        # Lấy HK của zone (chỉ HK tham gia CDM + có tọa độ)
+        _bhs_pf = sorted(
+            [b for b in _bhs_tv
+             if b["zone_id"] == _zid_pf and b["name"] in _cdm_yes
+                and b["x_coord_m"] and b["y_coord_m"]],
+            key=lambda b: b["name"],
+        )
+        if len(_bhs_pf) < 2:
+            st.info(f"{_zone_titles[_zid_pf]}: cần ≥ 2 hố khoan có tọa độ — bỏ qua trắc dọc.")
+            continue
+
+        # H_soft per HK (lớp 1, 1b, 2, XMD)
+        _hsoft_pf = {}
+        for _b in _bhs_pf:
+            _h = _cv.execute("""
+                SELECT COALESCE(SUM(depth_bot_m - depth_top_m), 0.0)
+                FROM layers WHERE borehole_id=? AND symbol IN ('1','1b','2','XMD')
+            """, (_b["id"],)).fetchone()[0]
+            _hsoft_pf[_b["name"]] = float(_h) if _h else 0.0
+
+        # Lọc HK có H_soft > 0
+        _bhs_pf = [b for b in _bhs_pf if _hsoft_pf.get(b["name"], 0) > 0]
+        if len(_bhs_pf) < 2:
+            st.info(f"{_zone_titles[_zid_pf]}: không đủ HK có lớp yếu — bỏ qua.")
+            continue
+
+        # Chainage PCA - SVD
+        _xy_pf = _np_pf.array([(b["x_coord_m"], b["y_coord_m"]) for b in _bhs_pf])
+        _ctr   = _xy_pf.mean(axis=0)
+        _, _, _Vt_pf = _np_pf.linalg.svd(_xy_pf - _ctr, full_matrices=False)
+        _ch_raw_pf = ((_xy_pf - _ctr) @ _Vt_pf[0]).tolist()
+        _order_pf  = sorted(range(len(_bhs_pf)), key=lambda i: _ch_raw_pf[i])
+        _bhs_o     = [_bhs_pf[i] for i in _order_pf]
+        _ch_pf     = [_ch_raw_pf[i] - _ch_raw_pf[_order_pf[0]] for i in _order_pf]
+
+        _elev_pf   = [float(b["elevation_m"] or 0)                          for b in _bhs_o]
+        _hs_pf     = [float(_hsoft_pf[b["name"]])                           for b in _bhs_o]
+        _bot_soft  = [e - h                              for e, h in zip(_elev_pf, _hs_pf)]
+        _bot_cdm   = [e - h - _pen                       for e, h in zip(_elev_pf, _hs_pf)]
+        _L_cdm_pf  = [_top - bc                          for bc in _bot_cdm]
+        _lbl_pf    = [b["name"].replace(f"{_zcode_pf}-", "") for b in _bhs_o]
+        _n_pf      = len(_bhs_o)
+        _ch_ext_pf = [_ch_pf[0] - 10, _ch_pf[-1] + 10]
+
+        _fig_pf = _go_tv.Figure()
+
+        # Vùng tô đất đắp (mặt đất → cao độ TK)
+        if any(v < _des_pf for v in _elev_pf):
+            _fig_pf.add_trace(_go_tv.Scatter(
+                x=_ch_pf + _ch_pf[::-1],
+                y=[_des_pf] * _n_pf + _elev_pf[::-1],
+                fill="toself", fillcolor="rgba(210,180,100,0.22)",
+                line=dict(width=0), mode="lines",
+                name="Đất đắp", hoverinfo="skip",
+            ))
+
+        # Vùng tô phạm vi xử lý CDM (đỉnh cọc → đáy cọc)
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf + _ch_pf[::-1],
+            y=[_top] * _n_pf + _bot_cdm[::-1],
+            fill="toself", fillcolor="rgba(30,120,200,0.16)",
+            line=dict(width=0), mode="lines",
+            name="Phạm vi xử lý CDM", hoverinfo="skip",
+        ))
+
+        # Cột CDM mỗi HK (đứng, đứt)
+        for i in range(_n_pf):
+            _fig_pf.add_trace(_go_tv.Scatter(
+                x=[_ch_pf[i], _ch_pf[i]], y=[_top, _bot_cdm[i]],
+                mode="lines", line=dict(color="#1a6fbd", width=1.2, dash="dot"),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+        # Mặt đất tự nhiên
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf, y=_elev_pf,
+            mode="lines+markers+text", name="Mặt đất tự nhiên",
+            line=dict(color="#7B3F00", width=2.5),
+            marker=dict(size=10, color="#7B3F00", symbol="circle",
+                        line=dict(color="white", width=1.5)),
+            text=[f"{n}<br><b>{v:+.2f}</b>" for n, v in zip(_lbl_pf, _elev_pf)],
+            textposition="top center",
+            textfont=dict(size=9, color="#5a2000"),
+            hovertemplate="<b>%{customdata}</b><br>Chainage: %{x:.0f} m<br>"
+                          "Mặt đất: <b>%{y:+.2f} m</b><extra></extra>",
+            customdata=_lbl_pf,
+        ))
+
+        # Cao độ thiết kế
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_ext_pf, y=[_des_pf, _des_pf],
+            mode="lines", name=f"Cao độ thiết kế ({_des_pf:+.2f} m)",
+            line=dict(color="#2ca02c", width=2.5, dash="dash"),
+            hovertemplate=f"Cao độ thiết kế: {_des_pf:+.2f} m<extra></extra>",
+        ))
+
+        # Đỉnh cọc CDM (ngang)
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_ext_pf, y=[_top, _top],
+            mode="lines", name=f"Đỉnh cọc CDM ({_top:+.2f} m)",
+            line=dict(color="#1a6fbd", width=2, dash="dash"),
+            hovertemplate=f"Đỉnh CDM: {_top:+.2f} m<extra></extra>",
+        ))
+
+        # Đáy lớp đất yếu (hồng, đứt + ◆)
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf, y=_bot_soft,
+            mode="lines+markers+text", name="Đáy lớp đất yếu",
+            line=dict(color="#e377c2", width=2, dash="longdash"),
+            marker=dict(size=9, symbol="diamond", color="#e377c2",
+                        line=dict(color="white", width=1.2)),
+            text=[f"{v:+.2f}" for v in _bot_soft],
+            textposition="bottom right",
+            textfont=dict(size=9, color="#b5367f"),
+            hovertemplate="<b>%{customdata[0]}</b><br>Chainage: %{x:.0f} m<br>"
+                          "Đáy lớp yếu: <b>%{y:+.2f} m</b><br>"
+                          "H_đất_yếu: %{customdata[1]:.1f} m<extra></extra>",
+            customdata=list(zip(_lbl_pf, _hs_pf)),
+        ))
+
+        # Đáy cọc CDM (đỏ đậm, đường liền + ▼ cam đậm)
+        _hov_bot = [
+            f"<b>{_lbl_pf[i]}</b><br>Chainage: {_ch_pf[i]:.0f} m<br>"
+            f"<b>Đáy cọc CDM: {_bot_cdm[i]:+.2f} m</b><br>"
+            f"L_cọc: {_L_cdm_pf[i]:.1f} m  |  H_đất_yếu: {_hs_pf[i]:.1f} m  |  Ngàm: {_pen:.1f} m"
+            for i in range(_n_pf)
+        ]
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf, y=_bot_cdm,
+            mode="lines+markers+text", name="Đáy cọc CDM",
+            line=dict(color="#d62728", width=2.6),
+            marker=dict(size=11, symbol="triangle-down", color="#ff7f0e",
+                        line=dict(color="#a01010", width=1.5)),
+            text=[f"<b>{v:+.2f}</b>" for v in _bot_cdm],
+            textposition="bottom center",
+            textfont=dict(size=9, color="#a01010"),
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=_hov_bot,
+        ))
+
+        # Layout
+        _all_y = _elev_pf + _bot_soft + _bot_cdm + [_top, _des_pf]
+        _y_lo  = min(_all_y) - 3
+        _y_hi  = max(_all_y) + 3.5
+        _Lmin = min(_L_cdm_pf); _Lmax = max(_L_cdm_pf); _Lavg = sum(_L_cdm_pf)/len(_L_cdm_pf)
+        _fig_pf.update_layout(
+            height=560,
+            margin=dict(l=65, r=20, t=60, b=90),
+            xaxis=dict(title=f"Chainage dọc tuyến {_zcode_pf} (m)",
+                       gridcolor="#ebebeb", tickfont=dict(size=11)),
+            yaxis=dict(title="Cao độ (m)", range=[_y_lo, _y_hi],
+                       gridcolor="#ebebeb", tickfont=dict(size=11),
+                       zeroline=True, zerolinecolor="#999", zerolinewidth=1),
+            legend=dict(orientation="h", x=0, y=-0.18, xanchor="left",
+                        font=dict(size=10)),
+            plot_bgcolor="white", paper_bgcolor="white", hovermode="closest",
+            title=dict(
+                text=(
+                    f"<b>Trắc dọc CDM — {_zone_titles[_zid_pf]}</b>  |  "
+                    f"{_n_pf} hố khoan  |  "
+                    f"L_cọc: {_Lmin:.1f} ÷ {_Lmax:.1f} m (TB {_Lavg:.1f} m)"
+                ),
+                font=dict(size=12), x=0,
+            ),
+        )
+        st.plotly_chart(_fig_pf, use_container_width=True,
+                        key=f"_tvtk_cdm_profile_{_zcode_pf}")
+
     st.caption("Giá trị trung bình theo khu vực × ký hiệu lớp đất — từ thí nghiệm phòng và cắt cánh hiện trường")
     _SYM_LABEL = {
         "CH": "CH — Sét dẻo cao (đất yếu)",
