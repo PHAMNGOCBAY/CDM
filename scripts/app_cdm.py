@@ -15707,6 +15707,118 @@ if _page == "tvtk_prep":
             + (f"Lớp 1b có tại {_n_1b} HK" if _n_1b else "Không có lớp 1b")
         )
 
+        # ── Bảng thống kê độ lún S1 khối gia cố CDM theo 3 phương án ─────────
+        import math as _math_e
+        _cdm_full_e = _cv.execute(
+            "SELECT D_mm, spacing_m, pattern, Ec_factor, qu_kPa, q_kPa FROM tvtk_cdm_config WHERE id=1"
+        ).fetchone()
+        if _cdm_full_e:
+            _D_m_e   = float(_cdm_full_e["D_mm"]) / 1000.0
+            _s_m_e   = float(_cdm_full_e["spacing_m"])
+            _pat_e   = _cdm_full_e["pattern"]
+            _kEc_e   = float(_cdm_full_e["Ec_factor"])
+            _qu_e    = float(_cdm_full_e["qu_kPa"])
+            _q_cdm_e = float(_cdm_full_e["q_kPa"])   # 40.8 kPa
+
+            # Tỷ lệ diện tích thay thế a = Ac / At
+            _Ac_e = _math_e.pi * (_D_m_e / 2.0) ** 2
+            _At_e = (_s_m_e ** 2 if _pat_e == "square"
+                     else _math_e.sqrt(3) / 2.0 * _s_m_e ** 2)
+            _a_e  = _Ac_e / _At_e
+
+            # Mô đun trụ CDM: Ec = k × qu_design/2  (TCVN 9403 B.5.1)
+            _Ec_e = _kEc_e * (_qu_e / 2.0)
+
+            # Chuẩn bị cột SQLite nếu chưa có
+            for _col_s in ("Cu_VST_avg_kPa", "Es_kPa",
+                           "S1_pa1_cm", "S1_pa2_cm", "S1_pa3_cm"):
+                try:
+                    _cv.execute(f"ALTER TABLE tvtk_bh_cdm ADD COLUMN {_col_s} REAL")
+                except Exception:
+                    pass
+
+            _s1_rows_e = []
+            for _b3 in _bhs_e:
+                _nm3   = _b3["name"]
+                _H_p1  = float(_h_pa1_map.get(_nm3) or 0)
+                _H_p2  = float(_h_pa2_map.get(_nm3) or 0)
+                _H_p3  = float(_hsoft_e.get(_nm3) or 0)
+
+                # Cu_VST trung bình trong phạm vi lớp yếu (PA3 = sâu nhất)
+                _vr = _cv.execute("""
+                    SELECT AVG(v.Su_kPa) avg_su
+                    FROM vane_shear_tests v
+                    JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                    WHERE vl.borehole_id = ? AND v.Su_kPa > 0
+                      AND v.depth_m <= ?
+                """, (_b3["id"], max(_H_p1, _H_p2, _H_p3))).fetchone()
+                _Cu_e  = float(_vr["avg_su"]) if _vr and _vr["avg_su"] else None
+                _Es_e  = 250.0 * _Cu_e if _Cu_e else None
+
+                def _s1_cm(H):
+                    if not _Es_e or H <= 0:
+                        return None
+                    _Ecomp = _a_e * _Ec_e + (1.0 - _a_e) * _Es_e
+                    return round(_q_cdm_e * H / _Ecomp * 100.0, 1)
+
+                _v1 = _s1_cm(_H_p1)
+                _v2 = _s1_cm(_H_p2)
+                _v3 = _s1_cm(_H_p3)
+
+                # Lưu vào SQLite
+                _cv.execute("""
+                    INSERT INTO tvtk_bh_cdm (bh_name, Cu_VST_avg_kPa, Es_kPa,
+                                             S1_pa1_cm, S1_pa2_cm, S1_pa3_cm)
+                    VALUES (?,?,?,?,?,?)
+                    ON CONFLICT(bh_name) DO UPDATE SET
+                        Cu_VST_avg_kPa = excluded.Cu_VST_avg_kPa,
+                        Es_kPa         = excluded.Es_kPa,
+                        S1_pa1_cm      = excluded.S1_pa1_cm,
+                        S1_pa2_cm      = excluded.S1_pa2_cm,
+                        S1_pa3_cm      = excluded.S1_pa3_cm,
+                        updated_at     = datetime('now','localtime')
+                """, (_nm3, _Cu_e, _Es_e, _v1, _v2, _v3))
+
+                _s1_rows_e.append({
+                    "Hố khoan":       _nm3.replace("KE-", ""),
+                    "Cu (kPa)":       round(_Cu_e, 1) if _Cu_e else "—",
+                    "Es (kPa)":       int(_Es_e)      if _Es_e else "—",
+                    "PA1 H (m)":      f"{_H_p1:.1f}",
+                    "PA1 S₁ (cm)":    _v1 if _v1 is not None else "—",
+                    "PA2 H (m)":      f"{_H_p2:.1f}",
+                    "PA2 S₁ (cm)":    _v2 if _v2 is not None else "—",
+                    "PA3 H (m)":      f"{_H_p3:.1f}",
+                    "PA3 S₁ (cm)":    _v3 if _v3 is not None else "—",
+                })
+            _cv.commit()
+
+            st.markdown("#### Độ lún khối gia cố CDM theo 3 phương án chiều sâu")
+            _Ecomp_repr = (f"{_a_e * _Ec_e + (1 - _a_e) * 3000:.0f}"
+                           if not _s1_rows_e
+                           else "—")
+            st.caption(
+                f"TCVN 9403 Phụ lục C: S₁ = q·H / (a·Ec + (1−a)·Es)  |  "
+                f"q = {_q_cdm_e} kPa  |  a = {_a_e:.3f}  |  "
+                f"Ec = {_Ec_e:,.0f} kPa (k={int(_kEc_e)}×qu/2)  |  "
+                f"Es = 250·Cu_VST (từng hố khoan)"
+            )
+            if _s1_rows_e:
+                _df_s1 = _pd_tv.DataFrame(_s1_rows_e)
+                st.table(_df_s1)
+                # Tổng hợp min–max
+                _get_nums = lambda col: [
+                    r[col] for r in _s1_rows_e if isinstance(r[col], (int, float))
+                ]
+                for _pa_lbl, _col in (("PA1", "PA1 S₁ (cm)"),
+                                      ("PA2", "PA2 S₁ (cm)"),
+                                      ("PA3", "PA3 S₁ (cm)")):
+                    _vals = _get_nums(_col)
+                    if _vals:
+                        st.caption(
+                            f"{_pa_lbl}: S₁ = {min(_vals):.1f} ÷ {max(_vals):.1f} cm  "
+                            f"(TB {sum(_vals)/len(_vals):.1f} cm)"
+                        )
+
     st.divider()
 
     # ── 3. Hố khoan đại diện từng khu ───────────────────────────────────────
