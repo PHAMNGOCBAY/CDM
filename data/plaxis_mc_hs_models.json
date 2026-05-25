@@ -1,0 +1,185 @@
+{
+  "_meta": {
+    "title": "PLAXIS Soil Model Parameters — MC / HS / LE / SS — Dự án TTHC",
+    "updated": "2026-05-26",
+    "source": "PLAXIS Material Models Manual Ch. 7 (HS), Ch. 10 (SS), Ch. 6 (MC), Ch. 5 (LE); TCVN 9403:2012 Phụ lục B",
+    "notes": "Thông số chuẩn + công thức chuyển đổi từ oedometer / VST / SPT. Giá trị đọc từ SQLite plaxis_mc_hs_params."
+  },
+
+  "model_assignment": {
+    "description": "Gán mô hình theo giai đoạn thiết kế và loại đất.",
+    "table": [
+      {"symbol": "1",   "description": "Bùn sét mềm",           "TKCS": "MC",   "TKBVT": "HS+SS",   "m": 1.0, "note": "SS cho lún cố kết"},
+      {"symbol": "1b",  "description": "Bùn sét mềm",           "TKCS": "MC",   "TKBVT": "HS+SS",   "m": 1.0, "note": "SS cho lún cố kết"},
+      {"symbol": "2",   "description": "Sét dẻo mềm (NHC/BXN)", "TKCS": "MC",   "TKBVT": "HS",      "m": 0.8, "note": "HS+SS nếu OCR<2"},
+      {"symbol": "2a",  "description": "Cát hạt mịn",           "TKCS": "MC",   "TKBVT": "HS",      "m": 0.5},
+      {"symbol": "2b",  "description": "Cát hạt vừa",           "TKCS": "MC",   "TKBVT": "HS",      "m": 0.5},
+      {"symbol": "2c",  "description": "Cát hạt vừa-thô",       "TKCS": "MC",   "TKBVT": "HS",      "m": 0.5},
+      {"symbol": "3",   "description": "Cát hạt vừa-thô",       "TKCS": "MC",   "TKBVT": "HS",      "m": 0.5},
+      {"symbol": "4",   "description": "Sét cứng / sét dẻo",    "TKCS": "MC",   "TKBVT": "HS",      "m": 0.8},
+      {"symbol": "5a",  "description": "Cát sỏi",               "TKCS": "MC",   "TKBVT": "HS",      "m": 0.5},
+      {"symbol": "5b",  "description": "Cát lẫn sỏi",           "TKCS": "MC",   "TKBVT": "HS",      "m": 0.5},
+      {"symbol": "6",   "description": "Tầng phủ / đất đắp",    "TKCS": "MC",   "TKBVT": "MC",      "m": null},
+      {"symbol": "XMD", "description": "CDM treated (trụ xi măng)", "TKCS": "LE", "TKBVT": "LE",   "m": null, "note": "TCVN 9403 — E=k×qu/2, k=100"}
+    ]
+  },
+
+  "models": {
+
+    "MC": {
+      "name": "Mohr-Coulomb",
+      "plaxis_chapter": 6,
+      "use_case": "TKCS — failure criterion đơn giản, đủ cho phân tích ổn định và kiểm tra sức chịu tải",
+      "parameters": {
+        "E_ref":   {"symbol": "E",    "unit": "kN/m²", "description": "Young's modulus thoát nước"},
+        "nu":      {"symbol": "ν",    "unit": "-",     "description": "Poisson's ratio thoát nước", "default": 0.30},
+        "c":       {"symbol": "c'",   "unit": "kN/m²", "description": "Lực dính hiệu quả"},
+        "phi":     {"symbol": "φ'",   "unit": "°",     "description": "Góc ma sát hiệu quả"},
+        "psi":     {"symbol": "ψ",    "unit": "°",     "description": "Góc giãn nở", "default": 0.0},
+        "K0":      {"symbol": "K0",   "unit": "-",     "formula": "1-sin(φ')", "note": "Jaky"}
+      },
+      "formulas": {
+        "E_from_a12": {
+          "description": "Eoed từ hệ số nén oedometer 1-2 kgf/cm²",
+          "latex": "E_{oed} = \\frac{1+e_0}{a_{12} \\times 0{,}01}",
+          "python": "Eoed = (1 + e0) / (a12_cm2_kgf * 0.01)",
+          "note": "a12 in cm²/kgf; 0.01 = đổi sang kPa⁻¹. E_ref ≈ Eoed × (1−2ν²)/(1−ν)"
+        },
+        "E_from_Cu": {
+          "description": "E_ref từ cường độ cắt không thoát nước (sét mềm)",
+          "latex": "E_{ref} = 250 \\times C_u",
+          "python": "E_ref = 250 * Cu_kPa",
+          "source": "Mesri & Olson (1974) — Es = 250Cu cho sét dưới NC"
+        },
+        "E_from_SPT": {
+          "description": "E_ref từ N_SPT (cát)",
+          "latex": "E_{ref} = 300 \\times N_{60} \\text{ kPa}",
+          "python": "E_ref = 300 * N60",
+          "source": "Bowles (1996) — conservative cho cát hạt vừa"
+        },
+        "nu_by_type": {
+          "soft_clay": 0.35,
+          "stiff_clay": 0.30,
+          "sand": 0.30
+        }
+      },
+      "typical_ranges": {
+        "layer_1_soft_clay": {
+          "E_ref_kPa":  {"min": 500,    "max": 3000,   "typical": 1500},
+          "phi_deg":    {"min": 8,      "max": 18,     "typical": 13},
+          "c_kPa":      {"min": 0,      "max": 10,     "typical": 3},
+          "nu":         0.35
+        },
+        "layer_2a_fine_sand": {
+          "E_ref_kPa":  {"min": 5000,   "max": 20000,  "typical": 10000},
+          "phi_deg":    {"min": 28,     "max": 34,     "typical": 30},
+          "c_kPa":      0,
+          "nu":         0.30
+        },
+        "layer_4_stiff_clay": {
+          "E_ref_kPa":  {"min": 8000,   "max": 30000,  "typical": 15000},
+          "phi_deg":    {"min": 18,     "max": 28,     "typical": 22},
+          "c_kPa":      {"min": 5,      "max": 30,     "typical": 15},
+          "nu":         0.30
+        }
+      }
+    },
+
+    "HS": {
+      "name": "Hardening Soil",
+      "plaxis_chapter": 7,
+      "use_case": "TKBVT — lớp cát 2a/2b/2c/3/5a + lớp sét cứng 4. Zoned với SS cho lớp 1/1b.",
+      "parameters": {
+        "E50_ref":   {"symbol": "E50,ref",  "unit": "kN/m²", "description": "Secant stiffness tại q=0.5 qf"},
+        "Eoed_ref":  {"symbol": "Eoed,ref", "unit": "kN/m²", "description": "Tangent oedometer stiffness"},
+        "Eur_ref":   {"symbol": "Eur,ref",  "unit": "kN/m²", "description": "Unloading-reloading stiffness"},
+        "m":         {"symbol": "m",        "unit": "-",     "description": "Power law index", "range": [0.5, 1.0]},
+        "pref":      {"symbol": "pref",     "unit": "kN/m²", "default": 100.0},
+        "Rf":        {"symbol": "Rf",       "unit": "-",     "default": 0.9, "description": "Failure ratio"},
+        "K0_nc":     {"symbol": "K0nc",     "unit": "-",     "formula": "1-sin(φ')", "description": "NC earth pressure"},
+        "c":         {"symbol": "c'",       "unit": "kN/m²"},
+        "phi":       {"symbol": "φ'",       "unit": "°"},
+        "psi":       {"symbol": "ψ",        "unit": "°",     "default": 0.0}
+      },
+      "formulas": {
+        "E50_soft_clay": {
+          "latex": "E_{50,ref} = 500 \\times C_u",
+          "python": "E50 = 500 * Cu_kPa",
+          "source": "Schanz et al. (1999) — điển hình sét mềm"
+        },
+        "E50_stiff_clay": {
+          "latex": "E_{50,ref} = 600 \\times C_u",
+          "python": "E50 = 600 * Cu_kPa",
+          "source": "Điều chỉnh cho sét cứng OCR>2"
+        },
+        "E50_sand": {
+          "latex": "E_{50,ref} = 300 \\times N_{60} \\text{ kPa}",
+          "python": "E50 = 300 * N60",
+          "note": "Dùng N60 (SPT corrected for energy 60%). Bowles (1996): 200-500×N."
+        },
+        "Eoed_from_lab": {
+          "latex": "E_{oed,ref} = \\frac{1+e_0}{a_{12} \\times 0{,}01}",
+          "python": "Eoed = (1 + e0) / (a12 * 0.01)"
+        },
+        "Eur_clay": {
+          "latex": "E_{ur,ref} = 3 \\times E_{50,ref}",
+          "python": "Eur = 3 * E50"
+        },
+        "Eur_sand": {
+          "latex": "E_{ur,ref} = 5 \\times E_{50,ref}",
+          "python": "Eur = 5 * E50"
+        },
+        "m_by_type": {
+          "soft_clay": 1.0,
+          "stiff_clay": 0.8,
+          "sand": 0.5
+        }
+      },
+      "typical_ranges": {
+        "layer_2a_fine_sand": {
+          "E50_ref_kPa":  {"min": 5000,  "max": 25000, "typical": 12000},
+          "Eoed_ref_kPa": {"min": 4000,  "max": 20000, "typical": 10000},
+          "Eur_ref_kPa":  {"min": 25000, "max": 125000,"typical": 60000},
+          "m": 0.5
+        },
+        "layer_1_soft_clay": {
+          "E50_ref_kPa":  {"min": 500,   "max": 5000,  "typical": 2000},
+          "Eoed_ref_kPa": {"min": 500,   "max": 3000,  "typical": 1500},
+          "Eur_ref_kPa":  {"min": 1500,  "max": 15000, "typical": 6000},
+          "m": 1.0
+        }
+      }
+    },
+
+    "SS": {
+      "name": "Soft Soil",
+      "plaxis_chapter": 10,
+      "use_case": "TKBVT — lớp 1/1b bùn sét mềm NC/lightly OC. Zoned với HS.",
+      "reference_file": "56-soft-soil-model-plaxis.md",
+      "sqlite_table": "soft_soil_params",
+      "key_params": ["lambda_star", "kappa_star", "nu_ur", "c_kPa", "phi_deg", "OCR", "POP_kPa"]
+    },
+
+    "LE": {
+      "name": "Linear Elastic",
+      "plaxis_chapter": 5,
+      "use_case": "TKBVT — XMD (vùng CDM trụ xi măng đất). TCVN 9403:2012 Phụ lục B.",
+      "parameters": {
+        "E_cdm":  {"symbol": "Ec",   "unit": "kN/m²",
+                   "formula": "k × (qu_design / 2)",
+                   "k_default": 100,
+                   "source": "TCVN 9403 B.5.1: Ec = 75–100 × qu_field; dùng qu_field = qu_lab/2"},
+        "nu_le":  {"symbol": "ν",    "unit": "-", "default": 0.25}
+      },
+      "formula_latex": "E_c = k \\times \\frac{q_{u,design}}{2}",
+      "note": "TCVN 9403 cho phép dùng LE vì CDM hoạt động trong vùng đàn hồi dưới tải công trình thông thường"
+    }
+  },
+
+  "sqlite_table": {
+    "name": "plaxis_mc_hs_params",
+    "primary_key": ["bh_name", "pa", "symbol"],
+    "engine": "scripts/mc_hs_calc.py",
+    "pa_values": ["BH", "PA2"]
+  }
+}

@@ -17052,6 +17052,160 @@ $$OCR = P_c / \sigma'_{v0} \qquad POP = P_c - \sigma'_{v0}$$
 
     st.divider()
 
+    # ── 6b. Thông số mô hình MC / HS / LE (PLAXIS) ──────────────────────────
+    st.markdown("### 6b. Thông số mô hình đất PLAXIS — MC (TKCS) / HS / LE (TKBVT)")
+    st.caption(
+        "MC = Mohr-Coulomb (TKCS — failure criterion). "
+        "HS = Hardening Soil (TKBVT — lớp cát 2a/2b/3, sét cứng 4). "
+        "LE = đàn hồi tuyến tính (vùng gia cố CDM). "
+        "SS (lớp 1/1b) xem mục 6. Nguồn: thí nghiệm nén cố kết, cắt cánh, SPT."
+    )
+
+    _has_mc = _cv.execute(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plaxis_mc_hs_params'"
+    ).fetchone()[0] > 0
+
+    if not _has_mc:
+        st.info("Bảng thông số MC/HS chưa có. Chạy scripts/mc_hs_calc.py để tính.")
+    else:
+        # ── Công thức tổng quát (chung mọi HK) ──
+        with st.expander("Công thức chuyển đổi (chung cho mọi hố khoan)", expanded=False):
+            st.markdown(r"""
+**Mohr-Coulomb** $E_{ref}$ từ oedometer:
+
+$$E_{oed} = \frac{1 + e_0}{a_{12} \times 0{,}01} \qquad
+E_{ref} \approx E_{oed} \times \frac{1 - 2\nu^2}{1 - \nu}$$
+
+Tương quan $C_u$ (khi không có $a_{12}$):
+
+$$E_{ref} = 250 \times C_u \text{ (sét mềm)} \qquad
+E_{50,ref} = 500 \times C_u \text{ (HS sét mềm)} \qquad
+E_{50,ref} = 300 \times N_{60} \text{ (HS cát)}$$
+
+**Hardening Soil** — $E_{ur}$, $E_{oed}$, $m$:
+
+$$E_{ur,ref} = 3 E_{50} \text{ (sét)} \quad 5 E_{50} \text{ (cát)} \qquad
+m = 1{,}0 \text{ (sét mềm)} \;|\; 0{,}8 \text{ (sét cứng)} \;|\; 0{,}5 \text{ (cát)}$$
+
+**Linear Elastic** (CDM/XMD — TCVN 9403 Phụ lục B):
+
+$$E_c = k \times \frac{q_{u,\text{design}}}{2} \quad (k = 100)$$
+""")
+
+        # ── Bảng PA2 per zone ──
+        _mc_pa2_q = _cv.execute("""
+            SELECT bh_name, symbol,
+                   ROUND(gamma_sat_kNm3,1) gs, ROUND(gamma_unsat_kNm3,1) gu,
+                   ROUND(E_ref_kPa,0) E_mc, ROUND(nu_mc,2) nu,
+                   ROUND(c_kPa,1) c, ROUND(phi_deg,1) phi, ROUND(psi_deg,1) psi,
+                   ROUND(K0_mc,3) K0,
+                   ROUND(E50_ref_kPa,0) E50, ROUND(Eoed_ref_kPa,0) Eoed,
+                   ROUND(Eur_ref_kPa,0) Eur, ROUND(m_hs,1) m,
+                   ROUND(E_cdm_kPa,0) Ecdm,
+                   E_source
+            FROM plaxis_mc_hs_params
+            WHERE pa='PA2'
+            ORDER BY bh_name, symbol
+        """).fetchall()
+
+        if _mc_pa2_q:
+            import pandas as _pd_mc
+            _pa2_mc_rows = []
+            for _r in _mc_pa2_q:
+                _zone_tag = _r["bh_name"].split("_")[0]
+                _model = "LE" if _r["Ecdm"] else ("HS" if _r["E50"] else "MC")
+                _e_disp = (
+                    f"{_r['Ecdm']:,.0f}" if _r["Ecdm"]
+                    else (f"{_r['E_mc']:,.0f}" if _r["E_mc"] else "—")
+                )
+                _e50_disp = f"{_r['E50']:,.0f}" if _r["E50"] else "—"
+                _pa2_mc_rows.append({
+                    "Zone": _zone_tag,
+                    "Lớp": _r["symbol"],
+                    "Model": _model,
+                    "γ_sat (kN/m³)": _r["gs"] or "—",
+                    "E_ref / E_c (kPa)": _e_disp,
+                    "ν": _r["nu"] or "0,25",
+                    "c' (kPa)": _r["c"] if _r["c"] is not None else "—",
+                    "φ' (°)": _r["phi"] if _r["phi"] is not None else "—",
+                    "K₀": _r["K0"] or "—",
+                    "E₅₀ (kPa)": _e50_disp,
+                    "Eur (kPa)": f"{_r['Eur']:,.0f}" if _r["Eur"] else "—",
+                    "m": _r["m"] if _r["m"] else "—",
+                    "Nguồn E": _r["E_source"] or "—",
+                })
+            st.markdown("**Thông số đại diện per khu vực (PA2):**")
+            st.dataframe(
+                _pd_mc.DataFrame(_pa2_mc_rows),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Zone": st.column_config.TextColumn(width="small"),
+                    "Lớp": st.column_config.TextColumn(width="small"),
+                    "Model": st.column_config.TextColumn(width="small"),
+                },
+            )
+
+        # ── Per-BH per zone expander ──
+        for _zc_mc in ("KE", "BXN", "NHC"):
+            _mc_bh_q = _cv.execute("""
+                SELECT bh_name, symbol,
+                       ROUND(depth_top_m,1) top, ROUND(depth_bot_m,1) bot,
+                       ROUND(gamma_sat_kNm3,1) gs,
+                       ROUND(E_ref_kPa,0) E_mc,
+                       ROUND(c_kPa,1) c, ROUND(phi_deg,1) phi,
+                       ROUND(K0_mc,3) K0,
+                       ROUND(E50_ref_kPa,0) E50, ROUND(m_hs,1) m,
+                       ROUND(E_cdm_kPa,0) Ecdm,
+                       E_source, notes
+                FROM plaxis_mc_hs_params
+                WHERE pa='BH' AND bh_name LIKE ?
+                ORDER BY bh_name, depth_top_m
+            """, (_zc_mc + "-%",)).fetchall()
+
+            if not _mc_bh_q:
+                continue
+
+            with st.expander(f"Khu vực {_zc_mc} — chi tiết per hố khoan", expanded=False):
+                import pandas as _pd_mc2
+                _mc_bh_rows = []
+                for _r in _mc_bh_q:
+                    _model = "LE" if _r["Ecdm"] else ("HS" if _r["E50"] else "MC")
+                    _e_disp = (
+                        f"{int(_r['Ecdm']):,}" if _r["Ecdm"]
+                        else (f"{int(_r['E_mc']):,}" if _r["E_mc"] else "—")
+                    )
+                    _mc_bh_rows.append({
+                        "HK": _r["bh_name"],
+                        "Lớp": _r["symbol"],
+                        "Model": _model,
+                        "Top (m)": _r["top"],
+                        "Bot (m)": _r["bot"],
+                        "γ_sat": _r["gs"] or "—",
+                        "E_ref/E_c (kPa)": _e_disp,
+                        "c' (kPa)": _r["c"] if _r["c"] is not None else "—",
+                        "φ' (°)": _r["phi"] if _r["phi"] is not None else "—",
+                        "K₀": _r["K0"] or "—",
+                        "E₅₀ (kPa)": f"{int(_r['E50']):,}" if _r["E50"] else "—",
+                        "m": _r["m"] if _r["m"] else "—",
+                        "Nguồn": _r["E_source"] or "—",
+                        "Lưu ý": _r["notes"] or "",
+                    })
+                _df_mc_bh = _pd_mc2.DataFrame(_mc_bh_rows)
+                st.dataframe(
+                    _df_mc_bh, use_container_width=True, hide_index=True,
+                    column_config={
+                        "HK": st.column_config.TextColumn(width="small"),
+                        "Lớp": st.column_config.TextColumn(width="small"),
+                        "Model": st.column_config.TextColumn(width="small"),
+                    },
+                )
+                _mc_warn = [r["Lưu ý"] for r in _mc_bh_rows if r["Lưu ý"]]
+                if _mc_warn:
+                    st.caption("Lưu ý: " + " | ".join(list(dict.fromkeys(_mc_warn))[:4]))
+
+    st.divider()
+
     # ── 7. Mực nước ngầm / điều kiện thủy lực ───────────────────────────────
     st.markdown("### 7. Mực nước ngầm – điều kiện thủy lực")
     _c6a, _c6b, _c6c, _c6d, _c6s = st.columns([1, 1, 1, 1, 0.6])
