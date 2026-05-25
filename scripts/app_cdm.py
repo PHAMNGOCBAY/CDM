@@ -15508,8 +15508,8 @@ if _page == "tvtk_prep":
     else:
         st.info("Chưa có dữ liệu địa tầng.")
 
-    # ── Biểu đồ VST – Su theo chiều sâu – Kè KE ─────────────────────────────
-    st.markdown("#### Biểu đồ cắt cánh (VST) – Cường độ cắt không thoát nước theo chiều sâu")
+    # ── Biểu đồ VST – Su theo chiều sâu – từng HK riêng lẻ (so sánh UU) ──────
+    st.markdown("#### Biểu đồ cắt cánh (VST) – So sánh với thí nghiệm UU phòng")
 
     _ke_bhs_cdm = sorted(
         [b for b in _bhs_tv if b["name"] in _cdm_yes and b["name"].startswith("KE-")],
@@ -15523,149 +15523,203 @@ if _page == "tvtk_prep":
         ORDER BY vl.name, v.depth_m
     """).fetchall()
 
+    # UU lab data cho KE
+    _uu_data = _cv.execute("""
+        SELECT b.name,
+               (lt.depth_from_m + lt.depth_to_m) / 2.0 AS depth_mid_m,
+               lt.Cu_UU_kPa
+        FROM lab_tests lt
+        JOIN boreholes b ON lt.borehole_id = b.id
+        WHERE b.name LIKE 'KE-%'
+          AND lt.Cu_UU_kPa IS NOT NULL AND lt.Cu_UU_kPa > 0
+        ORDER BY b.name, depth_mid_m
+    """).fetchall()
+
     if _vst_data:
+        # Nhóm theo tên HK
+        import numpy as _np_vst
+        from plotly.subplots import make_subplots as _make_subplots
+
         # Nhóm theo tên HK
         _vst_by_bh: dict = {}
         for _vr in _vst_data:
             _vst_by_bh.setdefault(_vr["name"], []).append(_vr)
 
-        # Chiều sâu đáy lớp yếu per HK (để vẽ đường giới hạn)
-        _soft_bot = {
+        _uu_by_bh: dict = {}
+        for _ur in _uu_data:
+            _uu_by_bh.setdefault(_ur["name"], []).append(_ur)
+
+        # Chiều sâu đáy lớp yếu per HK
+        _soft_bot_map = {
             r["_bh_name"]: r["_h_soft"]
             for r in _soft_rows
             if r.get("_bh_name", "").startswith("KE-")
         }
 
-        # 12 màu chuẩn, dễ phân biệt
-        _PAL = [
-            "#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd",
-            "#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf",
-            "#aec7e8","#ffbb78",
-        ]
-        _bh_names_sorted = sorted(_vst_by_bh.keys())
+        _bh_names_sorted = sorted(_vst_by_bh.keys(),
+                                  key=lambda n: int(n.replace("KE-HK", "") or 0))
+        _n_bh  = len(_bh_names_sorted)
+        _NCOLS = 3
+        _NROWS = (_n_bh + _NCOLS - 1) // _NCOLS
 
-        _fig_vst = _go_tv.Figure()
+        # Trục x chung: 0 → max(Su, Cu_UU) * 1.15
+        _all_su  = [p["Su_kPa"] for p in _vst_data]
+        _all_uu  = [r["Cu_UU_kPa"] for r in _uu_data]
+        _x_max   = max((_all_su + _all_uu) or [40]) * 1.15
+        _x_max   = max(_x_max, 40)
 
-        # Một trace Su per HK
-        for _i, _bh_n in enumerate(_bh_names_sorted):
-            _pts = _vst_by_bh[_bh_n]
-            _col = _PAL[_i % len(_PAL)]
-            _depths = [p["depth_m"] for p in _pts]
-            _sus    = [p["Su_kPa"]  for p in _pts]
-            _sps    = [p["Sp_kPa"]  for p in _pts if p["Sp_kPa"]]
-            _dp_sp  = [p["depth_m"] for p in _pts if p["Sp_kPa"]]
-            _sts    = [f"St={p['St']:.1f}" if p["St"] else "" for p in _pts]
-            _hover  = [
-                f"<b>{_bh_n}</b><br>Chiều sâu: {d:.1f} m<br>Su: {s:.1f} kPa"
-                + (f"<br>Sp: {sp:.1f} kPa<br>{st}" if sp else f"<br>{st}")
-                for d, s, sp, st in zip(
-                    _depths, _sus,
-                    [p["Sp_kPa"] or 0 for p in _pts],
-                    _sts,
-                )
-            ]
-            _short = _bh_n.replace("KE-", "")
-            _fig_vst.add_trace(_go_tv.Scatter(
-                x=_sus, y=_depths,
-                mode="lines+markers",
-                name=_short,
-                line=dict(color=_col, width=2),
-                marker=dict(size=7, symbol="circle", color=_col,
-                            line=dict(color="white", width=1)),
-                hovertemplate="%{customdata}<extra></extra>",
-                customdata=_hover,
-                legendgroup=_bh_n,
-            ))
-            # Sp (độ bền cắt sau khi phá hoại) — đường đứt
-            if _sps:
-                _fig_vst.add_trace(_go_tv.Scatter(
-                    x=_sps, y=_dp_sp,
-                    mode="lines+markers",
-                    name=f"{_short} Sp",
-                    line=dict(color=_col, width=1.5, dash="dot"),
-                    marker=dict(size=5, symbol="x", color=_col),
-                    hovertemplate=f"<b>{_bh_n}</b> Sp<br>%{{y:.1f}} m | %{{x:.1f}} kPa<extra></extra>",
-                    legendgroup=_bh_n,
-                    showlegend=True,
-                    visible="legendonly",
-                ))
-
-        # Đường xu hướng Su trung bình tất cả HK (linear fit)
-        import numpy as _np_vst
-        _all_d = [p["depth_m"]  for p in _vst_data]
-        _all_s = [p["Su_kPa"]   for p in _vst_data]
-        if len(_all_d) >= 3:
-            _coef = _np_vst.polyfit(_all_d, _all_s, 1)
-            _d_fit = [min(_all_d), max(_all_d)]
-            _s_fit = [_coef[0]*d + _coef[1] for d in _d_fit]
-            _eq    = f"Su ≈ {_coef[0]:+.2f}·z + {_coef[1]:.1f} kPa"
-            _fig_vst.add_trace(_go_tv.Scatter(
-                x=_s_fit, y=_d_fit,
-                mode="lines",
-                name=f"Xu hướng TB ({_eq})",
-                line=dict(color="black", width=2, dash="dash"),
-                hovertemplate=f"{_eq}<extra></extra>",
-            ))
-
-        # Vùng tô màu phạm vi lớp yếu (lấy depth trung bình min–max)
-        _all_soft_vals = list(_soft_bot.values())
-        if _all_soft_vals:
-            _mean_soft = sum(_all_soft_vals) / len(_all_soft_vals)
-            _fig_vst.add_hrect(
-                y0=0, y1=_mean_soft,
-                fillcolor="rgba(173,216,230,0.12)",
-                line_width=0,
-                annotation_text=f"Phạm vi lớp yếu TB ≈ {_mean_soft:.1f} m",
-                annotation_position="top left",
-                annotation_font_size=11,
-                annotation_font_color="#2c6fad",
-            )
-
-        # Giới hạn tham chiếu Su < 25 kPa → "đất yếu"
-        _fig_vst.add_vline(
-            x=25, line_dash="dash", line_color="red", line_width=1,
-            annotation_text="Su = 25 kPa", annotation_position="top right",
-            annotation_font_color="red", annotation_font_size=11,
+        _fig_sub = _make_subplots(
+            rows=_NROWS, cols=_NCOLS,
+            shared_xaxes=False,
+            shared_yaxes=False,
+            horizontal_spacing=0.08,
+            vertical_spacing=0.06,
+            subplot_titles=_bh_names_sorted,
         )
 
-        _fig_vst.update_layout(
-            height=560,
-            margin=dict(l=60, r=20, t=50, b=60),
-            xaxis=dict(
-                title="Su – Cường độ cắt không thoát nước (kPa)",
-                range=[0, max(_all_s) * 1.1],
-                gridcolor="#e8e8e8",
-                zeroline=True, zerolinecolor="#aaa",
-                tickfont=dict(size=12),
-            ),
-            yaxis=dict(
-                title="Chiều sâu (m)",
-                autorange="reversed",
-                gridcolor="#e8e8e8",
-                tickfont=dict(size=12),
-            ),
-            legend=dict(
-                orientation="v",
-                x=1.01, y=1,
-                xanchor="left",
-                font=dict(size=11),
-                groupclick="toggleitem",
-            ),
+        for _i, _bh_n in enumerate(_bh_names_sorted):
+            _row = _i // _NCOLS + 1
+            _col = _i  % _NCOLS + 1
+
+            _vpts = _vst_by_bh.get(_bh_n, [])
+            _upts = _uu_by_bh.get(_bh_n, [])
+
+            _vd  = [p["depth_m"] for p in _vpts]
+            _vs  = [p["Su_kPa"]  for p in _vpts]
+            _sp  = [p["Sp_kPa"]  for p in _vpts]
+            _st  = [p["St"]      for p in _vpts]
+
+            # ── Vùng tô lớp yếu ──────────────────────────────────────────────
+            _h_soft = _soft_bot_map.get(_bh_n)
+            if _h_soft:
+                _fig_sub.add_trace(_go_tv.Scatter(
+                    x=[0, _x_max, _x_max, 0, 0],
+                    y=[0, 0, _h_soft, _h_soft, 0],
+                    fill="toself",
+                    fillcolor="rgba(135,206,250,0.13)",
+                    line=dict(width=0),
+                    mode="lines",
+                    showlegend=(_i == 0),
+                    name="Lớp đất yếu",
+                    legendgroup="soft",
+                    hoverinfo="skip",
+                ), row=_row, col=_col)
+
+            # ── Su_VST – đường liền ───────────────────────────────────────────
+            _hov_vst = [
+                f"<b>{_bh_n}</b><br>Chiều sâu: {d:.1f} m<br>"
+                f"<b>Su (VST): {s:.1f} kPa</b>"
+                + (f"<br>Sp: {sp:.1f} kPa  St: {st:.1f}" if sp and st else "")
+                for d, s, sp, st in zip(_vd, _vs, _sp, _st)
+            ]
+            _fig_sub.add_trace(_go_tv.Scatter(
+                x=_vs, y=_vd,
+                mode="lines+markers",
+                name="Su (VST)" if _i == 0 else "Su (VST)",
+                legendgroup="vst",
+                showlegend=(_i == 0),
+                line=dict(color="#1a6fbd", width=2),
+                marker=dict(size=7, symbol="circle", color="#1a6fbd",
+                            line=dict(color="white", width=1)),
+                hovertemplate="%{customdata}<extra></extra>",
+                customdata=_hov_vst,
+            ), row=_row, col=_col)
+
+            # ── Sp – đường đứt mảnh ──────────────────────────────────────────
+            _sp_valid = [(d, s) for d, s in zip(_vd, _sp) if s]
+            if _sp_valid:
+                _dp_sp, _sp_vals = zip(*_sp_valid)
+                _fig_sub.add_trace(_go_tv.Scatter(
+                    x=list(_sp_vals), y=list(_dp_sp),
+                    mode="lines+markers",
+                    name="Sp (sau phá hoại)" if _i == 0 else "Sp (sau phá hoại)",
+                    legendgroup="sp",
+                    showlegend=(_i == 0),
+                    line=dict(color="#1a6fbd", width=1.2, dash="dot"),
+                    marker=dict(size=5, symbol="x", color="#1a6fbd"),
+                    hovertemplate=f"<b>{_bh_n}</b><br>Sp: %{{x:.1f}} kPa | %{{y:.1f}} m<extra></extra>",
+                ), row=_row, col=_col)
+
+            # ── Cu_UU – marker kim cương ──────────────────────────────────────
+            if _upts:
+                _ud = [r["depth_mid_m"]  for r in _upts]
+                _uu = [r["Cu_UU_kPa"]    for r in _upts]
+                _hov_uu = [
+                    f"<b>{_bh_n}</b><br>Chiều sâu: {d:.1f} m<br>"
+                    f"<b>Cu (UU): {u:.1f} kPa</b>"
+                    for d, u in zip(_ud, _uu)
+                ]
+                _fig_sub.add_trace(_go_tv.Scatter(
+                    x=_uu, y=_ud,
+                    mode="markers",
+                    name="Cu (UU phòng)" if _i == 0 else "Cu (UU phòng)",
+                    legendgroup="uu",
+                    showlegend=(_i == 0),
+                    marker=dict(size=10, symbol="diamond",
+                                color="#e85800",
+                                line=dict(color="white", width=1)),
+                    hovertemplate="%{customdata}<extra></extra>",
+                    customdata=_hov_uu,
+                ), row=_row, col=_col)
+
+            # ── Đường Su = 25 kPa ─────────────────────────────────────────────
+            _y_max_bh = max(_vd + [r["depth_mid_m"] for r in _upts] + [30]) + 2
+            _fig_sub.add_trace(_go_tv.Scatter(
+                x=[25, 25], y=[0, _y_max_bh],
+                mode="lines",
+                line=dict(color="red", width=1, dash="dash"),
+                name="Su = 25 kPa" if _i == 0 else "Su = 25 kPa",
+                legendgroup="ref25",
+                showlegend=(_i == 0),
+                hoverinfo="skip",
+            ), row=_row, col=_col)
+
+            # ── Trục cho subplot này ──────────────────────────────────────────
+            _ax_idx = "" if (_row == 1 and _col == 1) else str(_i + 1)
+            _fig_sub.update_xaxes(
+                range=[0, _x_max], gridcolor="#ebebeb",
+                tickfont=dict(size=10), row=_row, col=_col,
+            )
+            _fig_sub.update_yaxes(
+                autorange="reversed", gridcolor="#ebebeb",
+                tickfont=dict(size=10),
+                title_text="Sâu (m)" if _col == 1 else "",
+                row=_row, col=_col,
+            )
+
+        # Ẩn subplot trống nếu n_bh không chia hết cho NCOLS
+        for _blank in range(_n_bh, _NROWS * _NCOLS):
+            _br = _blank // _NCOLS + 1
+            _bc = _blank  % _NCOLS + 1
+            _fig_sub.update_xaxes(visible=False, row=_br, col=_bc)
+            _fig_sub.update_yaxes(visible=False, row=_br, col=_bc)
+
+        _fig_sub.update_layout(
+            height=300 * _NROWS,
+            margin=dict(l=55, r=15, t=55, b=40),
             plot_bgcolor="white",
             paper_bgcolor="white",
             hovermode="closest",
+            legend=dict(
+                orientation="h", x=0, y=-0.04,
+                xanchor="left", yanchor="top",
+                font=dict(size=11),
+                tracegroupgap=6,
+            ),
             title=dict(
-                text=f"VST – Kè KE: {len(_bh_names_sorted)} hố khoan, {len(_vst_data)} điểm đo",
-                font=dict(size=13),
-                x=0,
+                text=(
+                    f"VST & UU – Kè KE: {_n_bh} hố khoan  |  "
+                    f"VST {len(_vst_data)} điểm  |  UU {len(_uu_data)} điểm"
+                ),
+                font=dict(size=13), x=0,
             ),
         )
-        st.plotly_chart(_fig_vst, use_container_width=True)
+        st.plotly_chart(_fig_sub, use_container_width=True)
         st.caption(
-            "Su: cường độ cắt không thoát nước (nguyên trạng)  |  "
-            "Sp: độ bền cắt sau phá hoại (ẩn mặc định, click legend để hiện)  |  "
-            "St = Su/Sp: độ nhạy  |  Đường đứt đen: xu hướng tuyến tính tất cả HK  |  "
-            "Vùng xanh nhạt: phạm vi lớp đất yếu cần xử lý nền"
+            "Su (đường xanh liền): cắt cánh hiện trường (VST)  |  "
+            "Sp (xanh chấm): độ bền sau phá hoại  |  "
+            "Cu (kim cương cam): thí nghiệm cắt 3 trục UU trong phòng  |  "
+            "Đường đỏ đứt: ngưỡng Su = 25 kPa  |  Vùng xanh nhạt: phạm vi đất yếu"
         )
     else:
         st.info("Chưa có dữ liệu cắt cánh cho khu vực Kè.")
