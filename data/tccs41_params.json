@@ -153,6 +153,34 @@
         "_note": "E.4.1 — chiều cao đất đắp sau mố cầu, cạnh cống nên chọn nhỏ hơn các giá trị này"
       }
     },
+    "sw_stability_search": {
+      "_ref": "48-ke-sw-L-optimal-search.md — Thuật toán tìm L cừ SW tối ưu lặp +1m",
+      "_note": "Áp dụng trong Mục E tab ke_sw khi HK có Fs không đạt — tự động lặp tăng L",
+      "Fs_thresholds": {
+        "Bishop":              1.40,
+        "Spencer":              1.40,
+        "Morgenstern_Price":    1.40,
+        "Overturning":          1.20,
+        "_min_slip_methods":    1.40,
+        "_min_overturning":     1.20,
+        "_combined_pass":       "min(Fs_Bishop, Fs_Spencer, Fs_MP) >= 1.40 AND Fs_lat >= 1.20"
+      },
+      "search_params": {
+        "L_increment_m":       1.0,
+        "L_max_default_m":     50.0,
+        "L_max_from_catalog":  true,
+        "_L_max_note":         "L_max thực tế lấy từ sw_pile_catalog.json[pile_type].L_max_m"
+      },
+      "save_policy": {
+        "save_every_iteration":  true,
+        "_note":                 "Lưu cả bước KHÔNG ĐẠT vào ke_sw_L_iteration — phục vụ tra cứu",
+        "mark_final_pass":       true,
+        "_final_note":           "Bước đầu tiên đạt → is_final=1; các bước trước is_final=0"
+      },
+      "sqlite_table": "ke_sw_L_iteration",
+      "ui_trigger_label":     "Tìm L tối ưu cho HK chưa đạt",
+      "ui_show_history":      true
+    },
     "cdm_profile_plot": {
       "_ref": "scripts/app_cdm.py — tab tvtk_prep section 5 + ke_sw VST charts",
       "_doc": "47-tvtk-cdm-trac-doc-luong-chinh.md",

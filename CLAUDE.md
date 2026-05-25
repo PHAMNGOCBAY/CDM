@@ -1959,3 +1959,64 @@ Chainage **PCA-SVD per zone** trên (x, y) — bắt đầu từ 0.
 | Tính Ip TB cho Bjerrum μ | `('1','1b','CH','MH','CH-OH','MH-OH')` | `lab_tests.symbol_tcvn` |
 
 **KHÔNG trộn lẫn 2 bộ symbol** — `layers.symbol` (số La Mã: 1, 1b, 2) khác `lab_tests.symbol_tcvn` (TCVN: CH, MH, CL...).
+
+---
+
+### 39. Tìm chiều dài cừ SW tối ưu — Thuật toán lặp +1m (Mục E)
+
+**File tài liệu:** [48-ke-sw-L-optimal-search.md](48-ke-sw-L-optimal-search.md)
+**JSON config:** `data/tccs41_params.json` → `tccs41_limits.sw_stability_search`
+**Python:** `scripts/sw_global_stability.py` — `find_optimal_L_iterative()` + `create_L_iteration_table()`
+**SQLite:** `ke_sw_L_iteration` (UNIQUE `(bh_name, pile_type, L_m, run_id)`)
+
+#### Nguyên tắc
+
+Khi HK có Fs **không đạt** trong Mục E → lặp tăng $L$ bước **+1,0 m** từ $L_{thiết\_kế}$ hiện tại đến $L_{max}$ (catalog). Mỗi bước:
+
+1. Chạy **đầy đủ 4 kiểm tra:** Bishop · Spencer · Morgenstern-Price · Lật
+2. **Lưu mọi bước** (kể cả không đạt) vào `ke_sw_L_iteration` — phục vụ tra cứu
+3. Dừng tại $L$ đầu tiên đạt → `is_final = 1`
+
+#### Ngưỡng Fs (BẮT BUỘC)
+
+| Tiêu chí | Ngưỡng |
+|---|:---:|
+| Bishop · Spencer · M-P | **≥ 1,40** |
+| Lật quanh chân cừ | **≥ 1,20** |
+| **Pass** | `min(3 PP) ≥ 1,40` **AND** `Fs_lật ≥ 1,20` |
+
+#### API
+
+```python
+from sw_global_stability import find_optimal_L_iterative, create_L_iteration_table
+
+r = find_optimal_L_iterative(
+    bh_name='KE-HK1', pile_type='SW-740',
+    geom_template=geom, front_layers=..., back_layers=...,
+    fill=..., cdm=..., pile=...,
+    L_start=28.0, L_max=L_catalog_max, L_step=1.0,
+    Fs_min_slip=1.40, Fs_min_overt=1.20,
+    save_to_db=True, db_path=Path('data/TTHC.sqlite'),
+)
+# r['L_optimal_m']: float | None
+# r['history']: list of {L_m, Fs_bishop, Fs_spencer, Fs_mp, Fs_lat, is_final}
+# r['n_iterations'], r['run_id']
+```
+
+#### Sample output (KE-HK1 / SW-740, geom test)
+
+```
+L=28.0  Bishop=0.973  lat=1.004  fail
+L=29.0  Bishop=0.908  lat=1.018  fail
+...
+L=35.0  Bishop=0.704  lat=1.031  fail
+→ L_optimal = None (cần đổi loại cọc hoặc tăng L_max)
+```
+
+#### Idempotent
+
+Re-run cùng `run_id` → ON CONFLICT UPDATE, không tạo duplicate row.
+
+#### Tích hợp app (kế hoạch)
+
+UI nút "Tìm L tối ưu cho HK chưa đạt" trong Mục E khi có ≥ 1 HK không đạt → hiển thị bảng history per HK qua expander.

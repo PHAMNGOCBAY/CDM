@@ -720,6 +720,195 @@ def check_all(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Tìm L cừ SW tối ưu — Thuật toán lặp +1m (tài liệu 48-ke-sw-L-optimal-search.md)
+# ─────────────────────────────────────────────────────────────────────────────
+
+import dataclasses as _dc
+import sqlite3 as _sq_li
+import uuid as _uuid_li
+from pathlib import Path as _Path_li
+
+
+def create_L_iteration_table(db_path: _Path_li) -> None:
+    """Tạo bảng ke_sw_L_iteration (idempotent)."""
+    with _sq_li.connect(db_path) as con:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS ke_sw_L_iteration (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                bh_name         TEXT NOT NULL,
+                pile_type       TEXT NOT NULL,
+                L_m             REAL NOT NULL,
+                Fs_bishop       REAL,
+                Fs_spencer      REAL,
+                Fs_mp           REAL,
+                Fs_overturning  REAL,
+                pass_slip       INTEGER DEFAULT 0,
+                pass_overt      INTEGER DEFAULT 0,
+                all_pass        INTEGER DEFAULT 0,
+                is_final        INTEGER DEFAULT 0,
+                run_id          TEXT NOT NULL,
+                ts              TEXT DEFAULT (datetime('now','localtime')),
+                UNIQUE (bh_name, pile_type, L_m, run_id)
+            )
+        """)
+        con.commit()
+
+
+def find_optimal_L_iterative(
+    bh_name: str,
+    pile_type: str,
+    geom_template: WallGeometry,
+    front_layers: list,
+    back_layers: list,
+    fill: Optional[EarthLayer] = None,
+    cdm: Optional[CDMBlock] = None,
+    pile: Optional[PileProps] = None,
+    L_start: float = 20.0,
+    L_max: float = 50.0,
+    L_step: float = 1.0,
+    Fs_min_slip: float = 1.40,
+    Fs_min_overt: float = 1.20,
+    save_to_db: bool = True,
+    db_path: Optional[_Path_li] = None,
+    run_id: Optional[str] = None,
+) -> dict:
+    """Tìm L cừ SW tối ưu — lặp tăng L bước +1m cho đến khi 4 PP đạt ngưỡng.
+
+    Args:
+        bh_name:     'KE-HK1', 'KE-HK10'...
+        pile_type:   'SW-740', 'SW-840'...
+        geom_template: WallGeometry — sẽ copy + override pile_length per step
+        L_start:     L bắt đầu (m) — thường = L_thiết_kế hiện tại
+        L_max:       L tối đa (m) — thường = pile catalog L_max
+        L_step:      bước tăng (m) — mặc định 1.0
+        Fs_min_slip: ngưỡng Fs cho 3 PP trượt (mặc định 1.40)
+        Fs_min_overt: ngưỡng Fs lật (mặc định 1.20)
+        save_to_db:  True → ghi mỗi step vào ke_sw_L_iteration
+        db_path:     đường dẫn TTHC.sqlite — bắt buộc khi save_to_db=True
+
+    Returns:
+        {
+            'bh_name': str, 'pile_type': str,
+            'L_optimal_m': float | None,   # None nếu không tìm được trong [L_start, L_max]
+            'L_start_m': float, 'L_max_m': float, 'L_step_m': float,
+            'Fs_min_slip': float, 'Fs_min_overt': float,
+            'history': [{L_m, Fs_bishop, Fs_spencer, Fs_mp, Fs_lat,
+                         pass_slip, pass_overt, all_pass, is_final}, ...],
+            'n_iterations': int,
+            'run_id': str,
+        }
+    """
+    if save_to_db and db_path is None:
+        raise ValueError("save_to_db=True yêu cầu db_path")
+
+    rid = run_id or _uuid_li.uuid4().hex[:12]
+    if save_to_db:
+        create_L_iteration_table(db_path)
+
+    history: list = []
+    L_optimal: Optional[float] = None
+    n_iter = 0
+    L = float(L_start)
+
+    while L <= L_max + 1e-6:
+        n_iter += 1
+        # Copy geom + override pile_length cho step này
+        geom_iter = _dc.replace(geom_template, pile_length=float(L))
+
+        # Chạy 3 PP slip + lật
+        Fs_b = Fs_s = Fs_mp = Fs_ot = None
+        try:
+            res_b = check_all(geom_iter, front_layers, back_layers,
+                              fill, cdm, pile, method="bishop")
+            Fs_b = float(res_b.Fs_global_slip)
+            Fs_ot = float(res_b.Fs_overturning)
+        except Exception:
+            pass
+        try:
+            res_s = check_all(geom_iter, front_layers, back_layers,
+                              fill, cdm, pile, method="spencer")
+            Fs_s = float(res_s.Fs_global_slip)
+        except Exception:
+            pass
+        try:
+            res_m = check_all(geom_iter, front_layers, back_layers,
+                              fill, cdm, pile, method="morgenstern_price")
+            Fs_mp = float(res_m.Fs_global_slip)
+        except Exception:
+            pass
+
+        # Đánh giá pass/fail
+        slip_vals = [v for v in (Fs_b, Fs_s, Fs_mp) if v is not None and v > 0]
+        pass_slip  = bool(slip_vals) and (min(slip_vals) >= Fs_min_slip)
+        pass_overt = (Fs_ot is not None) and (Fs_ot >= Fs_min_overt)
+        all_pass   = pass_slip and pass_overt
+
+        step = {
+            "L_m":            round(L, 2),
+            "Fs_bishop":      round(Fs_b, 3) if Fs_b is not None else None,
+            "Fs_spencer":     round(Fs_s, 3) if Fs_s is not None else None,
+            "Fs_mp":          round(Fs_mp, 3) if Fs_mp is not None else None,
+            "Fs_lat":         round(Fs_ot, 3) if Fs_ot is not None else None,
+            "pass_slip":      int(pass_slip),
+            "pass_overt":     int(pass_overt),
+            "all_pass":       int(all_pass),
+            "is_final":       0,
+        }
+        history.append(step)
+
+        if all_pass:
+            L_optimal = L
+            step["is_final"] = 1
+            if save_to_db:
+                _save_iteration(db_path, bh_name, pile_type, step, rid)
+            break
+
+        if save_to_db:
+            _save_iteration(db_path, bh_name, pile_type, step, rid)
+
+        L += L_step
+
+    return {
+        "bh_name":      bh_name,
+        "pile_type":    pile_type,
+        "L_optimal_m":  L_optimal,
+        "L_start_m":    float(L_start),
+        "L_max_m":      float(L_max),
+        "L_step_m":     float(L_step),
+        "Fs_min_slip":  float(Fs_min_slip),
+        "Fs_min_overt": float(Fs_min_overt),
+        "history":      history,
+        "n_iterations": n_iter,
+        "run_id":       rid,
+    }
+
+
+def _save_iteration(db_path: _Path_li, bh: str, pile: str,
+                    step: dict, run_id: str) -> None:
+    """Lưu 1 step vào ke_sw_L_iteration. INSERT OR REPLACE idempotent."""
+    with _sq_li.connect(db_path) as con:
+        con.execute("""
+            INSERT INTO ke_sw_L_iteration
+                (bh_name, pile_type, L_m, Fs_bishop, Fs_spencer, Fs_mp,
+                 Fs_overturning, pass_slip, pass_overt, all_pass, is_final, run_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT (bh_name, pile_type, L_m, run_id) DO UPDATE SET
+                Fs_bishop       = excluded.Fs_bishop,
+                Fs_spencer      = excluded.Fs_spencer,
+                Fs_mp           = excluded.Fs_mp,
+                Fs_overturning  = excluded.Fs_overturning,
+                pass_slip       = excluded.pass_slip,
+                pass_overt      = excluded.pass_overt,
+                all_pass        = excluded.all_pass,
+                is_final        = excluded.is_final,
+                ts              = datetime('now','localtime')
+        """, (bh, pile, step["L_m"], step["Fs_bishop"], step["Fs_spencer"],
+              step["Fs_mp"], step["Fs_lat"], step["pass_slip"],
+              step["pass_overt"], step["all_pass"], step["is_final"], run_id))
+        con.commit()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Demo
 # ─────────────────────────────────────────────────────────────────────────────
 
