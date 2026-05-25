@@ -15745,13 +15745,14 @@ if _page == "tvtk_prep":
                 _H_p3  = float(_hsoft_e.get(_nm3) or 0)
 
                 # Cu_VST trung bình trong phạm vi lớp yếu (PA3 = sâu nhất)
+                # vst_locations.name = tên HK (không có borehole_id)
                 _vr = _cv.execute("""
                     SELECT AVG(v.Su_kPa) avg_su
                     FROM vane_shear_tests v
                     JOIN vst_locations vl ON v.vst_loc_id = vl.id
-                    WHERE vl.borehole_id = ? AND v.Su_kPa > 0
+                    WHERE vl.name = ? AND v.Su_kPa > 0
                       AND v.depth_m <= ?
-                """, (_b3["id"], max(_H_p1, _H_p2, _H_p3))).fetchone()
+                """, (_nm3, max(_H_p1, _H_p2, _H_p3))).fetchone()
                 _Cu_e  = float(_vr["avg_su"]) if _vr and _vr["avg_su"] else None
                 _Es_e  = 250.0 * _Cu_e if _Cu_e else None
 
