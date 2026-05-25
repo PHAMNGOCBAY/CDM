@@ -9,6 +9,7 @@ Hàm public:
   calc_time_series(params, t_months_list) -> list[dict]
   compare_methods(bh_name, H_fill_m, zone_params) -> list[dict]
   check_samples_vs_tccs41(zone_code) -> dict
+  calc_s2_layers(bh_name, H_cdm_m, H_soft_m, q_kPa, gwt_depth_m) -> dict
   classify_soft_soil(symbol, e0, c_kPa, phi_deg, Cu_VST_kPa, ...) -> dict
   classify_zone_from_db(zone_code, db_path) -> list[dict]
 """
@@ -775,7 +776,217 @@ def check_samples_vs_tccs41(zone_code: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────
-# 7. NHẬN DIỆN ĐẤT YẾU — TCCS 41:2022 ĐIỀU 4.1
+# 7. LÚN S2 — LỚP ĐẤT YẾU DƯỚI ĐÁY CỌC CDM (TCVN 9403 PHỤ LỤC C §5.3)
+# ──────────────────────────────────────────────────────────────────
+
+def _gamma_layer(bh_id: int, depth_top: float, depth_bot: float,
+                 con: sqlite3.Connection, default: float = 16.0) -> float:
+    """γ_sat trung bình của lớp (kN/m³) từ lab_tests. Fallback = default."""
+    r = con.execute("""
+        SELECT AVG(gamma_kNm3) g FROM lab_tests
+        WHERE borehole_id=? AND depth_from_m>=? AND depth_from_m<? AND gamma_kNm3 IS NOT NULL
+    """, (bh_id, depth_top, depth_bot)).fetchone()
+    return float(r["g"]) if r and r["g"] else default
+
+
+def _sigma_v0_at(depth_m: float, bh_id: int, con: sqlite3.Connection,
+                 gwt_depth_m: float = 0.0) -> float:
+    """Ứng suất hữu hiệu thẳng đứng tại depth_m (kPa), tính từ miệng HK."""
+    all_lyrs = con.execute("""
+        SELECT depth_top_m, depth_bot_m FROM layers
+        WHERE borehole_id=? ORDER BY depth_top_m
+    """, (bh_id,)).fetchall()
+    sv = 0.0
+    for al in all_lyrs:
+        top = float(al["depth_top_m"]); bot = float(al["depth_bot_m"])
+        if top >= depth_m:
+            break
+        dz = min(bot, depth_m) - top
+        if dz <= 0:
+            continue
+        gam = _gamma_layer(bh_id, top, bot, con)
+        z_mid = top + dz / 2.0
+        if z_mid < gwt_depth_m:
+            sv += gam * dz
+        else:
+            sv += (gam - GAMMA_W) * dz
+    return max(sv, 1.0)
+
+
+def _nearest_lab(bh_name: str, symbol: str, field: str,
+                 con: sqlite3.Connection) -> float | None:
+    """Giá trị lab trung bình (Cc/Cs/e0/PC) từ HK gần nhất cùng zone + cùng symbol."""
+    zone = bh_name.split("-")[0]
+    r = con.execute(f"""
+        SELECT AVG(lt.{field}) val,
+               sqrt(power(b.x_coord_m - bx.x_coord_m,2) +
+                    power(b.y_coord_m - bx.y_coord_m,2)) dist
+        FROM lab_tests lt
+        JOIN boreholes b  ON lt.borehole_id = b.id
+        JOIN boreholes bx ON bx.name = ?
+        JOIN layers ly ON ly.borehole_id = b.id
+            AND lt.depth_from_m >= ly.depth_top_m
+            AND lt.depth_from_m <  ly.depth_bot_m
+            AND ly.symbol = ?
+        WHERE b.name != ? AND b.name LIKE ? || '-%'
+          AND lt.{field} IS NOT NULL
+        GROUP BY b.name, b.x_coord_m, b.y_coord_m, bx.x_coord_m, bx.y_coord_m
+        ORDER BY dist LIMIT 1
+    """, (bh_name, symbol, bh_name, zone)).fetchone()
+    return float(r["val"]) if r and r["val"] else None
+
+
+def calc_s2_layers(
+    bh_name: str,
+    H_cdm_m: float,
+    H_soft_m: float,
+    q_kPa: float,
+    gwt_depth_m: float = 0.0,
+    db_path: Path | None = None,
+) -> dict:
+    """Lún S2 = lún cố kết lớp đất yếu dưới đáy trụ CDM.
+
+    Công thức: TCVN 9403:2012 Phụ lục C §5.3 — dùng Cc/Cs cho từng lớp.
+    Tải q không suy giảm khi truyền qua đáy khối CDM (giả định phổ biến).
+    Priority Cc/Cs: lab_tests HK hiện tại → HK gần nhất cùng zone/symbol → Cs=0.15Cc
+
+    Returns:
+        S2_cm (float), layers (list[dict]), H_below_m (float), warnings (list[str])
+    """
+    if H_cdm_m is None or H_soft_m is None:
+        return {"S2_cm": 0.0, "layers": [], "H_below_m": 0.0,
+                "warnings": ["Thiếu H_cdm_m hoặc H_soft_m"]}
+
+    H_below = round(H_soft_m - H_cdm_m, 3)
+    if H_below <= 0.01:
+        return {"S2_cm": 0.0, "layers": [], "H_below_m": 0.0, "warnings": []}
+
+    db = Path(db_path) if db_path else _DB
+    warnings: list[str] = []
+    layer_results: list[dict] = []
+    S2_total = 0.0
+
+    with sqlite3.connect(db) as con:
+        con.row_factory = sqlite3.Row
+        bh = con.execute(
+            "SELECT id, elevation_m FROM boreholes WHERE name=?", (bh_name,)
+        ).fetchone()
+        if not bh:
+            return {"S2_cm": 0.0, "layers": [], "H_below_m": H_below,
+                    "warnings": [f"Không tìm thấy borehole '{bh_name}'"]}
+        bh_id = int(bh["id"])
+
+        lyrs = con.execute("""
+            SELECT symbol, depth_top_m, depth_bot_m,
+                   COALESCE(thickness_m, depth_bot_m - depth_top_m) thick
+            FROM layers
+            WHERE borehole_id=? AND depth_bot_m > ? AND depth_top_m < ?
+            ORDER BY depth_top_m
+        """, (bh_id, H_cdm_m, H_soft_m)).fetchall()
+
+        for idx, lyr in enumerate(lyrs):
+            sym   = lyr["symbol"]
+            d_top = max(float(lyr["depth_top_m"]), H_cdm_m)
+            d_bot = min(float(lyr["depth_bot_m"]), H_soft_m)
+            H_i   = d_bot - d_top
+            if H_i < 0.01:
+                continue
+
+            lab = con.execute("""
+                SELECT AVG(Cc) Cc, AVG(Cs) Cs, AVG(e0) e0, AVG(PC_kPa) PC
+                FROM lab_tests
+                WHERE borehole_id=? AND depth_from_m>=? AND depth_from_m<?
+                  AND e0 IS NOT NULL AND e0 > 0
+            """, (bh_id, float(lyr["depth_top_m"]), float(lyr["depth_bot_m"]))).fetchone()
+
+            e0 = float(lab["e0"]) if lab and lab["e0"] else None
+            Cc = float(lab["Cc"]) if lab and lab["Cc"] else None
+            Cs = float(lab["Cs"]) if lab and lab["Cs"] else None
+            PC = float(lab["PC"]) if lab and lab["PC"] else None
+            cc_src = "lab"
+
+            # Fallback: HK gần nhất cùng zone + symbol
+            if e0 is None or Cc is None:
+                e0_nb = _nearest_lab(bh_name, sym, "e0", con)
+                Cc_nb = _nearest_lab(bh_name, sym, "Cc", con)
+                if e0_nb and Cc_nb:
+                    e0 = e0_nb if e0 is None else e0
+                    Cc = Cc_nb if Cc is None else Cc
+                    if Cs is None:
+                        Cs = _nearest_lab(bh_name, sym, "Cs", con)
+                    if PC is None:
+                        PC = _nearest_lab(bh_name, sym, "PC_kPa", con)
+                    nb_name = con.execute("""
+                        SELECT b.name FROM boreholes b
+                        JOIN boreholes bx ON bx.name=?
+                        WHERE b.name LIKE ? || '-%' AND b.name!=?
+                        ORDER BY sqrt(power(b.x_coord_m-bx.x_coord_m,2)+
+                                      power(b.y_coord_m-bx.y_coord_m,2)) LIMIT 1
+                    """, (bh_name, bh_name.split("-")[0], bh_name)).fetchone()
+                    nb_label = nb_name["name"] if nb_name else "nearest"
+                    cc_src = f"fallback:{nb_label}"
+                    warnings.append(
+                        f"Lớp {sym} ({d_top:.1f}–{d_bot:.1f}m): "
+                        f"dùng Cc={Cc:.3f} từ {nb_label} (fallback)"
+                    )
+
+            if e0 is None or Cc is None:
+                warnings.append(
+                    f"Lớp {sym} ({d_top:.1f}–{d_bot:.1f}m): thiếu Cc/e0 — bỏ qua"
+                )
+                layer_results.append({
+                    "symbol": sym, "depth_top_m": round(d_top, 2),
+                    "depth_bot_m": round(d_bot, 2), "H_i_m": round(H_i, 2),
+                    "e0": None, "Cc": None, "Cs": None, "PC_kPa": None,
+                    "sigma_v0_kPa": None, "sigma_vf_kPa": None,
+                    "oc_status": "no_data", "Si_cm": 0.0, "cc_source": "missing",
+                })
+                continue
+
+            if Cs is None:
+                Cs = 0.15 * Cc
+                warnings.append(f"Lớp {sym}: Cs=None → Cs=0.15×Cc={Cs:.4f}")
+
+            d_mid = (d_top + d_bot) / 2.0
+            sv0 = _sigma_v0_at(d_mid, bh_id, con, gwt_depth_m)
+            svf = sv0 + q_kPa
+
+            if PC is None or sv0 >= PC:
+                oc = "NC"; ref = PC or sv0
+            elif svf <= PC:
+                oc = "OC"; ref = PC
+            else:
+                oc = "crossPC"; ref = PC
+
+            if oc == "OC":
+                Si = H_i * Cs / (1 + e0) * math.log10(svf / sv0)
+            elif oc == "NC":
+                Si = H_i * Cc / (1 + e0) * math.log10(svf / max(sv0, 1.0))
+            else:
+                Si = (H_i * Cs / (1 + e0) * math.log10(ref / sv0) +
+                      H_i * Cc / (1 + e0) * math.log10(svf / ref))
+            Si_cm = max(0.0, Si * 100.0)
+            S2_total += Si_cm
+
+            layer_results.append({
+                "symbol": sym, "depth_top_m": round(d_top, 2),
+                "depth_bot_m": round(d_bot, 2), "H_i_m": round(H_i, 2),
+                "e0": round(e0, 3), "Cc": round(Cc, 3), "Cs": round(Cs, 4),
+                "PC_kPa": round(PC, 1) if PC else None,
+                "sigma_v0_kPa": round(sv0, 1), "sigma_vf_kPa": round(svf, 1),
+                "oc_status": oc, "Si_cm": round(Si_cm, 2), "cc_source": cc_src,
+            })
+
+    return {
+        "S2_cm":     round(S2_total, 2),
+        "layers":    layer_results,
+        "H_below_m": round(H_below, 2),
+        "warnings":  warnings,
+    }
+
+
+# ──────────────────────────────────────────────────────────────────
+# 8. NHẬN DIỆN ĐẤT YẾU — TCCS 41:2022 ĐIỀU 4.1
 # ──────────────────────────────────────────────────────────────────
 
 # Ký hiệu luôn là đất yếu (không cần kiểm tra chỉ tiêu thí nghiệm)
