@@ -17336,6 +17336,268 @@ if _page == "tvtk_prep":
     st.caption("Lưu ý: Mực nước ngầm ảnh hưởng trực tiếp đến áp lực thấm, ổn định hố đào và thiết kế tiêu thoát nước.")
     st.divider()
 
+    # ── 7. Thủy văn trạm Phú An – Sông Sài Gòn 1977–2024 ──────────────────
+    st.markdown("### 7. Thủy văn trạm Phú An – Sông Sài Gòn (1977–2024)")
+
+    # 7.0 — Lý thuyết / Giới thiệu (expander render MD 50)
+    with st.expander("Cơ sở dữ liệu thủy văn — 48 năm quan trắc", expanded=False):
+        _md_tv_path = _ROOT / "50-thuyvan-phuan-1977-2024.md"
+        try:
+            if _md_tv_path.exists():
+                st.markdown(_md_tv_path.read_text(encoding="utf-8"))
+            else:
+                st.warning("Không tìm thấy 50-thuyvan-phuan-1977-2024.md")
+        except Exception as _exc_tv_md:
+            st.error(f"Lỗi đọc tài liệu: {_exc_tv_md}")
+
+    try:
+        # 7.1 — Cấu hình mực nước thiết kế (dual-path import)
+        _get_dw = None
+        try:
+            from thuyvan_phuan_import import (
+                get_design_water_level as _get_dw,
+                get_seasonal_water_levels as _get_seasonal,
+            )
+        except ImportError:
+            try:
+                from scripts.thuyvan_phuan_import import (
+                    get_design_water_level as _get_dw,
+                    get_seasonal_water_levels as _get_seasonal,
+                )
+            except ImportError:
+                _get_seasonal = None
+
+        if _get_dw is None:
+            st.warning("Module thủy văn không khả dụng.")
+        else:
+            st.markdown("#### 7.1. Mực nước thiết kế khuyến nghị")
+            _c7a, _c7b, _c7c = st.columns([1.2, 1.2, 1.2])
+            _struct_class = _c7a.selectbox(
+                "Cấp công trình",
+                options=["Dân dụng (P95)", "Tuổi thọ ≥50 năm (P99)", "Cực đại lịch sử (đỉnh triều)"],
+                key="_tv_water_class",
+                help="Chọn mức độ thiết kế theo quy mô công trình",
+            )
+            _design_life = _c7b.number_input(
+                "Tuổi thọ thiết kế (năm)",
+                min_value=0, max_value=100, value=50, step=10,
+                key="_tv_design_life",
+                help="Cộng dự phòng nước dâng theo xu thế +11.63 cm/decade",
+            )
+            _case_map = {
+                "Dân dụng (P95)": "P95",
+                "Tuổi thọ ≥50 năm (P99)": "P99",
+                "Cực đại lịch sử (đỉnh triều)": "peak_max",
+            }
+            _case_pick = _case_map[_struct_class]
+            try:
+                _r_dw = _get_dw(_case_pick, design_life_years=_design_life)
+                _c7c.metric(
+                    "Mực nước TK (cao độ Quốc gia)",
+                    f"{_r_dw['h_cm_design']:+.0f} cm",
+                    delta=(f"+{_r_dw['rise_added_cm']:.0f} cm dự phòng"
+                           if _r_dw['rise_added_cm'] > 0 else None),
+                )
+                st.caption(
+                    f"**{_r_dw['description']}** · "
+                    f"Hiện tại: {_r_dw['h_cm_current']:+.0f} cm · "
+                    f"Dự phòng nước dâng {_design_life} năm: +{_r_dw['rise_added_cm']:.0f} cm "
+                    f"(xu thế {_r_dw['rise_rate_cm_per_decade']:.2f} cm/decade) · "
+                    f"{_r_dw['source']}"
+                )
+            except Exception as _exc_dw:
+                st.error(f"Lỗi tra cứu mực nước TK: {_exc_dw}")
+
+            # Bảng tổng hợp tất cả các phân vị
+            _wl_table = []
+            for _c, _lbl in [
+                ("P5",  "Mực nước thấp khai thác (P5)"),
+                ("P50", "Trung vị (P50)"),
+                ("P95", "Thiết kế cao (P95)"),
+                ("P99", "Cực đại hiếm (P99)"),
+                ("peak_max", "Đỉnh triều lịch sử (2019)"),
+            ]:
+                try:
+                    _r = _get_dw(_c, design_life_years=0)
+                    _r50 = _get_dw(_c, design_life_years=50)
+                    _wl_table.append({
+                        "Trường hợp":          _lbl,
+                        "Hiện tại (cm)":       f"{_r['h_cm_current']:+.0f}",
+                        "TK 50 năm (cm)":      f"{_r50['h_cm_design']:+.0f}",
+                        "+Dự phòng 50yr (cm)": f"+{_r50['rise_added_cm']:.0f}",
+                    })
+                except Exception:
+                    pass
+            if _wl_table:
+                st.table(_pd_tv.DataFrame(_wl_table))
+
+            # 7.2 — Biểu đồ time series MNTB năm + xu thế ─────────────────
+            st.markdown("#### 7.2. Diễn biến MNTB theo năm (1977–2024)")
+            import numpy as _np_tv2
+            _rows_yr = _cv.execute("""
+                SELECT year, avg_cm, max_cm, min_cm
+                FROM thuyvan_annual_summary ORDER BY year
+            """).fetchall()
+            if _rows_yr:
+                _years   = _np_tv2.array([r["year"] for r in _rows_yr])
+                _avg_yr  = _np_tv2.array([r["avg_cm"] for r in _rows_yr])
+                _max_yr  = _np_tv2.array([r["max_cm"] for r in _rows_yr])
+                _min_yr  = _np_tv2.array([r["min_cm"] for r in _rows_yr])
+
+                _fig_yr = _go_tv.Figure()
+                # Min ↔ Max vùng tô
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=list(_years) + list(_years)[::-1],
+                    y=list(_max_yr) + list(_min_yr)[::-1],
+                    fill="toself", fillcolor="rgba(135,206,250,0.18)",
+                    line=dict(width=0), mode="lines",
+                    name="Min ↔ Max năm", hoverinfo="skip",
+                ))
+                # Max line + xu thế
+                _a_mx, _b_mx = _np_tv2.polyfit(_years, _max_yr, 1)
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_max_yr, mode="lines+markers",
+                    name=f"Max năm (xu thế {_a_mx*10:+.1f} cm/decade)",
+                    line=dict(color="#D32F2F", width=2),
+                    marker=dict(size=6, symbol="triangle-up"),
+                ))
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_a_mx * _years + _b_mx,
+                    mode="lines", name="Xu thế Max",
+                    line=dict(color="#D32F2F", width=1.2, dash="dash"),
+                    showlegend=False,
+                ))
+                # Avg line + xu thế
+                _a_av, _b_av = _np_tv2.polyfit(_years, _avg_yr, 1)
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_avg_yr, mode="lines+markers",
+                    name=f"TB năm (xu thế {_a_av*10:+.1f} cm/decade)",
+                    line=dict(color="#1565C0", width=2.5),
+                    marker=dict(size=7, symbol="circle"),
+                ))
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_a_av * _years + _b_av,
+                    mode="lines", name="Xu thế TB",
+                    line=dict(color="#1565C0", width=1.2, dash="dash"),
+                    showlegend=False,
+                ))
+                # Min line
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_min_yr, mode="lines+markers",
+                    name="Min năm",
+                    line=dict(color="#2E7D32", width=1.5),
+                    marker=dict(size=5, symbol="triangle-down"),
+                ))
+                _fig_yr.update_layout(
+                    title="Mực nước trung bình ngày — Trạm Phú An 48 năm",
+                    xaxis_title="Năm", yaxis_title="Mực nước H (cm — cao độ Quốc gia)",
+                    height=480, hovermode="x unified",
+                    legend=dict(orientation="h", x=0, y=-0.15),
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    margin=dict(l=60, r=20, t=60, b=80),
+                )
+                _fig_yr.add_hline(y=0, line=dict(color="#888", width=1))
+                st.plotly_chart(_fig_yr, use_container_width=True,
+                                key="_tvtk_thuyvan_yearly")
+
+            # 7.3 — Đỉnh triều annual + bar chart ─────────────────────────
+            st.markdown("#### 7.3. Đỉnh triều tối đa lịch sử (13 năm tiêu biểu)")
+            _peaks_yr = _cv.execute("""
+                SELECT year, peak_cm FROM thuyvan_tidal_peaks ORDER BY year
+            """).fetchall()
+            if _peaks_yr:
+                _py = [r["year"] for r in _peaks_yr]
+                _pv = [r["peak_cm"] for r in _peaks_yr]
+                _ap, _bp = _np_tv2.polyfit(_py, _pv, 1)
+                _fig_pk = _go_tv.Figure()
+                _fig_pk.add_trace(_go_tv.Bar(
+                    x=_py, y=_pv,
+                    text=[f"{int(v)}" for v in _pv],
+                    textposition="outside", textfont=dict(size=10, color="#a01010"),
+                    marker=dict(color="#D32F2F", line=dict(color="#a01010", width=1)),
+                    name="Đỉnh triều (cm)",
+                    hovertemplate="Năm %{x}<br>Đỉnh: %{y} cm<extra></extra>",
+                ))
+                _fig_pk.add_trace(_go_tv.Scatter(
+                    x=[_py[0], _py[-1]],
+                    y=[_ap * _py[0] + _bp, _ap * _py[-1] + _bp],
+                    mode="lines", name=f"Xu thế: {_ap*10:+.1f} cm/decade",
+                    line=dict(color="#a01010", width=2, dash="dash"),
+                ))
+                _fig_pk.update_layout(
+                    title=f"Đỉnh triều tối đa — Cao nhất: {max(_pv)} cm ({_py[_pv.index(max(_pv))]})",
+                    xaxis_title="Năm", yaxis_title="Đỉnh triều (cm)",
+                    height=380, hovermode="closest",
+                    legend=dict(orientation="h", x=0, y=-0.15),
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    yaxis=dict(range=[120, max(_pv) + 15]),
+                    margin=dict(l=60, r=20, t=60, b=70),
+                )
+                st.plotly_chart(_fig_pk, use_container_width=True,
+                                key="_tvtk_thuyvan_peaks")
+
+            # 7.4 — Pattern mùa (boxplot 12 tháng) ────────────────────────
+            st.markdown("#### 7.4. Phân bố MNTB theo tháng (48 năm)")
+            _all_m = _cv.execute("""
+                SELECT month, h_cm FROM thuyvan_daily ORDER BY month
+            """).fetchall()
+            if _all_m:
+                _by_m: dict = {}
+                for r in _all_m:
+                    _by_m.setdefault(r["month"], []).append(r["h_cm"])
+                _ROMAN_TV = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"]
+                _fig_box = _go_tv.Figure()
+                for _m in range(1, 13):
+                    _vals = _by_m.get(_m, [])
+                    if not _vals: continue
+                    _is_flood = _m in (10, 11, 12, 1)
+                    _is_dry   = _m in (5, 6, 7, 8)
+                    _box_col  = ("#FFCDD2" if _is_flood else
+                                 "#C8E6C9" if _is_dry else "#E1F5FE")
+                    _fig_box.add_trace(_go_tv.Box(
+                        y=_vals, name=_ROMAN_TV[_m-1],
+                        marker_color=_box_col,
+                        line=dict(color="#444", width=1.4),
+                        boxmean=True,
+                        hovertemplate=(f"Tháng {_ROMAN_TV[_m-1]}<br>" +
+                                       "Q1=%{q1:.1f} · Median=%{median:.1f} · Q3=%{q3:.1f}<br>" +
+                                       "n=" + str(len(_vals)) + "<extra></extra>"),
+                    ))
+                _fig_box.update_layout(
+                    title="Phân bố MNTB ngày theo 12 tháng — đỏ=lũ cao, xanh=khô thấp",
+                    yaxis_title="Mực nước H (cm)", xaxis_title="Tháng",
+                    height=420, showlegend=False, hovermode="closest",
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    margin=dict(l=60, r=20, t=60, b=50),
+                )
+                _fig_box.add_hline(y=0, line=dict(color="#888", width=1))
+                st.plotly_chart(_fig_box, use_container_width=True,
+                                key="_tvtk_thuyvan_boxplot")
+
+            # 7.5 — Bảng pattern mùa
+            if _get_seasonal is not None:
+                try:
+                    _sw = _get_seasonal()
+                    _sw_rows = []
+                    for _m in range(1, 13):
+                        v = _sw.get(_m, {})
+                        _sw_rows.append({
+                            "Tháng":      _ROMAN_TV[_m-1] if '_ROMAN_TV' in dir() else _m,
+                            "Mùa":        v.get("season", "—"),
+                            "TB (cm)":    f"{v.get('avg_cm', 0):+.1f}",
+                            "Max (cm)":   f"{v.get('max_cm', 0):+.0f}",
+                            "Min (cm)":   f"{v.get('min_cm', 0):+.0f}",
+                            "Số ngày":    f"{v.get('n_days', 0):,}",
+                        })
+                    with st.expander("Bảng chi tiết pattern mùa 12 tháng"):
+                        st.table(_pd_tv.DataFrame(_sw_rows))
+                except Exception:
+                    pass
+    except Exception as _exc_tv:
+        st.error(f"Lỗi module thủy văn: {_exc_tv}")
+
+    st.divider()
+
     # ── 8. Phân vùng gia cố CDM theo 7 nguyên tắc P1–P7 ───────────────────
     st.markdown("### 8. Phân vùng gia cố CDM")
 
