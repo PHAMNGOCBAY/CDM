@@ -10625,7 +10625,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _hk_with_results = [r for r in _e_rows
                                         if r.get("Fs lật") is not None]
                     if _hk_with_results:
-                        _ot_bh_options = [r["HK"] for r in _hk_with_results]
+                        _ot_bh_options = [r["Hố khoan"] for r in _hk_with_results]
                         _ot_pick = st.selectbox(
                             "Chọn hố khoan để vẽ hình minh họa lật:",
                             options=_ot_bh_options,
@@ -10641,7 +10641,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             )
                             # Lấy thông số HK đã chọn từ ke_sw_stability
                             _ot_row = next((r for r in _hk_with_results
-                                            if r["HK"] == _ot_pick), None)
+                                            if r["Hố khoan"] == _ot_pick), None)
                             if _ot_row:
                                 _ot_data = _con_e.execute("""
                                     SELECT top_elev, Z_m, Zb_m, wlvl_front, wlvl_back,
