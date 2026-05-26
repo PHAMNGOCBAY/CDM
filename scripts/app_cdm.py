@@ -4729,9 +4729,9 @@ elif _page == "sample_check":
     )
 
     if _HAS_537:
-        # Tải dữ liệu 3 khu vực
+        # Tải dữ liệu 4 khu vực
         _chk_all = {}
-        for _zc in ["NHC", "BXN", "KE"]:
+        for _zc in ["NHC", "BXN", "KE", "QTT"]:
             try:
                 _chk_all[_zc] = _chk537(_zc)
             except Exception as _ex:
@@ -4739,8 +4739,8 @@ elif _page == "sample_check":
 
         # Metric cards tóm tắt
         _lun_params = ["Cc", "Cs", "Cv", "PC"]
-        _met_cols = st.columns(3)
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+        _met_cols = st.columns(4)
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
             if _zc not in _chk_all:
                 continue
             _s       = _chk_all[_zc]["zone_summary"]
@@ -4777,7 +4777,7 @@ elif _page == "sample_check":
             return ""
 
         # Bảng chi tiết per khu vực
-        for _zc in ["NHC", "BXN", "KE"]:
+        for _zc in ["NHC", "BXN", "KE", "QTT"]:
             if _zc not in _chk_all:
                 continue
             st.markdown(f"**Khu vực {_zc} — Chi tiết theo lớp đất**")
@@ -4804,11 +4804,11 @@ elif _page == "sample_check":
                 use_container_width=True, hide_index=True,
             )
 
-        # Tóm tắt 3 khu vực
+        # Tóm tắt 4 khu vực
         st.divider()
-        st.markdown("**Tóm tắt 3 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
+        st.markdown("**Tóm tắt 4 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
         _sum_rows = []
-        for _zc in ["NHC", "BXN", "KE"]:
+        for _zc in ["NHC", "BXN", "KE", "QTT"]:
             if _zc not in _chk_all:
                 continue
             _s = _chk_all[_zc]["zone_summary"]
@@ -4825,7 +4825,7 @@ elif _page == "sample_check":
             st.table(pd.DataFrame(_sum_rows))
         st.info(
             "Xanh = đủ n≥6 | Đỏ = thiếu mẫu (<6) | '-' = không có mẫu hoặc không áp dụng. "
-            "Khu vực KE chưa có mẫu Cc — ưu tiên bổ sung."
+            "KE chưa có mẫu Cc | QTT có KQTN cho ND-02/06/07 (3/6 hố khoan)."
         )
 
     # ── B. TCVN 9403:2012 Bảng B.1 — QC mẫu CDM ────────────────────────────
@@ -4853,9 +4853,9 @@ elif _page == "sample_check":
         )
     else:
         st.markdown("**Nhập số liệu kiểm tra thực tế:**")
-        _qc_cols = st.columns(3)
+        _qc_cols = st.columns(4)
         _qc_zone_inputs = {}
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
             with _qc_cols[_ci]:
                 st.markdown(f"**Khu vực {_zc}**")
                 _n_col = st.number_input(f"Số cột CDM ({_zc})", 0, 10000, 0, 50,
@@ -16982,6 +16982,148 @@ if _page == "tvtk_prep":
         st.table(_pd_tv.DataFrame(_cc_rows))
     else:
         st.caption("Không có dữ liệu nén cố kết cho lớp 1 / 1b.")
+
+    # ── Thí nghiệm CU + CU' (effective stress) ──────────────────────────────
+    st.markdown("#### Thí nghiệm cắt 3 trục CU + CU' (effective stress)")
+
+    # Bảng tổng hợp theo zone × symbol
+    _cu_rows_tb = []
+    for zone_code in ("KE", "BXN", "NHC"):
+        for sym in ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"):
+            r = _cv.execute("""
+                SELECT
+                    COUNT(*) AS n,
+                    ROUND(AVG(c_CU_kPa), 2)       AS c_cu_avg,
+                    ROUND(MIN(c_CU_kPa), 2)       AS c_cu_min,
+                    ROUND(MAX(c_CU_kPa), 2)       AS c_cu_max,
+                    ROUND(AVG(phi_CU_deg), 2)     AS phi_cu_avg,
+                    ROUND(AVG(c_CU_eff_kPa), 2)   AS c_eff_avg,
+                    ROUND(AVG(phi_CU_eff_deg), 2) AS phi_eff_avg,
+                    ROUND(MIN(c_CU_eff_kPa), 2)   AS c_eff_min,
+                    ROUND(MAX(c_CU_eff_kPa), 2)   AS c_eff_max
+                FROM lab_tests lt
+                JOIN boreholes b ON lt.borehole_id = b.id
+                WHERE b.name LIKE ?
+                  AND lt.symbol_tcvn = ?
+                  AND lt.c_CU_kPa IS NOT NULL
+                  AND lt.c_CU_kPa > 0
+            """, (f"{zone_code}-%", sym)).fetchone()
+            if not r or not r["n"]: continue
+            _cu_rows_tb.append({
+                "Khu vực":          zone_code,
+                "Ký hiệu":          sym,
+                "Số mẫu":           r["n"],
+                "c_CU TB (kPa)":    r["c_cu_avg"] or "—",
+                "c_CU min":         r["c_cu_min"] or "—",
+                "c_CU max":         r["c_cu_max"] or "—",
+                "φ_CU TB (°)":      r["phi_cu_avg"] or "—",
+                "c' TB (kPa)":      r["c_eff_avg"] or "—",
+                "c' min":           r["c_eff_min"] or "—",
+                "c' max":           r["c_eff_max"] or "—",
+                "φ' TB (°)":        r["phi_eff_avg"] or "—",
+            })
+
+    if _cu_rows_tb:
+        st.table(_pd_tv.DataFrame(_cu_rows_tb))
+        st.caption(
+            "**CU** = Consolidated Undrained (total stress).  "
+            "**CU' / c', φ'** = effective stress parameters (drained-like).  "
+            "Dùng cho Bishop effective stress + Plaxis HS / MC drained analysis."
+        )
+
+        # Biểu đồ scatter c_CU vs φ_CU + c' vs φ' (2 cột)
+        _cu_data = _cv.execute("""
+            SELECT b.name AS bh, lt.depth_from_m AS d,
+                   lt.symbol_tcvn AS sym,
+                   lt.c_CU_kPa AS c_cu, lt.phi_CU_deg AS phi_cu,
+                   lt.c_CU_eff_kPa AS c_eff, lt.phi_CU_eff_deg AS phi_eff
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE lt.c_CU_kPa IS NOT NULL AND lt.c_CU_kPa > 0
+            ORDER BY b.name, lt.depth_from_m
+        """).fetchall()
+
+        if _cu_data:
+            _c_cu1, _c_cu2 = st.columns(2)
+            _SYM_COL_CU = {"1":"#1a8cff","1b":"#5b8def","CH":"#1565C0",
+                            "MH":"#2E7D32","CH-OH":"#6A1B9A","MH-OH":"#00838F"}
+
+            # Scatter c_CU vs phi_CU (total)
+            _fig_cu1 = _go_tv.Figure()
+            for sym in set(r["sym"] for r in _cu_data):
+                _pts = [r for r in _cu_data if r["sym"] == sym]
+                if not _pts: continue
+                _fig_cu1.add_trace(_go_tv.Scatter(
+                    x=[r["phi_cu"] for r in _pts],
+                    y=[r["c_cu"] for r in _pts],
+                    mode="markers", name=f"Lớp {sym} (n={len(_pts)})",
+                    marker=dict(size=10, color=_SYM_COL_CU.get(sym, "#666"),
+                                line=dict(color="white", width=1.5)),
+                    hovertemplate=("HK: %{customdata[0]}<br>"
+                                   "Sâu: %{customdata[1]:.1f} m<br>"
+                                   "c_CU: %{y:.1f} kPa<br>"
+                                   "φ_CU: %{x:.2f}°<extra></extra>"),
+                    customdata=[[r["bh"], r["d"]] for r in _pts],
+                ))
+            _fig_cu1.update_layout(
+                title="c_CU vs φ_CU (total stress)",
+                xaxis_title="φ_CU (°)", yaxis_title="c_CU (kPa)",
+                height=380, legend=dict(orientation="h", x=0, y=-0.18),
+                margin=dict(l=60, r=20, t=50, b=60),
+                plot_bgcolor="white", paper_bgcolor="white",
+            )
+            _c_cu1.plotly_chart(_fig_cu1, use_container_width=True,
+                                 key="_tv_chart_cu_total")
+
+            # Scatter c' vs phi' (effective)
+            _fig_cu2 = _go_tv.Figure()
+            for sym in set(r["sym"] for r in _cu_data):
+                _pts = [r for r in _cu_data if r["sym"] == sym and r["c_eff"]]
+                if not _pts: continue
+                _fig_cu2.add_trace(_go_tv.Scatter(
+                    x=[r["phi_eff"] for r in _pts],
+                    y=[r["c_eff"] for r in _pts],
+                    mode="markers", name=f"Lớp {sym} (n={len(_pts)})",
+                    marker=dict(size=10, color=_SYM_COL_CU.get(sym, "#666"),
+                                symbol="diamond",
+                                line=dict(color="white", width=1.5)),
+                    hovertemplate=("HK: %{customdata[0]}<br>"
+                                   "Sâu: %{customdata[1]:.1f} m<br>"
+                                   "c': %{y:.1f} kPa<br>"
+                                   "φ': %{x:.2f}°<extra></extra>"),
+                    customdata=[[r["bh"], r["d"]] for r in _pts],
+                ))
+            _fig_cu2.update_layout(
+                title="c' vs φ' (effective stress)",
+                xaxis_title="φ' (°)", yaxis_title="c' (kPa)",
+                height=380, legend=dict(orientation="h", x=0, y=-0.18),
+                margin=dict(l=60, r=20, t=50, b=60),
+                plot_bgcolor="white", paper_bgcolor="white",
+            )
+            _c_cu2.plotly_chart(_fig_cu2, use_container_width=True,
+                                 key="_tv_chart_cu_eff")
+
+            # Bảng chi tiết tất cả mẫu CU
+            with st.expander(f"Chi tiết {len(_cu_data)} mẫu CU/CU'", expanded=False):
+                _detail_rows = []
+                for r in _cu_data:
+                    _detail_rows.append({
+                        "HK":          r["bh"],
+                        "Sâu (m)":     f"{r['d']:.2f}",
+                        "Symbol":      r["sym"] or "—",
+                        "c_CU (kPa)":  f"{r['c_cu']:.1f}" if r['c_cu'] else "—",
+                        "φ_CU (°)":    f"{r['phi_cu']:.2f}" if r['phi_cu'] else "—",
+                        "c' (kPa)":    f"{r['c_eff']:.1f}" if r['c_eff'] else "—",
+                        "φ' (°)":      f"{r['phi_eff']:.2f}" if r['phi_eff'] else "—",
+                    })
+                st.dataframe(_pd_tv.DataFrame(_detail_rows),
+                              use_container_width=True, hide_index=True)
+    else:
+        st.caption(
+            "Không có dữ liệu thí nghiệm CU/CU' đã import vào cơ sở dữ liệu. "
+            "Hiện chỉ có **19 mẫu KE** trong JSON gốc (chưa import) — "
+            "các zone BXN/NHC chưa có thí nghiệm CU."
+        )
 
     # ── Auto-save thông số mặc định vào SQLite ───────────────────────────────
     # Tạo bảng tvtk_soil_params nếu chưa có
