@@ -4729,9 +4729,9 @@ elif _page == "sample_check":
     )
 
     if _HAS_537:
-        # Tải dữ liệu 3 khu vực
+        # Tải dữ liệu 4 khu vực
         _chk_all = {}
-        for _zc in ["NHC", "BXN", "KE"]:
+        for _zc in ["NHC", "BXN", "KE", "QTT"]:
             try:
                 _chk_all[_zc] = _chk537(_zc)
             except Exception as _ex:
@@ -4739,8 +4739,8 @@ elif _page == "sample_check":
 
         # Metric cards tóm tắt
         _lun_params = ["Cc", "Cs", "Cv", "PC"]
-        _met_cols = st.columns(3)
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+        _met_cols = st.columns(4)
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
             if _zc not in _chk_all:
                 continue
             _s       = _chk_all[_zc]["zone_summary"]
@@ -4777,7 +4777,7 @@ elif _page == "sample_check":
             return ""
 
         # Bảng chi tiết per khu vực
-        for _zc in ["NHC", "BXN", "KE"]:
+        for _zc in ["NHC", "BXN", "KE", "QTT"]:
             if _zc not in _chk_all:
                 continue
             st.markdown(f"**Khu vực {_zc} — Chi tiết theo lớp đất**")
@@ -4804,11 +4804,11 @@ elif _page == "sample_check":
                 use_container_width=True, hide_index=True,
             )
 
-        # Tóm tắt 3 khu vực
+        # Tóm tắt 4 khu vực
         st.divider()
-        st.markdown("**Tóm tắt 3 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
+        st.markdown("**Tóm tắt 4 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
         _sum_rows = []
-        for _zc in ["NHC", "BXN", "KE"]:
+        for _zc in ["NHC", "BXN", "KE", "QTT"]:
             if _zc not in _chk_all:
                 continue
             _s = _chk_all[_zc]["zone_summary"]
@@ -4825,7 +4825,7 @@ elif _page == "sample_check":
             st.table(pd.DataFrame(_sum_rows))
         st.info(
             "Xanh = đủ n≥6 | Đỏ = thiếu mẫu (<6) | '-' = không có mẫu hoặc không áp dụng. "
-            "Khu vực KE chưa có mẫu Cc — ưu tiên bổ sung."
+            "KE chưa có mẫu Cc | QTT có KQTN cho ND-02/06/07 (3/6 hố khoan)."
         )
 
     # ── B. TCVN 9403:2012 Bảng B.1 — QC mẫu CDM ────────────────────────────
@@ -4853,9 +4853,9 @@ elif _page == "sample_check":
         )
     else:
         st.markdown("**Nhập số liệu kiểm tra thực tế:**")
-        _qc_cols = st.columns(3)
+        _qc_cols = st.columns(4)
         _qc_zone_inputs = {}
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
             with _qc_cols[_ci]:
                 st.markdown(f"**Khu vực {_zc}**")
                 _n_col = st.number_input(f"Số cột CDM ({_zc})", 0, 10000, 0, 50,
