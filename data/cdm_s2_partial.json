@@ -1,0 +1,60 @@
+{
+  "_meta": {
+    "source": "scripts/cdm_s2_partial.py + TCVN 9403:2012 Phụ lục C + TCCS 41:2022 + Terzaghi 1943",
+    "updated": "2026-05-26",
+    "project": "202605-TTHC",
+    "doc": "59-cdm-s2-partial.md"
+  },
+  "applicability": {
+    "case_A_full_penetration":    "CDM cắm đến lớp cứng → S2 = 0",
+    "case_B_partial_penetration": "CDM chưa hết lớp bùn → S2 = Terzaghi cho phần đất yếu dưới mũi",
+    "threshold_H_below_m":        0.5
+  },
+  "formulas": {
+    "S_total":           "S_total = S1 + S2",
+    "S1":                "TCVN 9403 Phụ lục C: S1 = q*H_CDM / (a*Ec + (1-a)*Es)",
+    "S2":                "Terzaghi 1D sum theo phụ lớp i dưới mũi cọc",
+    "S2_layer_NC":       "S_i = H_i * Cc/(1+e0) * log10(sigma_vf/sigma_v0)",
+    "S2_layer_OC":       "S_i = H_i * Cs/(1+e0) * log10(sigma_vf/sigma_v0)",
+    "S2_layer_cross_PC": "S_i = H_i*[Cs/(1+e0)*log10(PC/sigma_v0) + Cc/(1+e0)*log10(sigma_vf/PC)]"
+  },
+  "stress_distribution": {
+    "infinite_slab": {
+      "expression": "delta_sigma_z = q (plain strain)",
+      "_use":       "Kè dài, áp dụng MẶC ĐỊNH cho kè SW tuyến dài"
+    },
+    "method_2to1": {
+      "expression": "delta_sigma_z = q * B*L / ((B+z)*(L+z))",
+      "_use":       "Móng hữu hạn (mố cầu, móng đơn)"
+    }
+  },
+  "default_params": {
+    "method":         "infinite_slab",
+    "gamma_w_kNm3":   9.81,
+    "n_sublayers":    5,
+    "sublayer_H_m":   1.0
+  },
+  "demo_KE_HK1": {
+    "H_soft_m":     25.0,
+    "H_CDM_m":      20.0,
+    "H_below_tip":  5.0,
+    "q_kPa":        60.0,
+    "sigma_v0_tip": 120.0,
+    "method":       "infinite_slab",
+    "result": {
+      "S1_cm":              10.5,
+      "S2_cm":              13.8,
+      "S_total_cm":         24.3,
+      "partial_penetration": true
+    }
+  },
+  "design_check": {
+    "TCCS_41_limit_cm": {
+      "cat1_general":   30,
+      "cat2_general":   40
+    },
+    "rule":      "S_total * (1 - U_t) <= delta_S_limit (Bang 1 TCCS 41)",
+    "U_target":  0.90
+  },
+  "sqlite_table": "cdm_s2_partial_results"
+}
