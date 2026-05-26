@@ -16053,8 +16053,8 @@ if _page == "tvtk_prep":
                     [0.0,  "#b71c1c"], [0.3, "#ef9a9a"], [0.5, "#f5f5f5"],
                     [0.7, "#90caf9"],  [1.0, "#0d47a1"],
                 ],
-                cmid=0,
-                cmin=-_fill_abs, cmax=_fill_abs,
+                zmid=0,
+                zmin=-_fill_abs, zmax=_fill_abs,
                 colorbar=dict(x=0.99, len=0.85, thickness=12, title="m"),
                 hovertemplate="E=%{x:.0f}<br>N=%{y:.0f}<br>Fill=%{z:+.2f}m<extra></extra>",
                 showlegend=False,
@@ -17402,6 +17402,124 @@ if _page == "tvtk_prep":
             st.table(_pd_tv.DataFrame(_saved_params, columns=[
                 "Khu vực", "Cc TB", "Cs TB", "PC TB (kPa)", "H bùn TB (m)", "n mẫu Cc"
             ]))
+    st.divider()
+
+    # ── 4b. Hồ sơ ứng suất theo chiều sâu — QTT ─────────────────────────────
+    _qtt_bhs_stress = [b for b in _bhs_tv if b["zone_id"] == 4
+                       and b["name"] in _cdm_yes]
+    if _qtt_bhs_stress:
+        st.markdown("### 4b. Hồ sơ ứng suất tự nhiên — Quảng Trường Trung Tâm (QTT)")
+        st.caption(
+            "σ_v (tổng) · u (áp lực nước) · σ'_v0 (hữu hiệu) · PC (tiền cố kết) "
+            "| q = 40,8 kPa | dừng tính S2 khi Δσ < 10% σ'_v0"
+        )
+        try:
+            from settlement_calc import build_stress_profile, calc_s2_below_cdm as _calc_s2
+            _has_stress_module = True
+        except ImportError:
+            import sys as _sys
+            _sys.path.insert(0, str(_ROOT / "scripts"))
+            try:
+                from settlement_calc import build_stress_profile, calc_s2_below_cdm as _calc_s2
+                _has_stress_module = True
+            except Exception:
+                _has_stress_module = False
+
+        if _has_stress_module:
+            import plotly.graph_objects as _go_str
+            from plotly.subplots import make_subplots as _mk_str
+            _n_qtt = len(_qtt_bhs_stress)
+            _fig_str = _mk_str(
+                rows=1, cols=_n_qtt,
+                subplot_titles=[b["name"].replace("QTTTTP-", "") for b in _qtt_bhs_stress],
+                shared_yaxes=True,
+                horizontal_spacing=0.03,
+            )
+            _Q_KPA = 40.8
+
+            for _ci, _bq in enumerate(_qtt_bhs_stress, start=1):
+                _prof = build_stress_profile(_bq["name"], gwt_depth_m=0.0)
+                if not _prof:
+                    continue
+                _dep   = [p["depth_m"]       for p in _prof]
+                _sv    = [p["sigma_v_kPa"]   for p in _prof]
+                _u     = [p["u_kPa"]         for p in _prof]
+                _sv0   = [p["sigma_v0_kPa"]  for p in _prof]
+                _pc    = [p["PC_kPa"]        for p in _prof]
+                _dep_pc = [_dep[i] for i, v in enumerate(_pc) if v is not None]
+                _pc_v   = [v for v in _pc   if v is not None]
+
+                _show = (_ci == 1)
+                _fig_str.add_trace(_go_str.Scatter(
+                    x=_sv, y=_dep, mode="lines", name="σ_v tổng",
+                    line=dict(color="#1565c0", width=1.8),
+                    showlegend=_show,
+                    hovertemplate="σ_v=%{x:.1f} kPa<br>z=%{y:.1f}m<extra></extra>",
+                ), row=1, col=_ci)
+                _fig_str.add_trace(_go_str.Scatter(
+                    x=_u, y=_dep, mode="lines", name="u áp lực nước",
+                    line=dict(color="#0288d1", width=1.5, dash="dot"),
+                    showlegend=_show,
+                    hovertemplate="u=%{x:.1f} kPa<br>z=%{y:.1f}m<extra></extra>",
+                ), row=1, col=_ci)
+                _fig_str.add_trace(_go_str.Scatter(
+                    x=_sv0, y=_dep, mode="lines", name="σ'_v0 hữu hiệu",
+                    line=dict(color="#2e7d32", width=2.2),
+                    showlegend=_show,
+                    hovertemplate="σ'_v0=%{x:.1f} kPa<br>z=%{y:.1f}m<extra></extra>",
+                ), row=1, col=_ci)
+                if _dep_pc:
+                    _fig_str.add_trace(_go_str.Scatter(
+                        x=_pc_v, y=_dep_pc, mode="markers", name="PC tiền cố kết",
+                        marker=dict(color="#e65100", size=7, symbol="diamond"),
+                        showlegend=_show,
+                        hovertemplate="PC=%{x:.1f} kPa<br>z=%{y:.1f}m<extra></extra>",
+                    ), row=1, col=_ci)
+                # Δσ = q đường thẳng đứng + ứng suất gây lún tại từng độ sâu
+                _sv0_arr = [p["sigma_v0_kPa"] for p in _prof]
+                _stop_z  = next((p["depth_m"] for p in _prof
+                                  if p["sigma_v0_kPa"] >= _Q_KPA / 0.10), _dep[-1])
+                _fig_str.add_trace(_go_str.Scatter(
+                    x=[_Q_KPA, _Q_KPA], y=[0, _stop_z],
+                    mode="lines", name=f"Δσ = {_Q_KPA} kPa",
+                    line=dict(color="#f57f17", width=1.5, dash="dash"),
+                    showlegend=_show,
+                    hoverinfo="skip",
+                ), row=1, col=_ci)
+                _fig_str.add_trace(_go_str.Scatter(
+                    x=[p["sigma_v0_kPa"] * 0.10 for p in _prof],
+                    y=_dep, mode="lines", name="10% σ'_v0 (ngưỡng dừng)",
+                    line=dict(color="#b71c1c", width=1.2, dash="longdash"),
+                    showlegend=_show,
+                    hovertemplate="10%σ'v0=%{x:.1f} kPa<br>z=%{y:.1f}m<extra></extra>",
+                ), row=1, col=_ci)
+
+                # S2 kết quả
+                _s2r = _calc_s2(_bq["name"], cdm_tip_depth_m=20.0, q_kPa=_Q_KPA,
+                                 sublayer_m=2.0, stop_ratio=0.10, gwt_depth_m=0.0)
+                _fig_str.add_annotation(
+                    text=f"S2={_s2r['S2_cm']:.1f}cm<br>dừng z={_s2r['stop_depth_m']:.0f}m",
+                    xref=f"x{_ci}", yref=f"y{_ci}",
+                    x=max(_sv) * 0.6, y=_stop_z * 0.5,
+                    showarrow=False, font=dict(size=9, color="#f57f17"),
+                    bgcolor="rgba(0,0,0,0.5)", bordercolor="#f57f17", borderwidth=1,
+                    row=1, col=_ci,
+                )
+
+            _fig_str.update_yaxes(autorange="reversed", title_text="Độ sâu (m)", row=1, col=1)
+            for _c in range(1, _n_qtt + 1):
+                _fig_str.update_xaxes(title_text="Ứng suất (kPa)", row=1, col=_c)
+            _fig_str.update_layout(
+                height=520,
+                template="plotly_dark",
+                title=f"Hồ sơ ứng suất tự nhiên — {_n_qtt} hố khoan QTT",
+                legend=dict(orientation="h", y=1.12, font=dict(size=10)),
+                margin=dict(l=50, r=20, t=70, b=40),
+            )
+            st.plotly_chart(_fig_str, use_container_width=True,
+                            config={"scrollZoom": True, "displayModeBar": True})
+        else:
+            st.warning("Không thể tải module tính toán — kiểm tra lại môi trường.")
     st.divider()
 
     # ── 5. Chỉ tiêu đề xuất phục vụ tính nền & ổn định ─────────────────────

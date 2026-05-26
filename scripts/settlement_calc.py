@@ -429,6 +429,7 @@ def compare_methods(bh_name: str,
                     zone_code: str,
                     H_fill_m: float = 3.0,
                     gamma_fill: float = 20.0,
+                    gwt_depth_m: float = 0.0,
                     residual_limit_cm: float = 30.0,
                     t_construction_months: float = 6.0,
                     ) -> dict:
@@ -470,7 +471,11 @@ def compare_methods(bh_name: str,
     _q_fill    = H_fill_m * gamma_fill
     _composite = cdm_area_ratio * Ec_cdm + (1.0 - cdm_area_ratio) * Es_cdm
     S_cdm_S1   = (_q_fill * H_soft_cdm / _composite) * 100.0 if _composite > 0 else S_total * 0.3
-    S_cdm_S2   = 0.0  # CDM cắm đến lớp cứng — không có lún bên dưới cột
+    # S2: lún cố kết bên dưới mũi CDM — luôn tính với q=40.8 kPa, phân tố 2m
+    _cdm_tip   = float(_d_range[1])
+    _s2_res    = calc_s2_below_cdm(bh_name, _cdm_tip, q_kPa=40.8, sublayer_m=2.0,
+                                    stop_ratio=0.10, gwt_depth_m=gwt_depth_m)
+    S_cdm_S2   = _s2_res["S2_cm"]
     S_cdm      = S_cdm_S1 + S_cdm_S2
 
     for sc in scenarios_cfg:
@@ -542,6 +547,278 @@ def compare_methods(bh_name: str,
         "scenarios":          scenarios_out,
         "time_series":        time_series_out,
     }
+
+
+# ──────────────────────────────────────────────────────────────────
+# 5b. S2 — LÚN CỐ KẾT BÊN DƯỚI MŨI CỌC CDM (LUÔN TÍNH)
+# ──────────────────────────────────────────────────────────────────
+
+def calc_s2_below_cdm(
+    bh_name: str,
+    cdm_tip_depth_m: float,
+    q_kPa: float = 40.8,
+    sublayer_m: float = 2.0,
+    stop_ratio: float = 0.10,
+    gwt_depth_m: float = 0.0,
+    db_path: Optional[Path] = None,
+) -> dict:
+    """
+    Tính S2 = lún cố kết sơ cấp bên dưới mũi cọc CDM.
+
+    Phương pháp:
+    - Chia từng phân tố 2m bắt đầu từ cdm_tip_depth_m
+    - Δσ = q_kPa (tải đều lớn, không phân tán theo chiều sâu)
+    - Dừng khi Δσ < stop_ratio × σ'v0  (mặc định: 10%)
+      ↔ σ'v0 > q_kPa / stop_ratio = 10 × q_kPa
+    - Dùng thông số Cc, Cs, e0, PC từ lab_tests nội suy theo chiều sâu
+    - Nếu thiếu mẫu tại độ sâu → ngoại suy từ mẫu gần nhất bên trên
+
+    Trả về:
+      {
+        'S2_cm': float,
+        'layers': [{'depth_mid_m', 'H_i_m', 'sigma_v0', 'sigma_vf', 'PC',
+                    'Cc','Cs','e0', 'Si_cm', 'OC_status', 'stopped'}],
+        'stop_depth_m': float,
+        'stop_reason': str,
+        'n_layers': int,
+        'warning': str | None,
+      }
+    """
+    db_path = db_path or _DB
+    zone_fallback_warn: Optional[str] = None
+    with sqlite3.connect(db_path) as con:
+        con.row_factory = sqlite3.Row
+        bh = con.execute("SELECT id, zone_id FROM boreholes WHERE name=?", (bh_name,)).fetchone()
+        if bh is None:
+            return {"S2_cm": 0.0, "layers": [], "stop_depth_m": cdm_tip_depth_m,
+                    "stop_reason": "bh_not_found", "n_layers": 0, "warning": f"Không tìm thấy HK {bh_name}"}
+        bh_id   = bh["id"]
+        zone_id = bh["zone_id"]
+        # Lab samples có Cc — bao gồm cả lớp bên trên để ngoại suy
+        samples = con.execute("""
+            SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, gamma_kNm3
+            FROM lab_tests
+            WHERE borehole_id=? AND Cc IS NOT NULL
+            ORDER BY depth_from_m
+        """, (bh_id,)).fetchall()
+        samples = [dict(r) for r in samples]
+        # Max depth from layers
+        max_depth_row = con.execute(
+            "SELECT MAX(depth_bot_m) FROM layers WHERE borehole_id=?", (bh_id,)
+        ).fetchone()
+        max_depth_m = float(max_depth_row[0] or 60.0)
+
+        # Fallback: dùng trung bình Cc từ cùng zone hoặc toàn dự án
+        if not samples:
+            zone_samples = con.execute("""
+                SELECT lt.depth_from_m, lt.depth_to_m, lt.Cc, lt.Cs, lt.e0, lt.PC_kPa, lt.gamma_kNm3
+                FROM lab_tests lt
+                JOIN boreholes b ON lt.borehole_id = b.id
+                WHERE b.zone_id=? AND lt.Cc IS NOT NULL
+                ORDER BY lt.depth_from_m
+            """, (zone_id,)).fetchall()
+            zone_samples = [dict(r) for r in zone_samples]
+            if not zone_samples:
+                # Dùng toàn bộ dự án
+                zone_samples = con.execute("""
+                    SELECT lt.depth_from_m, lt.depth_to_m, lt.Cc, lt.Cs, lt.e0, lt.PC_kPa, lt.gamma_kNm3
+                    FROM lab_tests lt WHERE lt.Cc IS NOT NULL
+                    ORDER BY lt.depth_from_m
+                """).fetchall()
+                zone_samples = [dict(r) for r in zone_samples]
+                fallback_src = "trung bình toàn dự án"
+            else:
+                fallback_src = f"trung bình khu vực zone {zone_id}"
+            if zone_samples:
+                samples = zone_samples
+                zone_fallback_warn = (
+                    f"Không có mẫu nén cố kết cho {bh_name} — "
+                    f"dùng {fallback_src} ({len(samples)} mẫu Cc)"
+                )
+            else:
+                return {"S2_cm": 0.0, "layers": [], "stop_depth_m": cdm_tip_depth_m,
+                        "stop_reason": "no_samples", "n_layers": 0,
+                        "warning": f"Không có mẫu nén cố kết trong toàn dự án — không tính S2"}
+
+    def _interp_params(depth_mid: float) -> dict:
+        """Nội/ngoại suy thông số Cc, Cs, e0, PC, gamma tại depth_mid."""
+        above = [s for s in samples if (s["depth_from_m"] + (s["depth_to_m"] or s["depth_from_m"]+1))/2 <= depth_mid]
+        below = [s for s in samples if (s["depth_from_m"] + (s["depth_to_m"] or s["depth_from_m"]+1))/2 > depth_mid]
+        if above:
+            ref = above[-1]
+        elif below:
+            ref = below[0]
+        else:
+            ref = samples[-1]
+        return {
+            "Cc":      ref["Cc"] or 0.48,
+            "Cs":      ref["Cs"] or ((ref["Cc"] or 0.48) * 0.18),
+            "e0":      ref["e0"] or 1.5,
+            "PC_kPa":  ref["PC_kPa"],
+            "gamma":   ref["gamma_kNm3"] or 16.5,
+        }
+
+    sigma_v0_limit = q_kPa / stop_ratio   # dừng khi σ'v0 vượt ngưỡng này
+
+    layers_out = []
+    S2_total   = 0.0
+    stop_reason = "max_depth"
+    z = cdm_tip_depth_m + sublayer_m / 2.0
+
+    while z <= max_depth_m:
+        p = _interp_params(z)
+        gamma_sat = p["gamma"]
+        sigma_v0  = calc_sigma_v0(z, gamma_sat, gwt_depth_m)
+
+        # Điều kiện dừng: Δσ < 10% σ'v0
+        if sigma_v0 >= sigma_v0_limit:
+            stop_reason = f"Δσ/σ'v0 < {int(stop_ratio*100)}% tại z={z:.1f}m"
+            break
+
+        sigma_vf = sigma_v0 + q_kPa
+        PC       = p["PC_kPa"]
+        Si       = calc_settlement_layer(sublayer_m, p["e0"], p["Cc"], p["Cs"],
+                                          sigma_v0, sigma_vf,
+                                          PC if PC else sigma_v0 * 0.9)
+        S2_total += Si
+
+        if PC is None:
+            oc_status = "unknown"
+        elif sigma_vf <= PC:
+            oc_status = "OC"
+        elif sigma_v0 < PC:
+            oc_status = "cross_PC"
+        else:
+            oc_status = "NC"
+
+        layers_out.append({
+            "depth_mid_m":   round(z, 2),
+            "H_i_m":         sublayer_m,
+            "sigma_v0_kPa":  round(sigma_v0, 1),
+            "sigma_vf_kPa":  round(sigma_vf, 1),
+            "PC_kPa":        round(PC, 1) if PC else None,
+            "Cc":            round(p["Cc"], 3),
+            "Cs":            round(p["Cs"], 4),
+            "e0":            round(p["e0"], 3),
+            "Si_cm":         round(Si * 100, 2),
+            "OC_status":     oc_status,
+        })
+        z += sublayer_m
+
+    return {
+        "S2_cm":        round(S2_total * 100, 1),
+        "layers":       layers_out,
+        "stop_depth_m": round(z - sublayer_m / 2.0, 1),
+        "stop_reason":  stop_reason,
+        "n_layers":     len(layers_out),
+        "q_kPa":        q_kPa,
+        "warning":      zone_fallback_warn or (None if layers_out else "Không có phân tố nào được tính"),
+    }
+
+
+def build_stress_profile(
+    bh_name: str,
+    gwt_depth_m: float = 0.0,
+    db_path: Optional[Path] = None,
+) -> list[dict]:
+    """
+    Xây dựng hồ sơ ứng suất theo chiều sâu cho 1 HK.
+
+    Mỗi điểm trả về:
+      depth_m, sigma_v_kPa (tổng), u_kPa (áp lực nước), sigma_v0_kPa (hữu hiệu), PC_kPa
+    Điểm được lấy tại: đỉnh/đáy mỗi lớp + midpoint mỗi lớp đất + vị trí mẫu lab.
+    """
+    # Gamma mặc định theo ký hiệu lớp (kN/m³, bão hòa) — dùng khi lab không có gamma
+    _GAMMA_BY_SYMBOL: dict[str, float] = {
+        "F": 18.5, "1": 15.8, "1b": 16.2, "XMD": 15.5,
+        "2": 18.0, "2a": 18.5, "2b": 19.0, "2c": 19.5,
+        "3": 19.5, "4": 20.0, "5a": 20.0, "5b": 20.5,
+        "6": 20.0, "7": 20.5,
+    }
+
+    db_path = db_path or _DB
+    with sqlite3.connect(db_path) as con:
+        con.row_factory = sqlite3.Row
+        bh = con.execute("SELECT id, elevation_m FROM boreholes WHERE name=?", (bh_name,)).fetchone()
+        if bh is None:
+            return []
+        bh_id = bh["id"]
+        layers = con.execute("""
+            SELECT depth_top_m, depth_bot_m, symbol
+            FROM layers WHERE borehole_id=? ORDER BY depth_top_m
+        """, (bh_id,)).fetchall()
+        layers = [dict(r) for r in layers]
+        lab = con.execute("""
+            SELECT depth_from_m, depth_to_m, PC_kPa, gamma_kNm3
+            FROM lab_tests WHERE borehole_id=? ORDER BY depth_from_m
+        """, (bh_id,)).fetchall()
+        lab = [dict(r) for r in lab]
+
+    if not layers:
+        return []
+
+    # PC lookup: tại mỗi depth_mid tra PC gần nhất từ lab
+    def _get_pc(depth: float) -> Optional[float]:
+        best, best_d = None, 9999.0
+        for row in lab:
+            mid = (row["depth_from_m"] + (row["depth_to_m"] or row["depth_from_m"] + 1)) / 2
+            if abs(mid - depth) < best_d and row["PC_kPa"]:
+                best, best_d = row["PC_kPa"], abs(mid - depth)
+        return best
+
+    def _gamma_at(depth: float) -> float:
+        for lyr in layers:
+            if lyr["depth_top_m"] <= depth <= lyr["depth_bot_m"]:
+                # Ưu tiên gamma từ lab trong cùng khoảng độ sâu
+                lab_g = [r["gamma_kNm3"] for r in lab
+                         if r["gamma_kNm3"] and
+                         lyr["depth_top_m"] <= (r["depth_from_m"] + (r["depth_to_m"] or r["depth_from_m"]+1))/2 <= lyr["depth_bot_m"]]
+                if lab_g:
+                    return float(sum(lab_g) / len(lab_g))
+                return float(_GAMMA_BY_SYMBOL.get(lyr["symbol"], 16.5))
+        return 16.5
+
+    # Tích lũy σ_v tổng bằng tích phân từng lớp
+    def _sigma_v_total(depth: float) -> float:
+        sv = 0.0
+        for lyr in layers:
+            top, bot = lyr["depth_top_m"], lyr["depth_bot_m"]
+            g = _gamma_at((top + min(bot, depth)) / 2)
+            seg = min(bot, depth) - top
+            if seg <= 0:
+                continue
+            sv += g * seg
+            if bot >= depth:
+                break
+        return sv
+
+    # Tập hợp các độ sâu cần tính
+    depths = set()
+    for lyr in layers:
+        depths.add(lyr["depth_top_m"])
+        depths.add(lyr["depth_bot_m"])
+        depths.add((lyr["depth_top_m"] + lyr["depth_bot_m"]) / 2)
+    for row in lab:
+        mid = (row["depth_from_m"] + (row["depth_to_m"] or row["depth_from_m"] + 1)) / 2
+        depths.add(round(mid, 1))
+    depths = sorted(depths)
+
+    profile = []
+    for d in depths:
+        if d < 0:
+            continue
+        sv    = _sigma_v_total(d)
+        u     = max(0.0, (d - gwt_depth_m)) * GAMMA_W if d > gwt_depth_m else 0.0
+        sv0   = max(sv - u, 0.5)
+        pc    = _get_pc(d)
+        profile.append({
+            "depth_m":       round(d, 2),
+            "sigma_v_kPa":   round(sv, 1),
+            "u_kPa":         round(u, 1),
+            "sigma_v0_kPa":  round(sv0, 1),
+            "PC_kPa":        round(pc, 1) if pc else None,
+        })
+    return profile
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -1261,7 +1538,8 @@ def create_appendix_E_tables(db_path: Optional[Path] = None) -> None:
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import sys
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     bh = "NHC-BH-03"
     print(f"=== Tính lún cho {bh} ===")
