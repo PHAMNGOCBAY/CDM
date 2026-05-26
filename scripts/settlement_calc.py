@@ -9,9 +9,6 @@ Hàm public:
   calc_time_series(params, t_months_list) -> list[dict]
   compare_methods(bh_name, H_fill_m, zone_params) -> list[dict]
   check_samples_vs_tccs41(zone_code) -> dict
-  calc_s2_layers(bh_name, H_cdm_m, H_soft_m, q_kPa, gwt_depth_m) -> dict
-  classify_soft_soil(symbol, e0, c_kPa, phi_deg, Cu_VST_kPa, ...) -> dict
-  classify_zone_from_db(zone_code, db_path) -> list[dict]
 """
 
 from __future__ import annotations

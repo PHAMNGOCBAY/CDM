@@ -7,10 +7,7 @@
 
 **File engine:** [scripts/ke_sw_nt_calc.py](scripts/ke_sw_nt_calc.py)
 **Dữ liệu đầu ra:** [data/ke_sw_nt_results.json](data/ke_sw_nt_results.json)
-**SQLite:** bảng `ke_sw_nt_detail` (39 cột) + `ke_sw_nt2_layers` (14 cột)
-
-> **Cập nhật 2026-05-26:** Bổ sung Phương án 2 (PA2) — xét lớp 1b vào vùng yếu trong NT1.
-> Kết quả lưu trong 6 cột mới: `D_bottom_soft_1b_m`, `L_req_nt1_1b_m`, `margin_nt1_1b_m`, `nt1_1b_result`, `L_min_pa2_m`, `pile_pa2`.
+**SQLite:** bảng `ke_sw_nt_detail` (33 cột) + `ke_sw_nt2_layers` (14 cột)
 
 ## 0. Cập nhật 2026-05-20 — Bổ sung SPT-Meyerhof cho lớp cát
 
@@ -90,54 +87,6 @@ Trong đó:
 $$L_{TK} \geq L_{yc} \quad \Leftrightarrow \quad \text{Biên an toàn} = L_{TK} - L_{yc} \geq 0$$
 
 **Lưu ý quan trọng:** $D_{bot,soft}$ là chiều sâu đến đáy lớp mềm — KHÔNG phải tổng chiều dày các lớp mềm.
-
-### Phương án 2 (PA2) — Xét thêm lớp 1b vào vùng yếu
-
-Lớp 1b (bùn sét mềm chuyển tiếp) tại một số hố khoan nằm ngay dưới lớp 1. Mặc dù cứng hơn lớp 1, lớp 1b vẫn thuộc nhóm đất yếu theo phân loại địa tầng.
-
-**Tiêu chí PA2:**
-
-$$D_{bot,soft}^{PA2} = \max\!\left(\text{depth\_bot các lớp } '1', '1b', 'XMD'\right)$$
-
-$$L_{yc}^{PA2} = f_m + D_{bot,soft}^{PA2} + L_{pen,min}$$
-
-**Hằng số code:** `SOFT_SYMBOLS_WITH_1B = frozenset({"1", "1b", "XMD"})`
-
-**Kết quả so sánh PA1 (chỉ lớp 1) vs PA2 (lớp 1+1b)** với L_TK = 29,0 m, cọc SW-840:
-
-| Hố khoan | D_bot PA1 (m) | D_bot PA2 (m) | L_yc PA1 (m) | L_yc PA2 (m) | NT1 PA1 | NT1 PA2 |
-| -------- | :---: | :---: | :---: | :---: | :---: | :---: |
-| KE-HK2 | 22,1 | 22,1 | 23,8 | 23,8 | Đạt | Đạt |
-| KE-HK3 | 20,2 | 20,2 | 22,6 | 22,6 | Đạt | Đạt |
-| KE-HK6 | 17,0 | 23,5 | 20,9 | 27,4 | Đạt | Đạt |
-| KE-HK7 | 21,0 | 21,0 | 25,3 | 25,3 | Đạt | Đạt |
-| **KE-HK8** | **27,0** | **28,8** | **28,1** | **29,9** | **Đạt** | **Không đạt** |
-| **KE-HK9** | **21,0** | **23,5** | **26,9** | **29,5** | **Đạt** | **Không đạt** |
-| KE-HK10 | 25,0 | 27,0 | 29,1 | 31,1 | Không đạt | Không đạt |
-| **KE-HK11** | **24,2** | **25,2** | **28,1** | **29,1** | **Đạt** | **Không đạt** |
-
-**Nhận xét PA2:**
-
-- HK8, HK9, HK11 chuyển từ Đạt sang **Không đạt** khi xét lớp 1b
-- HK10 đã Không đạt, L_yc tăng thêm 2,0 m (31,1 m)
-- HK6 tăng L_yc từ 20,9 → 27,4 m nhưng vẫn Đạt với L_TK=29,0 m
-
-**Chiều dài tối thiểu để đạt NT1 PA2 (các vị trí Không đạt):**
-
-Công thức làm tròn lên: $L_{min}^{PA2} = \lceil L_{yc}^{PA2} / 0{,}5 \rceil \times 0{,}5$
-
-| Hố khoan | L_yc PA2 (m) | L min PA2 (m) | Cọc tối thiểu | L_max cọc (m) | Ghi chú |
-| -------- | :---: | :---: | :---: | :---: | --- |
-| **KE-HK8** | 29,92 | **30,0** | **SW-940** | 30,0 | Đúng biên — cần đặt hàng cẩn thận |
-| **KE-HK9** | 29,45 | **29,5** | **SW-940** | 30,0 | Biên an toàn 0,5 m |
-| **KE-HK10** | 31,08 | **31,5** | **SW-1100** | 32,0 | Phải nâng lên SW-1100 |
-| **KE-HK11** | 29,12 | **29,5** | **SW-940** | 30,0 | Biên an toàn 0,9 m |
-
-**Kết luận thiết kế PA2:**
-
-- 3 vị trí HK8/HK9/HK11: dùng **SW-940, L = 30 m** (đồng bộ tuyến, đơn giản thi công)
-- 1 vị trí HK10: **bắt buộc SW-1100, L ≥ 31,5 m** (vị trí kiểm soát PA2)
-- PA1 kết quả vẫn hiển thị song song trong bảng app để so sánh
 
 ---
 

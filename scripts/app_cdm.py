@@ -8247,29 +8247,6 @@ if _page == "ke_sw":
             if _k not in st.session_state:
                 st.session_state[_k] = {}
 
-        # Khôi phục lựa chọn đã lưu từ lần trước (chỉ nếu session mới, chưa có data)
-        if not st.session_state[_rec_key]:
-            try:
-                import sqlite3 as _sq3_uc
-                with _sq3_uc.connect(str(_DB), timeout=5) as _c_uc:
-                    _uc_rows = _c_uc.execute(
-                        "SELECT bh_name, recommended_pile, recommended_L_m, "
-                        "       z_custom_m, h1_custom_m "
-                        "FROM ke_sw_user_config"
-                    ).fetchall()
-                for _r_uc in _uc_rows:
-                    _nm_uc = _r_uc[0].replace("KE-", "")
-                    if _r_uc[1]:
-                        st.session_state[_rec_key][_nm_uc]   = _r_uc[1]
-                    if _r_uc[2] is not None:
-                        st.session_state[_ltk_key][_nm_uc]   = float(_r_uc[2])
-                    if _r_uc[3] is not None:
-                        st.session_state[_zcust_key][_nm_uc] = float(_r_uc[3])
-                    if _r_uc[4] is not None:
-                        st.session_state[_h1cust_key][_nm_uc] = float(_r_uc[4])
-            except Exception:
-                pass  # bảng chưa tồn tại hoặc lỗi đọc → dùng mặc định tối ưu
-
         # ── Cho phép user chọn HK trên tuyến kè SW ──────────────────────────────
         _all_bh_names = [b["name"] for b in _bhs_ke]
         _sw_align_key = "ke_sw_alignment_picks"
@@ -8418,8 +8395,8 @@ if _page == "ke_sw":
                 st.session_state[_rec_key][_bh_nm] = _on
                 st.session_state[_ltk_key][_bh_nm] = _olmax
 
-        # Nút reset thủ công + nút giả định Z=0 + nút lưu lựa chọn
-        _btn_b1, _btn_b2, _btn_b3 = st.columns([1, 1, 1])
+        # Nút reset thủ công + nút giả định Z=0
+        _btn_b1, _btn_b2 = st.columns([1, 1])
         with _btn_b1:
             if st.button("Đặt lại cọc tối ưu cho tất cả", key="btn_use_optimal",
                          help="Ghi đè lựa chọn hiện tại về cọc tối ưu (nhỏ nhất có L_max ≥ L_req)"):
@@ -8444,53 +8421,7 @@ if _page == "ke_sw":
                 if st.button("Hủy giả định Z", key="btn_z0_off", type="primary",
                              help="Xóa mọi giả định Z — dùng lại Z thực từ dữ liệu khảo sát"):
                     st.session_state[_zcust_key] = {}
-        with _btn_b3:
-            if st.button("Lưu lựa chọn", key="btn_save_user_config", type="primary",
-                         help="Ghi lại Cọc kiến nghị, L thiết kế và điều chỉnh Z/H lớp 1 — "
-                              "tự động khôi phục khi mở lại"):
-                try:
-                    import sqlite3 as _sq3_sv
-                    with _sq3_sv.connect(str(_DB), timeout=10) as _c_sv:
-                        _c_sv.execute("""
-                            CREATE TABLE IF NOT EXISTS ke_sw_user_config (
-                                bh_name          TEXT PRIMARY KEY,
-                                recommended_pile TEXT,
-                                recommended_L_m  REAL,
-                                z_custom_m       REAL,
-                                h1_custom_m      REAL,
-                                updated_at       TEXT
-                            )
-                        """)
-                        _now_sv = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        for _bh_sv in _bhs_on_alignment:
-                            _nm_sv   = _bh_sv["name"]
-                            _pile_sv = st.session_state[_rec_key].get(_nm_sv)
-                            _L_sv    = st.session_state[_ltk_key].get(_nm_sv)
-                            _z_sv    = st.session_state[_zcust_key].get(_nm_sv)
-                            _h1_sv   = st.session_state[_h1cust_key].get(_nm_sv)
-                            _c_sv.execute("""
-                                INSERT OR REPLACE INTO ke_sw_user_config
-                                    (bh_name, recommended_pile, recommended_L_m,
-                                     z_custom_m, h1_custom_m, updated_at)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, (f"KE-{_nm_sv}", _pile_sv, _L_sv, _z_sv, _h1_sv, _now_sv))
-                        _c_sv.commit()
-                    # Đồng bộ sang JSON config (chỉ 2 trường config: pile + L)
-                    _ke_j = json.loads(_KE_JSON.read_text(encoding="utf-8"))
-                    for _bh_j in _ke_j.get("boreholes", []):
-                        _nm_j = _bh_j["name"]
-                        if _nm_j in st.session_state[_rec_key]:
-                            _bh_j["recommended_pile"] = st.session_state[_rec_key][_nm_j]
-                        if _nm_j in st.session_state[_ltk_key]:
-                            _bh_j["recommended_L_m"]  = float(st.session_state[_ltk_key][_nm_j])
-                    _KE_JSON.write_text(
-                        json.dumps(_ke_j, ensure_ascii=False, indent=2),
-                        encoding="utf-8",
-                    )
-                    _load_ke_sw.clear()
-                    st.success("Đã lưu. Khi mở lại app sẽ tự khôi phục lựa chọn này.")
-                except Exception as _e_sv:
-                    st.error(f"Không lưu được: {_e_sv}")
+                    st.rerun()
 
         _z_cust_active = st.session_state.get(_zcust_key, {})
         if _z_cust_active:
@@ -8595,36 +8526,25 @@ if _page == "ke_sw":
                 _w_val   = _ntd_row.get("W_kN")     or _bh.get("W_pile_kN")
                 _rat_val = _ntd_row.get("ratio_nt2") or _nt2.get("ratio")
 
-            # PA2: xét thêm lớp 1b vào L yêu cầu (từ SQLite)
-            _d_1b      = _ntd_row.get("D_bottom_soft_1b_m")
-            _lr_1b     = _ntd_row.get("L_req_nt1_1b_m")
-            _nt1_1b    = _ntd_row.get("nt1_1b_result")
-            _lmin_pa2  = _ntd_row.get("L_min_pa2_m")
-            _pile_pa2  = _ntd_row.get("pile_pa2")
             _ke_rows.append({
-                "Hố khoan":              _bh["name"],
-                "Z (m)":                 _z_for_calc,
-                "H lớp 1 (m)":           _h1_for_calc,
-                "L yêu cầu (m)":         _L_req,
-                "Cọc tối ưu":            _opt_name,
-                "L_max (m)":             _opt_Lmax,
-                "Đủ chiều dài":          "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
-                "Cọc kiến nghị":         _rec,
-                "L thiết kế (m)":        _ltk_f,
-                "NT1":                   _nt1_val,
-                "NT2":                   _nt2_val,
-                "Rs (kN)":               round(_rs_val, 1) if _rs_val is not None else "–",
-                "Rp (kN)":               round(_rp_val, 1) if _rp_val is not None else "–",
-                "RR (kN)":               round(_rr_val, 1) if _rr_val is not None else "–",
-                "W (kN)":                round(_w_val or 0, 1),
-                "RR/W":                  round(_rat_val or 0, 2) if _rat_val is not None else "–",
-                "D_bot+1b (m)":          round(_d_1b, 1) if _d_1b else "–",
-                "L req+1b (m)":          round(_lr_1b, 2) if _lr_1b else "–",
-                "NT1 (+1b)":             _nt1_1b or "–",
-                "L min PA2 (m)":         round(_lmin_pa2, 1) if _lmin_pa2 else "–",
-                "Cọc PA2":               _pile_pa2 or "–",
-                "Ghi chú":               ("Tính lại theo cọc user chọn" if _need_recalc
-                                           else _bh.get("note", "")),
+                "Hố khoan":          _bh["name"],
+                "Z (m)":             _z_for_calc,
+                "H lớp 1 (m)":       _h1_for_calc,
+                "L yêu cầu (m)":     _L_req,
+                "Cọc tối ưu":        _opt_name,
+                "L_max (m)":         _opt_Lmax,
+                "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
+                "Cọc kiến nghị":     _rec,
+                "L thiết kế (m)":    _ltk_f,
+                "NT1":               _nt1_val,
+                "NT2":               _nt2_val,
+                "Rs (kN)":           round(_rs_val, 1) if _rs_val is not None else "–",
+                "Rp (kN)":           round(_rp_val, 1) if _rp_val is not None else "–",
+                "RR (kN)":           round(_rr_val, 1) if _rr_val is not None else "–",
+                "W (kN)":            round(_w_val or 0, 1),
+                "RR/W":              round(_rat_val or 0, 2) if _rat_val is not None else "–",
+                "Ghi chú":           ("Tính lại theo cọc user chọn" if _need_recalc
+                                       else _bh.get("note", "")),
             })
 
         if not _ke_rows:
@@ -8659,36 +8579,6 @@ if _page == "ke_sw":
                         step=0.5, format="%.1f", width="small",
                     ),
                     "Đủ chiều dài": st.column_config.Column(width="small"),
-                    "D_bot+1b (m)": st.column_config.Column(
-                        "D_bot+1b (m)",
-                        help="Chiều sâu đáy vùng yếu khi xét thêm lớp 1b (bùn sét mềm chuyển tiếp). "
-                             "Lớn hơn hoặc bằng H lớp 1.",
-                        width="small",
-                    ),
-                    "L req+1b (m)": st.column_config.Column(
-                        "L req+1b (m)",
-                        help="Chiều dài cọc yêu cầu NT1 khi xét thêm lớp 1b. "
-                             "So sánh với 'L yêu cầu' để thấy ảnh hưởng của lớp 1b.",
-                        width="small",
-                    ),
-                    "NT1 (+1b)": st.column_config.Column(
-                        "NT1 (+1b)",
-                        help="Kết quả NT1 khi xét lớp 1b vào chiều dài cọc tối thiểu.",
-                        width="small",
-                    ),
-                    "L min PA2 (m)": st.column_config.NumberColumn(
-                        "L min PA2 (m)",
-                        help="Chiều dài cọc tối thiểu để đạt NT1 khi xét thêm lớp 1b "
-                             "(làm tròn lên bội số 0,5 m theo catalog).",
-                        format="%.1f",
-                        width="small",
-                    ),
-                    "Cọc PA2": st.column_config.Column(
-                        "Cọc PA2",
-                        help="Loại cọc nhỏ nhất (theo H_mm) đáp ứng L min PA2. "
-                             "Dùng để so sánh với 'Cọc tối ưu' của PA1.",
-                        width="small",
-                    ),
                 },
                 disabled=_disabled_b,
                 hide_index=True,
@@ -8922,24 +8812,6 @@ if _page == "ke_sw":
                     ).fetchall()
                 except Exception:
                     _binhdo_rows = []
-                # Khoảng cách HK → CDM gần nhất
-                try:
-                    _cdm_dist_rows_pf = _con_pf.execute(
-                        "SELECT bh_name, bh_northing_m, bh_easting_m, on_alignment, "
-                        "       nearest_cdm_eucl_north_m, nearest_cdm_eucl_east_m, "
-                        "       dist_eucl_m, dist_perp_at_eucl_m, dist_along_at_eucl_m "
-                        "FROM ke_cdm_distances ORDER BY bh_name"
-                    ).fetchall()
-                except Exception:
-                    _cdm_dist_rows_pf = []
-                # CDM toado subsampled (mỗi 60 hàng ~ 137 điểm để vẽ vùng CDM)
-                try:
-                    _cdm_sub_rows = _con_pf.execute(
-                        "SELECT northing_m, easting_m FROM cdm_toado "
-                        "WHERE zone='KE' AND rowid % 60 = 0"
-                    ).fetchall()
-                except Exception:
-                    _cdm_sub_rows = []
 
             _ntd_by_bh = {r[0]: {"D_bot": r[1], "L_des": r[2], "pile": r[3]}
                           for r in _ntd_rows}
@@ -9494,178 +9366,6 @@ if _page == "ke_sw":
                     f"**{_total:.2f} m**"
                 )
                 st.table(_df_dist)
-
-            # ── 7. Khoảng cách HK → CDM gần nhất (vuông góc trục tuyến kè) ──
-            if _cdm_dist_rows_pf:
-                st.divider()
-                st.markdown("#### Khoảng cách hố khoan → vùng CDM gần nhất theo phương vuông góc")
-                st.caption(
-                    "Khoảng cách theo phương vuông góc (d⊥) = thành phần ngang "
-                    "của vectơ hố khoan→CDM gần nhất, đo vuông góc với trục tuyến kè SW. "
-                    "Trục tuyến kè xác định bằng phân tích thành phần chính (PCA) của 8 HK trên tuyến."
-                )
-
-                # Bảng thống kê
-                _cdm_tbl_rows = []
-                for _cr in _cdm_dist_rows_pf:
-                    (_cbh, _cn_m, _ce_m, _caln,
-                     _cdm_n, _cdm_e,
-                     _d_eucl, _d_perp, _d_along) = _cr
-                    _cdm_tbl_rows.append({
-                        "Hố khoan":          _cbh.replace("KE-", ""),
-                        "Trên tuyến kè":     "Có" if _caln else "Không",
-                        "d⊥ (m)":            round(_d_perp, 1),
-                        "d∥ (m)":            round(_d_along, 1),
-                        "d Euclid (m)":      round(_d_eucl, 1),
-                    })
-                _cdm_df = pd.DataFrame(_cdm_tbl_rows).sort_values("d⊥ (m)", ascending=False)
-                st.dataframe(
-                    _cdm_df,
-                    hide_index=True,
-                    use_container_width=True,
-                    column_config={
-                        "Hố khoan":      st.column_config.TextColumn(width="small"),
-                        "Trên tuyến kè": st.column_config.TextColumn(width="small"),
-                        "d⊥ (m)":        st.column_config.NumberColumn(
-                            "d⊥ (m)", format="%.1f",
-                            help="Khoảng cách theo phương vuông góc trục tuyến kè",
-                            width="small"),
-                        "d∥ (m)":        st.column_config.NumberColumn(
-                            "d∥ (m)", format="%.1f",
-                            help="Khoảng cách theo phương dọc trục tuyến kè",
-                            width="small"),
-                        "d Euclid (m)":  st.column_config.NumberColumn(
-                            "d Euclid (m)", format="%.1f",
-                            help="Khoảng cách thẳng (Euclid) đến CDM gần nhất",
-                            width="small"),
-                    },
-                )
-
-                # Bình đồ CDM distances
-                if _HAS_PLOTLY:
-                    _fig_cdm_pl = go.Figure()
-
-                    # Vùng CDM (subsampled — nền xám nhạt)
-                    if _cdm_sub_rows:
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[r[0] for r in _cdm_sub_rows],
-                            y=[r[1] for r in _cdm_sub_rows],
-                            mode="markers",
-                            marker=dict(size=4, color="#90CAF9", opacity=0.45,
-                                        symbol="circle"),
-                            name="Vùng CDM (lấy mẫu)",
-                            hoverinfo="skip",
-                        ))
-
-                    # Line BH → CDM gần nhất + nhãn d⊥
-                    for _cr in _cdm_dist_rows_pf:
-                        (_cbh, _bn, _be, _caln,
-                         _cdm_n, _cdm_e,
-                         _d_eucl, _d_perp, _d_along) = _cr
-                        _lcolor = "#E53935" if _caln else "#9E9E9E"
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[_bn, _cdm_n, None],
-                            y=[_be, _cdm_e, None],
-                            mode="lines",
-                            line=dict(color=_lcolor, width=1.5, dash="dot"),
-                            showlegend=False,
-                            hoverinfo="skip",
-                        ))
-                        # Nearest CDM column marker (đỏ nhỏ)
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[_cdm_n], y=[_cdm_e],
-                            mode="markers",
-                            marker=dict(size=7, color="#E53935",
-                                        symbol="x", line=dict(width=2)),
-                            showlegend=False,
-                            hovertext=f"{_cbh} → CDM d⊥={_d_perp:.1f}m",
-                            hoverinfo="text",
-                        ))
-                        # Nhãn d⊥ tại midpoint
-                        _fig_cdm_pl.add_annotation(
-                            x=(_bn + _cdm_n) / 2,
-                            y=(_be + _cdm_e) / 2,
-                            text=f"<b>{_d_perp:.1f}m</b>",
-                            showarrow=False,
-                            font=dict(size=9,
-                                      color="#B71C1C" if _d_perp > 30 else "#1565C0"),
-                            bgcolor="rgba(255,255,255,0.88)",
-                            borderpad=1,
-                        )
-
-                    # Boreholes — trên tuyến (vàng) vs ngoài tuyến (xám)
-                    for _caln_flag, _clr, _sym_lbl in [
-                        (1, "#FFC107", "HK trên tuyến kè"),
-                        (0, "#90A4AE", "HK ngoài tuyến"),
-                    ]:
-                        _sub = [_cr for _cr in _cdm_dist_rows_pf if _cr[3] == _caln_flag]
-                        if not _sub:
-                            continue
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[r[1] for r in _sub],
-                            y=[r[2] for r in _sub],
-                            mode="markers+text",
-                            marker=dict(symbol="circle", size=15, color=_clr,
-                                        line=dict(color="#1976D2", width=2)),
-                            text=[r[0].replace("KE-", "") for r in _sub],
-                            textposition="top center",
-                            textfont=dict(size=11, color="#0D47A1", family="Arial"),
-                            hovertext=[
-                                f"<b>{r[0]}</b><br>"
-                                f"d⊥ = {r[7]:.1f} m<br>"
-                                f"d Euclid = {r[6]:.1f} m"
-                                for r in _sub
-                            ],
-                            hoverinfo="text",
-                            name=_sym_lbl,
-                        ))
-
-                    # Ranh kè (DXF polyline)
-                    if _binhdo_cx:
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=_binhdo_cx, y=_binhdo_cy,
-                            mode="lines",
-                            line=dict(color="rgba(0,0,0,0.7)", width=1.5),
-                            name="Ranh kè SW", hoverinfo="skip",
-                            connectgaps=False,
-                        ))
-
-                    _fig_cdm_pl.update_layout(
-                        title="Bình đồ: khoảng cách hố khoan → CDM gần nhất (d⊥ vuông góc trục tuyến kè)",
-                        xaxis_title="X (Northing VN-2000, m)",
-                        yaxis_title="Y (Easting VN-2000, m)",
-                        height=640,
-                        hovermode="closest",
-                        plot_bgcolor="#F8F9FA",
-                        showlegend=True,
-                        legend=dict(x=0.01, y=0.99,
-                                    bgcolor="rgba(255,255,255,0.85)",
-                                    bordercolor="#CCC", borderwidth=1),
-                        margin=dict(t=70, b=60, l=60, r=20),
-                    )
-                    _fig_cdm_pl.update_yaxes(scaleanchor="x", scaleratio=1,
-                                             showgrid=True, gridcolor="#E0E0E0")
-                    _fig_cdm_pl.update_xaxes(showgrid=True, gridcolor="#E0E0E0")
-                    st.plotly_chart(_fig_cdm_pl, use_container_width=True)
-
-                    # Thống kê tóm tắt
-                    _max_perp = max(_cr[7] for _cr in _cdm_dist_rows_pf)
-                    _max_bh   = next(
-                        _cr[0].replace("KE-", "") for _cr in _cdm_dist_rows_pf
-                        if _cr[7] == _max_perp
-                    )
-                    _min_perp = min(_cr[7] for _cr in _cdm_dist_rows_pf)
-                    _min_bh   = next(
-                        _cr[0].replace("KE-", "") for _cr in _cdm_dist_rows_pf
-                        if _cr[7] == _min_perp
-                    )
-                    _c1, _c2, _c3 = st.columns(3)
-                    _c1.metric("d⊥ lớn nhất", f"{_max_perp:.1f} m",
-                               delta=f"HK{_max_bh}", delta_color="inverse")
-                    _c2.metric("d⊥ nhỏ nhất", f"{_min_perp:.1f} m",
-                               delta=f"HK{_min_bh}", delta_color="normal")
-                    _c3.metric("Trung bình d⊥",
-                               f"{sum(_cr[7] for _cr in _cdm_dist_rows_pf)/len(_cdm_dist_rows_pf):.1f} m")
 
         if _HAS_PLOTLY and _ke_rows:
             _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
@@ -10925,7 +10625,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _hk_with_results = [r for r in _e_rows
                                         if r.get("Fs lật") is not None]
                     if _hk_with_results:
-                        _ot_bh_options = [r["HK"] for r in _hk_with_results]
+                        _ot_bh_options = [r["Hố khoan"] for r in _hk_with_results]
                         _ot_pick = st.selectbox(
                             "Chọn hố khoan để vẽ hình minh họa lật:",
                             options=_ot_bh_options,
@@ -10941,7 +10641,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             )
                             # Lấy thông số HK đã chọn từ ke_sw_stability
                             _ot_row = next((r for r in _hk_with_results
-                                            if r["HK"] == _ot_pick), None)
+                                            if r["Hố khoan"] == _ot_pick), None)
                             if _ot_row:
                                 _ot_data = _con_e.execute("""
                                     SELECT top_elev, Z_m, Zb_m, wlvl_front, wlvl_back,
@@ -17634,6 +17334,340 @@ if _page == "tvtk_prep":
     ]
     st.table(_pd_tv.DataFrame(_gwt_rows))
     st.caption("Lưu ý: Mực nước ngầm ảnh hưởng trực tiếp đến áp lực thấm, ổn định hố đào và thiết kế tiêu thoát nước.")
+    st.divider()
+
+    # ── 7. Thủy văn trạm Phú An – Sông Sài Gòn 1977–2024 ──────────────────
+    st.markdown("### 7. Thủy văn trạm Phú An – Sông Sài Gòn (1977–2024)")
+
+    # 7.0 — Lý thuyết / Giới thiệu (expander render MD 50)
+    with st.expander("Cơ sở dữ liệu thủy văn — 48 năm quan trắc", expanded=False):
+        _md_tv_path = _ROOT / "50-thuyvan-phuan-1977-2024.md"
+        try:
+            if _md_tv_path.exists():
+                st.markdown(_md_tv_path.read_text(encoding="utf-8"))
+            else:
+                st.warning("Không tìm thấy 50-thuyvan-phuan-1977-2024.md")
+        except Exception as _exc_tv_md:
+            st.error(f"Lỗi đọc tài liệu: {_exc_tv_md}")
+
+    try:
+        # 7.1 — Cấu hình mực nước thiết kế (dual-path import)
+        _get_dw = None
+        try:
+            from thuyvan_phuan_import import (
+                get_design_water_level as _get_dw,
+                get_seasonal_water_levels as _get_seasonal,
+            )
+        except ImportError:
+            try:
+                from scripts.thuyvan_phuan_import import (
+                    get_design_water_level as _get_dw,
+                    get_seasonal_water_levels as _get_seasonal,
+                )
+            except ImportError:
+                _get_seasonal = None
+
+        if _get_dw is None:
+            st.warning("Module thủy văn không khả dụng.")
+        else:
+            st.markdown("#### 7.1. Mực nước thiết kế khuyến nghị")
+
+            # Tạo bảng lưu cấu hình (idempotent)
+            _cv.execute("""
+                CREATE TABLE IF NOT EXISTS tvtk_water_design_config (
+                    id              INTEGER PRIMARY KEY CHECK (id = 1),
+                    case_code       TEXT NOT NULL,
+                    case_label      TEXT,
+                    design_life_yr  INTEGER DEFAULT 50,
+                    h_cm_current    REAL,
+                    h_cm_design     REAL,
+                    rise_added_cm   REAL,
+                    rise_rate       REAL DEFAULT 11.63,
+                    description     TEXT,
+                    updated_at      TEXT DEFAULT (datetime('now','localtime'))
+                )
+            """)
+            _cv.commit()
+
+            # Load default từ DB (nếu đã lưu trước đó)
+            _saved_cfg = _cv.execute(
+                "SELECT case_code, design_life_yr FROM tvtk_water_design_config WHERE id=1"
+            ).fetchone()
+            _case_map = {
+                "Dân dụng (P95)":                  "P95",
+                "Tuổi thọ ≥50 năm (P99)":          "P99",
+                "Cực đại lịch sử (đỉnh triều)":     "peak_max",
+            }
+            _case_reverse = {v: k for k, v in _case_map.items()}
+            _default_label = (_case_reverse.get(_saved_cfg["case_code"], "Dân dụng (P95)")
+                              if _saved_cfg else "Dân dụng (P95)")
+            _default_life  = (int(_saved_cfg["design_life_yr"])
+                              if _saved_cfg and _saved_cfg["design_life_yr"] is not None else 50)
+            _options_cls   = list(_case_map.keys())
+            _default_idx   = (_options_cls.index(_default_label)
+                              if _default_label in _options_cls else 0)
+
+            _c7a, _c7b, _c7c, _c7s = st.columns([1.2, 1.2, 1.2, 0.7])
+            _struct_class = _c7a.selectbox(
+                "Cấp công trình",
+                options=_options_cls,
+                index=_default_idx,
+                key="_tv_water_class",
+                help="Chọn mức độ thiết kế theo quy mô công trình",
+            )
+            _design_life = _c7b.number_input(
+                "Tuổi thọ thiết kế (năm)",
+                min_value=0, max_value=100, value=_default_life, step=10,
+                key="_tv_design_life",
+                help="Cộng dự phòng nước dâng theo xu thế +11.63 cm/decade",
+            )
+            _case_pick = _case_map[_struct_class]
+            try:
+                _r_dw = _get_dw(_case_pick, design_life_years=_design_life)
+                _c7c.metric(
+                    "Mực nước TK (cao độ Quốc gia)",
+                    f"{_r_dw['h_cm_design']:+.0f} cm",
+                    delta=(f"+{_r_dw['rise_added_cm']:.0f} cm dự phòng"
+                           if _r_dw['rise_added_cm'] > 0 else None),
+                )
+                # Nút lưu cấu hình vào SQLite
+                if _c7s.button("Lưu", key="_tv_water_save", use_container_width=True,
+                               type="primary",
+                               help="Lưu cấu hình mực nước TK vào cơ sở dữ liệu"):
+                    _cv.execute("""
+                        INSERT INTO tvtk_water_design_config
+                            (id, case_code, case_label, design_life_yr,
+                             h_cm_current, h_cm_design, rise_added_cm,
+                             rise_rate, description)
+                        VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            case_code = excluded.case_code,
+                            case_label = excluded.case_label,
+                            design_life_yr = excluded.design_life_yr,
+                            h_cm_current = excluded.h_cm_current,
+                            h_cm_design = excluded.h_cm_design,
+                            rise_added_cm = excluded.rise_added_cm,
+                            rise_rate = excluded.rise_rate,
+                            description = excluded.description,
+                            updated_at = datetime('now','localtime')
+                    """, (_case_pick, _struct_class, int(_design_life),
+                          float(_r_dw['h_cm_current']),
+                          float(_r_dw['h_cm_design']),
+                          float(_r_dw['rise_added_cm']),
+                          float(_r_dw['rise_rate_cm_per_decade']),
+                          _r_dw['description']))
+                    _cv.commit()
+                    st.success(
+                        f"Đã lưu cấu hình mực nước TK: **{_struct_class}** + "
+                        f"**{_design_life} năm** → H = {_r_dw['h_cm_design']:+.0f} cm"
+                    )
+                st.caption(
+                    f"**{_r_dw['description']}** · "
+                    f"Hiện tại: {_r_dw['h_cm_current']:+.0f} cm · "
+                    f"Dự phòng nước dâng {_design_life} năm: +{_r_dw['rise_added_cm']:.0f} cm "
+                    f"(xu thế {_r_dw['rise_rate_cm_per_decade']:.2f} cm/decade) · "
+                    f"{_r_dw['source']}"
+                )
+                # Hiển thị thông tin cấu hình đã lưu (nếu khác với giá trị hiện tại)
+                if _saved_cfg:
+                    _saved_case = _saved_cfg["case_code"]
+                    _saved_life = _saved_cfg["design_life_yr"]
+                    if _saved_case != _case_pick or _saved_life != _design_life:
+                        st.info(
+                            f"Đã lưu trước: **{_case_reverse.get(_saved_case, _saved_case)}** + "
+                            f"**{_saved_life} năm**. Bấm **Lưu** để cập nhật cấu hình mới."
+                        )
+            except Exception as _exc_dw:
+                st.error(f"Lỗi tra cứu mực nước TK: {_exc_dw}")
+
+            # Bảng tổng hợp tất cả các phân vị
+            _wl_table = []
+            for _c, _lbl in [
+                ("P5",  "Mực nước thấp khai thác (P5)"),
+                ("P50", "Trung vị (P50)"),
+                ("P95", "Thiết kế cao (P95)"),
+                ("P99", "Cực đại hiếm (P99)"),
+                ("peak_max", "Đỉnh triều lịch sử (2019)"),
+            ]:
+                try:
+                    _r = _get_dw(_c, design_life_years=0)
+                    _r50 = _get_dw(_c, design_life_years=50)
+                    _wl_table.append({
+                        "Trường hợp":          _lbl,
+                        "Hiện tại (cm)":       f"{_r['h_cm_current']:+.0f}",
+                        "TK 50 năm (cm)":      f"{_r50['h_cm_design']:+.0f}",
+                        "+Dự phòng 50yr (cm)": f"+{_r50['rise_added_cm']:.0f}",
+                    })
+                except Exception:
+                    pass
+            if _wl_table:
+                st.table(_pd_tv.DataFrame(_wl_table))
+
+            # 7.2 — Biểu đồ time series MNTB năm + xu thế ─────────────────
+            st.markdown("#### 7.2. Diễn biến MNTB theo năm (1977–2024)")
+            import numpy as _np_tv2
+            _rows_yr = _cv.execute("""
+                SELECT year, avg_cm, max_cm, min_cm
+                FROM thuyvan_annual_summary ORDER BY year
+            """).fetchall()
+            if _rows_yr:
+                _years   = _np_tv2.array([r["year"] for r in _rows_yr])
+                _avg_yr  = _np_tv2.array([r["avg_cm"] for r in _rows_yr])
+                _max_yr  = _np_tv2.array([r["max_cm"] for r in _rows_yr])
+                _min_yr  = _np_tv2.array([r["min_cm"] for r in _rows_yr])
+
+                _fig_yr = _go_tv.Figure()
+                # Min ↔ Max vùng tô
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=list(_years) + list(_years)[::-1],
+                    y=list(_max_yr) + list(_min_yr)[::-1],
+                    fill="toself", fillcolor="rgba(135,206,250,0.18)",
+                    line=dict(width=0), mode="lines",
+                    name="Min ↔ Max năm", hoverinfo="skip",
+                ))
+                # Max line + xu thế
+                _a_mx, _b_mx = _np_tv2.polyfit(_years, _max_yr, 1)
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_max_yr, mode="lines+markers",
+                    name=f"Max năm (xu thế {_a_mx*10:+.1f} cm/decade)",
+                    line=dict(color="#D32F2F", width=2),
+                    marker=dict(size=6, symbol="triangle-up"),
+                ))
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_a_mx * _years + _b_mx,
+                    mode="lines", name="Xu thế Max",
+                    line=dict(color="#D32F2F", width=1.2, dash="dash"),
+                    showlegend=False,
+                ))
+                # Avg line + xu thế
+                _a_av, _b_av = _np_tv2.polyfit(_years, _avg_yr, 1)
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_avg_yr, mode="lines+markers",
+                    name=f"TB năm (xu thế {_a_av*10:+.1f} cm/decade)",
+                    line=dict(color="#1565C0", width=2.5),
+                    marker=dict(size=7, symbol="circle"),
+                ))
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_a_av * _years + _b_av,
+                    mode="lines", name="Xu thế TB",
+                    line=dict(color="#1565C0", width=1.2, dash="dash"),
+                    showlegend=False,
+                ))
+                # Min line
+                _fig_yr.add_trace(_go_tv.Scatter(
+                    x=_years, y=_min_yr, mode="lines+markers",
+                    name="Min năm",
+                    line=dict(color="#2E7D32", width=1.5),
+                    marker=dict(size=5, symbol="triangle-down"),
+                ))
+                _fig_yr.update_layout(
+                    title="Mực nước trung bình ngày — Trạm Phú An 48 năm",
+                    xaxis_title="Năm", yaxis_title="Mực nước H (cm — cao độ Quốc gia)",
+                    height=480, hovermode="x unified",
+                    legend=dict(orientation="h", x=0, y=-0.15),
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    margin=dict(l=60, r=20, t=60, b=80),
+                )
+                _fig_yr.add_hline(y=0, line=dict(color="#888", width=1))
+                st.plotly_chart(_fig_yr, use_container_width=True,
+                                key="_tvtk_thuyvan_yearly")
+
+            # 7.3 — Đỉnh triều annual + bar chart ─────────────────────────
+            st.markdown("#### 7.3. Đỉnh triều tối đa lịch sử (13 năm tiêu biểu)")
+            _peaks_yr = _cv.execute("""
+                SELECT year, peak_cm FROM thuyvan_tidal_peaks ORDER BY year
+            """).fetchall()
+            if _peaks_yr:
+                _py = [r["year"] for r in _peaks_yr]
+                _pv = [r["peak_cm"] for r in _peaks_yr]
+                _ap, _bp = _np_tv2.polyfit(_py, _pv, 1)
+                _fig_pk = _go_tv.Figure()
+                _fig_pk.add_trace(_go_tv.Bar(
+                    x=_py, y=_pv,
+                    text=[f"{int(v)}" for v in _pv],
+                    textposition="outside", textfont=dict(size=10, color="#a01010"),
+                    marker=dict(color="#D32F2F", line=dict(color="#a01010", width=1)),
+                    name="Đỉnh triều (cm)",
+                    hovertemplate="Năm %{x}<br>Đỉnh: %{y} cm<extra></extra>",
+                ))
+                _fig_pk.add_trace(_go_tv.Scatter(
+                    x=[_py[0], _py[-1]],
+                    y=[_ap * _py[0] + _bp, _ap * _py[-1] + _bp],
+                    mode="lines", name=f"Xu thế: {_ap*10:+.1f} cm/decade",
+                    line=dict(color="#a01010", width=2, dash="dash"),
+                ))
+                _fig_pk.update_layout(
+                    title=f"Đỉnh triều tối đa — Cao nhất: {max(_pv)} cm ({_py[_pv.index(max(_pv))]})",
+                    xaxis_title="Năm", yaxis_title="Đỉnh triều (cm)",
+                    height=380, hovermode="closest",
+                    legend=dict(orientation="h", x=0, y=-0.15),
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    yaxis=dict(range=[120, max(_pv) + 15]),
+                    margin=dict(l=60, r=20, t=60, b=70),
+                )
+                st.plotly_chart(_fig_pk, use_container_width=True,
+                                key="_tvtk_thuyvan_peaks")
+
+            # 7.4 — Pattern mùa (boxplot 12 tháng) ────────────────────────
+            st.markdown("#### 7.4. Phân bố MNTB theo tháng (48 năm)")
+            _all_m = _cv.execute("""
+                SELECT month, h_cm FROM thuyvan_daily ORDER BY month
+            """).fetchall()
+            if _all_m:
+                _by_m: dict = {}
+                for r in _all_m:
+                    _by_m.setdefault(r["month"], []).append(r["h_cm"])
+                _ROMAN_TV = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"]
+                _fig_box = _go_tv.Figure()
+                for _m in range(1, 13):
+                    _vals = _by_m.get(_m, [])
+                    if not _vals: continue
+                    _is_flood = _m in (10, 11, 12, 1)
+                    _is_dry   = _m in (5, 6, 7, 8)
+                    _box_col  = ("#FFCDD2" if _is_flood else
+                                 "#C8E6C9" if _is_dry else "#E1F5FE")
+                    _fig_box.add_trace(_go_tv.Box(
+                        y=_vals, name=_ROMAN_TV[_m-1],
+                        marker_color=_box_col,
+                        line=dict(color="#444", width=1.4),
+                        boxmean=True,
+                        hovertemplate=(f"Tháng {_ROMAN_TV[_m-1]}<br>" +
+                                       "Q1=%{q1:.1f} · Median=%{median:.1f} · Q3=%{q3:.1f}<br>" +
+                                       "n=" + str(len(_vals)) + "<extra></extra>"),
+                    ))
+                _fig_box.update_layout(
+                    title="Phân bố MNTB ngày theo 12 tháng — đỏ=lũ cao, xanh=khô thấp",
+                    yaxis_title="Mực nước H (cm)", xaxis_title="Tháng",
+                    height=420, showlegend=False, hovermode="closest",
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    margin=dict(l=60, r=20, t=60, b=50),
+                )
+                _fig_box.add_hline(y=0, line=dict(color="#888", width=1))
+                st.plotly_chart(_fig_box, use_container_width=True,
+                                key="_tvtk_thuyvan_boxplot")
+
+            # 7.5 — Bảng pattern mùa
+            if _get_seasonal is not None:
+                try:
+                    _sw = _get_seasonal()
+                    _sw_rows = []
+                    for _m in range(1, 13):
+                        v = _sw.get(_m, {})
+                        _sw_rows.append({
+                            "Tháng":      _ROMAN_TV[_m-1] if '_ROMAN_TV' in dir() else _m,
+                            "Mùa":        v.get("season", "—"),
+                            "TB (cm)":    f"{v.get('avg_cm', 0):+.1f}",
+                            "Max (cm)":   f"{v.get('max_cm', 0):+.0f}",
+                            "Min (cm)":   f"{v.get('min_cm', 0):+.0f}",
+                            "Số ngày":    f"{v.get('n_days', 0):,}",
+                        })
+                    with st.expander("Bảng chi tiết pattern mùa 12 tháng"):
+                        st.table(_pd_tv.DataFrame(_sw_rows))
+                except Exception:
+                    pass
+    except Exception as _exc_tv:
+        st.error(f"Lỗi module thủy văn: {_exc_tv}")
+
     st.divider()
 
     # ── 8. Phân vùng gia cố CDM theo 7 nguyên tắc P1–P7 ───────────────────
