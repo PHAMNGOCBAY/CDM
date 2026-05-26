@@ -59,6 +59,12 @@ scripts/app_fem2d.py
 *.zip
 *.bak
 logs/
+data/*_backup*.sqlite
+data/*_corrupt*.sqlite
+
+# SQLite WAL journal files (local only)
+data/TTHC.sqlite-shm
+data/TTHC.sqlite-wal
 
 # Duplicate SQLite at root (use data/TTHC.sqlite)
 /TTHC.sqlite
