@@ -17371,24 +17371,56 @@ if _page == "tvtk_prep":
             st.warning("Module thủy văn không khả dụng.")
         else:
             st.markdown("#### 7.1. Mực nước thiết kế khuyến nghị")
-            _c7a, _c7b, _c7c = st.columns([1.2, 1.2, 1.2])
+
+            # Tạo bảng lưu cấu hình (idempotent)
+            _cv.execute("""
+                CREATE TABLE IF NOT EXISTS tvtk_water_design_config (
+                    id              INTEGER PRIMARY KEY CHECK (id = 1),
+                    case_code       TEXT NOT NULL,
+                    case_label      TEXT,
+                    design_life_yr  INTEGER DEFAULT 50,
+                    h_cm_current    REAL,
+                    h_cm_design     REAL,
+                    rise_added_cm   REAL,
+                    rise_rate       REAL DEFAULT 11.63,
+                    description     TEXT,
+                    updated_at      TEXT DEFAULT (datetime('now','localtime'))
+                )
+            """)
+            _cv.commit()
+
+            # Load default từ DB (nếu đã lưu trước đó)
+            _saved_cfg = _cv.execute(
+                "SELECT case_code, design_life_yr FROM tvtk_water_design_config WHERE id=1"
+            ).fetchone()
+            _case_map = {
+                "Dân dụng (P95)":                  "P95",
+                "Tuổi thọ ≥50 năm (P99)":          "P99",
+                "Cực đại lịch sử (đỉnh triều)":     "peak_max",
+            }
+            _case_reverse = {v: k for k, v in _case_map.items()}
+            _default_label = (_case_reverse.get(_saved_cfg["case_code"], "Dân dụng (P95)")
+                              if _saved_cfg else "Dân dụng (P95)")
+            _default_life  = (int(_saved_cfg["design_life_yr"])
+                              if _saved_cfg and _saved_cfg["design_life_yr"] is not None else 50)
+            _options_cls   = list(_case_map.keys())
+            _default_idx   = (_options_cls.index(_default_label)
+                              if _default_label in _options_cls else 0)
+
+            _c7a, _c7b, _c7c, _c7s = st.columns([1.2, 1.2, 1.2, 0.7])
             _struct_class = _c7a.selectbox(
                 "Cấp công trình",
-                options=["Dân dụng (P95)", "Tuổi thọ ≥50 năm (P99)", "Cực đại lịch sử (đỉnh triều)"],
+                options=_options_cls,
+                index=_default_idx,
                 key="_tv_water_class",
                 help="Chọn mức độ thiết kế theo quy mô công trình",
             )
             _design_life = _c7b.number_input(
                 "Tuổi thọ thiết kế (năm)",
-                min_value=0, max_value=100, value=50, step=10,
+                min_value=0, max_value=100, value=_default_life, step=10,
                 key="_tv_design_life",
                 help="Cộng dự phòng nước dâng theo xu thế +11.63 cm/decade",
             )
-            _case_map = {
-                "Dân dụng (P95)": "P95",
-                "Tuổi thọ ≥50 năm (P99)": "P99",
-                "Cực đại lịch sử (đỉnh triều)": "peak_max",
-            }
             _case_pick = _case_map[_struct_class]
             try:
                 _r_dw = _get_dw(_case_pick, design_life_years=_design_life)
@@ -17398,6 +17430,37 @@ if _page == "tvtk_prep":
                     delta=(f"+{_r_dw['rise_added_cm']:.0f} cm dự phòng"
                            if _r_dw['rise_added_cm'] > 0 else None),
                 )
+                # Nút lưu cấu hình vào SQLite
+                if _c7s.button("Lưu", key="_tv_water_save", use_container_width=True,
+                               type="primary",
+                               help="Lưu cấu hình mực nước TK vào cơ sở dữ liệu"):
+                    _cv.execute("""
+                        INSERT INTO tvtk_water_design_config
+                            (id, case_code, case_label, design_life_yr,
+                             h_cm_current, h_cm_design, rise_added_cm,
+                             rise_rate, description)
+                        VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            case_code = excluded.case_code,
+                            case_label = excluded.case_label,
+                            design_life_yr = excluded.design_life_yr,
+                            h_cm_current = excluded.h_cm_current,
+                            h_cm_design = excluded.h_cm_design,
+                            rise_added_cm = excluded.rise_added_cm,
+                            rise_rate = excluded.rise_rate,
+                            description = excluded.description,
+                            updated_at = datetime('now','localtime')
+                    """, (_case_pick, _struct_class, int(_design_life),
+                          float(_r_dw['h_cm_current']),
+                          float(_r_dw['h_cm_design']),
+                          float(_r_dw['rise_added_cm']),
+                          float(_r_dw['rise_rate_cm_per_decade']),
+                          _r_dw['description']))
+                    _cv.commit()
+                    st.success(
+                        f"Đã lưu cấu hình mực nước TK: **{_struct_class}** + "
+                        f"**{_design_life} năm** → H = {_r_dw['h_cm_design']:+.0f} cm"
+                    )
                 st.caption(
                     f"**{_r_dw['description']}** · "
                     f"Hiện tại: {_r_dw['h_cm_current']:+.0f} cm · "
@@ -17405,6 +17468,15 @@ if _page == "tvtk_prep":
                     f"(xu thế {_r_dw['rise_rate_cm_per_decade']:.2f} cm/decade) · "
                     f"{_r_dw['source']}"
                 )
+                # Hiển thị thông tin cấu hình đã lưu (nếu khác với giá trị hiện tại)
+                if _saved_cfg:
+                    _saved_case = _saved_cfg["case_code"]
+                    _saved_life = _saved_cfg["design_life_yr"]
+                    if _saved_case != _case_pick or _saved_life != _design_life:
+                        st.info(
+                            f"Đã lưu trước: **{_case_reverse.get(_saved_case, _saved_case)}** + "
+                            f"**{_saved_life} năm**. Bấm **Lưu** để cập nhật cấu hình mới."
+                        )
             except Exception as _exc_dw:
                 st.error(f"Lỗi tra cứu mực nước TK: {_exc_dw}")
 
