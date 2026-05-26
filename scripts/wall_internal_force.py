@@ -360,6 +360,29 @@ def build_lateral_load(geom: WallGeometry,
 
 def kh_clay_matlock(z_m: float, D_m: float, Su_kPa: float, gamma_kNm3: float,
                     eps50: float = 0.02) -> float:
+    """Hệ số nền ngang kh cho sét — Matlock 1970.
+
+    QUAN TRỌNG: tham số `Su_kPa` phải là **cường độ kháng cắt TÍNH TOÁN**
+    theo TCCS 41:2022 Phụ lục C.3.2 — Công thức C.5:
+
+        Cu = μ × Su_VST
+
+    với μ là hệ số hiệu chỉnh Bjerrum tra Bảng C.1 theo chỉ số dẻo Ip.
+    KHÔNG truyền Su VST nguyên (chưa hiệu chỉnh) — sẽ cho kh quá lớn ~10-15%.
+
+    Công thức:
+        Np  = min(3 + γ·z / max(Cu, 1), 9)        — hệ số khả năng chịu tải
+        pu  = Np · Cu · D                          — sức chịu tải giới hạn ngang
+        y50 = 2.5 · eps50 · D                      — chuyển vị tại 50% pu
+        kh  = pu / y50                             — kN/m³
+
+    Args:
+        z_m:        Độ sâu (m, dương = đi xuống)
+        D_m:        Đường kính / bề rộng cừ (m)
+        Su_kPa:     Cu TÍNH TOÁN = μ × Su_VST (kPa)
+        gamma_kNm3: Dung trọng đất hiệu quả (kN/m³)
+        eps50:      Biến dạng tại 50% qu, mặc định 0.02
+    """
     Np = min(3.0 + gamma_kNm3 * z_m / max(Su_kPa, 1.0), 9.0)
     pu = Np * Su_kPa * D_m
     y50 = 2.5 * eps50 * D_m
@@ -577,8 +600,8 @@ def _demo_distributed():
         top_elev=2.7, pile_length=29.0,
         soil_level_front=0.0,    # Front: mặt đất tự nhiên (có fill 2.7m bên trên)
         soil_level_back=-1.0,    # Back: đáy đào (phía hồ, thấp hơn 1m)
-        water_elev_front=1.8,    # mực nước cao triều / nước ngầm đất đắp (bộ chuẩn dự án)
-        water_elev_back=-2.0,    # mặt hồ / phía đào
+        water_elev_front=-0.5,   # nước ngầm
+        water_elev_back=-0.5,    # mặt hồ
         surcharge_front=10.0,    # tải hoạt xe/người 10 kPa
     )
     fill = EarthLayer(tip_elev=0.0, gamma=18.0, gamma_sub=8.0, phi=28.0, c=0.0)

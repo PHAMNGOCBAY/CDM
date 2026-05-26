@@ -7056,7 +7056,7 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                 )
                 _img_wink = _formula_img7([
                     ("Phản lực nền:", r"$p = k_h \cdot u \cdot B_{pile}$"),
-                    ("Hệ số kh:",     r"$k_h = \frac{67 \cdot S_u}{d_{pile}}\ \ \text{(API Clay, kN/m}^3\text{)}$"),
+                    ("Hệ số kh:",     r"$k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot c_u}{2{,}5 \cdot \varepsilon_{50}}$ với $c_u = \mu \cdot S_u$ (TCCS 41 C.5)"),
                     ("Vùng CDM:",     r"$k_h^{CDM} = k_{factor} \times k_h\ \ (k_{factor} = 3{,}0)$"),
                     ("Tiêu chí:",     r"$u_{max} \leq 50\ \text{mm}$   ·   $M_{max} \leq M_{cr}$"),
                 ], title="Mô hình Winkler – API Clay (Matlock 1970)", height_cm=5.5)
@@ -8247,29 +8247,6 @@ if _page == "ke_sw":
             if _k not in st.session_state:
                 st.session_state[_k] = {}
 
-        # Khôi phục lựa chọn đã lưu từ lần trước (chỉ nếu session mới, chưa có data)
-        if not st.session_state[_rec_key]:
-            try:
-                import sqlite3 as _sq3_uc
-                with _sq3_uc.connect(str(_DB), timeout=5) as _c_uc:
-                    _uc_rows = _c_uc.execute(
-                        "SELECT bh_name, recommended_pile, recommended_L_m, "
-                        "       z_custom_m, h1_custom_m "
-                        "FROM ke_sw_user_config"
-                    ).fetchall()
-                for _r_uc in _uc_rows:
-                    _nm_uc = _r_uc[0].replace("KE-", "")
-                    if _r_uc[1]:
-                        st.session_state[_rec_key][_nm_uc]   = _r_uc[1]
-                    if _r_uc[2] is not None:
-                        st.session_state[_ltk_key][_nm_uc]   = float(_r_uc[2])
-                    if _r_uc[3] is not None:
-                        st.session_state[_zcust_key][_nm_uc] = float(_r_uc[3])
-                    if _r_uc[4] is not None:
-                        st.session_state[_h1cust_key][_nm_uc] = float(_r_uc[4])
-            except Exception:
-                pass  # bảng chưa tồn tại hoặc lỗi đọc → dùng mặc định tối ưu
-
         # ── Cho phép user chọn HK trên tuyến kè SW ──────────────────────────────
         _all_bh_names = [b["name"] for b in _bhs_ke]
         _sw_align_key = "ke_sw_alignment_picks"
@@ -8418,8 +8395,8 @@ if _page == "ke_sw":
                 st.session_state[_rec_key][_bh_nm] = _on
                 st.session_state[_ltk_key][_bh_nm] = _olmax
 
-        # Nút reset thủ công + nút giả định Z=0 + nút lưu lựa chọn
-        _btn_b1, _btn_b2, _btn_b3 = st.columns([1, 1, 1])
+        # Nút reset thủ công + nút giả định Z=0
+        _btn_b1, _btn_b2 = st.columns([1, 1])
         with _btn_b1:
             if st.button("Đặt lại cọc tối ưu cho tất cả", key="btn_use_optimal",
                          help="Ghi đè lựa chọn hiện tại về cọc tối ưu (nhỏ nhất có L_max ≥ L_req)"):
@@ -8444,53 +8421,7 @@ if _page == "ke_sw":
                 if st.button("Hủy giả định Z", key="btn_z0_off", type="primary",
                              help="Xóa mọi giả định Z — dùng lại Z thực từ dữ liệu khảo sát"):
                     st.session_state[_zcust_key] = {}
-        with _btn_b3:
-            if st.button("Lưu lựa chọn", key="btn_save_user_config", type="primary",
-                         help="Ghi lại Cọc kiến nghị, L thiết kế và điều chỉnh Z/H lớp 1 — "
-                              "tự động khôi phục khi mở lại"):
-                try:
-                    import sqlite3 as _sq3_sv
-                    with _sq3_sv.connect(str(_DB), timeout=10) as _c_sv:
-                        _c_sv.execute("""
-                            CREATE TABLE IF NOT EXISTS ke_sw_user_config (
-                                bh_name          TEXT PRIMARY KEY,
-                                recommended_pile TEXT,
-                                recommended_L_m  REAL,
-                                z_custom_m       REAL,
-                                h1_custom_m      REAL,
-                                updated_at       TEXT
-                            )
-                        """)
-                        _now_sv = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        for _bh_sv in _bhs_on_alignment:
-                            _nm_sv   = _bh_sv["name"]
-                            _pile_sv = st.session_state[_rec_key].get(_nm_sv)
-                            _L_sv    = st.session_state[_ltk_key].get(_nm_sv)
-                            _z_sv    = st.session_state[_zcust_key].get(_nm_sv)
-                            _h1_sv   = st.session_state[_h1cust_key].get(_nm_sv)
-                            _c_sv.execute("""
-                                INSERT OR REPLACE INTO ke_sw_user_config
-                                    (bh_name, recommended_pile, recommended_L_m,
-                                     z_custom_m, h1_custom_m, updated_at)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, (f"KE-{_nm_sv}", _pile_sv, _L_sv, _z_sv, _h1_sv, _now_sv))
-                        _c_sv.commit()
-                    # Đồng bộ sang JSON config (chỉ 2 trường config: pile + L)
-                    _ke_j = json.loads(_KE_JSON.read_text(encoding="utf-8"))
-                    for _bh_j in _ke_j.get("boreholes", []):
-                        _nm_j = _bh_j["name"]
-                        if _nm_j in st.session_state[_rec_key]:
-                            _bh_j["recommended_pile"] = st.session_state[_rec_key][_nm_j]
-                        if _nm_j in st.session_state[_ltk_key]:
-                            _bh_j["recommended_L_m"]  = float(st.session_state[_ltk_key][_nm_j])
-                    _KE_JSON.write_text(
-                        json.dumps(_ke_j, ensure_ascii=False, indent=2),
-                        encoding="utf-8",
-                    )
-                    _load_ke_sw.clear()
-                    st.success("Đã lưu. Khi mở lại app sẽ tự khôi phục lựa chọn này.")
-                except Exception as _e_sv:
-                    st.error(f"Không lưu được: {_e_sv}")
+                    st.rerun()
 
         _z_cust_active = st.session_state.get(_zcust_key, {})
         if _z_cust_active:
@@ -8595,36 +8526,25 @@ if _page == "ke_sw":
                 _w_val   = _ntd_row.get("W_kN")     or _bh.get("W_pile_kN")
                 _rat_val = _ntd_row.get("ratio_nt2") or _nt2.get("ratio")
 
-            # PA2: xét thêm lớp 1b vào L yêu cầu (từ SQLite)
-            _d_1b      = _ntd_row.get("D_bottom_soft_1b_m")
-            _lr_1b     = _ntd_row.get("L_req_nt1_1b_m")
-            _nt1_1b    = _ntd_row.get("nt1_1b_result")
-            _lmin_pa2  = _ntd_row.get("L_min_pa2_m")
-            _pile_pa2  = _ntd_row.get("pile_pa2")
             _ke_rows.append({
-                "Hố khoan":              _bh["name"],
-                "Z (m)":                 _z_for_calc,
-                "H lớp 1 (m)":           _h1_for_calc,
-                "L yêu cầu (m)":         _L_req,
-                "Cọc tối ưu":            _opt_name,
-                "L_max (m)":             _opt_Lmax,
-                "Đủ chiều dài":          "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
-                "Cọc kiến nghị":         _rec,
-                "L thiết kế (m)":        _ltk_f,
-                "NT1":                   _nt1_val,
-                "NT2":                   _nt2_val,
-                "Rs (kN)":               round(_rs_val, 1) if _rs_val is not None else "–",
-                "Rp (kN)":               round(_rp_val, 1) if _rp_val is not None else "–",
-                "RR (kN)":               round(_rr_val, 1) if _rr_val is not None else "–",
-                "W (kN)":                round(_w_val or 0, 1),
-                "RR/W":                  round(_rat_val or 0, 2) if _rat_val is not None else "–",
-                "D_bot+1b (m)":          round(_d_1b, 1) if _d_1b else "–",
-                "L req+1b (m)":          round(_lr_1b, 2) if _lr_1b else "–",
-                "NT1 (+1b)":             _nt1_1b or "–",
-                "L min PA2 (m)":         round(_lmin_pa2, 1) if _lmin_pa2 else "–",
-                "Cọc PA2":               _pile_pa2 or "–",
-                "Ghi chú":               ("Tính lại theo cọc user chọn" if _need_recalc
-                                           else _bh.get("note", "")),
+                "Hố khoan":          _bh["name"],
+                "Z (m)":             _z_for_calc,
+                "H lớp 1 (m)":       _h1_for_calc,
+                "L yêu cầu (m)":     _L_req,
+                "Cọc tối ưu":        _opt_name,
+                "L_max (m)":         _opt_Lmax,
+                "Đủ chiều dài":      "Đạt" if _opt_Lmax >= _L_req else "Không đạt",
+                "Cọc kiến nghị":     _rec,
+                "L thiết kế (m)":    _ltk_f,
+                "NT1":               _nt1_val,
+                "NT2":               _nt2_val,
+                "Rs (kN)":           round(_rs_val, 1) if _rs_val is not None else "–",
+                "Rp (kN)":           round(_rp_val, 1) if _rp_val is not None else "–",
+                "RR (kN)":           round(_rr_val, 1) if _rr_val is not None else "–",
+                "W (kN)":            round(_w_val or 0, 1),
+                "RR/W":              round(_rat_val or 0, 2) if _rat_val is not None else "–",
+                "Ghi chú":           ("Tính lại theo cọc user chọn" if _need_recalc
+                                       else _bh.get("note", "")),
             })
 
         if not _ke_rows:
@@ -8659,36 +8579,6 @@ if _page == "ke_sw":
                         step=0.5, format="%.1f", width="small",
                     ),
                     "Đủ chiều dài": st.column_config.Column(width="small"),
-                    "D_bot+1b (m)": st.column_config.Column(
-                        "D_bot+1b (m)",
-                        help="Chiều sâu đáy vùng yếu khi xét thêm lớp 1b (bùn sét mềm chuyển tiếp). "
-                             "Lớn hơn hoặc bằng H lớp 1.",
-                        width="small",
-                    ),
-                    "L req+1b (m)": st.column_config.Column(
-                        "L req+1b (m)",
-                        help="Chiều dài cọc yêu cầu NT1 khi xét thêm lớp 1b. "
-                             "So sánh với 'L yêu cầu' để thấy ảnh hưởng của lớp 1b.",
-                        width="small",
-                    ),
-                    "NT1 (+1b)": st.column_config.Column(
-                        "NT1 (+1b)",
-                        help="Kết quả NT1 khi xét lớp 1b vào chiều dài cọc tối thiểu.",
-                        width="small",
-                    ),
-                    "L min PA2 (m)": st.column_config.NumberColumn(
-                        "L min PA2 (m)",
-                        help="Chiều dài cọc tối thiểu để đạt NT1 khi xét thêm lớp 1b "
-                             "(làm tròn lên bội số 0,5 m theo catalog).",
-                        format="%.1f",
-                        width="small",
-                    ),
-                    "Cọc PA2": st.column_config.Column(
-                        "Cọc PA2",
-                        help="Loại cọc nhỏ nhất (theo H_mm) đáp ứng L min PA2. "
-                             "Dùng để so sánh với 'Cọc tối ưu' của PA1.",
-                        width="small",
-                    ),
                 },
                 disabled=_disabled_b,
                 hide_index=True,
@@ -8922,24 +8812,6 @@ if _page == "ke_sw":
                     ).fetchall()
                 except Exception:
                     _binhdo_rows = []
-                # Khoảng cách HK → CDM gần nhất
-                try:
-                    _cdm_dist_rows_pf = _con_pf.execute(
-                        "SELECT bh_name, bh_northing_m, bh_easting_m, on_alignment, "
-                        "       nearest_cdm_eucl_north_m, nearest_cdm_eucl_east_m, "
-                        "       dist_eucl_m, dist_perp_at_eucl_m, dist_along_at_eucl_m "
-                        "FROM ke_cdm_distances ORDER BY bh_name"
-                    ).fetchall()
-                except Exception:
-                    _cdm_dist_rows_pf = []
-                # CDM toado subsampled (mỗi 60 hàng ~ 137 điểm để vẽ vùng CDM)
-                try:
-                    _cdm_sub_rows = _con_pf.execute(
-                        "SELECT northing_m, easting_m FROM cdm_toado "
-                        "WHERE zone='KE' AND rowid % 60 = 0"
-                    ).fetchall()
-                except Exception:
-                    _cdm_sub_rows = []
 
             _ntd_by_bh = {r[0]: {"D_bot": r[1], "L_des": r[2], "pile": r[3]}
                           for r in _ntd_rows}
@@ -9494,178 +9366,6 @@ if _page == "ke_sw":
                     f"**{_total:.2f} m**"
                 )
                 st.table(_df_dist)
-
-            # ── 7. Khoảng cách HK → CDM gần nhất (vuông góc trục tuyến kè) ──
-            if _cdm_dist_rows_pf:
-                st.divider()
-                st.markdown("#### Khoảng cách hố khoan → vùng CDM gần nhất theo phương vuông góc")
-                st.caption(
-                    "Khoảng cách theo phương vuông góc (d⊥) = thành phần ngang "
-                    "của vectơ hố khoan→CDM gần nhất, đo vuông góc với trục tuyến kè SW. "
-                    "Trục tuyến kè xác định bằng phân tích thành phần chính (PCA) của 8 HK trên tuyến."
-                )
-
-                # Bảng thống kê
-                _cdm_tbl_rows = []
-                for _cr in _cdm_dist_rows_pf:
-                    (_cbh, _cn_m, _ce_m, _caln,
-                     _cdm_n, _cdm_e,
-                     _d_eucl, _d_perp, _d_along) = _cr
-                    _cdm_tbl_rows.append({
-                        "Hố khoan":          _cbh.replace("KE-", ""),
-                        "Trên tuyến kè":     "Có" if _caln else "Không",
-                        "d⊥ (m)":            round(_d_perp, 1),
-                        "d∥ (m)":            round(_d_along, 1),
-                        "d Euclid (m)":      round(_d_eucl, 1),
-                    })
-                _cdm_df = pd.DataFrame(_cdm_tbl_rows).sort_values("d⊥ (m)", ascending=False)
-                st.dataframe(
-                    _cdm_df,
-                    hide_index=True,
-                    use_container_width=True,
-                    column_config={
-                        "Hố khoan":      st.column_config.TextColumn(width="small"),
-                        "Trên tuyến kè": st.column_config.TextColumn(width="small"),
-                        "d⊥ (m)":        st.column_config.NumberColumn(
-                            "d⊥ (m)", format="%.1f",
-                            help="Khoảng cách theo phương vuông góc trục tuyến kè",
-                            width="small"),
-                        "d∥ (m)":        st.column_config.NumberColumn(
-                            "d∥ (m)", format="%.1f",
-                            help="Khoảng cách theo phương dọc trục tuyến kè",
-                            width="small"),
-                        "d Euclid (m)":  st.column_config.NumberColumn(
-                            "d Euclid (m)", format="%.1f",
-                            help="Khoảng cách thẳng (Euclid) đến CDM gần nhất",
-                            width="small"),
-                    },
-                )
-
-                # Bình đồ CDM distances
-                if _HAS_PLOTLY:
-                    _fig_cdm_pl = go.Figure()
-
-                    # Vùng CDM (subsampled — nền xám nhạt)
-                    if _cdm_sub_rows:
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[r[0] for r in _cdm_sub_rows],
-                            y=[r[1] for r in _cdm_sub_rows],
-                            mode="markers",
-                            marker=dict(size=4, color="#90CAF9", opacity=0.45,
-                                        symbol="circle"),
-                            name="Vùng CDM (lấy mẫu)",
-                            hoverinfo="skip",
-                        ))
-
-                    # Line BH → CDM gần nhất + nhãn d⊥
-                    for _cr in _cdm_dist_rows_pf:
-                        (_cbh, _bn, _be, _caln,
-                         _cdm_n, _cdm_e,
-                         _d_eucl, _d_perp, _d_along) = _cr
-                        _lcolor = "#E53935" if _caln else "#9E9E9E"
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[_bn, _cdm_n, None],
-                            y=[_be, _cdm_e, None],
-                            mode="lines",
-                            line=dict(color=_lcolor, width=1.5, dash="dot"),
-                            showlegend=False,
-                            hoverinfo="skip",
-                        ))
-                        # Nearest CDM column marker (đỏ nhỏ)
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[_cdm_n], y=[_cdm_e],
-                            mode="markers",
-                            marker=dict(size=7, color="#E53935",
-                                        symbol="x", line=dict(width=2)),
-                            showlegend=False,
-                            hovertext=f"{_cbh} → CDM d⊥={_d_perp:.1f}m",
-                            hoverinfo="text",
-                        ))
-                        # Nhãn d⊥ tại midpoint
-                        _fig_cdm_pl.add_annotation(
-                            x=(_bn + _cdm_n) / 2,
-                            y=(_be + _cdm_e) / 2,
-                            text=f"<b>{_d_perp:.1f}m</b>",
-                            showarrow=False,
-                            font=dict(size=9,
-                                      color="#B71C1C" if _d_perp > 30 else "#1565C0"),
-                            bgcolor="rgba(255,255,255,0.88)",
-                            borderpad=1,
-                        )
-
-                    # Boreholes — trên tuyến (vàng) vs ngoài tuyến (xám)
-                    for _caln_flag, _clr, _sym_lbl in [
-                        (1, "#FFC107", "HK trên tuyến kè"),
-                        (0, "#90A4AE", "HK ngoài tuyến"),
-                    ]:
-                        _sub = [_cr for _cr in _cdm_dist_rows_pf if _cr[3] == _caln_flag]
-                        if not _sub:
-                            continue
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=[r[1] for r in _sub],
-                            y=[r[2] for r in _sub],
-                            mode="markers+text",
-                            marker=dict(symbol="circle", size=15, color=_clr,
-                                        line=dict(color="#1976D2", width=2)),
-                            text=[r[0].replace("KE-", "") for r in _sub],
-                            textposition="top center",
-                            textfont=dict(size=11, color="#0D47A1", family="Arial"),
-                            hovertext=[
-                                f"<b>{r[0]}</b><br>"
-                                f"d⊥ = {r[7]:.1f} m<br>"
-                                f"d Euclid = {r[6]:.1f} m"
-                                for r in _sub
-                            ],
-                            hoverinfo="text",
-                            name=_sym_lbl,
-                        ))
-
-                    # Ranh kè (DXF polyline)
-                    if _binhdo_cx:
-                        _fig_cdm_pl.add_trace(go.Scatter(
-                            x=_binhdo_cx, y=_binhdo_cy,
-                            mode="lines",
-                            line=dict(color="rgba(0,0,0,0.7)", width=1.5),
-                            name="Ranh kè SW", hoverinfo="skip",
-                            connectgaps=False,
-                        ))
-
-                    _fig_cdm_pl.update_layout(
-                        title="Bình đồ: khoảng cách hố khoan → CDM gần nhất (d⊥ vuông góc trục tuyến kè)",
-                        xaxis_title="X (Northing VN-2000, m)",
-                        yaxis_title="Y (Easting VN-2000, m)",
-                        height=640,
-                        hovermode="closest",
-                        plot_bgcolor="#F8F9FA",
-                        showlegend=True,
-                        legend=dict(x=0.01, y=0.99,
-                                    bgcolor="rgba(255,255,255,0.85)",
-                                    bordercolor="#CCC", borderwidth=1),
-                        margin=dict(t=70, b=60, l=60, r=20),
-                    )
-                    _fig_cdm_pl.update_yaxes(scaleanchor="x", scaleratio=1,
-                                             showgrid=True, gridcolor="#E0E0E0")
-                    _fig_cdm_pl.update_xaxes(showgrid=True, gridcolor="#E0E0E0")
-                    st.plotly_chart(_fig_cdm_pl, use_container_width=True)
-
-                    # Thống kê tóm tắt
-                    _max_perp = max(_cr[7] for _cr in _cdm_dist_rows_pf)
-                    _max_bh   = next(
-                        _cr[0].replace("KE-", "") for _cr in _cdm_dist_rows_pf
-                        if _cr[7] == _max_perp
-                    )
-                    _min_perp = min(_cr[7] for _cr in _cdm_dist_rows_pf)
-                    _min_bh   = next(
-                        _cr[0].replace("KE-", "") for _cr in _cdm_dist_rows_pf
-                        if _cr[7] == _min_perp
-                    )
-                    _c1, _c2, _c3 = st.columns(3)
-                    _c1.metric("d⊥ lớn nhất", f"{_max_perp:.1f} m",
-                               delta=f"HK{_max_bh}", delta_color="inverse")
-                    _c2.metric("d⊥ nhỏ nhất", f"{_min_perp:.1f} m",
-                               delta=f"HK{_min_bh}", delta_color="normal")
-                    _c3.metric("Trung bình d⊥",
-                               f"{sum(_cr[7] for _cr in _cdm_dist_rows_pf)/len(_cdm_dist_rows_pf):.1f} m")
 
         if _HAS_PLOTLY and _ke_rows:
             _names_plot  = [r["Hố khoan"] for r in _ke_rows if r["RR/W"] != "–"]
@@ -10227,10 +9927,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _con_py = sqlite3.connect(str(_DB))
                 _con_py.row_factory = sqlite3.Row
                 _rows_py = _con_py.execute("""
-                    SELECT l.symbol, l.thickness_m,
+                    SELECT l.id AS lid, l.symbol, l.thickness_m,
+                           l.depth_top_m, l.depth_bot_m,
                            ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
                            ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
-                           ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                           ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_UU_kPa
                     FROM layers l
                     JOIN boreholes b ON l.borehole_id = b.id
                     LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
@@ -10239,14 +9940,56 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     WHERE b.name = ?
                     GROUP BY l.id ORDER BY l.depth_top_m
                 """, (_bh_short,)).fetchall()
+
+                # Lazy import Bjerrum + helper Cu = μ·Su từ VST cho mỗi layer
+                try:
+                    from scripts.settlement_calc import bjerrum_mu as _bj_mu_kh
+                except Exception:
+                    _bj_mu_kh = None
+
+                # Ip TB cho HK (1 lần — vì Ip là property của lớp yếu zone)
+                _ip_avg_kh = None
+                if _bj_mu_kh is not None:
+                    _r_ip = _con_py.execute("""
+                        SELECT AVG(lt.Ip) FROM lab_tests lt
+                        JOIN boreholes b ON lt.borehole_id = b.id
+                        WHERE b.name = ?
+                          AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                          AND lt.symbol_tcvn IN ('1','1b','CH','MH','CH-OH','MH-OH')
+                    """, (_bh_short,)).fetchone()
+                    _ip_avg_kh = float(_r_ip[0]) if _r_ip and _r_ip[0] else None
+                _mu_bj_kh = (_bj_mu_kh(_ip_avg_kh)
+                             if (_bj_mu_kh and _ip_avg_kh) else 1.0)
+
                 _con_py.close()
                 for _r in _rows_py:
-                    _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                    # Cu TÍNH TOÁN ưu tiên VST hiệu chỉnh Bjerrum (TCCS 41 C.5)
+                    _cu_lab = _r["Cu_UU_kPa"]
+                    # Query Su VST trung bình trong phạm vi lớp
+                    _con_vst = sqlite3.connect(_DB)
+                    _con_vst.row_factory = sqlite3.Row
+                    _r_vst = _con_vst.execute("""
+                        SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+                        JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                        WHERE vl.name = ? AND v.Su_kPa > 0
+                          AND v.depth_m >= ? AND v.depth_m <= ?
+                    """, (_bh_short, _r["depth_top_m"], _r["depth_bot_m"])).fetchone()
+                    _con_vst.close()
+                    _su_vst = float(_r_vst[0]) if _r_vst and _r_vst[0] else None
+                    # Ưu tiên: Cu = μ·Su_VST > Cu_UU lab > c_kPa > default 11
+                    if _su_vst is not None:
+                        _cu_calc = _su_vst * _mu_bj_kh
+                    elif _cu_lab is not None:
+                        _cu_calc = float(_cu_lab)
+                    elif _r["c_kPa"] is not None:
+                        _cu_calc = float(_r["c_kPa"])
+                    else:
+                        _cu_calc = 11.0
                     _ly_raw.append({
-                        "symbol": _r["symbol"] or "1",
-                        "thickness_m": _r["thickness_m"] or 0,
-                        "Su_kPa": _su if _su is not None else 11.0,
-                        "gamma_kNm3": _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
+                        "symbol":       _r["symbol"] or "1",
+                        "thickness_m":  _r["thickness_m"] or 0,
+                        "Su_kPa":       _cu_calc,   # đây là Cu hiệu chỉnh
+                        "gamma_kNm3":   _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
                     })
             except Exception:
                 pass
@@ -10978,7 +10721,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             st.latex(r"p_u = N_p \cdot S_u \cdot D \quad [\text{kN/m}]")
             st.latex(r"N_p = \min\left(3 + \dfrac{\gamma \cdot z}{S_u},\ 9\right)")
             st.latex(r"y_{50} = 2.5 \cdot \varepsilon_{50} \cdot D \quad [\text{m}]")
-            st.latex(r"k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot S_u}{2.5 \cdot \varepsilon_{50}} \quad [\text{kN/m}^3]")
+            st.latex(r"k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot c_u}{2{,}5 \cdot \varepsilon_{50}} \quad [\text{kN/m}^3]")
+            st.caption(
+                "**Cu tính toán** = μ · Su_VST theo TCCS 41 Phụ lục C.3.2 (Công thức C.5). "
+                "μ tra Bảng C.1 theo chỉ số dẻo Ip trung bình của lớp yếu. "
+                "**KHÔNG dùng Su VST nguyên** — sẽ cho kh quá lớn ~10-15%."
+            )
             st.markdown(
                 "Ý nghĩa:\n"
                 "- $p_u$ — áp lực giới hạn (ultimate lateral resistance)\n"
@@ -11182,11 +10930,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 10.0, 1.0,
                                                          key=f"dpy_q_w_{_hk_iter}",
                                                          help="Mặc định 10m — bộ chuẩn dự án (làn xe + lề). w ≥ 100m ≈ tải vô hạn.")
-                    _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, 1.8, 0.5,
-                                                         key=f"dpy_wlvl_{_hk_iter}",
-                                                         help="Mực nước phía Front (đất đắp). "
-                                                              "Mặc định +1.80m — bộ chuẩn dự án "
-                                                              "(mực nước cao triều / nước ngầm đất đắp kè).")
+                    _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
+                                                         key=f"dpy_wlvl_{_hk_iter}")
                     _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"],
                                                     key=f"dpy_bc_{_hk_iter}")
 
@@ -11907,11 +11652,26 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         try:
                             _con_md = sqlite3.connect(str(_DB))
                             _con_md.row_factory = sqlite3.Row
+                            # Ip TB + μ Bjerrum cho HK này (1 lần)
+                            try:
+                                from scripts.settlement_calc import bjerrum_mu as _bj_mu_md
+                            except Exception:
+                                _bj_mu_md = None
+                            _ip_md_r = _con_md.execute("""
+                                SELECT AVG(lt.Ip) FROM lab_tests lt
+                                JOIN boreholes b ON lt.borehole_id = b.id
+                                WHERE b.name = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                                  AND lt.symbol_tcvn IN ('1','1b','CH','MH','CH-OH','MH-OH')
+                            """, (_bh_short_md,)).fetchone() if _bj_mu_md else None
+                            _ip_md = float(_ip_md_r[0]) if _ip_md_r and _ip_md_r[0] else None
+                            _mu_md = _bj_mu_md(_ip_md) if (_bj_mu_md and _ip_md) else 1.0
+
                             for _r in _con_md.execute("""
                                 SELECT l.symbol, l.thickness_m,
+                                       l.depth_top_m, l.depth_bot_m,
                                        ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
                                        ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
-                                       ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                                       ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_UU_kPa
                                 FROM layers l JOIN boreholes b ON l.borehole_id = b.id
                                 LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
                                     AND lt.depth_from_m >= l.depth_top_m
@@ -11919,7 +11679,21 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 WHERE b.name = ?
                                 GROUP BY l.id ORDER BY l.depth_top_m
                             """, (_bh_short_md,)).fetchall():
-                                _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                                # Cu tính toán = μ·Su_VST (TCCS 41 C.5) — ưu tiên cao nhất
+                                _r_vst_md = _con_md.execute("""
+                                    SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+                                    JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                                    WHERE vl.name = ? AND v.Su_kPa > 0
+                                      AND v.depth_m >= ? AND v.depth_m <= ?
+                                """, (_bh_short_md, _r["depth_top_m"],
+                                      _r["depth_bot_m"])).fetchone()
+                                _su_vst_md = float(_r_vst_md[0]) if _r_vst_md and _r_vst_md[0] else None
+                                if _su_vst_md is not None:
+                                    _su = _su_vst_md * _mu_md
+                                elif _r["Cu_UU_kPa"] is not None:
+                                    _su = float(_r["Cu_UU_kPa"])
+                                else:
+                                    _su = _r["c_kPa"]
                                 _ly_raw_md.append({
                                     "symbol": _alias_sym(_r["symbol"] or "1", _bh_short_md),
                                     "thickness_m": _r["thickness_m"] or 0,
@@ -12408,6 +12182,32 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                     WHERE b.name = ?
                                     GROUP BY l.id ORDER BY l.depth_top_m
                                 """, (_bh_short_dl,)).fetchall()
+                                # Bjerrum μ cho HK (1 lần)
+                                try:
+                                    from scripts.settlement_calc import bjerrum_mu as _bj_mu_dl
+                                except Exception:
+                                    _bj_mu_dl = None
+                                _r_ip_dl = _con_dl.execute("""
+                                    SELECT AVG(lt.Ip) FROM lab_tests lt
+                                    JOIN boreholes b ON lt.borehole_id = b.id
+                                    WHERE b.name = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                                      AND lt.symbol_tcvn IN ('1','1b','CH','MH','CH-OH','MH-OH')
+                                """, (_bh_short_dl,)).fetchone() if _bj_mu_dl else None
+                                _ip_dl = float(_r_ip_dl[0]) if _r_ip_dl and _r_ip_dl[0] else None
+                                _mu_dl = _bj_mu_dl(_ip_dl) if (_bj_mu_dl and _ip_dl) else 1.0
+                                # Query Su VST per layer (batch)
+                                _vst_by_lyr_dl = {}
+                                for _r in _rows_dl:
+                                    _r_v = _con_dl.execute("""
+                                        SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+                                        JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                                        WHERE vl.name = ? AND v.Su_kPa > 0
+                                          AND v.depth_m >= ? AND v.depth_m <= ?
+                                    """, (_bh_short_dl, _r["depth_top_m"],
+                                          _r["depth_bot_m"])).fetchone()
+                                    _vst_by_lyr_dl[_r["depth_top_m"]] = (
+                                        float(_r_v[0]) if _r_v and _r_v[0] else None
+                                    )
                                 _con_dl.close()
                                 _bh_elev_dl = (float(_rows_dl[0]["bh_elev"])
                                                 if _rows_dl and _rows_dl[0]["bh_elev"] is not None
@@ -12432,7 +12232,14 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                         _thk_eff = max(0.0, _Zb_dl - _e_bot)
                                     if _thk_eff <= 1e-3:
                                         continue
-                                    _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                                    # Cu tính toán: ưu tiên VST + Bjerrum
+                                    _su_vst_dl = _vst_by_lyr_dl.get(_r["depth_top_m"])
+                                    if _su_vst_dl is not None:
+                                        _su = _su_vst_dl * _mu_dl
+                                    elif _r["Cu_kPa"] is not None:
+                                        _su = float(_r["Cu_kPa"])
+                                    else:
+                                        _su = _r["c_kPa"]
                                     _ly_raw_dl.append({
                                         "symbol":      _sym_r,
                                         "thickness_m": _thk_eff,
@@ -14059,7 +13866,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 )
                 _f33 = _formula_png_w([
                     ("Phản lực nền:",      r"$p = k_h \cdot u \cdot B_{cọc}$"),
-                    ("Hệ số lò xo (API Clay):", r"$k_h = \dfrac{67 \cdot S_u}{d_{cọc}}$  (kN/m³)"),
+                    ("Hệ số lò xo (Matlock với Cu tính toán):", r"$k_h = \dfrac{N_p \cdot c_u}{2{,}5 \cdot \varepsilon_{50}}$, $c_u = \mu \cdot S_u$"),
                     ("Vùng CDM:",         r"$k_h^{CDM} = k_{factor} \times k_h$  $(k_{factor} \approx 3{,}0)$"),
                     ("Tiêu chí chuyển vị:", r"$u_{max} \leq 50\ \mathrm{mm}$"),
                     ("Tiêu chí mô men:",   r"$M_{max} \leq M_{cr}$"),
