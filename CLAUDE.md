@@ -1319,24 +1319,40 @@ git push origin main
 **KHÔNG** dùng: `reduction = 1 - a × 0.85` (không có cơ sở vật lý).  
 **KHÔNG** dùng: `calc_settlement_from_db(..., stress_scale=beta)` cho tính S_CDM — sai bản chất vật lý.
 
-**PHẢI** dùng S1 đàn hồi (trong `compare_methods()`):**
+**PHẢI** dùng S1 + S2 (trong `compare_methods()`):**
 
 ```python
 # S = S1 + S2 (TCVN 9403 Phụ lục C)
 S1 = q × H_soft / (a × Ec + (1-a) × Es)  # [m], nhân 100 → cm
-S2 = 0  # CDM cắm đến lớp cứng
+S2 = calc_s2_below_cdm(bh_name, cdm_tip_depth_m)["S2_cm"]  # cm — LUÔN TÍNH
 # Ec = 75 × (field_lab_ratio × qu_lab / 2)   (TCVN 9403 B.5.1)
 # Es = 250 × Cu_avg                           (tương quan Mesri)
 ```
 
-**Time series CDM:** lún đàn hồi xảy ra tức thì → flat list `U=100%, S=S1` từ t=0.  
-**Lún còn lại CDM = 0** (không có lún cố kết sau thi công).
+**S2 — Lún cố kết bên dưới mũi CDM (cập nhật 2026-05-26, BẮT BUỘC):**
 
-**Kết quả mẫu (NHC, a=0.25, H_fill=3m, H_soft=35m):**
+`calc_s2_below_cdm()` luôn tính, kể cả khi CDM hết lớp bùn. Chỉ dừng khi Δσ/σ'v0 < 10%.
 
-- Ec=12375 kPa, Es=3750 kPa, Etb=5906 kPa
-- S1 = 60×35/5906×100 = **35,6 cm** vs S_không xử lý = 107 cm (giảm 67%)
-- `calc_cdm_stress_beta()` vẫn giữ lại để hiển thị biểu đồ ứng suất, không dùng cho tính S
+Thứ tự ưu tiên thông số mỗi phân tố 2m:
+
+| Ưu tiên | Nguồn | Phương pháp tính Si |
+| --- | --- | --- |
+| 1 | `lab_tests.Cc` gần nhất (bên trên hoặc dưới) | **Terzaghi 1D** với logic OC/cross_PC/NC |
+| 2 | `lab_tests.a12_cm2kgf` + `e0` gần nhất | **Eoed** = (1+e0)/a12 × 98.0665 kPa; Si = Δσ×H/Eoed |
+| 3 | Không có TN nào trong HK | Cc fallback từ cùng zone hoặc toàn dự án (cảnh báo) |
+
+**Key trong return dict**: `"warnings"` (list[str], không phải `"warning"` singular).
+**Layer output**: có thêm cột `"method"` = `'Cc'` | `'Eoed'` | `'default'`, `"a12"`, `"Eoed_kPa"`.
+
+**Kết quả mẫu (NHC-BH-01, CDM full penetration tip=35m):**
+
+- S1 = 35,6 cm (đàn hồi khối gia cố)
+- S2 = 8,7 cm (Eoed từ lớp CL bên dưới, a12≈0.14, 2 phân tố)
+- S_CDM = S1 + S2 = **44,3 cm** (thay vì 35,6 cm khi bỏ S2)
+
+**Time series CDM:** S1 xảy ra tức thì; S2 (cố kết) cũng tức thì vì lớp cứng thoát nước tốt → flat list `U=100%, S=S1+S2` từ t=0.  
+
+`calc_cdm_stress_beta()` vẫn giữ lại để hiển thị biểu đồ ứng suất, không dùng cho tính S.
 
 #### Chiều dày đại diện H_i
 

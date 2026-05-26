@@ -457,7 +457,8 @@ def compare_methods(bh_name: str,
     scenarios_out = []
     time_series_out = {}
 
-    # CDM: TCVN 9403 Phụ lục C — S1 đàn hồi khối gia cố + S2 bên dưới (=0 nếu CDM đến lớp cứng)
+    # CDM: TCVN 9403 Phụ lục C — S1 đàn hồi khối gia cố + S2 cố kết bên dưới mũi CDM
+    # S2 luôn tính dù CDM hết hay chưa hết lớp bùn — chỉ dừng khi Δσ/σ'v0 < 10%
     cdm_area_ratio = zone_params.get("cdm_area_ratio", 0.25)
     cdm_beta       = calc_cdm_stress_beta(zone_params, cdm_area_ratio)
     _Cu_cdm   = zone_params.get("Cu_avg_kPa", 15.0)
@@ -565,100 +566,137 @@ def calc_s2_below_cdm(
     """
     Tính S2 = lún cố kết sơ cấp bên dưới mũi cọc CDM.
 
-    Phương pháp:
-    - Chia từng phân tố 2m bắt đầu từ cdm_tip_depth_m
-    - Δσ = q_kPa (tải đều lớn, không phân tán theo chiều sâu)
-    - Dừng khi Δσ < stop_ratio × σ'v0  (mặc định: 10%)
-      ↔ σ'v0 > q_kPa / stop_ratio = 10 × q_kPa
-    - Dùng thông số Cc, Cs, e0, PC từ lab_tests nội suy theo chiều sâu
-    - Nếu thiếu mẫu tại độ sâu → ngoại suy từ mẫu gần nhất bên trên
+    LUÔN TÍNH dù CDM hết hay chưa hết lớp bùn — chỉ dừng khi Δσ/σ'v0 < stop_ratio.
+
+    Phương pháp ưu tiên theo từng phân tố:
+      1. Cc/Cs/e0/PC có trong lab_tests → Terzaghi 1D (OC/cross_PC/NC)
+      2. a12_cm2kgf + e0 có trong lab_tests → Eoed = (1+e0)/a12 × 98.0665 kPa
+         Si = Δσ × H / Eoed
+      3. Không có thí nghiệm nào → dùng Cc fallback từ cùng zone (cảnh báo)
 
     Trả về:
       {
         'S2_cm': float,
-        'layers': [{'depth_mid_m', 'H_i_m', 'sigma_v0', 'sigma_vf', 'PC',
-                    'Cc','Cs','e0', 'Si_cm', 'OC_status', 'stopped'}],
+        'layers': [{'depth_mid_m', 'H_i_m', 'sigma_v0_kPa', 'sigma_vf_kPa', 'PC_kPa',
+                    'Cc','Cs','e0', 'a12', 'Eoed_kPa', 'Si_cm', 'OC_status', 'method'}],
         'stop_depth_m': float,
         'stop_reason': str,
         'n_layers': int,
-        'warning': str | None,
+        'warnings': list[str],
       }
     """
     db_path = db_path or _DB
-    zone_fallback_warn: Optional[str] = None
+    warnings_out: list[str] = []
+
     with sqlite3.connect(db_path) as con:
         con.row_factory = sqlite3.Row
         bh = con.execute("SELECT id, zone_id FROM boreholes WHERE name=?", (bh_name,)).fetchone()
         if bh is None:
             return {"S2_cm": 0.0, "layers": [], "stop_depth_m": cdm_tip_depth_m,
-                    "stop_reason": "bh_not_found", "n_layers": 0, "warning": f"Không tìm thấy HK {bh_name}"}
+                    "stop_reason": "bh_not_found", "n_layers": 0, "warnings": [f"Không tìm thấy HK {bh_name}"]}
         bh_id   = bh["id"]
         zone_id = bh["zone_id"]
-        # Lab samples có Cc — bao gồm cả lớp bên trên để ngoại suy
-        samples = con.execute("""
-            SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, gamma_kNm3
+
+        # Tất cả mẫu có ít nhất Cc hoặc a12 — bao gồm cả lớp bên trên để nội/ngoại suy
+        all_samples = con.execute("""
+            SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, a12_cm2kgf, gamma_kNm3
             FROM lab_tests
-            WHERE borehole_id=? AND Cc IS NOT NULL
+            WHERE borehole_id=? AND (Cc IS NOT NULL OR a12_cm2kgf IS NOT NULL)
             ORDER BY depth_from_m
         """, (bh_id,)).fetchall()
-        samples = [dict(r) for r in samples]
-        # Max depth from layers
-        max_depth_row = con.execute(
-            "SELECT MAX(depth_bot_m) FROM layers WHERE borehole_id=?", (bh_id,)
-        ).fetchone()
-        max_depth_m = float(max_depth_row[0] or 60.0)
+        all_samples = [dict(r) for r in all_samples]
 
-        # Fallback: dùng trung bình Cc từ cùng zone hoặc toàn dự án
-        if not samples:
-            zone_samples = con.execute("""
-                SELECT lt.depth_from_m, lt.depth_to_m, lt.Cc, lt.Cs, lt.e0, lt.PC_kPa, lt.gamma_kNm3
-                FROM lab_tests lt
-                JOIN boreholes b ON lt.borehole_id = b.id
+        # Fallback Cc theo zone/dự án — chỉ dùng khi không có mẫu nào trong HK
+        cc_fallback_samples: list[dict] = []
+        if not all_samples:
+            zone_cc = con.execute("""
+                SELECT lt.depth_from_m, lt.depth_to_m, lt.Cc, lt.Cs, lt.e0, lt.PC_kPa,
+                       lt.a12_cm2kgf, lt.gamma_kNm3
+                FROM lab_tests lt JOIN boreholes b ON lt.borehole_id=b.id
                 WHERE b.zone_id=? AND lt.Cc IS NOT NULL
                 ORDER BY lt.depth_from_m
             """, (zone_id,)).fetchall()
-            zone_samples = [dict(r) for r in zone_samples]
-            if not zone_samples:
-                # Dùng toàn bộ dự án
-                zone_samples = con.execute("""
-                    SELECT lt.depth_from_m, lt.depth_to_m, lt.Cc, lt.Cs, lt.e0, lt.PC_kPa, lt.gamma_kNm3
-                    FROM lab_tests lt WHERE lt.Cc IS NOT NULL
-                    ORDER BY lt.depth_from_m
+            zone_cc = [dict(r) for r in zone_cc]
+            if not zone_cc:
+                zone_cc = con.execute("""
+                    SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, a12_cm2kgf, gamma_kNm3
+                    FROM lab_tests WHERE Cc IS NOT NULL ORDER BY depth_from_m
                 """).fetchall()
-                zone_samples = [dict(r) for r in zone_samples]
+                zone_cc = [dict(r) for r in zone_cc]
                 fallback_src = "trung bình toàn dự án"
             else:
-                fallback_src = f"trung bình khu vực zone {zone_id}"
-            if zone_samples:
-                samples = zone_samples
-                zone_fallback_warn = (
-                    f"Không có mẫu nén cố kết cho {bh_name} — "
-                    f"dùng {fallback_src} ({len(samples)} mẫu Cc)"
+                fallback_src = f"khu vực zone {zone_id}"
+            if zone_cc:
+                cc_fallback_samples = zone_cc
+                warnings_out.append(
+                    f"Không có mẫu trong {bh_name} — dùng Cc {fallback_src} ({len(zone_cc)} mẫu)"
                 )
             else:
                 return {"S2_cm": 0.0, "layers": [], "stop_depth_m": cdm_tip_depth_m,
                         "stop_reason": "no_samples", "n_layers": 0,
-                        "warning": f"Không có mẫu nén cố kết trong toàn dự án — không tính S2"}
+                        "warnings": [f"Không có mẫu thí nghiệm trong toàn dự án — không tính S2"]}
+
+        # Max depth from layers table
+        max_depth_row = con.execute(
+            "SELECT MAX(depth_bot_m) FROM layers WHERE borehole_id=?", (bh_id,)
+        ).fetchone()
+        max_depth_m = float(max_depth_row[0] or 80.0)
+
+    samples = all_samples if all_samples else cc_fallback_samples
+
+    def _midpoint(s: dict) -> float:
+        bot = s["depth_to_m"] or (s["depth_from_m"] + 1.0)
+        return (s["depth_from_m"] + bot) / 2.0
+
+    def _nearest_sample(depth: float) -> dict:
+        """Lấy mẫu gần nhất theo midpoint."""
+        return min(samples, key=lambda s: abs(_midpoint(s) - depth))
 
     def _interp_params(depth_mid: float) -> dict:
-        """Nội/ngoại suy thông số Cc, Cs, e0, PC, gamma tại depth_mid."""
-        above = [s for s in samples if (s["depth_from_m"] + (s["depth_to_m"] or s["depth_from_m"]+1))/2 <= depth_mid]
-        below = [s for s in samples if (s["depth_from_m"] + (s["depth_to_m"] or s["depth_from_m"]+1))/2 > depth_mid]
-        if above:
-            ref = above[-1]
-        elif below:
-            ref = below[0]
-        else:
-            ref = samples[-1]
-        return {
-            "Cc":      ref["Cc"] or 0.48,
-            "Cs":      ref["Cs"] or ((ref["Cc"] or 0.48) * 0.18),
-            "e0":      ref["e0"] or 1.5,
-            "PC_kPa":  ref["PC_kPa"],
-            "gamma":   ref["gamma_kNm3"] or 16.5,
-        }
+        """
+        Chọn thông số tại depth_mid theo thứ tự ưu tiên:
+          Cc (Terzaghi) > a12 (Eoed) — lấy từ mẫu gần nhất.
+        """
+        # Ưu tiên mẫu có Cc gần nhất bên trên
+        cc_above = [s for s in samples if s["Cc"] is not None and _midpoint(s) <= depth_mid]
+        cc_below = [s for s in samples if s["Cc"] is not None and _midpoint(s) > depth_mid]
+        a12_above = [s for s in samples if s["a12_cm2kgf"] is not None and _midpoint(s) <= depth_mid]
+        a12_below = [s for s in samples if s["a12_cm2kgf"] is not None and _midpoint(s) > depth_mid]
 
-    sigma_v0_limit = q_kPa / stop_ratio   # dừng khi σ'v0 vượt ngưỡng này
+        # Chọn mẫu Cc gần nhất
+        ref_cc = (cc_above[-1] if cc_above else
+                  cc_below[0]  if cc_below else None)
+        # Chọn mẫu a12 gần nhất
+        ref_a12 = (a12_above[-1] if a12_above else
+                   a12_below[0]  if a12_below else None)
+
+        # Mẫu bất kỳ gần nhất để lấy gamma
+        ref_any = _nearest_sample(depth_mid)
+        gamma = (ref_cc["gamma_kNm3"] if ref_cc and ref_cc.get("gamma_kNm3") else
+                 ref_a12["gamma_kNm3"] if ref_a12 and ref_a12.get("gamma_kNm3") else
+                 ref_any.get("gamma_kNm3") or 18.5)
+
+        if ref_cc is not None:
+            Cc = ref_cc["Cc"] or 0.48
+            Cs = ref_cc["Cs"] or Cc * 0.18
+            e0 = ref_cc["e0"] or 1.5
+            return {"method": "Cc", "Cc": Cc, "Cs": Cs, "e0": e0,
+                    "PC_kPa": ref_cc["PC_kPa"], "a12": None, "Eoed_kPa": None,
+                    "gamma": gamma}
+
+        if ref_a12 is not None:
+            a12 = ref_a12["a12_cm2kgf"]
+            e0  = ref_a12["e0"] or 1.0
+            Eoed = (1.0 + e0) / a12 * 98.0665   # kPa
+            return {"method": "Eoed", "Cc": None, "Cs": None, "e0": e0,
+                    "PC_kPa": None, "a12": a12, "Eoed_kPa": Eoed,
+                    "gamma": gamma}
+
+        # Không có mẫu nào — dùng mặc định
+        return {"method": "default", "Cc": 0.48, "Cs": 0.086, "e0": 1.5,
+                "PC_kPa": None, "a12": None, "Eoed_kPa": None, "gamma": 18.0}
+
+    sigma_v0_limit = q_kPa / stop_ratio   # dừng khi Δσ/σ'v0 < stop_ratio
 
     layers_out = []
     S2_total   = 0.0
@@ -667,41 +705,50 @@ def calc_s2_below_cdm(
 
     while z <= max_depth_m:
         p = _interp_params(z)
-        gamma_sat = p["gamma"]
-        sigma_v0  = calc_sigma_v0(z, gamma_sat, gwt_depth_m)
+        sigma_v0 = calc_sigma_v0(z, p["gamma"], gwt_depth_m)
 
-        # Điều kiện dừng: Δσ < 10% σ'v0
+        # Dừng khi Δσ/σ'v0 < stop_ratio
         if sigma_v0 >= sigma_v0_limit:
-            stop_reason = f"Δσ/σ'v0 < {int(stop_ratio*100)}% tại z={z:.1f}m"
+            stop_reason = f"delta_sigma/sigma_v0 < {int(stop_ratio*100)}% tai z={z:.1f}m"
             break
 
         sigma_vf = sigma_v0 + q_kPa
         PC       = p["PC_kPa"]
-        Si       = calc_settlement_layer(sublayer_m, p["e0"], p["Cc"], p["Cs"],
-                                          sigma_v0, sigma_vf,
-                                          PC if PC else sigma_v0 * 0.9)
+
+        if p["method"] == "Eoed":
+            # Eoed từ hệ số nén lún a12: Si = Δσ × H / Eoed
+            Si = (q_kPa * sublayer_m) / p["Eoed_kPa"]
+            oc_status = "Eoed"
+        else:
+            # Terzaghi 1D (Cc hoặc default)
+            pc_use = PC if PC else sigma_v0 * 0.9
+            Si = calc_settlement_layer(sublayer_m, p["e0"], p["Cc"], p["Cs"],
+                                       sigma_v0, sigma_vf, pc_use)
+            if PC is None:
+                oc_status = "unknown"
+            elif sigma_vf <= PC:
+                oc_status = "OC"
+            elif sigma_v0 < PC:
+                oc_status = "cross_PC"
+            else:
+                oc_status = "NC"
+
         S2_total += Si
 
-        if PC is None:
-            oc_status = "unknown"
-        elif sigma_vf <= PC:
-            oc_status = "OC"
-        elif sigma_v0 < PC:
-            oc_status = "cross_PC"
-        else:
-            oc_status = "NC"
-
         layers_out.append({
-            "depth_mid_m":   round(z, 2),
-            "H_i_m":         sublayer_m,
-            "sigma_v0_kPa":  round(sigma_v0, 1),
-            "sigma_vf_kPa":  round(sigma_vf, 1),
-            "PC_kPa":        round(PC, 1) if PC else None,
-            "Cc":            round(p["Cc"], 3),
-            "Cs":            round(p["Cs"], 4),
-            "e0":            round(p["e0"], 3),
-            "Si_cm":         round(Si * 100, 2),
-            "OC_status":     oc_status,
+            "depth_mid_m":  round(z, 2),
+            "H_i_m":        sublayer_m,
+            "sigma_v0_kPa": round(sigma_v0, 1),
+            "sigma_vf_kPa": round(sigma_vf, 1),
+            "PC_kPa":       round(PC, 1) if PC else None,
+            "Cc":           round(p["Cc"], 3) if p["Cc"] else None,
+            "Cs":           round(p["Cs"], 4) if p["Cs"] else None,
+            "e0":           round(p["e0"], 3),
+            "a12":          round(p["a12"], 4) if p["a12"] else None,
+            "Eoed_kPa":     round(p["Eoed_kPa"], 0) if p["Eoed_kPa"] else None,
+            "Si_cm":        round(Si * 100, 2),
+            "OC_status":    oc_status,
+            "method":       p["method"],
         })
         z += sublayer_m
 
@@ -712,7 +759,7 @@ def calc_s2_below_cdm(
         "stop_reason":  stop_reason,
         "n_layers":     len(layers_out),
         "q_kPa":        q_kPa,
-        "warning":      zone_fallback_warn or (None if layers_out else "Không có phân tố nào được tính"),
+        "warnings":     warnings_out or ([] if layers_out else ["Không có phân tố nào được tính"]),
     }
 
 
