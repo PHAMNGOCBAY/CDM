@@ -1870,7 +1870,7 @@ def _build_mu_by_loc(
     Phục vụ vẽ Cu = μ·Su trên biểu đồ VST theo TCCS 41 Phụ lục C.3.2.
     """
     try:
-        from scripts.settlement_calc import build_mu_by_loc as _build_pub
+        from settlement_calc import build_mu_by_loc as _build_pub
         return _build_pub(loc_names, soft_symbols, db_path=_DB)
     except Exception:
         return {}
@@ -7056,7 +7056,7 @@ if _page == "params":   # tiếp nội dung Xuất kết quả (gộp vào tab T
                 )
                 _img_wink = _formula_img7([
                     ("Phản lực nền:", r"$p = k_h \cdot u \cdot B_{pile}$"),
-                    ("Hệ số kh:",     r"$k_h = \frac{67 \cdot S_u}{d_{pile}}\ \ \text{(API Clay, kN/m}^3\text{)}$"),
+                    ("Hệ số kh:",     r"$k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot c_u}{2{,}5 \cdot \varepsilon_{50}}$ với $c_u = \mu \cdot S_u$ (TCCS 41 C.5)"),
                     ("Vùng CDM:",     r"$k_h^{CDM} = k_{factor} \times k_h\ \ (k_{factor} = 3{,}0)$"),
                     ("Tiêu chí:",     r"$u_{max} \leq 50\ \text{mm}$   ·   $M_{max} \leq M_{cr}$"),
                 ], title="Mô hình Winkler – API Clay (Matlock 1970)", height_cm=5.5)
@@ -10227,10 +10227,11 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _con_py = sqlite3.connect(str(_DB))
                 _con_py.row_factory = sqlite3.Row
                 _rows_py = _con_py.execute("""
-                    SELECT l.symbol, l.thickness_m,
+                    SELECT l.id AS lid, l.symbol, l.thickness_m,
+                           l.depth_top_m, l.depth_bot_m,
                            ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
                            ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
-                           ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                           ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_UU_kPa
                     FROM layers l
                     JOIN boreholes b ON l.borehole_id = b.id
                     LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
@@ -10239,14 +10240,54 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     WHERE b.name = ?
                     GROUP BY l.id ORDER BY l.depth_top_m
                 """, (_bh_short,)).fetchall()
+
+                # Lazy import Bjerrum + helper Cu = μ·Su từ VST cho mỗi layer
+                try:
+                    from settlement_calc import bjerrum_mu as _bj_mu_kh
+                except Exception:
+                    _bj_mu_kh = None
+
+                # Ip TB cho HK (1 lần — vì Ip là property của lớp yếu zone)
+                _ip_avg_kh = None
+                if _bj_mu_kh is not None:
+                    _r_ip = _con_py.execute("""
+                        SELECT AVG(lt.Ip) FROM lab_tests lt
+                        JOIN boreholes b ON lt.borehole_id = b.id
+                        WHERE b.name = ?
+                          AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                          AND lt.symbol_tcvn IN ('1','1b','CH','MH','CH-OH','MH-OH')
+                    """, (_bh_short,)).fetchone()
+                    _ip_avg_kh = float(_r_ip[0]) if _r_ip and _r_ip[0] else None
+                _mu_bj_kh = (_bj_mu_kh(_ip_avg_kh)
+                             if (_bj_mu_kh and _ip_avg_kh) else 1.0)
+
                 _con_py.close()
                 for _r in _rows_py:
-                    _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                    # Cu TÍNH TOÁN ưu tiên VST hiệu chỉnh Bjerrum (TCCS 41 C.5)
+                    _cu_lab = _r["Cu_UU_kPa"]
+                    _con_vst = sqlite3.connect(_DB)
+                    _con_vst.row_factory = sqlite3.Row
+                    _r_vst = _con_vst.execute("""
+                        SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+                        JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                        WHERE vl.name = ? AND v.Su_kPa > 0
+                          AND v.depth_m >= ? AND v.depth_m <= ?
+                    """, (_bh_short, _r["depth_top_m"], _r["depth_bot_m"])).fetchone()
+                    _con_vst.close()
+                    _su_vst = float(_r_vst[0]) if _r_vst and _r_vst[0] else None
+                    if _su_vst is not None:
+                        _cu_calc = _su_vst * _mu_bj_kh
+                    elif _cu_lab is not None:
+                        _cu_calc = float(_cu_lab)
+                    elif _r["c_kPa"] is not None:
+                        _cu_calc = float(_r["c_kPa"])
+                    else:
+                        _cu_calc = 11.0
                     _ly_raw.append({
-                        "symbol": _r["symbol"] or "1",
-                        "thickness_m": _r["thickness_m"] or 0,
-                        "Su_kPa": _su if _su is not None else 11.0,
-                        "gamma_kNm3": _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
+                        "symbol":       _r["symbol"] or "1",
+                        "thickness_m":  _r["thickness_m"] or 0,
+                        "Su_kPa":       _cu_calc,
+                        "gamma_kNm3":   _r["gamma_kNm3"] if _r["gamma_kNm3"] is not None else 15.0,
                     })
             except Exception:
                 pass
@@ -10978,7 +11019,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             st.latex(r"p_u = N_p \cdot S_u \cdot D \quad [\text{kN/m}]")
             st.latex(r"N_p = \min\left(3 + \dfrac{\gamma \cdot z}{S_u},\ 9\right)")
             st.latex(r"y_{50} = 2.5 \cdot \varepsilon_{50} \cdot D \quad [\text{m}]")
-            st.latex(r"k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot S_u}{2.5 \cdot \varepsilon_{50}} \quad [\text{kN/m}^3]")
+            st.latex(r"k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot c_u}{2{,}5 \cdot \varepsilon_{50}} \quad [\text{kN/m}^3]")
+            st.caption(
+                "**Cu tính toán** = μ · Su_VST theo TCCS 41 Phụ lục C.3.2 (Công thức C.5). "
+                "μ tra Bảng C.1 theo chỉ số dẻo Ip trung bình của lớp yếu. "
+                "**KHÔNG dùng Su VST nguyên** — sẽ cho kh quá lớn ~10-15%."
+            )
             st.markdown(
                 "Ý nghĩa:\n"
                 "- $p_u$ — áp lực giới hạn (ultimate lateral resistance)\n"
@@ -11182,11 +11228,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _dpy_q_w   = _dpy_w3.number_input("w — chiều rộng dải tải (m)", 1.0, 200.0, 10.0, 1.0,
                                                          key=f"dpy_q_w_{_hk_iter}",
                                                          help="Mặc định 10m — bộ chuẩn dự án (làn xe + lề). w ≥ 100m ≈ tải vô hạn.")
-                    _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, 1.8, 0.5,
-                                                         key=f"dpy_wlvl_{_hk_iter}",
-                                                         help="Mực nước phía Front (đất đắp). "
-                                                              "Mặc định +1.80m — bộ chuẩn dự án "
-                                                              "(mực nước cao triều / nước ngầm đất đắp kè).")
+                    _dpy_wlvl  = _dpy_w4.number_input("Mực nước Front (m)", -5.0, 3.0, -1.0, 0.5,
+                                                         key=f"dpy_wlvl_{_hk_iter}")
                     _dpy_bc    = _dpy_w5.selectbox("Liên kết đáy cọc", ["Free", "Fixed", "Cantilever"],
                                                     key=f"dpy_bc_{_hk_iter}")
 
@@ -11907,11 +11950,26 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         try:
                             _con_md = sqlite3.connect(str(_DB))
                             _con_md.row_factory = sqlite3.Row
+                            # Ip TB + μ Bjerrum cho HK này (1 lần)
+                            try:
+                                from settlement_calc import bjerrum_mu as _bj_mu_md
+                            except Exception:
+                                _bj_mu_md = None
+                            _ip_md_r = _con_md.execute("""
+                                SELECT AVG(lt.Ip) FROM lab_tests lt
+                                JOIN boreholes b ON lt.borehole_id = b.id
+                                WHERE b.name = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                                  AND lt.symbol_tcvn IN ('1','1b','CH','MH','CH-OH','MH-OH')
+                            """, (_bh_short_md,)).fetchone() if _bj_mu_md else None
+                            _ip_md = float(_ip_md_r[0]) if _ip_md_r and _ip_md_r[0] else None
+                            _mu_md = _bj_mu_md(_ip_md) if (_bj_mu_md and _ip_md) else 1.0
+
                             for _r in _con_md.execute("""
                                 SELECT l.symbol, l.thickness_m,
+                                       l.depth_top_m, l.depth_bot_m,
                                        ROUND(AVG(lt.gamma_kNm3), 2) AS gamma_kNm3,
                                        ROUND(AVG(lt.c_kPa), 1) AS c_kPa,
-                                       ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_kPa
+                                       ROUND(AVG(lt.Cu_UU_kPa), 1) AS Cu_UU_kPa
                                 FROM layers l JOIN boreholes b ON l.borehole_id = b.id
                                 LEFT JOIN lab_tests lt ON lt.borehole_id = b.id
                                     AND lt.depth_from_m >= l.depth_top_m
@@ -11919,7 +11977,21 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 WHERE b.name = ?
                                 GROUP BY l.id ORDER BY l.depth_top_m
                             """, (_bh_short_md,)).fetchall():
-                                _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                                # Cu tính toán = μ·Su_VST (TCCS 41 C.5) — ưu tiên cao nhất
+                                _r_vst_md = _con_md.execute("""
+                                    SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+                                    JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                                    WHERE vl.name = ? AND v.Su_kPa > 0
+                                      AND v.depth_m >= ? AND v.depth_m <= ?
+                                """, (_bh_short_md, _r["depth_top_m"],
+                                      _r["depth_bot_m"])).fetchone()
+                                _su_vst_md = float(_r_vst_md[0]) if _r_vst_md and _r_vst_md[0] else None
+                                if _su_vst_md is not None:
+                                    _su = _su_vst_md * _mu_md
+                                elif _r["Cu_UU_kPa"] is not None:
+                                    _su = float(_r["Cu_UU_kPa"])
+                                else:
+                                    _su = _r["c_kPa"]
                                 _ly_raw_md.append({
                                     "symbol": _alias_sym(_r["symbol"] or "1", _bh_short_md),
                                     "thickness_m": _r["thickness_m"] or 0,
@@ -12408,6 +12480,32 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                     WHERE b.name = ?
                                     GROUP BY l.id ORDER BY l.depth_top_m
                                 """, (_bh_short_dl,)).fetchall()
+                                # Bjerrum μ cho HK (1 lần)
+                                try:
+                                    from settlement_calc import bjerrum_mu as _bj_mu_dl
+                                except Exception:
+                                    _bj_mu_dl = None
+                                _r_ip_dl = _con_dl.execute("""
+                                    SELECT AVG(lt.Ip) FROM lab_tests lt
+                                    JOIN boreholes b ON lt.borehole_id = b.id
+                                    WHERE b.name = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                                      AND lt.symbol_tcvn IN ('1','1b','CH','MH','CH-OH','MH-OH')
+                                """, (_bh_short_dl,)).fetchone() if _bj_mu_dl else None
+                                _ip_dl = float(_r_ip_dl[0]) if _r_ip_dl and _r_ip_dl[0] else None
+                                _mu_dl = _bj_mu_dl(_ip_dl) if (_bj_mu_dl and _ip_dl) else 1.0
+                                # Query Su VST per layer (batch)
+                                _vst_by_lyr_dl = {}
+                                for _r in _rows_dl:
+                                    _r_v = _con_dl.execute("""
+                                        SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+                                        JOIN vst_locations vl ON v.vst_loc_id = vl.id
+                                        WHERE vl.name = ? AND v.Su_kPa > 0
+                                          AND v.depth_m >= ? AND v.depth_m <= ?
+                                    """, (_bh_short_dl, _r["depth_top_m"],
+                                          _r["depth_bot_m"])).fetchone()
+                                    _vst_by_lyr_dl[_r["depth_top_m"]] = (
+                                        float(_r_v[0]) if _r_v and _r_v[0] else None
+                                    )
                                 _con_dl.close()
                                 _bh_elev_dl = (float(_rows_dl[0]["bh_elev"])
                                                 if _rows_dl and _rows_dl[0]["bh_elev"] is not None
@@ -12432,7 +12530,14 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                         _thk_eff = max(0.0, _Zb_dl - _e_bot)
                                     if _thk_eff <= 1e-3:
                                         continue
-                                    _su = _r["Cu_kPa"] if _r["Cu_kPa"] is not None else _r["c_kPa"]
+                                    # Cu tính toán: ưu tiên VST + Bjerrum
+                                    _su_vst_dl = _vst_by_lyr_dl.get(_r["depth_top_m"])
+                                    if _su_vst_dl is not None:
+                                        _su = _su_vst_dl * _mu_dl
+                                    elif _r["Cu_kPa"] is not None:
+                                        _su = float(_r["Cu_kPa"])
+                                    else:
+                                        _su = _r["c_kPa"]
                                     _ly_raw_dl.append({
                                         "symbol":      _sym_r,
                                         "thickness_m": _thk_eff,
@@ -14059,7 +14164,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 )
                 _f33 = _formula_png_w([
                     ("Phản lực nền:",      r"$p = k_h \cdot u \cdot B_{cọc}$"),
-                    ("Hệ số lò xo (API Clay):", r"$k_h = \dfrac{67 \cdot S_u}{d_{cọc}}$  (kN/m³)"),
+                    ("Hệ số lò xo (Matlock với Cu tính toán):", r"$k_h = \dfrac{N_p \cdot c_u}{2{,}5 \cdot \varepsilon_{50}}$, $c_u = \mu \cdot S_u$"),
                     ("Vùng CDM:",         r"$k_h^{CDM} = k_{factor} \times k_h$  $(k_{factor} \approx 3{,}0)$"),
                     ("Tiêu chí chuyển vị:", r"$u_{max} \leq 50\ \mathrm{mm}$"),
                     ("Tiêu chí mô men:",   r"$M_{max} \leq M_{cr}$"),
@@ -16216,7 +16321,7 @@ if _page == "tvtk_prep":
 
             # Lazy import Bjerrum
             try:
-                from scripts.settlement_calc import bjerrum_mu as _bj_mu
+                from settlement_calc import bjerrum_mu as _bj_mu
             except Exception:
                 _bj_mu = None
 
@@ -16306,7 +16411,7 @@ if _page == "tvtk_prep":
             # ── Giới hạn ΔS cho phép theo TCCS 41:2022 Bảng 1 — Điều 6.2.3 ──
             # Tạo bảng + populate nếu chưa có (idempotent)
             try:
-                from scripts.settlement_calc import (
+                from settlement_calc import (
                     create_tccs41_limits_table as _make_tccs41_lim,
                     get_allowable_residual_settlement as _get_ds_limit,
                 )
@@ -16637,7 +16742,7 @@ if _page == "tvtk_prep":
         # Bjerrum μ + Ip per HK — TÍNH ON-THE-FLY cho TẤT CẢ HK trong biểu đồ
         # (Không phụ thuộc tvtk_bh_cdm vì biểu đồ có thể có HK ngoài tuyến CDM)
         try:
-            from scripts.settlement_calc import bjerrum_mu as _bj_mu_vst
+            from settlement_calc import bjerrum_mu as _bj_mu_vst
         except Exception:
             _bj_mu_vst = None
 
@@ -17549,13 +17654,20 @@ if _page == "tvtk_prep":
         except Exception as _exc_md:
             st.error(f"Lỗi đọc file lý thuyết: {_exc_md}")
 
-    # 8.1 — Tham số clustering
+    # 8.1 — Tham số clustering (dual-path import — Cloud vs local)
     try:
-        from scripts.cdm_zoning import (
-            build_features_for_zone, run_clustering, delaunay_edges,
-            check_P5_qc, check_P7_gradient, save_clusters_to_db,
-            get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
-        )
+        try:
+            from cdm_zoning import (
+                build_features_for_zone, run_clustering, delaunay_edges,
+                check_P5_qc, check_P7_gradient, save_clusters_to_db,
+                get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
+            )
+        except ImportError:
+            from scripts.cdm_zoning import (
+                build_features_for_zone, run_clustering, delaunay_edges,
+                check_P5_qc, check_P7_gradient, save_clusters_to_db,
+                get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
+            )
         _zone_pick_8 = st.radio(
             "Khu vực phân tích:",
             options=["KE", "BXN", "NHC"],
