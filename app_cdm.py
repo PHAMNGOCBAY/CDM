@@ -8371,6 +8371,96 @@ if _page == "ke_sw":
         except Exception as _exc_pl:
             st.error(f"Lỗi tính EI/EA: {_exc_pl}")
 
+    # ── A.3 Mô đun đàn hồi Ec bê tông (4 tiêu chuẩn) ─────────────────────────
+    st.markdown("#### A.3. Mô đun đàn hồi Ec bê tông — So sánh 4 tiêu chuẩn")
+
+    with st.expander(
+        "Công thức và bảng tra Ec (TCVN 5574 + ACI 318 + EC2 + AS 3600)",
+        expanded=False,
+    ):
+        _md_ec_path = _ROOT / "58-concrete-modulus.md"
+        try:
+            if _md_ec_path.exists():
+                st.markdown(_md_ec_path.read_text(encoding="utf-8"))
+            else:
+                st.warning("Không tìm thấy 58-concrete-modulus.md")
+        except Exception as _exc_ec:
+            st.error(f"Lỗi đọc tài liệu: {_exc_ec}")
+
+    # Module Python (dual-path import)
+    _cm_mod = None
+    try:
+        import concrete_modulus as _cm_mod
+    except ImportError:
+        try:
+            from scripts import concrete_modulus as _cm_mod
+        except ImportError:
+            _cm_mod = None
+
+    if _cm_mod is not None:
+        # Input + compare
+        _c_ec1, _c_ec2, _c_ec3 = st.columns([1, 1, 2])
+        _ec_fc = _c_ec1.number_input(
+            "f_c cylinder (MPa)",
+            min_value=15.0, max_value=120.0, value=70.0, step=5.0,
+            format="%.1f", key="_ec_fc_input",
+            help="Cường độ nén bê tông cylinder",
+        )
+        _ec_rho = _c_ec2.number_input(
+            "Density ρ (kg/m³)",
+            min_value=2000.0, max_value=2800.0, value=2400.0, step=50.0,
+            format="%.0f", key="_ec_rho_input",
+            help="Density cho công thức AS 3600",
+        )
+        try:
+            _r_ec = _cm_mod.compare_all(_ec_fc, rho_kg_m3=_ec_rho)
+            _c_ec3.caption(
+                f"**Cấp B gần nhất:** {_r_ec['grade_tcvn_guess']}  "
+                f"→ Ec TB = **{_r_ec['mean_MPa']:.0f} MPa** "
+                f"(σ {_r_ec['std_pct']:.1f}% giữa 4 công thức)"
+            )
+
+            # 4 metric cards so sánh
+            _c_ec_m1, _c_ec_m2, _c_ec_m3, _c_ec_m4 = st.columns(4)
+            _c_ec_m1.metric("ACI 318",   f"{_r_ec['Ec_ACI318_MPa']:.0f} MPa",
+                            help="Ec = 4730·√fc (đơn giản, bảo thủ)")
+            _c_ec_m2.metric("EC2 (EN 1992)", f"{_r_ec['Ec_EC2_MPa']:.0f} MPa",
+                            help="Ec = 22·(fcm/10)^0.3, fcm = fc + 8")
+            _c_ec_m3.metric("TCVN 5574", f"{_r_ec['Ec_TCVN5574_MPa']:.0f} MPa"
+                            if _r_ec['Ec_TCVN5574_MPa'] else "—",
+                            help="Bảng tra theo cấp B (TCVN 5574:2018)")
+            _c_ec_m4.metric("AS 3600 (Úc)", f"{_r_ec['Ec_AS3600_MPa']:.0f} MPa",
+                            help="Ec = ρ^1.5 · 0.043·√fc")
+
+            # Bảng tra full 14 cấp B
+            st.markdown("##### Bảng tra Ec đầy đủ 14 cấp B (B15–B100)")
+            _all_ec = _cm_mod.list_all()
+            if not _all_ec:
+                _cm_mod.save_to_db()
+                _all_ec = _cm_mod.list_all()
+            _tbl_ec = []
+            for r in _all_ec:
+                _tbl_ec.append({
+                    "Cấp B":       r["grade_tcvn"],
+                    "fc (MPa)":    f"{r['fc_MPa']:.1f}",
+                    "ACI 318":     f"{r['Ec_ACI318_MPa']:,.0f}",
+                    "EC2":         f"{r['Ec_EC2_MPa']:,.0f}",
+                    "TCVN 5574":   f"{r['Ec_TCVN5574_MPa']:,.0f}",
+                    "AS 3600":     f"{r['Ec_AS3600_MPa']:,.0f}",
+                    "TB (MPa)":    f"{r['mean_MPa']:,.0f}",
+                    "σ %":         f"{r['std_pct']:.1f}",
+                })
+            st.table(pd.DataFrame(_tbl_ec))
+            st.caption(
+                "**ACI 318 bảo thủ nhất** · **TCVN 5574 + EC2 cao hơn** "
+                "(thực tế hơn cho BT cường độ cao). σ giảm khi fc tăng → "
+                "BT cường độ cao đồng nhất hơn giữa các tiêu chuẩn."
+            )
+        except Exception as _exc_ec2:
+            st.error(f"Lỗi tính Ec: {_exc_ec2}")
+    else:
+        st.warning("Module concrete_modulus không khả dụng.")
+
     # ── B. Kết quả thiết kế TTHC ────────────────────────────────────────────────
     st.divider()
     st.markdown("### B. Kết quả thiết kế — Kè Công Viên TTHC")
