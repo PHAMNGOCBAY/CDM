@@ -720,6 +720,492 @@ def check_all(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# HÌNH MINH HỌA LẬT QUANH CHÂN CỪ (matplotlib)
+# Tài liệu: 49-ke-sw-overturning-diagram.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def draw_overturning_diagram(
+    geom: WallGeometry,
+    front_layers: list,
+    back_layers: list,
+    fill: Optional[EarthLayer] = None,
+    cdm: Optional[CDMBlock] = None,
+    pile: Optional[PileProps] = None,
+    M_giu_kNm: float = 0.0,
+    M_lat_kNm: float = 0.0,
+    Fs: float = 0.0,
+    bh_name: str = "",
+    figsize: tuple = (11, 8),
+    Fs_min: float = 1.20,
+):
+    """Vẽ hình minh họa các tải trọng gây lật quanh chân cừ.
+
+    Quy ước Front/Back (CLAUDE.md §20):
+        Front = TRÁI  = đất đắp + tải → Active (Ka) đẩy cừ về Back
+        Back  = PHẢI  = đáy đào / sông → Passive (Kp) kháng cừ
+
+    Bao gồm:
+        - Sheet pile dọc + chân cừ (pivot point)
+        - Đất đắp (fill) + lớp đất Front + mực nước Front
+        - Đáy đào Back + lớp đất Back + mực nước Back
+        - Áp lực Active tam giác (mũi tên đẩy sang phải)
+        - Áp lực Passive tam giác (mũi tên đẩy sang trái dưới đáy đào)
+        - Tay đòn z_a, z_p từ chân cừ
+        - Mũi tên cong M_lật (CW) + M_giữ (CCW)
+        - Bảng kết quả: Fs = M_giữ / M_lật
+
+    Returns: matplotlib.Figure
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    from matplotlib.patches import FancyArrowPatch, FancyArrow, Polygon
+    from matplotlib.lines import Line2D
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Cao độ chính
+    top_elev   = geom.top_elev
+    pile_tip   = geom.bot_elev
+    soil_f     = geom.soil_level_front
+    soil_b     = geom.soil_level_back
+    wlvl_f     = geom.water_elev_front
+    wlvl_b     = geom.water_elev_back
+    L          = geom.pile_length
+    q          = geom.surcharge_front
+
+    # Tay đòn (lấy từ engine để hiển thị)
+    P_a, z_a = _integrate_active_back_to_tip(geom, front_layers, fill, cdm,
+                                              n_slices=120)
+    P_p, z_p = _integrate_passive_back_below_dredge(geom, back_layers, cdm,
+                                                     n_slices=60)
+    z_p = abs(z_p)
+
+    # Khung
+    x_left  = -7.0   # phía Front
+    x_right =  7.0   # phía Back
+    x_pile  =  0.0   # tâm cừ
+
+    # ── Đất đắp Fill phía Front ─────────────────────────────────────────────
+    if fill is not None and top_elev > soil_f:
+        ax.fill_between([x_left, x_pile], soil_f, top_elev,
+                        color="#D2B48C", alpha=0.55, ec="#7B3F00", lw=1.2,
+                        label="Đất đắp (Front)")
+    # ── Đất tự nhiên phía Front (sét bùn) ───────────────────────────────────
+    ax.fill_between([x_left, x_pile], pile_tip - 1.5, soil_f,
+                    color="#A4D2EB", alpha=0.5, ec="#3a8fbf", lw=1.0,
+                    label="Đất tự nhiên Front")
+    # ── Đất tự nhiên phía Back (dưới đáy đào) ───────────────────────────────
+    ax.fill_between([x_pile, x_right], pile_tip - 1.5, soil_b,
+                    color="#B8D8B8", alpha=0.5, ec="#558B2F", lw=1.0,
+                    label="Đất tự nhiên Back")
+
+    # ── Đường chia trên không khí phía Back ─────────────────────────────────
+    ax.plot([x_pile, x_right], [soil_b, soil_b],
+            color="#558B2F", lw=1.4)
+
+    # ── Sheet pile cừ (cọc) ─────────────────────────────────────────────────
+    pile_w = 0.35
+    ax.fill_between([x_pile - pile_w / 2, x_pile + pile_w / 2],
+                     pile_tip, top_elev,
+                     color="#1565C0", ec="#0d47a1", lw=1.5, zorder=10)
+    # Pivot point chân cừ
+    ax.plot(x_pile, pile_tip, "o", ms=14, mfc="#FF6B6B", mec="#a01010",
+            mew=2, zorder=12)
+    ax.annotate("Chân cừ\n(điểm xoay)",
+                xy=(x_pile, pile_tip),
+                xytext=(x_pile + 1.8, pile_tip - 1.0),
+                fontsize=10, fontweight="bold", color="#a01010",
+                ha="left", va="center",
+                arrowprops=dict(arrowstyle="->", color="#a01010", lw=1.2))
+
+    # ── Mực nước Front (đường xanh chấm) ────────────────────────────────────
+    if wlvl_f > pile_tip:
+        ax.plot([x_left, x_pile], [wlvl_f, wlvl_f],
+                color="#1E90FF", ls="--", lw=1.3, alpha=0.85)
+        ax.text(x_left + 0.3, wlvl_f + 0.2, f"MNN Front {wlvl_f:+.1f}",
+                fontsize=8, color="#1E90FF", va="bottom")
+    # Mực nước Back
+    if wlvl_b > pile_tip:
+        ax.plot([x_pile, x_right], [wlvl_b, wlvl_b],
+                color="#0066CC", ls="--", lw=1.3, alpha=0.85)
+        ax.text(x_right - 0.3, wlvl_b + 0.2, f"MN sông {wlvl_b:+.1f}",
+                fontsize=8, color="#0066CC", va="bottom", ha="right")
+
+    # ── Tải mặt phân bố q phía Front (mũi tên đỏ xuống) ────────────────────
+    if q > 0:
+        y_q = top_elev + 1.0
+        for x_q in [-5.5, -4.0, -2.5, -1.0]:
+            ax.annotate("", xy=(x_q, top_elev), xytext=(x_q, y_q),
+                        arrowprops=dict(arrowstyle="->", color="#D32F2F",
+                                        lw=1.4))
+        ax.plot([-6.0, -0.5], [y_q, y_q], color="#D32F2F", lw=2)
+        ax.text(-3.0, y_q + 0.4, f"q = {q:.1f} kN/m²",
+                fontsize=10, color="#D32F2F", ha="center", fontweight="bold")
+
+    # ── Áp lực Active tam giác phía Front (mũi tên ngang ĐẨY về Back) ──────
+    # Sức cánh tay đòn: từ pile_tip lên 1.5×z_a (hiển thị); base ở pile_tip
+    h_a = top_elev - pile_tip
+    n_arrows_a = 7
+    for i in range(n_arrows_a):
+        frac = (i + 0.5) / n_arrows_a   # vị trí tương đối
+        ya = pile_tip + frac * h_a
+        # Độ lớn mũi tên theo tam giác (lớn ở dưới chân cừ chỉ vùng nén nhiều)
+        # Đơn giản: scale theo distance from top (Ka × σv ~ tỷ lệ tuyến tính)
+        scale = 0.3 + 1.0 * frac     # mũi tên nhỏ trên, lớn dưới
+        x_start = x_pile - 0.18 - scale
+        ax.annotate("", xy=(x_pile - 0.18, ya), xytext=(x_start, ya),
+                    arrowprops=dict(arrowstyle="->", color="#D32F2F",
+                                    lw=1.3, alpha=0.85))
+    # Tam giác tổng hợp
+    tri_a = Polygon([(x_pile - 0.18, top_elev),
+                     (x_pile - 0.18, pile_tip),
+                     (x_pile - 0.18 - 2.0, pile_tip)],
+                    closed=True, facecolor="#FFCDD2",
+                    edgecolor="#D32F2F", lw=1.2, alpha=0.55, zorder=4)
+    ax.add_patch(tri_a)
+    ax.text(x_pile - 1.8, pile_tip + 0.5,
+            f"P_a = {P_a:.0f} kN/m",
+            fontsize=10, color="#a01010", fontweight="bold",
+            ha="right", va="center",
+            bbox=dict(facecolor="white", alpha=0.9,
+                      edgecolor="#D32F2F", lw=1.2, pad=3))
+
+    # ── Áp lực Passive tam giác phía Back (DƯỚI đáy đào) ───────────────────
+    if soil_b > pile_tip:
+        h_p = soil_b - pile_tip
+        n_arrows_p = 4
+        for i in range(n_arrows_p):
+            frac = (i + 0.5) / n_arrows_p
+            yp = pile_tip + frac * h_p
+            scale = 0.4 + 1.2 * (1.0 - frac)   # mũi tên lớn ở chân cừ
+            x_end = x_pile + 0.18 + scale
+            ax.annotate("", xy=(x_pile + 0.18, yp), xytext=(x_end, yp),
+                        arrowprops=dict(arrowstyle="->", color="#2E7D32",
+                                        lw=1.4, alpha=0.85))
+        # Tam giác Passive
+        tri_p = Polygon([(x_pile + 0.18, soil_b),
+                         (x_pile + 0.18, pile_tip),
+                         (x_pile + 0.18 + 2.2, pile_tip)],
+                        closed=True, facecolor="#C8E6C9",
+                        edgecolor="#2E7D32", lw=1.2, alpha=0.65, zorder=4)
+        ax.add_patch(tri_p)
+        ax.text(x_pile + 2.0, pile_tip + 0.5,
+                f"P_p = {P_p:.0f} kN/m",
+                fontsize=10, color="#1b5e20", fontweight="bold",
+                ha="left", va="center",
+                bbox=dict(facecolor="white", alpha=0.9,
+                          edgecolor="#2E7D32", lw=1.2, pad=3))
+
+    # ── Tay đòn z_a (Front) và z_p (Back) ───────────────────────────────────
+    # z_a: từ chân cừ lên điểm đặt lực active
+    z_a_pos = pile_tip + z_a
+    ax.annotate("", xy=(x_pile - 3.5, z_a_pos), xytext=(x_pile - 3.5, pile_tip),
+                arrowprops=dict(arrowstyle="<->", color="#a01010", lw=1.5))
+    ax.text(x_pile - 3.7, pile_tip + z_a / 2,
+            f"z_a = {z_a:.1f} m",
+            fontsize=9, color="#a01010", ha="right", va="center",
+            rotation=90, fontweight="bold")
+    # Dấu × đánh dấu điểm đặt P_a
+    ax.plot(x_pile - 0.18 - 1.0, z_a_pos, marker="x", ms=12,
+            mec="#a01010", mew=2.5, zorder=11)
+
+    # z_p: từ chân cừ lên điểm đặt lực passive (thấp hơn nhiều)
+    if soil_b > pile_tip and P_p > 0:
+        z_p_pos = pile_tip + z_p
+        ax.annotate("", xy=(x_pile + 3.5, z_p_pos), xytext=(x_pile + 3.5, pile_tip),
+                    arrowprops=dict(arrowstyle="<->", color="#1b5e20", lw=1.5))
+        ax.text(x_pile + 3.7, pile_tip + z_p / 2,
+                f"z_p = {z_p:.1f} m",
+                fontsize=9, color="#1b5e20", ha="left", va="center",
+                rotation=90, fontweight="bold")
+        ax.plot(x_pile + 0.18 + 1.2, z_p_pos, marker="x", ms=12,
+                mec="#1b5e20", mew=2.5, zorder=11)
+
+    # ── Mũi tên cong M_lật (CW - chiều kim đồng hồ) tại chân cừ ─────────────
+    from matplotlib.patches import Arc, FancyArrowPatch
+    arc_radius = 1.4
+    # M_lật: cung ngược kim đồng hồ phía dưới chân cừ (vì lực active đẩy chân cừ về Back)
+    # Cọc xoay quanh chân cừ → đỉnh cọc đi về Back (sang phải)
+    # Mũi tên cong CW
+    arc_lat = Arc((x_pile, pile_tip - 0.0),
+                  2 * arc_radius, 2 * arc_radius,
+                  theta1=130, theta2=220,
+                  color="#D32F2F", lw=2.6, zorder=13)
+    ax.add_patch(arc_lat)
+    # Arrowhead cuối arc
+    import numpy as np
+    th = np.radians(135)
+    ax.annotate("", xy=(x_pile + arc_radius * np.cos(th),
+                        pile_tip + arc_radius * np.sin(th) - 0.0),
+                xytext=(x_pile + arc_radius * np.cos(th) + 0.1,
+                        pile_tip + arc_radius * np.sin(th) + 0.5),
+                arrowprops=dict(arrowstyle="->", color="#D32F2F", lw=2.6))
+    ax.text(x_pile - arc_radius - 0.5, pile_tip - 0.1,
+            "M_lật", fontsize=11, color="#a01010",
+            fontweight="bold", ha="right", va="center",
+            bbox=dict(facecolor="#FFEBEE", edgecolor="#D32F2F", lw=1.3, pad=3))
+
+    # M_giữ: cung CCW (ngược chiều)
+    arc_giu = Arc((x_pile, pile_tip - 0.0),
+                  2 * arc_radius, 2 * arc_radius,
+                  theta1=-40, theta2=50,
+                  color="#2E7D32", lw=2.6, zorder=13)
+    ax.add_patch(arc_giu)
+    ax.text(x_pile + arc_radius + 0.5, pile_tip - 0.1,
+            "M_giữ", fontsize=11, color="#1b5e20",
+            fontweight="bold", ha="left", va="center",
+            bbox=dict(facecolor="#E8F5E9", edgecolor="#2E7D32", lw=1.3, pad=3))
+
+    # ── Bảng kết quả Fs ─────────────────────────────────────────────────────
+    pass_txt = "ĐẠT" if Fs >= Fs_min else "KHÔNG ĐẠT"
+    pass_color = "#2E7D32" if Fs >= Fs_min else "#D32F2F"
+    box_txt = (
+        f"$F_s = \\dfrac{{M_{{giữ}}}}{{M_{{lật}}}} = \\dfrac{{{M_giu_kNm:.1f}}}{{{M_lat_kNm:.1f}}} = "
+        f"{Fs:.3f}$\n"
+        f"Ngưỡng: $F_s \\geq {Fs_min:.2f}$ → {pass_txt}"
+    )
+    ax.text(x_left + 0.3, pile_tip - 2.5, box_txt,
+            fontsize=11, ha="left", va="top",
+            bbox=dict(facecolor="white", edgecolor=pass_color, lw=2, pad=8))
+
+    # ── Annotations cao độ chính ────────────────────────────────────────────
+    for (y, lbl, col) in [
+        (top_elev, f"Đỉnh cừ {top_elev:+.2f}", "#0d47a1"),
+        (soil_f, f"Mặt đất Front {soil_f:+.2f}", "#7B3F00"),
+        (soil_b, f"Đáy đào Back {soil_b:+.2f}", "#558B2F"),
+        (pile_tip, f"Chân cừ {pile_tip:+.2f}", "#a01010"),
+    ]:
+        ax.axhline(y, xmin=0, xmax=1, color=col, ls=":", lw=0.6, alpha=0.55)
+        ax.text(x_right + 0.2, y, lbl, fontsize=8, color=col, va="center")
+
+    # Layout
+    ax.set_xlim(x_left - 0.5, x_right + 3.5)
+    ax.set_ylim(pile_tip - 4.0, top_elev + 3.5)
+    ax.set_xlabel("Khoảng cách ngang (m)", fontsize=10)
+    ax.set_ylabel("Cao độ (m)", fontsize=10)
+    title_bh = f" — {bh_name}" if bh_name else ""
+    ax.set_title(
+        f"Sơ đồ minh họa tải trọng gây lật quanh chân cừ SW{title_bh}\n"
+        f"(Front = TRÁI: Active đẩy  |  Back = PHẢI: Passive kháng)",
+        fontsize=11, fontweight="bold",
+    )
+    ax.grid(True, ls=":", alpha=0.3)
+    ax.set_aspect("auto")
+
+    # Legend: chỉ các patches chính
+    legend_elements = [
+        mpatches.Patch(facecolor="#D2B48C", edgecolor="#7B3F00",
+                       label="Đất đắp Front", alpha=0.55),
+        mpatches.Patch(facecolor="#A4D2EB", edgecolor="#3a8fbf",
+                       label="Đất tự nhiên Front", alpha=0.5),
+        mpatches.Patch(facecolor="#B8D8B8", edgecolor="#558B2F",
+                       label="Đất tự nhiên Back", alpha=0.5),
+        mpatches.Patch(facecolor="#1565C0", label="Cừ SW"),
+        mpatches.Patch(facecolor="#FFCDD2", edgecolor="#D32F2F",
+                       label="Áp lực Active (gây lật)", alpha=0.6),
+        mpatches.Patch(facecolor="#C8E6C9", edgecolor="#2E7D32",
+                       label="Áp lực Passive (giữ)", alpha=0.7),
+        Line2D([0], [0], marker="o", color="w", mfc="#FF6B6B",
+               mec="#a01010", ms=10, label="Chân cừ (pivot)"),
+    ]
+    ax.legend(handles=legend_elements, loc="upper right",
+              fontsize=8, framealpha=0.92)
+
+    fig.tight_layout()
+    return fig
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tìm L cừ SW tối ưu — Thuật toán lặp +1m (tài liệu 48-ke-sw-L-optimal-search.md)
+# ─────────────────────────────────────────────────────────────────────────────
+
+import dataclasses as _dc
+import sqlite3 as _sq_li
+import uuid as _uuid_li
+from pathlib import Path as _Path_li
+
+
+def create_L_iteration_table(db_path: _Path_li) -> None:
+    """Tạo bảng ke_sw_L_iteration (idempotent)."""
+    with _sq_li.connect(db_path) as con:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS ke_sw_L_iteration (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                bh_name         TEXT NOT NULL,
+                pile_type       TEXT NOT NULL,
+                L_m             REAL NOT NULL,
+                Fs_bishop       REAL,
+                Fs_spencer      REAL,
+                Fs_mp           REAL,
+                Fs_overturning  REAL,
+                pass_slip       INTEGER DEFAULT 0,
+                pass_overt      INTEGER DEFAULT 0,
+                all_pass        INTEGER DEFAULT 0,
+                is_final        INTEGER DEFAULT 0,
+                run_id          TEXT NOT NULL,
+                ts              TEXT DEFAULT (datetime('now','localtime')),
+                UNIQUE (bh_name, pile_type, L_m, run_id)
+            )
+        """)
+        con.commit()
+
+
+def find_optimal_L_iterative(
+    bh_name: str,
+    pile_type: str,
+    geom_template: WallGeometry,
+    front_layers: list,
+    back_layers: list,
+    fill: Optional[EarthLayer] = None,
+    cdm: Optional[CDMBlock] = None,
+    pile: Optional[PileProps] = None,
+    L_start: float = 20.0,
+    L_max: float = 50.0,
+    L_step: float = 1.0,
+    Fs_min_slip: float = 1.40,
+    Fs_min_overt: float = 1.20,
+    save_to_db: bool = True,
+    db_path: Optional[_Path_li] = None,
+    run_id: Optional[str] = None,
+) -> dict:
+    """Tìm L cừ SW tối ưu — lặp tăng L bước +1m cho đến khi 4 PP đạt ngưỡng.
+
+    Args:
+        bh_name:     'KE-HK1', 'KE-HK10'...
+        pile_type:   'SW-740', 'SW-840'...
+        geom_template: WallGeometry — sẽ copy + override pile_length per step
+        L_start:     L bắt đầu (m) — thường = L_thiết_kế hiện tại
+        L_max:       L tối đa (m) — thường = pile catalog L_max
+        L_step:      bước tăng (m) — mặc định 1.0
+        Fs_min_slip: ngưỡng Fs cho 3 PP trượt (mặc định 1.40)
+        Fs_min_overt: ngưỡng Fs lật (mặc định 1.20)
+        save_to_db:  True → ghi mỗi step vào ke_sw_L_iteration
+        db_path:     đường dẫn TTHC.sqlite — bắt buộc khi save_to_db=True
+
+    Returns:
+        {
+            'bh_name': str, 'pile_type': str,
+            'L_optimal_m': float | None,   # None nếu không tìm được trong [L_start, L_max]
+            'L_start_m': float, 'L_max_m': float, 'L_step_m': float,
+            'Fs_min_slip': float, 'Fs_min_overt': float,
+            'history': [{L_m, Fs_bishop, Fs_spencer, Fs_mp, Fs_lat,
+                         pass_slip, pass_overt, all_pass, is_final}, ...],
+            'n_iterations': int,
+            'run_id': str,
+        }
+    """
+    if save_to_db and db_path is None:
+        raise ValueError("save_to_db=True yêu cầu db_path")
+
+    rid = run_id or _uuid_li.uuid4().hex[:12]
+    if save_to_db:
+        create_L_iteration_table(db_path)
+
+    history: list = []
+    L_optimal: Optional[float] = None
+    n_iter = 0
+    L = float(L_start)
+
+    while L <= L_max + 1e-6:
+        n_iter += 1
+        # Copy geom + override pile_length cho step này
+        geom_iter = _dc.replace(geom_template, pile_length=float(L))
+
+        # Chạy 3 PP slip + lật
+        Fs_b = Fs_s = Fs_mp = Fs_ot = None
+        try:
+            res_b = check_all(geom_iter, front_layers, back_layers,
+                              fill, cdm, pile, method="bishop")
+            Fs_b = float(res_b.Fs_global_slip)
+            Fs_ot = float(res_b.Fs_overturning)
+        except Exception:
+            pass
+        try:
+            res_s = check_all(geom_iter, front_layers, back_layers,
+                              fill, cdm, pile, method="spencer")
+            Fs_s = float(res_s.Fs_global_slip)
+        except Exception:
+            pass
+        try:
+            res_m = check_all(geom_iter, front_layers, back_layers,
+                              fill, cdm, pile, method="morgenstern_price")
+            Fs_mp = float(res_m.Fs_global_slip)
+        except Exception:
+            pass
+
+        # Đánh giá pass/fail
+        slip_vals = [v for v in (Fs_b, Fs_s, Fs_mp) if v is not None and v > 0]
+        pass_slip  = bool(slip_vals) and (min(slip_vals) >= Fs_min_slip)
+        pass_overt = (Fs_ot is not None) and (Fs_ot >= Fs_min_overt)
+        all_pass   = pass_slip and pass_overt
+
+        step = {
+            "L_m":            round(L, 2),
+            "Fs_bishop":      round(Fs_b, 3) if Fs_b is not None else None,
+            "Fs_spencer":     round(Fs_s, 3) if Fs_s is not None else None,
+            "Fs_mp":          round(Fs_mp, 3) if Fs_mp is not None else None,
+            "Fs_lat":         round(Fs_ot, 3) if Fs_ot is not None else None,
+            "pass_slip":      int(pass_slip),
+            "pass_overt":     int(pass_overt),
+            "all_pass":       int(all_pass),
+            "is_final":       0,
+        }
+        history.append(step)
+
+        if all_pass:
+            L_optimal = L
+            step["is_final"] = 1
+            if save_to_db:
+                _save_iteration(db_path, bh_name, pile_type, step, rid)
+            break
+
+        if save_to_db:
+            _save_iteration(db_path, bh_name, pile_type, step, rid)
+
+        L += L_step
+
+    return {
+        "bh_name":      bh_name,
+        "pile_type":    pile_type,
+        "L_optimal_m":  L_optimal,
+        "L_start_m":    float(L_start),
+        "L_max_m":      float(L_max),
+        "L_step_m":     float(L_step),
+        "Fs_min_slip":  float(Fs_min_slip),
+        "Fs_min_overt": float(Fs_min_overt),
+        "history":      history,
+        "n_iterations": n_iter,
+        "run_id":       rid,
+    }
+
+
+def _save_iteration(db_path: _Path_li, bh: str, pile: str,
+                    step: dict, run_id: str) -> None:
+    """Lưu 1 step vào ke_sw_L_iteration. INSERT OR REPLACE idempotent."""
+    with _sq_li.connect(db_path) as con:
+        con.execute("""
+            INSERT INTO ke_sw_L_iteration
+                (bh_name, pile_type, L_m, Fs_bishop, Fs_spencer, Fs_mp,
+                 Fs_overturning, pass_slip, pass_overt, all_pass, is_final, run_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT (bh_name, pile_type, L_m, run_id) DO UPDATE SET
+                Fs_bishop       = excluded.Fs_bishop,
+                Fs_spencer      = excluded.Fs_spencer,
+                Fs_mp           = excluded.Fs_mp,
+                Fs_overturning  = excluded.Fs_overturning,
+                pass_slip       = excluded.pass_slip,
+                pass_overt      = excluded.pass_overt,
+                all_pass        = excluded.all_pass,
+                is_final        = excluded.is_final,
+                ts              = datetime('now','localtime')
+        """, (bh, pile, step["L_m"], step["Fs_bishop"], step["Fs_spencer"],
+              step["Fs_mp"], step["Fs_lat"], step["pass_slip"],
+              step["pass_overt"], step["all_pass"], step["is_final"], run_id))
+        con.commit()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Demo
 # ─────────────────────────────────────────────────────────────────────────────
 

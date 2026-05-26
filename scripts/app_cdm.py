@@ -1861,11 +1861,27 @@ def _linreg(xs: list, ys: list) -> tuple[float, float]:
     return a, b
 
 
+def _build_mu_by_loc(
+    loc_names: list[str],
+    soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
+) -> dict:
+    """Wrapper backward-compat — chuyển tiếp sang public function trong settlement_calc.
+
+    Phục vụ vẽ Cu = μ·Su trên biểu đồ VST theo TCCS 41 Phụ lục C.3.2.
+    """
+    try:
+        from scripts.settlement_calc import build_mu_by_loc as _build_pub
+        return _build_pub(loc_names, soft_symbols, db_path=_DB)
+    except Exception:
+        return {}
+
+
 def _chart_su_profile_mpl(
     df_vst: pd.DataFrame,
     selected_locs: list[str] | None = None,
     figsize: tuple = (7, 6),
     font_scale: float = 1.0,
+    show_cu_corrected: bool = True,
 ):
     """Matplotlib fallback cho biểu đồ Su–VST khi không có plotly.
     `font_scale`: ×1 mặc định; ×2 khi đặt cạnh soil column trong cột hẹp."""
@@ -1885,6 +1901,9 @@ def _chart_su_profile_mpl(
     _colors = ["#E53935","#1565C0","#2E7D32","#F57F17","#6A1B9A",
                "#00838F","#AD1457","#558B2F","#4527A0","#00695C"]
 
+    # Bjerrum μ cho từng loc — TCCS 41 Phụ lục C.3.2
+    _mu_dict = _build_mu_by_loc(list(show_locs)) if show_cu_corrected else {}
+
     for i, loc in enumerate(all_locs):
         if loc not in show_locs:
             continue
@@ -1893,7 +1912,7 @@ def _chart_su_profile_mpl(
         depths = grp["depth_m"].tolist()
         sus    = grp["Su_kPa"].tolist()
         y_plot = [-d for d in depths]
-        ax.plot(sus, y_plot, "-o", color=color, lw=1.5, ms=5, label=loc)
+        ax.plot(sus, y_plot, "-o", color=color, lw=1.5, ms=5, label=f"Su (VST) {loc}")
         for x, y in zip(sus, y_plot):
             ax.annotate(f"{x:.1f}", (x, y), xytext=(4, 0), textcoords="offset points",
                         fontsize=_fs_anno, color=color, va="center")
@@ -1908,9 +1927,32 @@ def _chart_su_profile_mpl(
             ax.text(a*dd[-1] + b, -dd[-1], eq, fontsize=_fs_anno, color=color,
                     bbox=dict(facecolor="white", alpha=0.75, edgecolor=color, lw=0.5, pad=1))
 
-    ax.set_xlabel("Su (kPa)", fontsize=_fs_axis)
+        # Cu tính toán (TCCS 41 C.5: Cu = μ·Su) — màu xanh lá đậm
+        _bj = _mu_dict.get(loc)
+        if _bj is not None:
+            _mu = _bj["mu"]; _Ip = _bj["Ip"]
+            cus = [s * _mu for s in sus]
+            _cu_color = "#15803d"
+            ax.plot(cus, y_plot, "-D", color=_cu_color, lw=1.8, ms=6,
+                    label=f"Cu = μ·Su {loc} (μ={_mu:.3f}, Ip≈{_Ip:.0f})")
+            for x, y in zip(cus, y_plot):
+                ax.annotate(f"{x:.1f}", (x, y), xytext=(4, -10),
+                            textcoords="offset points",
+                            fontsize=_fs_anno, color=_cu_color, va="center")
+            # Vạch đứng Cu_TB
+            if cus:
+                _Cu_avg = sum(cus) / len(cus)
+                ax.axvline(_Cu_avg, color=_cu_color, ls="-.", lw=1.2, alpha=0.75)
+                ax.text(_Cu_avg, max(y_plot) + 0.5,
+                        f"Cu_TB={_Cu_avg:.1f}",
+                        fontsize=_fs_anno + 1, color=_cu_color,
+                        ha="left", va="bottom",
+                        bbox=dict(facecolor="#dcfce7", alpha=0.92,
+                                  edgecolor=_cu_color, lw=1.0, pad=2))
+
+    ax.set_xlabel("Su, Cu (kPa)", fontsize=_fs_axis)
     ax.set_ylabel("Cao độ (m)", fontsize=_fs_axis)
-    title = "Biểu đồ Su – Cắt cánh (VST)"
+    title = "Biểu đồ Su – Cắt cánh (VST) + Cu tính toán (TCCS 41 C.5)"
     title += f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ"
     ax.set_title(title, fontsize=_fs_title)
     ax.grid(True, ls=":", color="#CCC", lw=0.5)
@@ -2035,6 +2077,7 @@ def _draw_soil_column_mpl(
 def _chart_su_profile(
     df_vst: pd.DataFrame,
     selected_locs: list[str] | None = None,
+    show_cu_corrected: bool = True,
 ) -> go.Figure:
     if df_vst.empty:
         return go.Figure()
@@ -2046,6 +2089,10 @@ def _chart_su_profile(
         "#E53935","#1565C0","#2E7D32","#F57F17","#6A1B9A",
         "#00838F","#AD1457","#558B2F","#4527A0","#00695C",
     ]
+    _CU_COLOR = "#15803d"   # xanh lá đậm cho Cu = μ·Su
+
+    # Bjerrum μ per loc (TCCS 41 Phụ lục C.3.2)
+    _mu_dict = _build_mu_by_loc(list(show_locs)) if show_cu_corrected else {}
 
     fig = go.Figure()
     reg_lines = []   # (loc, a, b, color, y_min, y_max)
@@ -2059,11 +2106,12 @@ def _chart_su_profile(
         sus    = grp["Su_kPa"].tolist()
         y_plot = [-d for d in depths]
 
-        # Đường + markers + nhãn giá trị
+        # Đường Su VST + markers + nhãn giá trị
         fig.add_trace(go.Scatter(
             x=sus, y=y_plot,
             mode="lines+markers+text",
-            name=loc,
+            name=f"Su (VST) {loc}",
+            legendgroup=f"su_{loc}",
             line=dict(color=color, width=1.8),
             marker=dict(size=7, color=color),
             text=[f"{v:.1f}" for v in sus],
@@ -2081,6 +2129,59 @@ def _chart_su_profile(
         if len(depths) >= 2:
             a, b = _linreg(depths, sus)
             reg_lines.append((loc, a, b, color, min(depths), max(depths)))
+
+        # Cu tính toán = μ·Su (TCCS 41 Phụ lục C.3.2 — Công thức C.5)
+        _bj = _mu_dict.get(loc)
+        if _bj is not None:
+            _mu = _bj["mu"]; _Ip = _bj["Ip"]
+            cus = [s * _mu for s in sus]
+            _hov_cu = [
+                f"<b>{loc}</b><br>Sâu: {d:.1f} m<br>"
+                f"<b>Cu = μ·Su = {cu:.1f} kPa</b><br>"
+                f"Su gốc: {s:.1f}  |  μ = {_mu:.3f}  (Ip ≈ {_Ip:.0f})"
+                for d, cu, s in zip(depths, cus, sus)
+            ]
+            fig.add_trace(go.Scatter(
+                x=cus, y=y_plot,
+                mode="lines+markers+text",
+                name=f"Cu = μ·Su {loc} (TCCS 41 C.5)",
+                legendgroup=f"cu_{loc}",
+                line=dict(color=_CU_COLOR, width=2.4),
+                marker=dict(size=9, color=_CU_COLOR, symbol="diamond",
+                            line=dict(color="white", width=1.2)),
+                text=[f"{v:.1f}" for v in cus],
+                textposition="middle left",
+                textfont=dict(size=9, color=_CU_COLOR),
+                hovertemplate="%{customdata}<extra></extra>",
+                customdata=_hov_cu,
+            ))
+            # Vạch đứng Cu_TB
+            if cus:
+                _Cu_avg = sum(cus) / len(cus)
+                _y_top  = max(y_plot)
+                _y_bot  = min(y_plot)
+                fig.add_trace(go.Scatter(
+                    x=[_Cu_avg, _Cu_avg], y=[_y_bot, _y_top],
+                    mode="lines",
+                    line=dict(color=_CU_COLOR, width=1.5, dash="dashdot"),
+                    name=f"Cu_TB = {_Cu_avg:.1f} kPa {loc}",
+                    legendgroup=f"cu_{loc}",
+                    showlegend=False,
+                    hovertemplate=(
+                        f"<b>{loc}</b><br>"
+                        f"Cu TB = {_Cu_avg:.1f} kPa<br>"
+                        f"μ = {_mu:.3f}  Ip = {_Ip:.0f}<extra></extra>"
+                    ),
+                ))
+                fig.add_annotation(
+                    x=_Cu_avg, y=_y_top + 0.3,
+                    text=(f"<b>Cu_TB={_Cu_avg:.1f}</b><br>"
+                          f"μ={_mu:.3f}  Ip={_Ip:.0f}"),
+                    showarrow=False, xanchor="left", yanchor="bottom",
+                    font=dict(size=9, color="#14532d"),
+                    bgcolor="rgba(220,252,231,0.92)",
+                    bordercolor=_CU_COLOR, borderwidth=1.2, borderpad=3,
+                )
 
     # Vẽ đường hồi quy + annotation phương trình
     for loc, a, b, color, d_min, d_max in reg_lines:
@@ -2110,10 +2211,9 @@ def _chart_su_profile(
         )
 
     fig.update_layout(
-        title="Biểu đồ Su – Cắt cánh (VST)" + (
-            f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ"
-        ),
-        xaxis_title="Su (kPa)",
+        title=("Biểu đồ Su – Cắt cánh (VST) + Cu tính toán (TCCS 41 C.5)"
+               + (f" — {', '.join(show_locs)}" if selected_locs else " — Toàn bộ")),
+        xaxis_title="Su, Cu (kPa)",
         yaxis_title="Cao độ (m)",
         height=500,
         legend=dict(font_size=10, orientation="v", x=1.01, y=1),
@@ -10775,6 +10875,79 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 f"_{_n_done}/{len(_e_rows)} HK đã tính — Fs trượt ≥ {_FS_SLIP_MIN_E}, "
                 f"Fs lật ≥ {_FS_OT_MIN_E}. Bảng tự cập nhật khi D.1 tính xong từng HK._"
             )
+
+            # ── Hình minh họa tải trọng gây lật quanh chân cừ (per HK) ──────
+            with st.expander("Sơ đồ minh họa tải trọng gây lật quanh chân cừ", expanded=False):
+                if _HAS_MPL:
+                    _hk_with_results = [r for r in _e_rows
+                                        if r.get("Fs lật") is not None]
+                    if _hk_with_results:
+                        _ot_bh_options = [r["HK"] for r in _hk_with_results]
+                        _ot_pick = st.selectbox(
+                            "Chọn hố khoan để vẽ hình minh họa lật:",
+                            options=_ot_bh_options,
+                            key="_ot_diag_bh_pick",
+                            help="Chỉ HK đã tính ổn định mới hiển thị trong danh sách",
+                        )
+                        try:
+                            from sw_global_stability import (
+                                draw_overturning_diagram as _draw_ot_diag,
+                                WallGeometry as _WG_ot,
+                                EarthLayer as _EL_ot,
+                                PileProps as _PP_ot,
+                            )
+                            # Lấy thông số HK đã chọn từ ke_sw_stability
+                            _ot_row = next((r for r in _hk_with_results
+                                            if r["HK"] == _ot_pick), None)
+                            if _ot_row:
+                                _ot_data = _con_e.execute("""
+                                    SELECT top_elev, Z_m, Zb_m, wlvl_front, wlvl_back,
+                                           q_kPa, M_giu_kNm, M_lat_kNm, Fs_overturning,
+                                           su_front, H1_m
+                                    FROM ke_sw_stability
+                                    WHERE bh_name=? AND pile_type=? AND ABS(L_m-?)<0.1
+                                    LIMIT 1
+                                """, (_ot_pick, _ot_row.get("Cọc"), _ot_row.get("L (m)"))).fetchone()
+                                if _ot_data:
+                                    _geom_ot = _WG_ot(
+                                        top_elev=float(_ot_data["top_elev"] or 2.7),
+                                        pile_length=float(_ot_row["L (m)"]),
+                                        soil_level_front=float(_ot_data["Z_m"] or 2.7),
+                                        soil_level_back=float(_ot_data["Zb_m"] or -1.5),
+                                        water_elev_front=float(_ot_data["wlvl_front"] or -0.5),
+                                        water_elev_back=float(_ot_data["wlvl_back"] or -1.5),
+                                        surcharge_front=float(_ot_data["q_kPa"] or 15.0),
+                                    )
+                                    # Lớp đất đơn giản — sét bùn yếu chung
+                                    _fl_ot = [_EL_ot(tip_elev=_geom_ot.bot_elev - 2,
+                                                     gamma=14.8, gamma_sub=4.99, phi=2.0, c=10.0)]
+                                    _bl_ot = [_EL_ot(tip_elev=_geom_ot.bot_elev - 2,
+                                                     gamma=14.8, gamma_sub=4.99, phi=2.0, c=10.0)]
+                                    _fill_ot = _EL_ot(tip_elev=_geom_ot.soil_level_front,
+                                                       gamma=18.0, gamma_sub=8.0, phi=25.0, c=0.0)
+                                    _pile_ot = _PP_ot(name=str(_ot_row.get("Cọc","SW")),
+                                                       D_m=0.74, EI_kNm2=45200, Mcr_kNm=600)
+                                    _fig_ot = _draw_ot_diag(
+                                        _geom_ot, _fl_ot, _bl_ot, _fill_ot, None, _pile_ot,
+                                        M_giu_kNm=float(_ot_data["M_giu_kNm"] or 0),
+                                        M_lat_kNm=float(_ot_data["M_lat_kNm"] or 0),
+                                        Fs=float(_ot_data["Fs_overturning"] or 0),
+                                        bh_name=f"{_ot_pick} / {_ot_row.get('Cọc')} / L={_ot_row['L (m)']}m",
+                                        Fs_min=_FS_OT_MIN_E,
+                                    )
+                                    st.pyplot(_fig_ot, use_container_width=True)
+                                    plt.close(_fig_ot)
+                                else:
+                                    st.warning(
+                                        f"Không tìm thấy dữ liệu hình học cho {_ot_pick} "
+                                        "trong bảng kết quả ổn định. Tính lại Mục E.1 trước."
+                                    )
+                        except Exception as _exc_ot:
+                            st.error(f"Lỗi vẽ hình minh họa: {_exc_ot}")
+                    else:
+                        st.info("Chưa có HK nào tính xong Fs lật để vẽ hình minh họa.")
+                else:
+                    st.info("Thiếu môi trường biểu đồ — không vẽ được hình minh họa.")
         else:
             st.info("Chưa có kết quả ổn định. Tính từ D.1 chi tiết từng HK bên dưới → tự cập nhật ở đây.")
 
@@ -15640,133 +15813,6 @@ if _page == "tvtk_prep":
                             "modeBarButtonsToAdd": ["zoom2d", "pan2d", "resetScale2d"]})
     st.divider()
 
-    # ── 1b. Nhận diện đất yếu — TCCS 41:2022 §4.1 ──────────────────────────
-    st.markdown("### 1b. Nhận diện đất yếu — TCCS 41:2022 §4.1")
-
-    _c1b_l, _c1b_r = st.columns(2, gap="large")
-
-    with _c1b_l:
-        st.markdown("**Tiêu chí phân loại** *(thỏa ít nhất 1 điều kiện)*")
-        st.table(_pd_tv.DataFrame([
-            {"Chỉ tiêu": "Hệ số rỗng e₀",               "Đơn vị": "—",    "Sét": "≥ 1,5", "Sét pha / bùn": "≥ 1,0"},
-            {"Chỉ tiêu": "Lực dính c",                   "Đơn vị": "kPa",  "Sét": "≤ 15",  "Sét pha / bùn": "≤ 15"},
-            {"Chỉ tiêu": "Góc ma sát φ",                 "Đơn vị": "°",    "Sét": "< 10",  "Sét pha / bùn": "< 10"},
-            {"Chỉ tiêu": "Cắt cánh Cu (VST)",            "Đơn vị": "kPa",  "Sét": "≤ 35",  "Sét pha / bùn": "≤ 35"},
-            {"Chỉ tiêu": "Sức kháng mũi qc",             "Đơn vị": "MPa",  "Sét": "≤ 0,1", "Sét pha / bùn": "≤ 0,1"},
-            {"Chỉ tiêu": "Chỉ số xuyên tiêu chuẩn N",   "Đơn vị": "búa",  "Sét": "< 5",   "Sét pha / bùn": "< 5"},
-        ]))
-
-    with _c1b_r:
-        st.markdown("**Phân loại ký hiệu đất dự án TTHC**")
-        st.table(_pd_tv.DataFrame([
-            {"Ký hiệu": "1  (Bùn sét)",        "Phân loại": "Luôn là đất yếu",           "Cơ sở": "TCCS 41 §4.1 — bùn"},
-            {"Ký hiệu": "1b (Bùn sét pha)",    "Phân loại": "Luôn là đất yếu",           "Cơ sở": "TCCS 41 §4.1 — bùn"},
-            {"Ký hiệu": "XMD",                 "Phân loại": "Luôn là đất yếu",           "Cơ sở": "Khảo sát thực địa — lớp bùn sâu"},
-            {"Ký hiệu": "2 / 2b",              "Phân loại": "Kiểm tra e₀ (≥ 1,0)",       "Cơ sở": "Sét pha chuyển tiếp"},
-            {"Ký hiệu": "3",                   "Phân loại": "Kiểm tra e₀ (≥ 1,0)",       "Cơ sở": "Sét dẻo — e₀ thay đổi"},
-            {"Ký hiệu": "4 / 5a / F / 6+",    "Phân loại": "Không phải đất yếu",        "Cơ sở": "Đất cứng / cát / sỏi"},
-        ]))
-
-    # ── Biểu đồ tổng hợp per HK — số lớp yếu và chiều dày ──────────────────
-    _ssc_rows = _cv.execute("""
-        SELECT b.name bh_name, b.zone_id,
-               l.symbol, l.depth_top_m, l.depth_bot_m,
-               COALESCE(l.thickness_m, l.depth_bot_m - l.depth_top_m) thick,
-               CASE WHEN l.symbol IN ('1','1b','XMD') THEN 1 ELSE 0 END always_soft,
-               (
-                   SELECT CASE WHEN AVG(lt.e0) >= 1.0 THEN 1 ELSE 0 END
-                   FROM lab_tests lt WHERE lt.borehole_id = b.id
-                     AND lt.depth_from_m >= l.depth_top_m
-                     AND lt.depth_from_m <  l.depth_bot_m
-                     AND lt.e0 IS NOT NULL AND lt.e0 > 0
-               ) soft_e0
-        FROM layers l
-        JOIN boreholes b ON l.borehole_id = b.id
-        WHERE b.zone_id IN (1,2,3)
-        ORDER BY b.zone_id, b.name, l.depth_top_m
-    """).fetchall()
-
-    # Tổng hợp per HK: H_soft (m) chia theo nguồn
-    from collections import defaultdict as _dd
-    _bh_soft = _dd(lambda: {"h_always": 0.0, "h_e0": 0.0, "zone": 1, "cdm": False})
-    for _sr in _ssc_rows:
-        _nm = _sr["bh_name"]; _tk = float(_sr["thick"] or 0)
-        _bh_soft[_nm]["zone"] = _sr["zone_id"]
-        _bh_soft[_nm]["cdm"] = _nm in _cdm_yes
-        if _sr["always_soft"]:
-            _bh_soft[_nm]["h_always"] += _tk
-        elif _sr["soft_e0"]:
-            _bh_soft[_nm]["h_e0"] += _tk
-
-    # Sắp xếp: KE→BXN→NHC, trong zone theo tên
-    _bh_order = sorted(_bh_soft.keys(), key=lambda n: (_bh_soft[n]["zone"], n))
-    _bar_names  = [b.split("-")[-1] for b in _bh_order]
-    _bar_labels = _bh_order
-    _bar_always = [round(_bh_soft[b]["h_always"], 2) for b in _bh_order]
-    _bar_e0     = [round(_bh_soft[b]["h_e0"], 2)     for b in _bh_order]
-    _bar_total  = [round(_bh_soft[b]["h_always"] + _bh_soft[b]["h_e0"], 2) for b in _bh_order]
-    _bar_cdm    = ["Tham gia CDM" if _bh_soft[b]["cdm"] else "Không tính CDM" for b in _bh_order]
-
-    # Màu zone theo vị trí cột
-    _zone_color_map = {1: "#f97316", 2: "#3b82f6", 3: "#22c55e"}
-    _bar_zcolors = [_zone_color_map[_bh_soft[b]["zone"]] for b in _bh_order]
-
-    _fig_ssc = _go_tv.Figure()
-    _fig_ssc.add_trace(_go_tv.Bar(
-        x=_bar_labels, y=_bar_always,
-        name="Lớp luôn yếu (1 / 1b / XMD)",
-        marker_color="#ef4444",
-        hovertemplate="%{x}<br>Lớp luôn yếu: %{y:.1f} m<extra></extra>",
-    ))
-    _fig_ssc.add_trace(_go_tv.Bar(
-        x=_bar_labels, y=_bar_e0,
-        name="Lớp kiểm tra e₀ ≥ 1,0",
-        marker_color="#fb923c",
-        hovertemplate="%{x}<br>Kiểm tra e₀: %{y:.1f} m<extra></extra>",
-    ))
-    # Đường nối tổng H_soft
-    _fig_ssc.add_trace(_go_tv.Scatter(
-        x=_bar_labels, y=_bar_total,
-        mode="markers+lines+text",
-        name="H_soft tổng (m)",
-        text=[f"{v:.1f}" if v > 0 else "" for v in _bar_total],
-        textposition="top center", textfont=dict(size=9, color="#fbbf24"),
-        line=dict(color="#fbbf24", width=1.5, dash="dot"),
-        marker=dict(size=7, color="#fbbf24"),
-        hovertemplate="%{x}<br>H_soft = %{y:.1f} m<extra></extra>",
-        yaxis="y",
-    ))
-    _fig_ssc.update_layout(
-        barmode="stack",
-        height=360,
-        template="plotly_dark",
-        title="Chiều dày đất yếu H_soft — phân loại theo TCCS 41:2022 §4.1",
-        xaxis=dict(title=None, tickfont=dict(size=10), tickangle=-30),
-        yaxis=dict(title="H_soft (m)"),
-        legend=dict(orientation="h", y=1.10, font=dict(size=10)),
-        margin=dict(l=50, r=20, t=70, b=80),
-    )
-    st.plotly_chart(_fig_ssc, use_container_width=True)
-
-    # Tóm tắt per zone
-    _z_names_map = {1: "KE", 2: "BXN", 3: "NHC"}
-    _zsumcols = st.columns(3)
-    for _zi, (_zid_sum, _zcol_sum) in enumerate(zip((1, 2, 3), _zsumcols)):
-        _bhs_z_sum = [b for b in _bh_order if _bh_soft[b]["zone"] == _zid_sum]
-        if not _bhs_z_sum:
-            _zcol_sum.caption(f"{_z_names_map[_zid_sum]} — chưa có địa tầng")
-            continue
-        _h_vals    = [_bh_soft[b]["h_always"] + _bh_soft[b]["h_e0"] for b in _bhs_z_sum]
-        _n_soft_bh = sum(1 for v in _h_vals if v > 0)
-        _zcol_sum.metric(
-            f"{_z_names_map[_zid_sum]} — H_soft trung bình",
-            f"{sum(_h_vals)/len(_h_vals):.1f} m",
-            f"{_n_soft_bh}/{len(_bhs_z_sum)} HK có lớp đất yếu",
-            delta_color="off",
-        )
-
-    st.divider()
-
     # ── 2. Cao độ tự nhiên – cao độ thiết kế ────────────────────────────────
     st.markdown("### 2. Cao độ tự nhiên – cao độ thiết kế")
     _c2a, _c2b, _c2c, _c2s = st.columns([1, 1, 1, 0.6])
@@ -16161,21 +16207,31 @@ if _page == "tvtk_prep":
 
             # Chuẩn bị cột SQLite nếu chưa có
             for _col_s in ("Cu_VST_avg_kPa", "Es_kPa",
-                           "S1_pa1_cm", "S1_pa2_cm", "S1_pa3_cm"):
+                           "S1_pa1_cm", "S1_pa2_cm", "S1_pa3_cm",
+                           "Ip_avg", "bjerrum_mu", "Cu_corrected_kPa"):
                 try:
                     _cv.execute(f"ALTER TABLE tvtk_bh_cdm ADD COLUMN {_col_s} REAL")
                 except Exception:
                     pass
 
+            # Lazy import Bjerrum
+            try:
+                from scripts.settlement_calc import bjerrum_mu as _bj_mu
+            except Exception:
+                _bj_mu = None
+
+            _SOFT_SYM = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
+            _ph_sym = ",".join("?" * len(_SOFT_SYM))
+
             _s1_rows_e = []
             for _b3 in _bhs_e:
                 _nm3   = _b3["name"]
+                _bid3  = _b3["id"]
                 _H_p1  = float(_h_pa1_map.get(_nm3) or 0)
                 _H_p2  = float(_h_pa2_map.get(_nm3) or 0)
                 _H_p3  = float(_hsoft_e.get(_nm3) or 0)
 
-                # Cu_VST trung bình trong phạm vi lớp yếu (PA3 = sâu nhất)
-                # vst_locations.name = tên HK (không có borehole_id)
+                # Su trung bình từ VST trong phạm vi lớp yếu (PA3 = sâu nhất)
                 _vr = _cv.execute("""
                     SELECT AVG(v.Su_kPa) avg_su
                     FROM vane_shear_tests v
@@ -16183,8 +16239,21 @@ if _page == "tvtk_prep":
                     WHERE vl.name = ? AND v.Su_kPa > 0
                       AND v.depth_m <= ?
                 """, (_nm3, max(_H_p1, _H_p2, _H_p3))).fetchone()
-                _Cu_e  = float(_vr["avg_su"]) if _vr and _vr["avg_su"] else None
-                _Es_e  = 250.0 * _Cu_e if _Cu_e else None
+                _Su_e  = float(_vr["avg_su"]) if _vr and _vr["avg_su"] else None
+
+                # Ip trung bình từ lab_tests các lớp yếu của HK này
+                _ir = _cv.execute(f"""
+                    SELECT AVG(lt.Ip) avg_ip
+                    FROM lab_tests lt
+                    WHERE lt.borehole_id = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+                      AND lt.symbol_tcvn IN ({_ph_sym})
+                """, (_bid3, *_SOFT_SYM)).fetchone()
+                _Ip_e = float(_ir["avg_ip"]) if _ir and _ir["avg_ip"] else None
+
+                # Bjerrum correction: Cu = μ × Su (TCCS 41 C.5)
+                _mu_e = _bj_mu(_Ip_e) if (_bj_mu is not None and _Ip_e is not None) else 1.0
+                _Cu_e = _Su_e * _mu_e if _Su_e is not None else None
+                _Es_e = 250.0 * _Cu_e if _Cu_e else None
 
                 def _s1_cm(H):
                     if not _Es_e or H <= 0:
@@ -16198,32 +16267,113 @@ if _page == "tvtk_prep":
 
                 # Lưu vào SQLite
                 _cv.execute("""
-                    INSERT INTO tvtk_bh_cdm (bh_name, Cu_VST_avg_kPa, Es_kPa,
-                                             S1_pa1_cm, S1_pa2_cm, S1_pa3_cm)
-                    VALUES (?,?,?,?,?,?)
+                    INSERT INTO tvtk_bh_cdm
+                        (bh_name, Cu_VST_avg_kPa, Es_kPa,
+                         S1_pa1_cm, S1_pa2_cm, S1_pa3_cm,
+                         Ip_avg, bjerrum_mu, Cu_corrected_kPa)
+                    VALUES (?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(bh_name) DO UPDATE SET
-                        Cu_VST_avg_kPa = excluded.Cu_VST_avg_kPa,
-                        Es_kPa         = excluded.Es_kPa,
-                        S1_pa1_cm      = excluded.S1_pa1_cm,
-                        S1_pa2_cm      = excluded.S1_pa2_cm,
-                        S1_pa3_cm      = excluded.S1_pa3_cm,
-                        updated_at     = datetime('now','localtime')
-                """, (_nm3, _Cu_e, _Es_e, _v1, _v2, _v3))
+                        Cu_VST_avg_kPa    = excluded.Cu_VST_avg_kPa,
+                        Es_kPa            = excluded.Es_kPa,
+                        S1_pa1_cm         = excluded.S1_pa1_cm,
+                        S1_pa2_cm         = excluded.S1_pa2_cm,
+                        S1_pa3_cm         = excluded.S1_pa3_cm,
+                        Ip_avg            = excluded.Ip_avg,
+                        bjerrum_mu        = excluded.bjerrum_mu,
+                        Cu_corrected_kPa  = excluded.Cu_corrected_kPa,
+                        updated_at        = datetime('now','localtime')
+                """, (_nm3, _Su_e, _Es_e, _v1, _v2, _v3,
+                      _Ip_e, _mu_e if _Su_e else None, _Cu_e))
 
                 _s1_rows_e.append({
-                    "Hố khoan":       _nm3.replace("KE-", ""),
-                    "Cu (kPa)":       round(_Cu_e, 1) if _Cu_e else "—",
-                    "Es (kPa)":       int(_Es_e)      if _Es_e else "—",
-                    "PA1 H (m)":      f"{_H_p1:.1f}",
-                    "PA1 S₁ (cm)":    _v1 if _v1 is not None else "—",
-                    "PA2 H (m)":      f"{_H_p2:.1f}",
-                    "PA2 S₁ (cm)":    _v2 if _v2 is not None else "—",
-                    "PA3 H (m)":      f"{_H_p3:.1f}",
-                    "PA3 S₁ (cm)":    _v3 if _v3 is not None else "—",
+                    "Hố khoan":         _nm3.replace("KE-", ""),
+                    "Su VST (kPa)":     round(_Su_e, 1) if _Su_e else "—",
+                    "Ip":               round(_Ip_e, 1) if _Ip_e else "—",
+                    "μ (Bjerrum)":      round(_mu_e, 3) if _Su_e and _Ip_e else "—",
+                    "Cu = μ·Su (kPa)":  round(_Cu_e, 1) if _Cu_e else "—",
+                    "Es (kPa)":         int(_Es_e)      if _Es_e else "—",
+                    "PA1 H (m)":        f"{_H_p1:.1f}",
+                    "PA1 S₁ (cm)":      _v1 if _v1 is not None else "—",
+                    "PA2 H (m)":        f"{_H_p2:.1f}",
+                    "PA2 S₁ (cm)":      _v2 if _v2 is not None else "—",
+                    "PA3 H (m)":        f"{_H_p3:.1f}",
+                    "PA3 S₁ (cm)":      _v3 if _v3 is not None else "—",
                 })
             _cv.commit()
 
             st.markdown("#### Độ lún khối gia cố CDM theo 3 phương án chiều sâu")
+
+            # ── Giới hạn ΔS cho phép theo TCCS 41:2022 Bảng 1 — Điều 6.2.3 ──
+            # Tạo bảng + populate nếu chưa có (idempotent)
+            try:
+                from scripts.settlement_calc import (
+                    create_tccs41_limits_table as _make_tccs41_lim,
+                    get_allowable_residual_settlement as _get_ds_limit,
+                )
+                _make_tccs41_lim()
+            except Exception:
+                _get_ds_limit = None
+
+            # Migrate tvtk_cdm_config thêm 2 cột chọn cấp đường + vị trí
+            for _col_lim, _def_lim in [("road_class_code", "'cat1'"),
+                                        ("position_code",   "'general'")]:
+                try:
+                    _cv.execute(
+                        f"ALTER TABLE tvtk_cdm_config ADD COLUMN {_col_lim} TEXT DEFAULT {_def_lim}"
+                    )
+                except Exception:
+                    pass
+            _cv.commit()
+            _lim_cfg = _cv.execute(
+                "SELECT road_class_code, position_code FROM tvtk_cdm_config WHERE id=1"
+            ).fetchone()
+            _rc_def  = (_lim_cfg["road_class_code"] if _lim_cfg and _lim_cfg["road_class_code"]
+                        else "cat1")
+            _pos_def = (_lim_cfg["position_code"]   if _lim_cfg and _lim_cfg["position_code"]
+                        else "general")
+
+            _RC_OPTS  = [
+                ("cat1", "Cao tốc / ≥ 80 km/h / A1"),
+                ("cat2", "≤ 60 km/h / A1"),
+            ]
+            _POS_OPTS = [
+                ("general",      "Đoạn nền đắp thông thường"),
+                ("side_culvert", "Đoạn hai bên cống / cống chui"),
+                ("near_bridge",  "Đoạn gần mố cầu"),
+            ]
+            _c_lim1, _c_lim2, _c_lim3 = st.columns([1.4, 1.4, 1.0])
+            _rc_pick = _c_lim1.selectbox(
+                "Cấp đường (TCCS 41 Bảng 1)",
+                options=[k for k, _ in _RC_OPTS],
+                format_func=lambda k: dict(_RC_OPTS)[k],
+                index=[k for k, _ in _RC_OPTS].index(_rc_def) if _rc_def in dict(_RC_OPTS) else 0,
+                key="_tv_tccs41_rc",
+            )
+            _pos_pick = _c_lim2.selectbox(
+                "Vị trí đoạn nền đắp",
+                options=[k for k, _ in _POS_OPTS],
+                format_func=lambda k: dict(_POS_OPTS)[k],
+                index=[k for k, _ in _POS_OPTS].index(_pos_def) if _pos_def in dict(_POS_OPTS) else 0,
+                key="_tv_tccs41_pos",
+            )
+            # Persist lựa chọn
+            _cv.execute(
+                "UPDATE tvtk_cdm_config SET road_class_code=?, position_code=? WHERE id=1",
+                (_rc_pick, _pos_pick),
+            )
+            _cv.commit()
+
+            _dS_lim = None
+            _dS_info = None
+            if _get_ds_limit is not None:
+                try:
+                    _dS_info = _get_ds_limit(_rc_pick, _pos_pick)
+                    _dS_lim  = float(_dS_info["delta_S_cm_max"])
+                except Exception:
+                    _dS_info = None
+            if _dS_lim is not None:
+                _c_lim3.metric("ΔS cho phép (cm)", f"≤ {_dS_lim:.0f}")
+
             _Ecomp_repr = (f"{_a_e * _Ec_e + (1 - _a_e) * 3000:.0f}"
                            if not _s1_rows_e
                            else "—")
@@ -16231,12 +16381,34 @@ if _page == "tvtk_prep":
                 f"TCVN 9403 Phụ lục C: S₁ = q·H / (a·Ec + (1−a)·Es)  |  "
                 f"q = {_q_cdm_e} kPa  |  a = {_a_e:.3f}  |  "
                 f"Ec = {_Ec_e:,.0f} kPa (k={int(_kEc_e)}×qu/2)  |  "
-                f"Es = 250·Cu_VST (từng hố khoan)"
+                f"Es = 250·Cu (Cu = μ·Su theo TCCS 41 Phụ lục C.3.2 — hệ số Bjerrum theo Ip)"
             )
+            if _dS_info is not None:
+                st.caption(
+                    f"TCCS 41:2022 Bảng 1 — Điều 6.2.3:  "
+                    f"{_dS_info['road_class_desc']}  |  "
+                    f"{_dS_info['position_desc']}  →  "
+                    f"**ΔS ≤ {_dS_lim:.0f} cm**  "
+                    f"(thời hạn t = {_dS_info['t_years_flexible']} năm mặt đường mềm / "
+                    f"{_dS_info['t_years_rigid']} năm mặt đường cứng)"
+                )
+
+            # Thêm cột Đạt/Không đạt cho mỗi PA — so sánh S₁ vs ΔS_limit
+            if _dS_lim is not None and _s1_rows_e:
+                for _row in _s1_rows_e:
+                    for _pa_k, _col_k in (("PA1", "PA1 S₁ (cm)"),
+                                           ("PA2", "PA2 S₁ (cm)"),
+                                           ("PA3", "PA3 S₁ (cm)")):
+                        _v = _row.get(_col_k)
+                        if isinstance(_v, (int, float)):
+                            _row[f"Đạt {_pa_k}"] = "Đạt" if _v <= _dS_lim else "Không đạt"
+                        else:
+                            _row[f"Đạt {_pa_k}"] = "—"
+
             if _s1_rows_e:
                 _df_s1 = _pd_tv.DataFrame(_s1_rows_e)
                 st.table(_df_s1)
-                # Tổng hợp min–max
+                # Tổng hợp min–max + đếm Đạt/Không đạt
                 _get_nums = lambda col: [
                     r[col] for r in _s1_rows_e if isinstance(r[col], (int, float))
                 ]
@@ -16245,178 +16417,19 @@ if _page == "tvtk_prep":
                                       ("PA3", "PA3 S₁ (cm)")):
                     _vals = _get_nums(_col)
                     if _vals:
-                        st.caption(
+                        _line = (
                             f"{_pa_lbl}: S₁ = {min(_vals):.1f} ÷ {max(_vals):.1f} cm  "
                             f"(TB {sum(_vals)/len(_vals):.1f} cm)"
                         )
-
-            # ── Biểu đồ S1+S2 theo phương án ──────────────────────────────
-            st.markdown("#### Phân tích S₁ + S₂ theo hố khoan và phương án CDM")
-            _pa_sel = st.radio(
-                "Phương án chiều sâu CDM",
-                ["PA1", "PA2", "PA3"],
-                horizontal=True,
-                key="_tvtk_s1s2_pa",
-                help="PA1 = qua lớp 1/1b/XMD  |  PA2 = PA1 + nhóm e₀>1 đầu tiên  |  PA3 = hết đất yếu (S₂=0)",
-            )
-            _s2_tbl = _cv.execute("""
-                SELECT t.bh_name,
-                       b.zone_id,
-                       COALESCE(t.S1_pa1_cm, 0.0) s1_1,
-                       COALESCE(t.S1_pa2_cm, 0.0) s1_2,
-                       COALESCE(t.S1_pa3_cm, 0.0) s1_3,
-                       COALESCE(s1.S2_cm, 0.0)    s2_1,
-                       COALESCE(s2.S2_cm, 0.0)    s2_2,
-                       0.0                          s2_3,
-                       COALESCE(s1.H_below_m, 0.0) hb1,
-                       COALESCE(s2.H_below_m, 0.0) hb2,
-                       COALESCE(s1.has_fallback, 0) fb1,
-                       COALESCE(s2.has_fallback, 0) fb2
-                FROM tvtk_bh_cdm t
-                JOIN boreholes b ON b.name = t.bh_name
-                LEFT JOIN tvtk_cdm_s2 s1 ON s1.bh_name = t.bh_name AND s1.pa = 'PA1'
-                LEFT JOIN tvtk_cdm_s2 s2 ON s2.bh_name = t.bh_name AND s2.pa = 'PA2'
-                WHERE t.selected = 1
-                ORDER BY b.zone_id, t.bh_name
-            """).fetchall()
-
-            if _s2_tbl:
-                _zone_colors = {"KE": "#4e9af1", "BXN": "#f0a742", "NHC": "#52c97a"}
-                _pa_idx = {"PA1": 1, "PA2": 2, "PA3": 3}[_pa_sel]
-
-                _bh_labels, _s1_vals, _s2_vals, _zone_tags, _fb_tags, _hb_vals = (
-                    [], [], [], [], [], []
-                )
-                for _r in _s2_tbl:
-                    _bh_labels.append(_r["bh_name"])
-                    _s1_vals.append(float(_r[f"s1_{_pa_idx}"]))
-                    _s2_vals.append(float(_r[f"s2_{_pa_idx}"] if _pa_idx < 3 else 0.0))
-                    _hb_vals.append(float(_r[f"hb{_pa_idx}"] if _pa_idx < 3 else 0.0))
-                    _fb_tags.append(bool(_r[f"fb{_pa_idx}"] if _pa_idx < 3 else 0))
-                    # zone name from bh prefix
-                    _zcode = next(
-                        (k for k in ("KE", "BXN", "NHC") if _r["bh_name"].startswith(k)),
-                        "?",
-                    )
-                    _zone_tags.append(_zcode)
-
-                _s_total = [s1 + s2 for s1, s2 in zip(_s1_vals, _s2_vals)]
-
-                import plotly.graph_objects as _pgo
-
-                _fig_s1s2 = _pgo.Figure()
-
-                # S1 bars — grouped by zone color
-                for _zc in ("KE", "BXN", "NHC"):
-                    _idx_z = [i for i, z in enumerate(_zone_tags) if z == _zc]
-                    if not _idx_z:
-                        continue
-                    _bh_z = [_bh_labels[i] for i in _idx_z]
-                    _s1_z = [_s1_vals[i] for i in _idx_z]
-                    _s2_z = [_s2_vals[i] for i in _idx_z]
-                    _hb_z = [_hb_vals[i] for i in _idx_z]
-                    _fb_z = [_fb_tags[i] for i in _idx_z]
-
-                    _hover_s1 = [
-                        f"<b>{b}</b><br>S₁ = {s:.1f} cm<br>Khu vực: {_zc}"
-                        for b, s in zip(_bh_z, _s1_z)
-                    ]
-                    _hover_s2 = [
-                        f"<b>{b}</b><br>S₂ = {s:.1f} cm<br>H bên dưới: {h:.1f} m"
-                        + (" [fallback]" if fb else "")
-                        for b, s, h, fb in zip(_bh_z, _s2_z, _hb_z, _fb_z)
-                    ]
-
-                    _fig_s1s2.add_trace(_pgo.Bar(
-                        name=f"S₁ {_zc}",
-                        x=_bh_z,
-                        y=_s1_z,
-                        marker_color=_zone_colors.get(_zc, "#888"),
-                        hovertext=_hover_s1,
-                        hoverinfo="text",
-                        legendgroup=_zc,
-                    ))
-                    _fig_s1s2.add_trace(_pgo.Bar(
-                        name=f"S₂ {_zc}",
-                        x=_bh_z,
-                        y=_s2_z,
-                        marker_color="#e05454",
-                        marker_pattern_shape="/",
-                        hovertext=_hover_s2,
-                        hoverinfo="text",
-                        legendgroup=_zc,
-                        legendgrouptitle_text=_zc if _zc == "KE" else None,
-                    ))
-
-                # S_total scatter
-                _fig_s1s2.add_trace(_pgo.Scatter(
-                    name="S_tổng",
-                    x=_bh_labels,
-                    y=_s_total,
-                    mode="markers+text",
-                    marker=dict(symbol="diamond", size=9, color="#f5e642",
-                                line=dict(color="#888", width=1)),
-                    text=[f"{v:.1f}" for v in _s_total],
-                    textposition="top center",
-                    textfont=dict(size=9),
-                    hovertemplate="<b>%{x}</b><br>S_tổng = %{y:.2f} cm<extra></extra>",
-                ))
-
-                _fig_s1s2.update_layout(
-                    barmode="stack",
-                    template="plotly_dark",
-                    height=420,
-                    margin=dict(t=30, b=10, l=50, r=10),
-                    legend=dict(orientation="h", y=-0.18, x=0),
-                    yaxis_title="Độ lún (cm)",
-                    xaxis=dict(tickangle=-35, tickfont=dict(size=10)),
-                    plot_bgcolor="#1a1a1a",
-                    paper_bgcolor="#1a1a1a",
-                )
-
-                # Zone separator lines
-                _prev_z = None
-                for _i, _zc in enumerate(_zone_tags):
-                    if _prev_z and _zc != _prev_z:
-                        _fig_s1s2.add_vline(
-                            x=_i - 0.5,
-                            line_dash="dot",
-                            line_color="gray",
-                            line_width=1,
-                        )
-                    _prev_z = _zc
-
-                st.plotly_chart(_fig_s1s2, use_container_width=True)
-
-                # Metric summary per zone
-                _m_cols = st.columns(3)
-                for _ci, _zc in enumerate(("KE", "BXN", "NHC")):
-                    _idx_z = [i for i, z in enumerate(_zone_tags) if z == _zc]
-                    if not _idx_z:
-                        continue
-                    _st_z = [_s_total[i] for i in _idx_z]
-                    _s2_nonzero = [_s2_vals[i] for i in _idx_z if _s2_vals[i] > 0]
-                    with _m_cols[_ci]:
-                        st.metric(
-                            f"{_zc} — {_pa_sel}",
-                            f"S_max = {max(_st_z):.1f} cm",
-                            f"TB {sum(_st_z)/len(_st_z):.1f} cm  |  S₂ > 0: {len(_s2_nonzero)}/{len(_idx_z)} HK",
-                        )
-
-                # Note on data coverage
-                _s1_missing = [_bh_labels[i] for i, v in enumerate(_s1_vals) if v == 0.0]
-                if _s1_missing:
-                    st.caption(
-                        f"Lưu ý: {len(_s1_missing)} hố khoan chưa có dữ liệu S₁ "
-                        f"({', '.join(_s1_missing[:5])}{'...' if len(_s1_missing) > 5 else ''}) "
-                        "— S₁ sẽ được tính sau khi nhập đủ thông số CDM cho khu vực đó."
-                    )
-                _fb_bhs = [_bh_labels[i] for i, f in enumerate(_fb_tags) if f]
-                if _fb_bhs:
-                    st.caption(
-                        f"[Fallback] {len(_fb_bhs)} hố khoan dùng Cc/Cs từ hố khoan lân cận: "
-                        f"{', '.join(_fb_bhs)}"
-                    )
+                        if _dS_lim is not None:
+                            _n_pass = sum(1 for v in _vals if v <= _dS_lim)
+                            _n_fail = len(_vals) - _n_pass
+                            _line += (
+                                f"  |  Đạt {_n_pass}/{len(_vals)} HK"
+                                + (f"  |  Không đạt {_n_fail} HK" if _n_fail else "")
+                                + f"  (ngưỡng ΔS ≤ {_dS_lim:.0f} cm)"
+                            )
+                        st.caption(_line)
 
     st.divider()
 
@@ -16484,15 +16497,13 @@ if _page == "tvtk_prep":
             continue
 
         _h1 = _h1b = _h_extra = 0.0
-        # {symbol: {"h": float, "e0_vals": [float], "desc": str, "always": bool}}
-        _extra_syms: dict = {}
+        _extra_syms = {}   # {symbol: thickness} cho lớp khác được tính
 
         for _lyr in _lyrs_all:
             _sym   = _lyr["symbol"]
             _thick = float(_lyr["thick"] or 0)
             if _thick <= 0:
                 continue
-            _desc_l = _lyr["description"] or ""
 
             if _sym in _SOFT_ALWAYS_S4:
                 # Luôn tính: lớp 1, 1b, XMD (XMD = bùn tại KE-HK8)
@@ -16502,26 +16513,20 @@ if _page == "tvtk_prep":
                     _h1b   += _thick
                 else:  # XMD
                     _h_extra += _thick
-                    if _sym not in _extra_syms:
-                        _extra_syms[_sym] = {"h": 0.0, "e0_vals": [], "desc": _desc_l, "always": True}
-                    _extra_syms[_sym]["h"] += _thick
+                    _extra_syms[_sym] = _extra_syms.get(_sym, 0) + _thick
             else:
-                # Kiểm tra e0_TB của lớp này + lấy danh sách e0 riêng
-                _e0_rows = _cv.execute("""
-                    SELECT lt.e0
+                # Kiểm tra e0_TB của lớp này
+                _e0_row = _cv.execute("""
+                    SELECT AVG(lt.e0) avg_e0
                     FROM lab_tests lt
                     WHERE lt.borehole_id = ?
                       AND lt.depth_from_m >= ? AND lt.depth_from_m < ?
                       AND lt.e0 IS NOT NULL AND lt.e0 > 0
-                """, (b["id"], _lyr["depth_top_m"], _lyr["depth_bot_m"])).fetchall()
-                _e0_list = [float(r["e0"]) for r in _e0_rows]
-                _e0_avg  = sum(_e0_list) / len(_e0_list) if _e0_list else None
+                """, (b["id"], _lyr["depth_top_m"], _lyr["depth_bot_m"])).fetchone()
+                _e0_avg = _e0_row["avg_e0"] if _e0_row and _e0_row["avg_e0"] else None
                 if _e0_avg is not None and _e0_avg > 1.0:
                     _h_extra += _thick
-                    if _sym not in _extra_syms:
-                        _extra_syms[_sym] = {"h": 0.0, "e0_vals": [], "desc": _desc_l, "always": False}
-                    _extra_syms[_sym]["h"]       += _thick
-                    _extra_syms[_sym]["e0_vals"] += _e0_list
+                    _extra_syms[_sym] = _extra_syms.get(_sym, 0) + _thick
 
         _htot = _h1 + _h1b + _h_extra
 
@@ -16552,56 +16557,31 @@ if _page == "tvtk_prep":
             WHERE vl.name = ?
         """, (b["name"],)).fetchone()[0]
 
-        # Xây chuỗi chi tiết: "ký hiệu: Xm (e₀=Y.YY, Nn)" mỗi lớp
-        def _fmt_extra_sym(sym: str, info: dict) -> str:
-            h_str = f"{info['h']:.1f}m"
-            if info.get("always"):
-                return f"{sym}: {h_str} (luôn tính)"
-            vals = info["e0_vals"]
-            if vals:
-                e0_avg = sum(vals) / len(vals)
-                return f"{sym}: {h_str} (e₀={e0_avg:.2f}, {len(vals)}mẫu)"
-            return f"{sym}: {h_str}"
-
         _extra_str = (
-            "  |  ".join(_fmt_extra_sym(sym, info)
-                         for sym, info in sorted(_extra_syms.items()))
+            "  ".join(f"{sym}:{h:.1f}m" for sym, h in sorted(_extra_syms.items()))
             if _extra_syms else "—"
         )
-
-        # Tổng e₀ TB tất cả lớp e₀>1 (để sắp xếp / lọc)
-        _all_e0_vals = [
-            v for info in _extra_syms.values()
-            if not info.get("always") for v in info["e0_vals"]
-        ]
-        _e0_extra_avg = (
-            round(sum(_all_e0_vals) / len(_all_e0_vals), 2)
-            if _all_e0_vals else None
-        )
-
         _soft_rows.append({
-            "Hố khoan":                 b["name"],
-            "Khu vực":                  _zone_codes.get(b["zone_id"], ""),
-            "Từ (m)":                   f"{_top_first:.1f}",
-            "Đến (m)":                  f"{_bot_last:.1f}",
-            "Dày lớp 1 (m)":            f"{_h1:.1f}"   if _h1   else "—",
-            "Dày lớp 1b (m)":           f"{_h1b:.1f}"  if _h1b  else "—",
-            "Lớp thêm vào H_soft":      _extra_str,
-            "e₀ TB lớp thêm":           f"{_e0_extra_avg:.2f}" if _e0_extra_avg else "—",
-            "H_soft (m)":               f"{_htot:.1f}",
-            "N-SPT TB":                 f"{_spt_avg:.0f}" if _spt_avg else "—",
-            "Su TB-VST (kPa)":          f"{_su_avg:.1f}" if _su_avg else "—",
-            "_h_soft":                  round(_htot, 2),
-            "_bh_name":                 b["name"],
-            "Khu vực_":                 _zone_codes.get(b["zone_id"], ""),
+            "Hố khoan":             b["name"],
+            "Khu vực":              _zone_codes.get(b["zone_id"], ""),
+            "Từ (m)":               f"{_top_first:.1f}",
+            "Đến (m)":              f"{_bot_last:.1f}",
+            "Dày lớp 1 (m)":        f"{_h1:.1f}"   if _h1   else "—",
+            "Dày lớp 1b (m)":       f"{_h1b:.1f}"  if _h1b  else "—",
+            "Lớp khác (e₀>1) (m)":  _extra_str,
+            "H_soft (m)":           f"{_htot:.1f}",
+            "N-SPT TB":             f"{_spt_avg:.0f}" if _spt_avg else "—",
+            "Su TB-VST (kPa)":      f"{_su_avg:.1f}" if _su_avg else "—",
+            "_h_soft":              round(_htot, 2),
+            "_bh_name":             b["name"],
+            "Khu vực_":             _zone_codes.get(b["zone_id"], ""),
         })
     if _soft_rows:
         st.table(_pd_tv.DataFrame(_soft_rows).drop(columns=["_h_soft", "_bh_name", "Khu vực_"]))
         st.caption(
-            "Lớp 1: Bùn sét dẻo chảy  |  Lớp 1b: Sét mềm xen kẹp cát  |  "
-            "Lớp thêm vào H_soft: lớp không phải 1/1b nhưng đủ điều kiện đất yếu "
-            "(e₀>1 từ thí nghiệm cố kết, hoặc XMD = bùn KE-HK8)  |  "
-            "e₀ TB lớp thêm: hệ số rỗng trung bình xác nhận mức độ yếu (e₀ > 1 = đất yếu)"
+            "Lớp 1: Bùn sét dẻo chảy  |  "
+            "Lớp 1b: Sét mềm xen kẹp cát  |  "
+            "Lớp khác (e₀>1): lớp không tên-1/1b nhưng còn rỗng, đủ điều kiện đất yếu"
         )
     else:
         st.info("Chưa có dữ liệu địa tầng.")
@@ -16654,6 +16634,46 @@ if _page == "tvtk_prep":
             if r.get("_bh_name", "").startswith("KE-")
         }
 
+        # Bjerrum μ + Ip per HK — TÍNH ON-THE-FLY cho TẤT CẢ HK trong biểu đồ
+        # (Không phụ thuộc tvtk_bh_cdm vì biểu đồ có thể có HK ngoài tuyến CDM)
+        try:
+            from scripts.settlement_calc import bjerrum_mu as _bj_mu_vst
+        except Exception:
+            _bj_mu_vst = None
+
+        # Query Ip TB cho TẤT CẢ KE HK 1 lần (batch — tránh N+1 queries)
+        _SOFT_SYM_VST = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
+        _ph_sym_vst   = ",".join("?" * len(_SOFT_SYM_VST))
+        _ip_rows = _cv.execute(f"""
+            SELECT b.name AS bh_name, AVG(lt.Ip) AS Ip_avg
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name LIKE 'KE-%'
+              AND lt.Ip IS NOT NULL AND lt.Ip > 0
+              AND lt.symbol_tcvn IN ({_ph_sym_vst})
+            GROUP BY b.name
+        """, _SOFT_SYM_VST).fetchall()
+
+        # Ưu tiên giá trị đã lưu trong tvtk_bh_cdm (giữ tính nhất quán với bảng 3 PA)
+        _bj_saved = {
+            r["bh_name"]: {"Ip": r["Ip_avg"], "mu": r["bjerrum_mu"]}
+            for r in _cv.execute("""
+                SELECT bh_name, Ip_avg, bjerrum_mu
+                FROM tvtk_bh_cdm
+                WHERE bh_name LIKE 'KE-%' AND bjerrum_mu IS NOT NULL
+            """).fetchall()
+        }
+
+        _bj_per_bh = {}
+        for _r_ip in _ip_rows:
+            _bh_k = _r_ip["bh_name"]
+            _Ip_k = float(_r_ip["Ip_avg"]) if _r_ip["Ip_avg"] is not None else None
+            # Ưu tiên giá trị đã lưu
+            if _bh_k in _bj_saved and _bj_saved[_bh_k]["mu"] is not None:
+                _bj_per_bh[_bh_k] = _bj_saved[_bh_k]
+            elif _Ip_k is not None and _bj_mu_vst is not None:
+                _bj_per_bh[_bh_k] = {"Ip": _Ip_k, "mu": float(_bj_mu_vst(_Ip_k))}
+
         _bh_names_sorted = sorted(_vst_by_bh.keys(),
                                   key=lambda n: int(n.replace("KE-HK", "") or 0))
         _n_bh  = len(_bh_names_sorted)
@@ -16665,6 +16685,7 @@ if _page == "tvtk_prep":
         _all_uu  = [r["Cu_UU_kPa"] for r in _uu_data]
         _x_max   = max((_all_su + _all_uu) or [40]) * 1.15
         _x_max   = max(_x_max, 40)
+        # μ < 1 nên Cu_corrected ≤ Su → không cần mở rộng x range
 
         _fig_sub = _make_subplots(
             rows=_NROWS, cols=_NCOLS,
@@ -16737,6 +16758,79 @@ if _page == "tvtk_prep":
                     marker=dict(size=5, symbol="x", color="#1a6fbd"),
                     hovertemplate=f"<b>{_bh_n}</b><br>Sp: %{{x:.1f}} kPa | %{{y:.1f}} m<extra></extra>",
                 ), row=_row, col=_col)
+
+            # ── Cu TÍNH TOÁN (TCCS 41 Phụ lục C.3.2 — Công thức C.5: Cu = μ·Su) ──
+            _bj_e   = _bj_per_bh.get(_bh_n, {})
+            _mu_bh  = _bj_e.get("mu")
+            _Ip_bh  = _bj_e.get("Ip")
+            if _mu_bh is not None and _vd:
+                _vs_cu = [s * _mu_bh for s in _vs]
+                # Text label hiển thị giá trị Cu trên mỗi marker
+                _txt_cu = [f"{cu:.1f}" for cu in _vs_cu]
+                _hov_cu = [
+                    f"<b>{_bh_n}</b><br>Chiều sâu: {d:.1f} m<br>"
+                    f"<b>Cu = μ·Su = {cu:.1f} kPa</b><br>"
+                    f"Su gốc (VST): {s:.1f} kPa<br>"
+                    f"μ (Bjerrum) = {_mu_bh:.3f}"
+                    + (f"<br>Ip TB lớp yếu = {_Ip_bh:.0f}" if _Ip_bh else "")
+                    for d, cu, s in zip(_vd, _vs_cu, _vs)
+                ]
+                # Trace Cu tính toán — đường liền xanh lá đậm + text giá trị bên marker
+                _fig_sub.add_trace(_go_tv.Scatter(
+                    x=_vs_cu, y=_vd,
+                    mode="lines+markers+text",
+                    name="Cu tính toán (Cu = μ·Su — TCCS 41 C.5)"
+                         if _i == 0 else "Cu tính toán (Cu = μ·Su — TCCS 41 C.5)",
+                    legendgroup="cu_corr",
+                    showlegend=(_i == 0),
+                    line=dict(color="#16a34a", width=2.6),
+                    marker=dict(size=9, symbol="diamond", color="#16a34a",
+                                line=dict(color="white", width=1.2)),
+                    text=_txt_cu,
+                    textposition="middle right",
+                    textfont=dict(size=8, color="#14532d", family="Arial"),
+                    hovertemplate="%{customdata}<extra></extra>",
+                    customdata=_hov_cu,
+                ), row=_row, col=_col)
+                # Vạch đứng Cu_TB trong phạm vi lớp yếu
+                _vs_cu_soft = [
+                    cu for d, cu in zip(_vd, _vs_cu)
+                    if _h_soft is None or d <= _h_soft
+                ]
+                if _vs_cu_soft:
+                    _Cu_avg = sum(_vs_cu_soft) / len(_vs_cu_soft)
+                    _y_top  = (_h_soft if _h_soft else max(_vd))
+                    # Đường đứng Cu_TB (xanh lá nhạt)
+                    _fig_sub.add_trace(_go_tv.Scatter(
+                        x=[_Cu_avg, _Cu_avg], y=[0, _y_top],
+                        mode="lines",
+                        line=dict(color="#16a34a", width=1.5, dash="dashdot"),
+                        name=("Cu_TB tính toán (μ·Su_TB lớp yếu)"
+                              if _i == 0 else "Cu_TB tính toán (μ·Su_TB lớp yếu)"),
+                        legendgroup="cu_avg",
+                        showlegend=(_i == 0),
+                        hovertemplate=(f"<b>{_bh_n}</b><br>"
+                                       f"Cu TB = {_Cu_avg:.1f} kPa<br>"
+                                       f"trong phạm vi lớp yếu<extra></extra>"),
+                    ), row=_row, col=_col)
+                    # Annotation hộp xanh lá ở 0.3·H_soft (trên cao, dễ thấy)
+                    _y_ann  = (_h_soft * 0.30) if _h_soft else (max(_vd) * 0.3)
+                    _ann_txt = (
+                        f"<b>Cu_TB = {_Cu_avg:.1f} kPa</b><br>"
+                        f"μ = {_mu_bh:.3f}"
+                        + (f"  Ip = {_Ip_bh:.0f}" if _Ip_bh else "")
+                    )
+                    _fig_sub.add_annotation(
+                        x=_Cu_avg, y=_y_ann, text=_ann_txt,
+                        showarrow=True, arrowhead=2, arrowsize=1,
+                        arrowwidth=1.5, arrowcolor="#16a34a",
+                        ax=45, ay=-30,
+                        font=dict(size=9.5, color="#14532d",
+                                  family="Arial Black"),
+                        bgcolor="rgba(220,252,231,0.95)",
+                        bordercolor="#16a34a", borderwidth=1.4, borderpad=4,
+                        row=_row, col=_col,
+                    )
 
             # ── Cu_UU – marker kim cương ──────────────────────────────────────
             if _upts:
@@ -16814,10 +16908,13 @@ if _page == "tvtk_prep":
         )
         st.plotly_chart(_fig_sub, use_container_width=True)
         st.caption(
-            "Su (đường xanh liền): cắt cánh hiện trường (VST)  |  "
-            "Sp (xanh chấm): độ bền sau phá hoại  |  "
-            "Cu (kim cương cam): thí nghiệm cắt 3 trục UU trong phòng  |  "
-            "Đường đỏ đứt: ngưỡng Su = 25 kPa  |  Vùng xanh nhạt: phạm vi đất yếu"
+            "**Su (xanh dương liền):** cắt cánh hiện trường (VST) — cường độ kháng cắt nguyên trạng.  "
+            "**Sp (xanh dương chấm):** độ bền sau phá hoại.  "
+            "**Cu tính toán (xanh lá đậm, kim cương):** Cu = μ·Su theo TCCS 41 Phụ lục C.3.2 — Công thức C.5; μ nội suy từ Bảng C.1 theo Ip TB lớp yếu của từng hố khoan.  "
+            "**Vạch xanh lá đứng (dashdot):** Cu_TB tính toán trong phạm vi lớp yếu.  "
+            "**Cu (kim cương cam):** thí nghiệm cắt 3 trục UU trong phòng (tham khảo so sánh).  "
+            "**Đường đỏ đứt:** ngưỡng Su = 25 kPa.  "
+            "**Vùng xanh nhạt:** phạm vi lớp đất yếu."
         )
     else:
         st.info("Chưa có dữ liệu cắt cánh cho khu vực Kè.")
@@ -17079,11 +17176,18 @@ if _page == "tvtk_prep":
     # ── Bảng thống kê chiều dài cọc CDM theo nguyên tắc thiết kế ──────────────
     st.markdown("#### Thống kê chiều dài cọc CDM theo nguyên tắc thiết kế")
     st.caption(
-        f"L = (Cao độ đỉnh cọc +{_top:.1f} m) − Cao độ đáy lớp yếu + Ngàm {_pen:.1f} m  "
-        f"= +{_top:.1f} − Cao_độ_tự_nhiên + H_đất_yếu + {_pen:.1f}"
+        f"**Công thức:** L = (Cao độ đỉnh cọc {_top:+.1f} m) − Cao độ đáy lớp yếu + Ngàm {_pen:.1f} m  "
+        f"= {_top:+.1f} − Cao_độ_tự_nhiên + H_đất_yếu + {_pen:.1f}  \n"
+        f"**Quy ước đào/đắp:**  "
+        f"Đào = Cao_độ_tự_nhiên − {_top:+.1f}  (dương → đào bỏ đất trước khi thi công cọc; "
+        f"âm → đắp thêm lên đỉnh cọc).  "
+        f"Khi đào lớn hơn 0, lớp đất yếu phía TRÊN đỉnh cọc CDM coi như đã được đào bỏ — "
+        f"không cần xử lý → L_CDM < H_đất_yếu là hợp lý."
     )
     _len_rows = []
-    _len_zone_agg = {}  # zone -> list of L_cdm values
+    _len_zone_agg   = {}   # zone -> list of L_cdm values
+    _len_zone_noexc = {}   # zone -> list of L_no_excav (không đào)
+    _n_excav_warn   = 0    # số HK có đào > pen (cảnh báo)
     for b in [b for b in _bhs_tv if b["name"] in _cdm_yes]:
         _elev_b = b["elevation_m"]
         # H_soft: sum of ALL soft symbols from layers table
@@ -17095,41 +17199,256 @@ if _page == "tvtk_prep":
             _len_rows.append({
                 "Hố khoan":        b["name"],
                 "Khu vực":         _zone_codes.get(b["zone_id"], ""),
-                "Cao độ (m)":      f"{_elev_b:.2f}" if _elev_b is not None else "—",
+                "Cao độ TN (m)":   f"{_elev_b:.2f}" if _elev_b is not None else "—",
+                "Đỉnh cọc TK (m)": f"{_top:+.2f}",
+                "Đào/Đắp (m)":     "—",
                 "H đất yếu (m)":   f"{_hs_val:.1f}" if _hs_val > 0 else "—",
+                "L (không đào) m": "—",
                 "L CDM (m)":       "—",
+                "Ghi chú":         "Thiếu dữ liệu",
             })
             continue
-        _L_cdm = _top - _elev_b + _hs_val + _pen
-        _zcode = _zone_codes.get(b["zone_id"], "")
+        _excav     = _elev_b - _top                 # >0: đào,  <0: đắp
+        _L_no_exc  = _hs_val + _pen                 # L tối thiểu nếu không đào
+        _L_cdm     = _top - _elev_b + _hs_val + _pen
+        _zcode     = _zone_codes.get(b["zone_id"], "")
         _len_zone_agg.setdefault(_zcode, []).append(_L_cdm)
+        _len_zone_noexc.setdefault(_zcode, []).append(_L_no_exc)
+
+        # Ghi chú: cảnh báo khi đào lớn
+        if _excav > _pen:        # đào nhiều hơn cả phần ngàm
+            _note = f"Cảnh báo: đào {_excav:.1f} m"
+            _n_excav_warn += 1
+        elif _excav > 0:
+            _note = f"Đào {_excav:.1f} m trước khi thi công"
+        elif _excav < 0:
+            _note = f"Đắp {-_excav:.1f} m lên đỉnh cọc"
+        else:
+            _note = "Đỉnh cọc = mặt đất tự nhiên"
+
         _len_rows.append({
             "Hố khoan":        b["name"],
             "Khu vực":         _zcode,
-            "Cao độ (m)":      f"{_elev_b:.2f}",
+            "Cao độ TN (m)":   f"{_elev_b:.2f}",
+            "Đỉnh cọc TK (m)": f"{_top:+.2f}",
+            "Đào/Đắp (m)":     f"{_excav:+.2f}",
             "H đất yếu (m)":   f"{_hs_val:.1f}",
+            "L (không đào) m": f"{_L_no_exc:.1f}",
             "L CDM (m)":       f"{_L_cdm:.1f}",
+            "Ghi chú":         _note,
         })
 
     if _len_rows:
         # Sort: zone then bh_name
         _len_df = _pd_tv.DataFrame(_len_rows).sort_values(["Khu vực", "Hố khoan"])
         st.table(_len_df.reset_index(drop=True))
+        if _n_excav_warn > 0:
+            st.warning(
+                f"Có **{_n_excav_warn} hố khoan** có chiều cao đào lớn hơn chiều sâu ngàm "
+                f"({_pen:.1f} m) — cần xem xét lại cao độ đỉnh cọc CDM ({_top:+.1f} m) "
+                f"cho phù hợp với cao độ tự nhiên của từng khu vực."
+            )
 
     # Tổng hợp theo zone
     if _len_zone_agg:
         _agg_rows = []
         for _zc in ("KE", "BXN", "NHC"):
             if _zc not in _len_zone_agg: continue
-            _ls = _len_zone_agg[_zc]
+            _ls    = _len_zone_agg[_zc]
+            _ls_ne = _len_zone_noexc.get(_zc, [])
             _agg_rows.append({
-                "Khu vực":    _zc,
-                "Số HK":      len(_ls),
-                "L min (m)":  f"{min(_ls):.1f}",
-                "L TB (m)":   f"{sum(_ls)/len(_ls):.1f}",
-                "L max (m)":  f"{max(_ls):.1f}",
+                "Khu vực":               _zc,
+                "Số HK":                 len(_ls),
+                "L min (m)":             f"{min(_ls):.1f}",
+                "L TB (m)":              f"{sum(_ls)/len(_ls):.1f}",
+                "L max (m)":             f"{max(_ls):.1f}",
+                "L TB không đào (m)":    f"{sum(_ls_ne)/len(_ls_ne):.1f}" if _ls_ne else "—",
             })
         st.table(_pd_tv.DataFrame(_agg_rows))
+
+    # ── Trắc dọc CDM 3 khu vực ─────────────────────────────────────────────
+    st.markdown("#### Trắc dọc CDM theo khu vực")
+    st.caption(
+        f"Đỉnh cọc CDM thiết kế: **{_top:+.2f} m**  |  Ngàm lớp cứng: **{_pen:.1f} m**  |  "
+        "H đất yếu tính từ các lớp 1, 1b, 2, XMD."
+    )
+    import numpy as _np_pf
+    _des_map_pf = {1: _des_ke, 2: _des_bxn, 3: _des_nhc}
+    _zone_titles = {1: "KE — Kè Công Viên",
+                    2: "BXN — Bãi Đỗ Xe Ngầm",
+                    3: "NHC — Nhà Hành Chính"}
+
+    for _zid_pf in (1, 2, 3):
+        _zcode_pf = _zone_codes.get(_zid_pf, "")
+        _des_pf   = _des_map_pf.get(_zid_pf, 2.5)
+
+        # Lấy HK của zone (chỉ HK tham gia CDM + có tọa độ)
+        _bhs_pf = sorted(
+            [b for b in _bhs_tv
+             if b["zone_id"] == _zid_pf and b["name"] in _cdm_yes
+                and b["x_coord_m"] and b["y_coord_m"]],
+            key=lambda b: b["name"],
+        )
+        if len(_bhs_pf) < 2:
+            st.info(f"{_zone_titles[_zid_pf]}: cần ≥ 2 hố khoan có tọa độ — bỏ qua trắc dọc.")
+            continue
+
+        # H_soft per HK (lớp 1, 1b, 2, XMD)
+        _hsoft_pf = {}
+        for _b in _bhs_pf:
+            _h = _cv.execute("""
+                SELECT COALESCE(SUM(depth_bot_m - depth_top_m), 0.0)
+                FROM layers WHERE borehole_id=? AND symbol IN ('1','1b','2','XMD')
+            """, (_b["id"],)).fetchone()[0]
+            _hsoft_pf[_b["name"]] = float(_h) if _h else 0.0
+
+        # Lọc HK có H_soft > 0
+        _bhs_pf = [b for b in _bhs_pf if _hsoft_pf.get(b["name"], 0) > 0]
+        if len(_bhs_pf) < 2:
+            st.info(f"{_zone_titles[_zid_pf]}: không đủ HK có lớp yếu — bỏ qua.")
+            continue
+
+        # Chainage PCA - SVD
+        _xy_pf = _np_pf.array([(b["x_coord_m"], b["y_coord_m"]) for b in _bhs_pf])
+        _ctr   = _xy_pf.mean(axis=0)
+        _, _, _Vt_pf = _np_pf.linalg.svd(_xy_pf - _ctr, full_matrices=False)
+        _ch_raw_pf = ((_xy_pf - _ctr) @ _Vt_pf[0]).tolist()
+        _order_pf  = sorted(range(len(_bhs_pf)), key=lambda i: _ch_raw_pf[i])
+        _bhs_o     = [_bhs_pf[i] for i in _order_pf]
+        _ch_pf     = [_ch_raw_pf[i] - _ch_raw_pf[_order_pf[0]] for i in _order_pf]
+
+        _elev_pf   = [float(b["elevation_m"] or 0)                          for b in _bhs_o]
+        _hs_pf     = [float(_hsoft_pf[b["name"]])                           for b in _bhs_o]
+        _bot_soft  = [e - h                              for e, h in zip(_elev_pf, _hs_pf)]
+        _bot_cdm   = [e - h - _pen                       for e, h in zip(_elev_pf, _hs_pf)]
+        _L_cdm_pf  = [_top - bc                          for bc in _bot_cdm]
+        _lbl_pf    = [b["name"].replace(f"{_zcode_pf}-", "") for b in _bhs_o]
+        _n_pf      = len(_bhs_o)
+        _ch_ext_pf = [_ch_pf[0] - 10, _ch_pf[-1] + 10]
+
+        _fig_pf = _go_tv.Figure()
+
+        # Vùng tô đất đắp (mặt đất → cao độ TK)
+        if any(v < _des_pf for v in _elev_pf):
+            _fig_pf.add_trace(_go_tv.Scatter(
+                x=_ch_pf + _ch_pf[::-1],
+                y=[_des_pf] * _n_pf + _elev_pf[::-1],
+                fill="toself", fillcolor="rgba(210,180,100,0.22)",
+                line=dict(width=0), mode="lines",
+                name="Đất đắp", hoverinfo="skip",
+            ))
+
+        # Vùng tô phạm vi xử lý CDM (đỉnh cọc → đáy cọc)
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf + _ch_pf[::-1],
+            y=[_top] * _n_pf + _bot_cdm[::-1],
+            fill="toself", fillcolor="rgba(30,120,200,0.16)",
+            line=dict(width=0), mode="lines",
+            name="Phạm vi xử lý CDM", hoverinfo="skip",
+        ))
+
+        # Cột CDM mỗi HK (đứng, đứt)
+        for i in range(_n_pf):
+            _fig_pf.add_trace(_go_tv.Scatter(
+                x=[_ch_pf[i], _ch_pf[i]], y=[_top, _bot_cdm[i]],
+                mode="lines", line=dict(color="#1a6fbd", width=1.2, dash="dot"),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+        # Mặt đất tự nhiên
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf, y=_elev_pf,
+            mode="lines+markers+text", name="Mặt đất tự nhiên",
+            line=dict(color="#7B3F00", width=2.5),
+            marker=dict(size=10, color="#7B3F00", symbol="circle",
+                        line=dict(color="white", width=1.5)),
+            text=[f"{n}<br><b>{v:+.2f}</b>" for n, v in zip(_lbl_pf, _elev_pf)],
+            textposition="top center",
+            textfont=dict(size=9, color="#5a2000"),
+            hovertemplate="<b>%{customdata}</b><br>Chainage: %{x:.0f} m<br>"
+                          "Mặt đất: <b>%{y:+.2f} m</b><extra></extra>",
+            customdata=_lbl_pf,
+        ))
+
+        # Cao độ thiết kế
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_ext_pf, y=[_des_pf, _des_pf],
+            mode="lines", name=f"Cao độ thiết kế ({_des_pf:+.2f} m)",
+            line=dict(color="#2ca02c", width=2.5, dash="dash"),
+            hovertemplate=f"Cao độ thiết kế: {_des_pf:+.2f} m<extra></extra>",
+        ))
+
+        # Đỉnh cọc CDM (ngang)
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_ext_pf, y=[_top, _top],
+            mode="lines", name=f"Đỉnh cọc CDM ({_top:+.2f} m)",
+            line=dict(color="#1a6fbd", width=2, dash="dash"),
+            hovertemplate=f"Đỉnh CDM: {_top:+.2f} m<extra></extra>",
+        ))
+
+        # Đáy lớp đất yếu (hồng, đứt + ◆)
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf, y=_bot_soft,
+            mode="lines+markers+text", name="Đáy lớp đất yếu",
+            line=dict(color="#e377c2", width=2, dash="longdash"),
+            marker=dict(size=9, symbol="diamond", color="#e377c2",
+                        line=dict(color="white", width=1.2)),
+            text=[f"{v:+.2f}" for v in _bot_soft],
+            textposition="bottom right",
+            textfont=dict(size=9, color="#b5367f"),
+            hovertemplate="<b>%{customdata[0]}</b><br>Chainage: %{x:.0f} m<br>"
+                          "Đáy lớp yếu: <b>%{y:+.2f} m</b><br>"
+                          "H_đất_yếu: %{customdata[1]:.1f} m<extra></extra>",
+            customdata=list(zip(_lbl_pf, _hs_pf)),
+        ))
+
+        # Đáy cọc CDM (đỏ đậm, đường liền + ▼ cam đậm)
+        _hov_bot = [
+            f"<b>{_lbl_pf[i]}</b><br>Chainage: {_ch_pf[i]:.0f} m<br>"
+            f"<b>Đáy cọc CDM: {_bot_cdm[i]:+.2f} m</b><br>"
+            f"L_cọc: {_L_cdm_pf[i]:.1f} m  |  H_đất_yếu: {_hs_pf[i]:.1f} m  |  Ngàm: {_pen:.1f} m"
+            for i in range(_n_pf)
+        ]
+        _fig_pf.add_trace(_go_tv.Scatter(
+            x=_ch_pf, y=_bot_cdm,
+            mode="lines+markers+text", name="Đáy cọc CDM",
+            line=dict(color="#d62728", width=2.6),
+            marker=dict(size=11, symbol="triangle-down", color="#ff7f0e",
+                        line=dict(color="#a01010", width=1.5)),
+            text=[f"<b>{v:+.2f}</b>" for v in _bot_cdm],
+            textposition="bottom center",
+            textfont=dict(size=9, color="#a01010"),
+            hovertemplate="%{customdata}<extra></extra>",
+            customdata=_hov_bot,
+        ))
+
+        # Layout
+        _all_y = _elev_pf + _bot_soft + _bot_cdm + [_top, _des_pf]
+        _y_lo  = min(_all_y) - 3
+        _y_hi  = max(_all_y) + 3.5
+        _Lmin = min(_L_cdm_pf); _Lmax = max(_L_cdm_pf); _Lavg = sum(_L_cdm_pf)/len(_L_cdm_pf)
+        _fig_pf.update_layout(
+            height=560,
+            margin=dict(l=65, r=20, t=60, b=90),
+            xaxis=dict(title=f"Chainage dọc tuyến {_zcode_pf} (m)",
+                       gridcolor="#ebebeb", tickfont=dict(size=11)),
+            yaxis=dict(title="Cao độ (m)", range=[_y_lo, _y_hi],
+                       gridcolor="#ebebeb", tickfont=dict(size=11),
+                       zeroline=True, zerolinecolor="#999", zerolinewidth=1),
+            legend=dict(orientation="h", x=0, y=-0.18, xanchor="left",
+                        font=dict(size=10)),
+            plot_bgcolor="white", paper_bgcolor="white", hovermode="closest",
+            title=dict(
+                text=(
+                    f"<b>Trắc dọc CDM — {_zone_titles[_zid_pf]}</b>  |  "
+                    f"{_n_pf} hố khoan  |  "
+                    f"L_cọc: {_Lmin:.1f} ÷ {_Lmax:.1f} m (TB {_Lavg:.1f} m)"
+                ),
+                font=dict(size=12), x=0,
+            ),
+        )
+        st.plotly_chart(_fig_pf, use_container_width=True,
+                        key=f"_tvtk_cdm_profile_{_zcode_pf}")
 
     st.caption("Giá trị trung bình theo khu vực × ký hiệu lớp đất — từ thí nghiệm phòng và cắt cánh hiện trường")
     _SYM_LABEL = {
@@ -17183,334 +17502,8 @@ if _page == "tvtk_prep":
         st.info("Chưa có dữ liệu thí nghiệm.")
     st.divider()
 
-    # ── 6. Thông số mô hình Soft Soil (PLAXIS) ──────────────────────────────
-    st.markdown("### 6. Thông số mô hình Soft Soil — đầu vào PLAXIS")
-    st.caption(
-        "Tính từ thí nghiệm nén cố kết (Cc, Cs, e₀) và cắt phẳng (φ, c) "
-        "theo PLAXIS Material Models Manual Chương 10. "
-        "Tài liệu tham chiếu: 56-soft-soil-model-plaxis.md"
-    )
-
-    # Kiểm tra bảng soft_soil_params tồn tại chưa
-    _has_ss = _cv.execute(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='soft_soil_params'"
-    ).fetchone()[0] > 0
-
-    if not _has_ss:
-        st.warning(
-            "Chưa có dữ liệu mô hình Soft Soil. "
-            "Chạy `scripts/soft_soil_calc.py` để tính toán."
-        )
-    else:
-        # Công thức — 1 expander chung (chung cho mọi HK)
-        with st.expander("Công thức chuyển đổi (chung cho mọi hố khoan)", expanded=False):
-            st.markdown(
-                r"""
-**Modified compression index** (từ thí nghiệm nén cố kết):
-
-$$\lambda^* = \frac{C_c}{2{,}303 \times (1 + e_0)}$$
-
-**Modified swelling index** (hệ số 2 = quy ước PLAXIS — giả thiết dỡ tải đẳng hướng):
-
-$$\kappa^* = \frac{2 \cdot C_s}{2{,}303 \times (1 + e_0)}$$
-
-**Nếu không có $C_s$:** $C_s = 0{,}15 \times C_c$ (tỷ lệ trung bình sét mềm, ghi nhãn *suy diễn*)
-
-**Hệ số áp lực ngang NC** (Jaky):
-
-$$K_0^{NC} = 1 - \sin \varphi'$$
-
-**Đường trạng thái tới hạn** (Eq. 235 PLAXIS — gần đúng):
-
-$$M \approx 3{,}0 - 2{,}8 \times K_0^{NC}$$
-
-**OCR và POP:**
-
-$$OCR = P_c / \sigma'_{v0} \qquad POP = P_c - \sigma'_{v0}$$
-"""
-            )
-
-        # ── Bảng PA2 đại diện per zone ─────────────────────────────────────
-        st.markdown("#### Thông số đại diện theo khu vực (PA2) — dùng cho mô hình PLAXIS tổng thể")
-        _ss_pa2 = _cv.execute("""
-            SELECT bh_name, symbol, H_i_m,
-                   ROUND(lambda_star, 4) lam,
-                   ROUND(kappa_star,  4) kap,
-                   ROUND(phi_deg,     1) phi,
-                   ROUND(c_kPa,       1) c,
-                   ROUND(OCR,         2) ocr,
-                   ROUND(POP_kPa,     1) pop,
-                   ROUND(nu_ur,       2) nu,
-                   ROUND(K0_nc,       3) K0,
-                   ROUND(M,           3) M,
-                   Cs_inferred,
-                   cc_source,
-                   notes
-            FROM soft_soil_params
-            WHERE pa = 'PA2'
-            ORDER BY bh_name, depth_top_m
-        """).fetchall()
-
-        if _ss_pa2:
-            _pa2_disp = []
-            for r in _ss_pa2:
-                _zone_lbl = r["bh_name"].replace("_PA2", "")
-                _cs_flag = " *" if r["Cs_inferred"] else ""
-                _pa2_disp.append({
-                    "Khu vực": _zone_lbl,
-                    "Lớp đất": r["symbol"],
-                    "H (m)": f"{r['H_i_m']:.1f}",
-                    "λ*": r["lam"],
-                    "κ*" + _cs_flag: r["kap"],
-                    "φ' (°)": r["phi"],
-                    "c' (kPa)": r["c"],
-                    "OCR": r["ocr"],
-                    "POP (kPa)": r["pop"],
-                    "νur": r["nu"],
-                    "K₀ᴺᶜ": r["K0"],
-                    "M": r["M"],
-                })
-            import pandas as _pd_ss
-            _df_pa2 = _pd_ss.DataFrame(_pa2_disp)
-            st.table(_df_pa2)
-            if any(r["Cs_inferred"] for r in _ss_pa2):
-                st.caption(
-                    "* κ* được tính từ Cs = 0,15 × Cc (suy diễn — không có thí nghiệm "
-                    "nén dỡ tải trực tiếp)"
-                )
-        else:
-            st.info("Chưa có dữ liệu PA2.")
-
-        # ── Chi tiết per HK ─────────────────────────────────────────────────
-        st.markdown("#### Chi tiết từng hố khoan")
-        _ss_bh_zones = _cv.execute("""
-            SELECT DISTINCT
-                CASE
-                    WHEN bh_name LIKE 'KE-%' THEN 'KE'
-                    WHEN bh_name LIKE 'BXN-%' THEN 'BXN'
-                    WHEN bh_name LIKE 'NHC-%' THEN 'NHC'
-                    ELSE 'Khác'
-                END zone_code
-            FROM soft_soil_params WHERE pa='BH'
-            ORDER BY zone_code
-        """).fetchall()
-
-        for _zz in _ss_bh_zones:
-            _zc_ss = _zz["zone_code"]
-            with st.expander(f"Khu vực {_zc_ss}", expanded=False):
-                _ss_rows = _cv.execute("""
-                    SELECT bh_name, symbol, depth_top_m, depth_bot_m,
-                           ROUND(e0,3) e0,
-                           ROUND(Cc,3) Cc,
-                           ROUND(Cs,3) Cs,
-                           ROUND(phi_deg,1) phi,
-                           ROUND(c_kPa,1) c,
-                           ROUND(sigma_v0_kPa,1) sv0,
-                           ROUND(PC_kPa,1) PC,
-                           ROUND(OCR,2) ocr,
-                           ROUND(lambda_star,4) lam,
-                           ROUND(kappa_star,4) kap,
-                           ROUND(M,3) M,
-                           Cs_inferred, cc_source, phi_source, notes
-                    FROM soft_soil_params
-                    WHERE pa='BH' AND bh_name LIKE ?
-                    ORDER BY bh_name, depth_top_m
-                """, (_zc_ss + "-%",)).fetchall()
-
-                if not _ss_rows:
-                    st.caption("Không có dữ liệu.")
-                    continue
-
-                _ss_disp = []
-                for r in _ss_rows:
-                    _cs_flag = " *" if r["Cs_inferred"] else ""
-                    _src = ""
-                    if r["cc_source"] and r["cc_source"] != "lab":
-                        _src = f" [{r['cc_source'][:20]}]"
-                    _ss_disp.append({
-                        "Hố khoan": r["bh_name"],
-                        "Lớp": r["symbol"],
-                        "Sâu (m)": f"{r['depth_top_m']:.1f}–{r['depth_bot_m']:.1f}",
-                        "e₀": r["e0"],
-                        "Cc": r["Cc"],
-                        "Cs" + _cs_flag: r["Cs"],
-                        "φ' (°)": r["phi"],
-                        "c'(kPa)": r["c"],
-                        "σ'v0(kPa)": r["sv0"],
-                        "Pc(kPa)": r["PC"],
-                        "OCR": r["ocr"],
-                        "λ*": r["lam"],
-                        "κ*": r["kap"],
-                        "M": r["M"],
-                        "Nguồn" + _src: "Thí nghiệm" if r["cc_source"] == "lab" else "Hố khoan lân cận",
-                    })
-                _df_bh = _pd_ss.DataFrame(_ss_disp)
-                st.dataframe(_df_bh, use_container_width=True, hide_index=True)
-
-                # Cảnh báo fallback + suy diễn
-                _warns = [r["notes"] for r in _ss_rows if r["notes"]]
-                if _warns:
-                    _uniq_warns = list(dict.fromkeys(_warns))
-                    st.caption("Lưu ý: " + " | ".join(_uniq_warns[:3]))
-
-    st.divider()
-
-    # ── 6b. Thông số mô hình MC / HS / LE (PLAXIS) ──────────────────────────
-    st.markdown("### 6b. Thông số mô hình đất PLAXIS — MC (TKCS) / HS / LE (TKBVT)")
-    st.caption(
-        "MC = Mohr-Coulomb (TKCS — failure criterion). "
-        "HS = Hardening Soil (TKBVT — lớp cát 2a/2b/3, sét cứng 4). "
-        "LE = đàn hồi tuyến tính (vùng gia cố CDM). "
-        "SS (lớp 1/1b) xem mục 6. Nguồn: thí nghiệm nén cố kết, cắt cánh, SPT."
-    )
-
-    _has_mc = _cv.execute(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='plaxis_mc_hs_params'"
-    ).fetchone()[0] > 0
-
-    if not _has_mc:
-        st.info("Bảng thông số MC/HS chưa có. Chạy scripts/mc_hs_calc.py để tính.")
-    else:
-        # ── Công thức tổng quát (chung mọi HK) ──
-        with st.expander("Công thức chuyển đổi (chung cho mọi hố khoan)", expanded=False):
-            st.markdown(r"""
-**Mohr-Coulomb** $E_{ref}$ từ oedometer:
-
-$$E_{oed} = \frac{1 + e_0}{a_{12} \times 0{,}01} \qquad
-E_{ref} \approx E_{oed} \times \frac{1 - 2\nu^2}{1 - \nu}$$
-
-Tương quan $C_u$ (khi không có $a_{12}$):
-
-$$E_{ref} = 250 \times C_u \text{ (sét mềm)} \qquad
-E_{50,ref} = 500 \times C_u \text{ (HS sét mềm)} \qquad
-E_{50,ref} = 300 \times N_{60} \text{ (HS cát)}$$
-
-**Hardening Soil** — $E_{ur}$, $E_{oed}$, $m$:
-
-$$E_{ur,ref} = 3 E_{50} \text{ (sét)} \quad 5 E_{50} \text{ (cát)} \qquad
-m = 1{,}0 \text{ (sét mềm)} \;|\; 0{,}8 \text{ (sét cứng)} \;|\; 0{,}5 \text{ (cát)}$$
-
-**Linear Elastic** (CDM/XMD — TCVN 9403 Phụ lục B):
-
-$$E_c = k \times \frac{q_{u,\text{design}}}{2} \quad (k = 100)$$
-""")
-
-        # ── Bảng PA2 per zone ──
-        _mc_pa2_q = _cv.execute("""
-            SELECT bh_name, symbol,
-                   ROUND(gamma_sat_kNm3,1) gs, ROUND(gamma_unsat_kNm3,1) gu,
-                   ROUND(E_ref_kPa,0) E_mc, ROUND(nu_mc,2) nu,
-                   ROUND(c_kPa,1) c, ROUND(phi_deg,1) phi, ROUND(psi_deg,1) psi,
-                   ROUND(K0_mc,3) K0,
-                   ROUND(E50_ref_kPa,0) E50, ROUND(Eoed_ref_kPa,0) Eoed,
-                   ROUND(Eur_ref_kPa,0) Eur, ROUND(m_hs,1) m,
-                   ROUND(E_cdm_kPa,0) Ecdm,
-                   E_source
-            FROM plaxis_mc_hs_params
-            WHERE pa='PA2'
-            ORDER BY bh_name, symbol
-        """).fetchall()
-
-        if _mc_pa2_q:
-            import pandas as _pd_mc
-            _pa2_mc_rows = []
-            for _r in _mc_pa2_q:
-                _zone_tag = _r["bh_name"].split("_")[0]
-                _model = "LE" if _r["Ecdm"] else ("HS" if _r["E50"] else "MC")
-                _e_disp = (
-                    f"{_r['Ecdm']:,.0f}" if _r["Ecdm"]
-                    else (f"{_r['E_mc']:,.0f}" if _r["E_mc"] else "—")
-                )
-                _e50_disp = f"{_r['E50']:,.0f}" if _r["E50"] else "—"
-                _pa2_mc_rows.append({
-                    "Zone": _zone_tag,
-                    "Lớp": _r["symbol"],
-                    "Model": _model,
-                    "γ_sat (kN/m³)": _r["gs"] or "—",
-                    "E_ref / E_c (kPa)": _e_disp,
-                    "ν": _r["nu"] or "0,25",
-                    "c' (kPa)": _r["c"] if _r["c"] is not None else "—",
-                    "φ' (°)": _r["phi"] if _r["phi"] is not None else "—",
-                    "K₀": _r["K0"] or "—",
-                    "E₅₀ (kPa)": _e50_disp,
-                    "Eur (kPa)": f"{_r['Eur']:,.0f}" if _r["Eur"] else "—",
-                    "m": _r["m"] if _r["m"] else "—",
-                    "Nguồn E": _r["E_source"] or "—",
-                })
-            st.markdown("**Thông số đại diện per khu vực (PA2):**")
-            st.dataframe(
-                _pd_mc.DataFrame(_pa2_mc_rows),
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "Zone": st.column_config.TextColumn(width="small"),
-                    "Lớp": st.column_config.TextColumn(width="small"),
-                    "Model": st.column_config.TextColumn(width="small"),
-                },
-            )
-
-        # ── Per-BH per zone expander ──
-        for _zc_mc in ("KE", "BXN", "NHC"):
-            _mc_bh_q = _cv.execute("""
-                SELECT bh_name, symbol,
-                       ROUND(depth_top_m,1) top, ROUND(depth_bot_m,1) bot,
-                       ROUND(gamma_sat_kNm3,1) gs,
-                       ROUND(E_ref_kPa,0) E_mc,
-                       ROUND(c_kPa,1) c, ROUND(phi_deg,1) phi,
-                       ROUND(K0_mc,3) K0,
-                       ROUND(E50_ref_kPa,0) E50, ROUND(m_hs,1) m,
-                       ROUND(E_cdm_kPa,0) Ecdm,
-                       E_source, notes
-                FROM plaxis_mc_hs_params
-                WHERE pa='BH' AND bh_name LIKE ?
-                ORDER BY bh_name, depth_top_m
-            """, (_zc_mc + "-%",)).fetchall()
-
-            if not _mc_bh_q:
-                continue
-
-            with st.expander(f"Khu vực {_zc_mc} — chi tiết per hố khoan", expanded=False):
-                import pandas as _pd_mc2
-                _mc_bh_rows = []
-                for _r in _mc_bh_q:
-                    _model = "LE" if _r["Ecdm"] else ("HS" if _r["E50"] else "MC")
-                    _e_disp = (
-                        f"{int(_r['Ecdm']):,}" if _r["Ecdm"]
-                        else (f"{int(_r['E_mc']):,}" if _r["E_mc"] else "—")
-                    )
-                    _mc_bh_rows.append({
-                        "HK": _r["bh_name"],
-                        "Lớp": _r["symbol"],
-                        "Model": _model,
-                        "Top (m)": _r["top"],
-                        "Bot (m)": _r["bot"],
-                        "γ_sat": _r["gs"] or "—",
-                        "E_ref/E_c (kPa)": _e_disp,
-                        "c' (kPa)": _r["c"] if _r["c"] is not None else "—",
-                        "φ' (°)": _r["phi"] if _r["phi"] is not None else "—",
-                        "K₀": _r["K0"] or "—",
-                        "E₅₀ (kPa)": f"{int(_r['E50']):,}" if _r["E50"] else "—",
-                        "m": _r["m"] if _r["m"] else "—",
-                        "Nguồn": _r["E_source"] or "—",
-                        "Lưu ý": _r["notes"] or "",
-                    })
-                _df_mc_bh = _pd_mc2.DataFrame(_mc_bh_rows)
-                st.dataframe(
-                    _df_mc_bh, use_container_width=True, hide_index=True,
-                    column_config={
-                        "HK": st.column_config.TextColumn(width="small"),
-                        "Lớp": st.column_config.TextColumn(width="small"),
-                        "Model": st.column_config.TextColumn(width="small"),
-                    },
-                )
-                _mc_warn = [r["Lưu ý"] for r in _mc_bh_rows if r["Lưu ý"]]
-                if _mc_warn:
-                    st.caption("Lưu ý: " + " | ".join(list(dict.fromkeys(_mc_warn))[:4]))
-
-    st.divider()
-
-    # ── 7. Mực nước ngầm / điều kiện thủy lực ───────────────────────────────
-    st.markdown("### 7. Mực nước ngầm – điều kiện thủy lực")
+    # ── 6. Mực nước ngầm / điều kiện thủy lực ───────────────────────────────
+    st.markdown("### 6. Mực nước ngầm – điều kiện thủy lực")
     _c6a, _c6b, _c6c, _c6d, _c6s = st.columns([1, 1, 1, 1, 0.6])
     _gwt_ke   = _c6a.number_input("MNN phía kè KE (m)",    value=_tv_load("KE",  "gwt_m", -0.5), step=0.1, format="%.1f", key="_tv_gwt_ke")
     _gwt_bxn  = _c6b.number_input("MNN tại BXN (m)",       value=_tv_load("BXN", "gwt_m",  0.0), step=0.1, format="%.1f", key="_tv_gwt_bxn")
@@ -17537,516 +17530,242 @@ $$E_c = k \times \frac{q_{u,\text{design}}}{2} \quad (k = 100)$$
     ]
     st.table(_pd_tv.DataFrame(_gwt_rows))
     st.caption("Lưu ý: Mực nước ngầm ảnh hưởng trực tiếp đến áp lực thấm, ổn định hố đào và thiết kế tiêu thoát nước.")
-
-    # ── Biểu đồ thủy văn sông Sài Gòn (trạm Phú An 1977–2024) ──────────────
-    _tv_json = _ROOT / "data" / "thuyvan_phuan_summary.json"
-    _tv_stat_json = _ROOT / "data" / "thuyvan_phuan_stats.json"
-    if _tv_json.exists() and _HAS_PLOTLY:
-        import json as _jstv
-        import numpy as _nptv
-        _tv_d   = _jstv.loads(_tv_json.read_text(encoding="utf-8"))
-        _tv_st  = _jstv.loads(_tv_stat_json.read_text(encoding="utf-8")) if _tv_stat_json.exists() else {}
-        _tv_ann = _tv_d.get("annual", [])
-
-        _yrs = [r["year"] for r in _tv_ann]
-        _avg = [r["avg_cm"] for r in _tv_ann]
-        _mx  = [r["max_cm"] for r in _tv_ann]
-
-        # Hồi quy tuyến tính cho avg và max
-        _yr_arr = _nptv.array(_yrs, dtype=float)
-        _avg_arr = _nptv.array(_avg, dtype=float)
-        _mx_arr  = _nptv.array(_mx, dtype=float)
-        _pa_avg = _nptv.polyfit(_yr_arr, _avg_arr, 1)
-        _pa_mx  = _nptv.polyfit(_yr_arr, _mx_arr,  1)
-
-        # Dự đoán đến 2100 (tuyến tính)
-        _yr_proj = _nptv.array([2024, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100])
-        _avg_proj = _nptv.polyval(_pa_avg, _yr_proj)
-        _mx_proj  = _nptv.polyval(_pa_mx,  _yr_proj)
-
-        # Biểu đồ Plotly
-        import plotly.graph_objects as _go_tv
-        _fig_tv = _go_tv.Figure()
-
-        # Cột: MNTB hàng năm
-        _fig_tv.add_trace(_go_tv.Bar(
-            x=_yrs, y=_avg,
-            name="MNTB năm (cm)",
-            marker_color="#5B9BD5", opacity=0.75,
-            hovertemplate="Năm %{x}: %{y:.1f} cm<extra></extra>",
-        ))
-        # Đường: Đỉnh triều cao nhất năm
-        _fig_tv.add_trace(_go_tv.Scatter(
-            x=_yrs, y=_mx,
-            name="Đỉnh triều cao nhất năm (cm)",
-            mode="lines+markers",
-            line=dict(color="#E36C09", width=1.5),
-            marker=dict(size=4),
-            hovertemplate="Năm %{x}: %{y:.0f} cm<extra></extra>",
-        ))
-
-        # Xu thế MNTB (1977–2024)
-        _yr_fit_ext = list(range(1977, 2025))
-        _fig_tv.add_trace(_go_tv.Scatter(
-            x=_yr_fit_ext,
-            y=[_nptv.polyval(_pa_avg, y) for y in _yr_fit_ext],
-            name=f"Xu thế MNTB (+{_pa_avg[0]*10:.2f} cm/decade)",
-            mode="lines",
-            line=dict(color="#2E75B6", width=2, dash="dash"),
-            hoverinfo="skip",
-        ))
-        # Xu thế đỉnh triều (1977–2024)
-        _fig_tv.add_trace(_go_tv.Scatter(
-            x=_yr_fit_ext,
-            y=[_nptv.polyval(_pa_mx, y) for y in _yr_fit_ext],
-            name=f"Xu thế đỉnh triều (+{_pa_mx[0]*10:.2f} cm/decade)",
-            mode="lines",
-            line=dict(color="#C55A11", width=2, dash="dash"),
-            hoverinfo="skip",
-        ))
-
-        # Đường chiếu đến 2100 (nét chấm)
-        _fig_tv.add_trace(_go_tv.Scatter(
-            x=list(_yr_proj), y=list(_avg_proj),
-            name="Dự đoán MNTB (tuyến tính)",
-            mode="lines+markers",
-            line=dict(color="#4472C4", width=1.5, dash="dot"),
-            marker=dict(symbol="diamond", size=7),
-            hovertemplate="Năm %{x}: %{y:.1f} cm (dự đoán)<extra></extra>",
-        ))
-        _fig_tv.add_trace(_go_tv.Scatter(
-            x=list(_yr_proj), y=list(_mx_proj),
-            name="Dự đoán đỉnh triều (tuyến tính)",
-            mode="lines+markers",
-            line=dict(color="#ED7D31", width=1.5, dash="dot"),
-            marker=dict(symbol="diamond", size=7),
-            hovertemplate="Năm %{x}: %{y:.0f} cm (dự đoán)<extra></extra>",
-        ))
-
-        # Vùng tô bóng cho phần chiếu tương lai
-        _fig_tv.add_vrect(
-            x0=2024, x1=2100,
-            fillcolor="rgba(255,200,100,0.08)",
-            layer="below", line_width=0,
-        )
-        # Nhãn mốc 2050 / 2080 / 2100
-        _avg50 = float(_nptv.polyval(_pa_avg, 2050))
-        _avg80 = float(_nptv.polyval(_pa_avg, 2080))
-        _avg100= float(_nptv.polyval(_pa_avg, 2100))
-        _mx50  = float(_nptv.polyval(_pa_mx,  2050))
-        _mx80  = float(_nptv.polyval(_pa_mx,  2080))
-        _mx100 = float(_nptv.polyval(_pa_mx,  2100))
-        for _yr_m, _av_m, _mx_m, _col in (
-            (2050, _avg50, _mx50,  "#7030A0"),
-            (2080, _avg80, _mx80,  "#C00000"),
-            (2100, _avg100, _mx100, "#7F0000"),
-        ):
-            _fig_tv.add_vline(x=_yr_m, line_dash="dot", line_color=_col, line_width=1, opacity=0.5)
-            _fig_tv.add_annotation(
-                x=_yr_m, y=_mx_m + 8,
-                text=f"<b>{_yr_m}</b><br>TB: {_av_m:.0f}cm<br>Max: {_mx_m:.0f}cm",
-                showarrow=False, font=dict(size=10, color=_col),
-                bgcolor="rgba(255,255,255,0.85)",
-                bordercolor=_col, borderwidth=1,
-            )
-
-        # Hline P95 = +48 cm
-        _fig_tv.add_hline(y=48, line_dash="longdash", line_color="#00B050", line_width=1.5,
-                          annotation_text="P95=+48cm (thiết kế)", annotation_position="top left",
-                          annotation_font_color="#00B050")
-
-        _fig_tv.update_layout(
-            title="Mực nước trung bình ngày & Đỉnh triều cao nhất — Trạm Phú An, sông Sài Gòn (1977–2024 + dự đoán đến 2100)",
-            xaxis_title="Năm",
-            yaxis_title="Cao độ mực nước (cm, hệ Quốc gia)",
-            height=440,
-            margin=dict(t=55, b=40, l=60, r=20),
-            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
-            hovermode="x unified",
-            xaxis=dict(range=[1975, 2102]),
-        )
-        st.plotly_chart(_fig_tv, use_container_width=True)
-
-        # Bảng dự đoán mực nước
-        _pred_rows = []
-        for _yr_p, _av_p, _mx_p in (
-            (2050, _avg50, _mx50),
-            (2080, _avg80, _mx80),
-            (2100, _avg100, _mx100),
-        ):
-            _delta_av = _av_p - float(_nptv.polyval(_pa_avg, 2024))
-            _delta_mx = _mx_p - float(_nptv.polyval(_pa_mx,  2024))
-            _pred_rows.append({
-                "Năm mốc": str(_yr_p),
-                "MNTB dự đoán (cm)": f"{_av_p:.0f}",
-                "Tăng so với 2024 (cm)": f"+{_delta_av:.0f}",
-                "Đỉnh triều dự đoán (cm)": f"{_mx_p:.0f}",
-                "Tăng đỉnh triều (cm)": f"+{_delta_mx:.0f}",
-                "Cao độ thiết kế kè (m)": f"+{(_mx_p / 100 + 0.3):.2f}",
-            })
-        st.markdown("**Dự đoán mực nước theo xu thế tuyến tính (ngoại suy từ 1977–2024):**")
-        st.table(_pd_tv.DataFrame(_pred_rows))
-        st.caption(
-            "Nguồn dữ liệu: Trạm Phú An, sông Sài Gòn — 17 530 ngày đo (1977–2024). "
-            f"Xu thế: MNTB +{_pa_avg[0]*10:.2f} cm/thập kỷ · Đỉnh triều +{_pa_mx[0]*10:.2f} cm/thập kỷ. "
-            "Cao độ thiết kế kè = đỉnh triều dự đoán + 30 cm dự phòng sóng vỗ. "
-            "Chưa tính thêm nước biển dâng do biến đổi khí hậu theo IPCC AR6."
-        )
-
     st.divider()
 
-    # ── 8. Phân vùng gia cố CDM ──────────────────────────────────────────────
+    # ── 8. Phân vùng gia cố CDM theo 7 nguyên tắc P1–P7 ───────────────────
     st.markdown("### 8. Phân vùng gia cố CDM")
-    st.caption(
-        "Phân vùng theo nguyên tắc P1–P7 (55-cdm-zoning-principles.md): "
-        "tương đồng địa chất · liền kề không gian · bằng phẳng lún dư (P7). "
-        "Thuật toán: Ward linkage 1D (KE) và SKATER mở rộng 2D (BXN, NHC)."
-    )
 
+    # 8.0 — Lý thuyết từ file 55-cdm-zoning-principles.md
+    with st.expander("Lý thuyết: 7 nguyên tắc phân vùng CDM (P1–P7)",
+                     expanded=False):
+        _md_zoning = _ROOT / "55-cdm-zoning-principles.md"
+        try:
+            if _md_zoning.exists():
+                with open(_md_zoning, "r", encoding="utf-8") as _f_md:
+                    _md_content = _f_md.read()
+                st.markdown(_md_content)
+            else:
+                st.warning("Không tìm thấy file 55-cdm-zoning-principles.md")
+        except Exception as _exc_md:
+            st.error(f"Lỗi đọc file lý thuyết: {_exc_md}")
+
+    # 8.1 — Tham số clustering
     try:
-        import numpy as _np_z
-        import pandas as _pd_z
-        from scipy.cluster.hierarchy import linkage as _sc_link, fcluster as _sc_fcluster, dendrogram as _sc_dend
-        from scipy.spatial import Delaunay as _Delaunay
-        from sklearn.preprocessing import StandardScaler as _StdScaler
-        import plotly.graph_objects as _go_z
-        _HAS_ZONE_LIBS = True
-    except ImportError as _ze:
-        _HAS_ZONE_LIBS = False
-        st.info(f"Cần cài thêm thư viện để chạy phân vùng: {_ze}")
+        from scripts.cdm_zoning import (
+            build_features_for_zone, run_clustering, delaunay_edges,
+            check_P5_qc, check_P7_gradient, save_clusters_to_db,
+            get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
+        )
+        _zone_pick_8 = st.radio(
+            "Khu vực phân tích:",
+            options=["KE", "BXN", "NHC"],
+            horizontal=True, key="_zoning_zone_pick",
+        )
+        _c8a, _c8b, _c8c = st.columns([1, 1, 2])
+        _K_default = K_DEFAULT_BY_ZONE.get(_zone_pick_8, 3)
+        _K_pick = _c8a.slider(
+            f"Số cụm K cho {_zone_pick_8}",
+            min_value=2, max_value=6, value=_K_default, step=1,
+            key=f"_zoning_K_{_zone_pick_8}",
+            help="Ward hierarchical clustering trên vector đặc trưng 6D",
+        )
+        _icp_default = I_CP_BY_ZONE.get(_zone_pick_8, 0.5)
+        _icp_pick = _c8b.number_input(
+            f"Ngưỡng i_cp (%)",
+            min_value=0.05, max_value=2.0, value=_icp_default, step=0.05,
+            format="%.2f",
+            key=f"_zoning_icp_{_zone_pick_8}",
+            help="P7 — gradient ΔS/L cho phép cross-boundary",
+        )
+        _c8c.caption(
+            f"K mặc định: KE=3 · BXN=3 · NHC=4  |  "
+            f"i_cp mặc định: KE/BXN=0,5% · NHC=0,2%"
+        )
 
-    if _HAS_ZONE_LIBS:
-        # ── 8a. Tính vector đặc trưng địa chất per HK ──────────────────────
-        _z_feat_rows = []
-        for _bz in [b for b in _bhs_tv if b["name"] in _cdm_yes]:
-            _bz_id   = _bz["id"]
-            _bz_name = _bz["name"]
-            _bz_zone = _zone_codes.get(_bz["zone_id"], "")
-            _bz_x    = _bz["x_coord_m"]
-            _bz_y    = _bz["y_coord_m"]
+        # 8.2 — Tính features + clustering
+        _feats_8 = build_features_for_zone(_zone_pick_8)
+        if not _feats_8:
+            st.warning(f"Không có hố khoan có tọa độ cho khu vực {_zone_pick_8}.")
+        else:
+            _clusters_8 = run_clustering(_feats_8, K=_K_pick)
+            _coords_8 = [(f["x"], f["y"]) for f in _feats_8]
+            _edges_8 = delaunay_edges(_coords_8)
 
-            # H_soft từ tvtk_bh_cdm
-            _bz_hsoft = _cv.execute(
-                "SELECT H_soft_m FROM tvtk_bh_cdm WHERE bh_name=?", (_bz_name,)
-            ).fetchone()
-            _bz_H = float(_bz_hsoft[0] or 0) if _bz_hsoft else 0.0
-
-            # Cu_VST trung bình trong vùng đất yếu
-            _bz_cu = _cv.execute("""
-                SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
-                JOIN vst_locations vl ON v.vst_loc_id = vl.id
-                WHERE vl.name = ?
-            """, (_bz_name,)).fetchone()[0]
-            if _bz_cu is None:
-                _bz_cu = _cv.execute(
-                    "SELECT Cu_VST_avg_kPa FROM tvtk_bh_cdm WHERE bh_name=?", (_bz_name,)
-                ).fetchone()
-                _bz_cu = float(_bz_cu[0]) if _bz_cu and _bz_cu[0] else None
-
-            # N_SPT trung bình trong đất yếu (depth <= H_soft)
-            _bz_n = _cv.execute("""
-                SELECT AVG(N) FROM spt_values
-                WHERE borehole_id=? AND depth_m <= ? AND N IS NOT NULL
-            """, (_bz_id, _bz_H or 25)).fetchone()[0]
-
-            # e0 TB
-            _bz_e0 = _cv.execute(
-                "SELECT AVG(e0) FROM lab_tests WHERE borehole_id=? AND e0 > 0 AND e0 IS NOT NULL",
-                (_bz_id,)
-            ).fetchone()[0]
-
-            # Cc TB
-            _bz_cc = _cv.execute(
-                "SELECT AVG(Cc) FROM lab_tests WHERE borehole_id=? AND Cc > 0 AND Cc IS NOT NULL",
-                (_bz_id,)
-            ).fetchone()[0]
-
-            # S1 (PA1) — dùng cho P7
-            _bz_s1 = _cv.execute(
-                "SELECT S1_pa1_cm FROM tvtk_bh_cdm WHERE bh_name=?", (_bz_name,)
-            ).fetchone()
-            _bz_S1 = float(_bz_s1[0]) if _bz_s1 and _bz_s1[0] else 0.0
-
-            _z_feat_rows.append({
-                "bh_name": _bz_name,
-                "zone":    _bz_zone,
-                "x_m":     _bz_x,
-                "y_m":     _bz_y,
-                "H_soft_m":  round(_bz_H, 1) if _bz_H else None,
-                "Cu_kPa":    round(float(_bz_cu), 1) if _bz_cu else None,
-                "N_SPT":     round(float(_bz_n), 1) if _bz_n else None,
-                "e0":        round(float(_bz_e0), 3) if _bz_e0 else None,
-                "Cc":        round(float(_bz_cc), 3) if _bz_cc else None,
-                "S1_cm":     _bz_S1,
-            })
-
-        if _z_feat_rows:
-            _z_df = _pd_z.DataFrame(_z_feat_rows)
-
-            # Hiện bảng vector đặc trưng
-            with st.expander("Vector đặc trưng địa chất per hố khoan", expanded=False):
-                _z_disp = _z_df[["bh_name","zone","H_soft_m","Cu_kPa","N_SPT","e0","Cc","S1_cm"]].rename(columns={
-                    "bh_name": "Hố khoan", "zone": "Khu vực",
-                    "H_soft_m": "H_soft (m)", "Cu_kPa": "Cᵤ VST (kPa)",
-                    "N_SPT": "N̄_SPT", "e0": "ē₀", "Cc": "C̄c", "S1_cm": "S₁ PA1 (cm)"
+            # 8a — Bảng feature vector 6D
+            st.markdown("#### 8a. Vector đặc trưng 6D per hố khoan")
+            _feat_table = []
+            for f, c in zip(_feats_8, _clusters_8):
+                _feat_table.append({
+                    "Hố khoan":    f["bh_name"],
+                    "Cụm":         f"Cụm {c}",
+                    "H_soft (m)":  f["H_soft"],
+                    "Cu (kPa)":    f["Cu"] if f["Cu"] is not None else "—",
+                    "N_SPT":       f["N_spt"] if f["N_spt"] is not None else "—",
+                    "e₀":          f["e0"] if f["e0"] is not None else "—",
+                    "Cc":          f["Cc"] if f["Cc"] is not None else "—",
+                    "S₁ (cm)":     f["S1"] if f["S1"] is not None else "—",
                 })
-                st.dataframe(_z_disp, hide_index=True, use_container_width=True)
-                st.caption(
-                    "H_soft: từ địa tầng · Cᵤ: VST ưu tiên, fallback Cu_UU · "
-                    "N_SPT: trong vùng đất yếu · ē₀ / C̄c: trung bình lab toàn HK"
-                )
+            st.dataframe(_pd_tv.DataFrame(_feat_table),
+                         use_container_width=True, hide_index=True)
 
-            # ── 8b. Clustering per zone ────────────────────────────────────
-            st.markdown("#### Phân vùng theo khu vực")
-            _FEAT_COLS_Z = ["H_soft_m", "Cu_kPa", "N_SPT", "e0", "Cc"]
-            _ZONE_K = {"KE": 3, "BXN": 3, "NHC": 4}
-            _ZONE_I_CP = {"KE": 0.005, "BXN": 0.005, "NHC": 0.002}
-            _ZONE_COLORS = [
-                "#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#bcbd22"
+            # 8b — Bình đồ phân vùng — màu theo cụm
+            st.markdown("#### 8b. Bình đồ phân vùng — màu theo cụm")
+            _CLUSTER_COLORS = [
+                "#1565C0", "#D32F2F", "#2E7D32", "#F57F17",
+                "#6A1B9A", "#00838F", "#AD1457", "#558B2F",
             ]
+            _fig_z = _go_tv.Figure()
 
-            _z_df["cluster_label"] = "—"
-            _zone_cluster_results = {}
+            # Delaunay edges — xám nếu same-cluster, đỏ đứt nếu cross-boundary
+            for _i, _j, _L in _edges_8:
+                _ci, _cj = _clusters_8[_i], _clusters_8[_j]
+                _cross = _ci != _cj
+                _edge_color = "#D32F2F" if _cross else "#BBBBBB"
+                _edge_dash  = "dot" if _cross else "solid"
+                _edge_width = 2.0 if _cross else 1.2
+                _fig_z.add_trace(_go_tv.Scatter(
+                    x=[_feats_8[_i]["x"], _feats_8[_j]["x"]],
+                    y=[_feats_8[_i]["y"], _feats_8[_j]["y"]],
+                    mode="lines",
+                    line=dict(color=_edge_color, width=_edge_width,
+                              dash=_edge_dash),
+                    hovertemplate=(
+                        f"<b>{_feats_8[_i]['bh_name']} ↔ {_feats_8[_j]['bh_name']}</b><br>"
+                        f"L = {_L:.0f} m<br>"
+                        f"{'CROSS-ZONE (cụm khác)' if _cross else 'cùng cụm'}"
+                        "<extra></extra>"
+                    ),
+                    showlegend=False,
+                ))
 
-            for _zcode_z in ("KE", "BXN", "NHC"):
-                _mask_z = _z_df["zone"] == _zcode_z
-                _df_z   = _z_df[_mask_z].copy()
-                if len(_df_z) < 2:
-                    continue
+            # HK markers theo cluster
+            for _cid in sorted(set(_clusters_8)):
+                _idx_c = [i for i, c in enumerate(_clusters_8) if c == _cid]
+                _col_c = _CLUSTER_COLORS[(_cid - 1) % len(_CLUSTER_COLORS)]
+                _fig_z.add_trace(_go_tv.Scatter(
+                    x=[_feats_8[i]["x"] for i in _idx_c],
+                    y=[_feats_8[i]["y"] for i in _idx_c],
+                    mode="markers+text",
+                    name=f"Cụm {_cid} (n={len(_idx_c)})",
+                    text=[_feats_8[i]["bh_name"].split("-")[-1]
+                          for i in _idx_c],
+                    textposition="top center",
+                    textfont=dict(size=10, color=_col_c),
+                    marker=dict(size=16, color=_col_c, symbol="circle",
+                                line=dict(width=2, color="white")),
+                    hovertemplate=(
+                        "<b>%{customdata[0]}</b><br>"
+                        "X=%{x:.0f} Y=%{y:.0f}<br>"
+                        "H_soft=%{customdata[1]:.1f} m<br>"
+                        "S₁=%{customdata[2]}<br>"
+                        f"<b>Cụm {_cid}</b>"
+                        "<extra></extra>"
+                    ),
+                    customdata=[[_feats_8[i]["bh_name"],
+                                  _feats_8[i]["H_soft"],
+                                  _feats_8[i]["S1"]] for i in _idx_c],
+                ))
 
-                # Impute missing với median zone
-                _X_z = _df_z[_FEAT_COLS_Z].copy()
-                for _fc in _FEAT_COLS_Z:
-                    _med = _X_z[_fc].median()
-                    _X_z[_fc] = _X_z[_fc].fillna(_med if _pd_z.notna(_med) else 10.0)
-
-                _X_scaled = _StdScaler().fit_transform(_X_z.values)
-
-                # K slider per zone
-                _K_default = min(_ZONE_K[_zcode_z], len(_df_z))
-                _K_sel = st.slider(
-                    f"Số vùng {_zcode_z} (K)",
-                    min_value=2, max_value=min(6, len(_df_z)),
-                    value=_K_default,
-                    key=f"_z_K_{_zcode_z}",
-                )
-
-                # Ward linkage (dùng cho cả 1D KE và 2D BXN/NHC)
-                _Z_link = _sc_link(_X_scaled, method="ward")
-                _labels_z = _sc_fcluster(_Z_link, _K_sel, criterion="maxclust")
-
-                _z_df.loc[_mask_z, "cluster_label"] = [
-                    f"{_zcode_z}-Z{l}" for l in _labels_z
-                ]
-
-                # Tính centroid đặc trưng per vùng
-                _cluster_stats = []
-                for _k in sorted(set(_labels_z)):
-                    _msk_k = _labels_z == _k
-                    _n_k   = _msk_k.sum()
-                    _Href  = _X_z["H_soft_m"][_msk_k].mean()
-                    _Cu_ref = _X_z["Cu_kPa"][_msk_k].mean()
-                    _e0_ref = _X_z["e0"][_msk_k].mean()
-                    _Cc_ref = _X_z["Cc"][_msk_k].mean()
-                    _bhs_k  = list(_df_z["bh_name"][_msk_k].values)
-                    # S1 TB vùng
-                    _S1_k  = float(_df_z["S1_cm"][_msk_k].mean())
-                    _cluster_stats.append({
-                        "Vùng": f"{_zcode_z}-Z{_k}",
-                        "Số HK": _n_k,
-                        "Hố khoan": ", ".join(_bhs_k),
-                        "H_soft TB (m)": round(_Href, 1),
-                        "Cᵤ TB (kPa)": round(_Cu_ref, 1),
-                        "ē₀ TB": round(_e0_ref, 3),
-                        "C̄c TB": round(_Cc_ref, 3),
-                        "S₁ PA1 TB (cm)": round(_S1_k, 1),
-                        "Đủ HK (≥2)?": "Đạt" if _n_k >= 2 else "Không đạt",
-                    })
-                _zone_cluster_results[_zcode_z] = {
-                    "labels": _labels_z,
-                    "df": _df_z,
-                    "K": _K_sel,
-                    "stats": _cluster_stats,
-                    "i_cp": _ZONE_I_CP[_zcode_z],
-                }
-
-            # ── 8c. Bảng tổng hợp per zone ────────────────────────────────
-            for _zcode_z, _zres in _zone_cluster_results.items():
-                st.markdown(f"**{_zcode_z}** — {_zres['K']} vùng")
-                _st_df = _pd_z.DataFrame(_zres["stats"])
-                # Màu Đạt/Không đạt
-                def _style_qc(v):
-                    return "color: green; font-weight: bold" if v == "Đạt" else "color: red; font-weight: bold"
-                st.dataframe(
-                    _st_df.style.applymap(_style_qc, subset=["Đủ HK (≥2)?"]),
-                    hide_index=True, use_container_width=True
-                )
-
-            # ── 8d. Bình đồ phân vùng (Plotly scatter) ────────────────────
-            st.markdown("#### Bình đồ phân vùng — màu theo cụm")
-            _z_fig = _go_z.Figure()
-
-            # Vẽ từng cụm với màu khác nhau
-            _color_idx = 0
-            for _zcode_z, _zres in _zone_cluster_results.items():
-                _df_zz  = _zres["df"].copy()
-                _labels = _zres["labels"]
-                for _k in sorted(set(_labels)):
-                    _msk = _labels == _k
-                    _rows = _df_zz[_msk]
-                    _col  = _ZONE_COLORS[_color_idx % len(_ZONE_COLORS)]
-                    _color_idx += 1
-                    _z_fig.add_trace(_go_z.Scatter(
-                        x=list(_rows["x_m"]),
-                        y=list(_rows["y_m"]),
-                        mode="markers+text",
-                        name=f"{_zcode_z}-Z{_k}",
-                        text=list(_rows["bh_name"].str.replace(f"{_zcode_z}-", "", regex=False)),
-                        textposition="top center",
-                        textfont=dict(size=9),
-                        marker=dict(size=14, color=_col, symbol="circle",
-                                    line=dict(color="white", width=1.5)),
-                        hovertemplate=(
-                            "<b>%{text}</b><br>"
-                            "x=%{x:.0f} m  y=%{y:.0f} m<br>"
-                            "<extra>Vùng " + f"{_zcode_z}-Z{_k}" + "</extra>"
-                        ),
-                    ))
-
-            # Đường nối Delaunay giữa các HK trong cùng zone (để thấy liền kề)
-            for _zcode_z, _zres in _zone_cluster_results.items():
-                _df_zz = _zres["df"]
-                _pts   = _df_zz[["x_m","y_m"]].dropna().values
-                if len(_pts) < 3:
-                    continue
-                try:
-                    _tri_z = _Delaunay(_pts)
-                    _lbls  = _zres["labels"]
-                    _bh_names = list(_df_zz["bh_name"].values)
-                    for _simp in _tri_z.simplices:
-                        for _si in range(3):
-                            _a, _b = _simp[_si], _simp[(_si + 1) % 3]
-                            _la, _lb = _lbls[_a], _lbls[_b]
-                            _col_e = "rgba(150,150,150,0.3)" if _la == _lb else "rgba(220,50,50,0.5)"
-                            _dash_e = "solid" if _la == _lb else "dash"
-                            _z_fig.add_trace(_go_z.Scatter(
-                                x=[_pts[_a][0], _pts[_b][0], None],
-                                y=[_pts[_a][1], _pts[_b][1], None],
-                                mode="lines",
-                                line=dict(color=_col_e, width=1.2, dash=_dash_e),
-                                showlegend=False, hoverinfo="skip",
-                            ))
-                except Exception:
-                    pass
-
-            _z_fig.update_layout(
-                title="Bình đồ phân vùng gia cố CDM — Ward linkage",
-                xaxis_title="Northing (m)",
-                yaxis_title="Easting (m)",
-                yaxis_scaleanchor="x",
-                yaxis_scaleratio=1,
-                height=520,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-                margin=dict(l=60, r=20, t=80, b=60),
-                plot_bgcolor="#f9f9f9",
-                paper_bgcolor="#ffffff",
+            _fig_z.update_layout(
+                title=(f"Bình đồ phân vùng {_zone_pick_8} — K={_K_pick} cụm  |  "
+                       f"{len(_feats_8)} HK · {len(_edges_8)} cạnh Delaunay  |  "
+                       f"Đỏ đứt = cross-boundary"),
+                xaxis_title="X (Easting hoặc Northing — VN-2000)",
+                yaxis_title="Y",
+                yaxis=dict(scaleanchor="x", scaleratio=1),
+                height=560, hovermode="closest",
+                plot_bgcolor="white", paper_bgcolor="white",
+                legend=dict(orientation="h", x=0, y=-0.12),
+                margin=dict(l=60, r=20, t=70, b=80),
             )
-            st.plotly_chart(_z_fig, use_container_width=True)
+            st.plotly_chart(_fig_z, use_container_width=True,
+                            key=f"_zoning_fig_{_zone_pick_8}")
             st.caption(
-                "Đường xám = HK cùng vùng · Đường đỏ đứt = HK khác vùng (ranh giới). "
-                "Tam giác Delaunay thể hiện quan hệ liền kề không gian (nguyên tắc P2)."
+                "**Mỗi màu = 1 cụm CDM đồng nhất.**  "
+                "Cạnh **xám liền** = HK cùng cụm.  "
+                "Cạnh **đỏ đứt** = cross-boundary (cần kiểm tra P7 gradient bên dưới)."
             )
 
-            # ── 8e. Kiểm tra P7 — gradient lún dư qua ranh giới ──────────
-            st.markdown("#### Kiểm tra P7 — độ dốc lún dư qua ranh giới vùng")
-            _p7_rows = []
-            for _zcode_z, _zres in _zone_cluster_results.items():
-                _df_zz  = _zres["df"].copy()
-                _labels = _zres["labels"]
-                _i_cp   = _zres["i_cp"]
-                _pts    = _df_zz[["x_m","y_m"]].dropna().values
-                if len(_pts) < 3:
-                    continue
-                try:
-                    _tri_z2 = _Delaunay(_pts)
-                    _edge_set2 = set()
-                    for _simp in _tri_z2.simplices:
-                        for _si in range(3):
-                            _ea, _eb = sorted((_simp[_si], _simp[(_si+1) % 3]))
-                            _edge_set2.add((_ea, _eb))
+            # 8c — Cluster stats + P5 QC
+            st.markdown("#### 8c. Đặc trưng cụm + Kiểm tra P5 (mẫu QC)")
+            _p5 = check_P5_qc(_feats_8, _clusters_8, zone_code=_zone_pick_8)
+            _n_qu_zone = get_qu_samples_for_zone(_zone_pick_8)
 
-                    for (_ea, _eb) in _edge_set2:
-                        if _labels[_ea] == _labels[_eb]:
-                            continue  # cùng vùng — không kiểm P7
-                        _L = float(_np_z.linalg.norm(_pts[_ea] - _pts[_eb]))
-                        if _L < 0.1:
-                            continue
-                        _Sa = float(_df_zz["S1_cm"].iloc[_ea])
-                        _Sb = float(_df_zz["S1_cm"].iloc[_eb])
-                        _grad_pct = abs(_Sa - _Sb) / (100.0 * _L) * 100  # % = cm/m
-                        _ok = "Đạt" if _grad_pct <= _i_cp * 100 else "Không đạt"
-                        _p7_rows.append({
-                            "Khu vực": _zcode_z,
-                            "HK A": _df_zz["bh_name"].iloc[_ea],
-                            "Vùng A": f"{_zcode_z}-Z{_labels[_ea]}",
-                            "HK B": _df_zz["bh_name"].iloc[_eb],
-                            "Vùng B": f"{_zcode_z}-Z{_labels[_eb]}",
-                            "ΔS₁ (cm)": round(abs(_Sa - _Sb), 1),
-                            "L (m)": round(_L, 0),
-                            "Độ dốc ΔS/L (%)": round(_grad_pct, 3),
-                            f"Giới hạn icp (%)": round(_i_cp * 100, 3),
-                            "P7": _ok,
-                        })
-                except Exception:
-                    pass
+            _cstats = []
+            for _cid in sorted(set(_clusters_8)):
+                _idx_c = [i for i, c in enumerate(_clusters_8) if c == _cid]
+                _hs = [_feats_8[i]["H_soft"] for i in _idx_c]
+                _cu = [_feats_8[i]["Cu"] for i in _idx_c if _feats_8[i]["Cu"]]
+                _s1 = [_feats_8[i]["S1"] for i in _idx_c if _feats_8[i]["S1"]]
+                _p5r = next((r for r in _p5 if r["cluster_id"] == _cid), {})
+                _cstats.append({
+                    "Cụm":           f"Cụm {_cid}",
+                    "Số HK":         len(_idx_c),
+                    "H_soft TB":     f"{sum(_hs)/len(_hs):.1f}" if _hs else "—",
+                    "Cu TB (kPa)":   f"{sum(_cu)/len(_cu):.1f}" if _cu else "—",
+                    "S₁ TB (cm)":    f"{sum(_s1)/len(_s1):.1f}" if _s1 else "—",
+                    "Số mẫu qu (pro-rata)": _p5r.get("n_qu_total", 0),
+                    "P5 ≥2 HK":      "Đạt" if _p5r.get("pass_hk") else "Không đạt",
+                    "P5 ≥6 qu":      "Đạt" if _p5r.get("pass_qu") else "Không đạt",
+                    "P5 tổng":       "Đạt" if _p5r.get("pass_all") else "Không đạt",
+                })
+            st.table(_pd_tv.DataFrame(_cstats))
+            st.caption(
+                f"Tổng mẫu qu cho zone {_zone_pick_8}: **{_n_qu_zone} mẫu** "
+                f"(chia pro-rata theo số HK trong cụm).  "
+                f"Ngưỡng: ≥ 2 HK + ≥ 6 mẫu qu per cụm (TCVN 9403 B.1)."
+            )
 
-            if _p7_rows:
-                _p7_df = _pd_z.DataFrame(_p7_rows)
-                def _style_p7(v):
-                    if v == "Đạt":
-                        return "color: green; font-weight: bold"
-                    elif v == "Không đạt":
-                        return "color: red; font-weight: bold"
-                    return ""
-                st.dataframe(
-                    _p7_df.style.applymap(_style_p7, subset=["P7"]),
-                    hide_index=True, use_container_width=True
-                )
-                _n_viol = sum(1 for r in _p7_rows if r["P7"] == "Không đạt")
-                _n_ok   = len(_p7_rows) - _n_viol
-                if _n_viol == 0:
-                    st.success(
-                        f"Tất cả {_n_ok} cặp HK qua ranh giới vùng đạt yêu cầu bằng phẳng P7 "
-                        "(TCCS 41 Phụ lục E + TCVN 4253)."
+            # 8d — P7 gradient
+            st.markdown("#### 8d. Kiểm tra P7 — gradient chuyển tiếp cross-boundary")
+            _p7 = check_P7_gradient(_feats_8, _clusters_8, _edges_8,
+                                     icp_pct=_icp_pick)
+            _cross_edges = [r for r in _p7 if r["cross_zone"]]
+            if not _cross_edges:
+                st.success("Không có cạnh cross-boundary — toàn vùng đồng nhất.")
+            else:
+                _p7_rows = []
+                for r in _cross_edges:
+                    _grad = r["grad_pct"]
+                    _p7_rows.append({
+                        "HK A → HK B":   f"{r['bh_i']} → {r['bh_j']}",
+                        "Cụm A → B":     f"{r['cluster_i']} → {r['cluster_j']}",
+                        "L (m)":         f"{r['L_m']:.0f}",
+                        "S₁_A (cm)":     r["S1_a_cm"] if r["S1_a_cm"] is not None else "—",
+                        "S₁_B (cm)":     r["S1_b_cm"] if r["S1_b_cm"] is not None else "—",
+                        "Gradient (%)":  f"{_grad:.3f}" if _grad is not None else "—",
+                        "Ngưỡng i_cp":   f"{_icp_pick:.2f}%",
+                        "Đạt":           ("Đạt" if r["pass"] is True
+                                          else "Không đạt" if r["pass"] is False
+                                          else "—"),
+                    })
+                st.table(_pd_tv.DataFrame(_p7_rows))
+                _n_fail_p7 = sum(1 for r in _cross_edges if r["pass"] is False)
+                if _n_fail_p7 > 0:
+                    st.warning(
+                        f"Có **{_n_fail_p7}/{len(_cross_edges)} cặp cross-boundary** "
+                        f"vượt ngưỡng i_cp = {_icp_pick:.2f}% — cần xem lại "
+                        "thiết kế CDM tại khu vực biên giữa các cụm."
                     )
                 else:
-                    st.warning(
-                        f"{_n_viol} / {len(_p7_rows)} cặp vi phạm P7. "
-                        "Giải pháp: gộp hai vùng, hoặc chèn vùng đệm CDM nội suy "
-                        "(qu giảm dần qua đoạn chuyển tiếp ≥ 20 m)."
+                    st.success(
+                        f"Tất cả {len(_cross_edges)} cặp cross-boundary "
+                        f"đạt gradient ≤ {_icp_pick:.2f}%."
                     )
-            else:
-                st.info("Chưa đủ dữ liệu toạ độ để kiểm tra P7.")
 
-            # ── 8f. Yêu cầu mẫu QC per vùng (TCVN 9403 Bảng B.1) ────────
-            st.markdown("#### Yêu cầu mẫu kiểm soát chất lượng (TCVN 9403:2012 Bảng B.1)")
-            _qc_rows = []
-            for _zcode_z, _zres in _zone_cluster_results.items():
-                _K_z = _zres["K"]
-                _qc_rows.append({
-                    "Khu vực": _zcode_z,
-                    "Số vùng K": _K_z,
-                    "HK đại diện (≥2/vùng)": f"≥ {2 * _K_z}",
-                    "Mẫu trộn thử lab (9/vùng)": f"≥ {9 * _K_z}",
-                    "Mẫu qu 28 ngày (6/vùng)": f"≥ {6 * _K_z}",
-                    "Core hiện trường (3/vùng)": f"≥ {3 * _K_z} + 2% tổng cọc",
-                })
-            if _qc_rows:
-                st.table(_pd_z.DataFrame(_qc_rows))
-                st.caption(
-                    "Tham chiếu: TCVN 9403:2012 Bảng B.1. "
-                    "Nếu một vùng < 2 HK → gộp với vùng liền kề có đặc trưng địa chất gần nhất."
+            # 8e — Lưu kết quả + nút commit SQLite
+            _c_save_8 = st.button(
+                f"Lưu kết quả phân vùng {_zone_pick_8} vào lịch sử",
+                key=f"_zoning_save_{_zone_pick_8}",
+                use_container_width=False, type="primary",
+            )
+            if _c_save_8:
+                _rid = save_clusters_to_db(
+                    _zone_pick_8, _feats_8, _clusters_8, _K_pick,
                 )
+                st.success(f"Đã lưu lịch sử phân vùng — run_id = `{_rid}`")
+    except Exception as _exc_z:
+        st.error(f"Lỗi module phân vùng CDM: {_exc_z}")
 
     _cv.close()
 

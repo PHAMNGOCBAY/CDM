@@ -776,419 +776,491 @@ def check_samples_vs_tccs41(zone_code: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────
-# 7. LÚN S2 — LỚP ĐẤT YẾU DƯỚI ĐÁY CỌC CDM (TCVN 9403 PHỤ LỤC C §5.3)
+# 6a. TCCS 41 PHỤ LỤC C.3.2 — HIỆU CHỈNH BJERRUM CHO Su (VST)
 # ──────────────────────────────────────────────────────────────────
-
-def _gamma_layer(bh_id: int, depth_top: float, depth_bot: float,
-                 con: sqlite3.Connection, default: float = 16.0) -> float:
-    """γ_sat trung bình của lớp (kN/m³) từ lab_tests. Fallback = default."""
-    r = con.execute("""
-        SELECT AVG(gamma_kNm3) g FROM lab_tests
-        WHERE borehole_id=? AND depth_from_m>=? AND depth_from_m<? AND gamma_kNm3 IS NOT NULL
-    """, (bh_id, depth_top, depth_bot)).fetchone()
-    return float(r["g"]) if r and r["g"] else default
-
-
-def _sigma_v0_at(depth_m: float, bh_id: int, con: sqlite3.Connection,
-                 gwt_depth_m: float = 0.0) -> float:
-    """Ứng suất hữu hiệu thẳng đứng tại depth_m (kPa), tính từ miệng HK."""
-    all_lyrs = con.execute("""
-        SELECT depth_top_m, depth_bot_m FROM layers
-        WHERE borehole_id=? ORDER BY depth_top_m
-    """, (bh_id,)).fetchall()
-    sv = 0.0
-    for al in all_lyrs:
-        top = float(al["depth_top_m"]); bot = float(al["depth_bot_m"])
-        if top >= depth_m:
-            break
-        dz = min(bot, depth_m) - top
-        if dz <= 0:
-            continue
-        gam = _gamma_layer(bh_id, top, bot, con)
-        z_mid = top + dz / 2.0
-        if z_mid < gwt_depth_m:
-            sv += gam * dz
-        else:
-            sv += (gam - GAMMA_W) * dz
-    return max(sv, 1.0)
+# Công thức C.5:  c_u^i = μ · S_u^i
+#   S_u — cường độ kháng cắt nguyên trạng không thoát nước (VST), kPa
+#   μ   — hệ số hiệu chỉnh Bjerrum theo chỉ số dẻo Ip (Bảng C.1)
+#   c_u — cường độ kháng cắt TÍNH TOÁN (xem góc ma sát φ = 0)
+#
+# Bảng C.1 — Trị số μ theo Ip (nội suy bậc nhất giữa các khoảng)
+_BJERRUM_MU_TABLE = [
+    (10, 1.09),
+    (20, 1.00),
+    (30, 0.925),
+    (40, 0.86),
+    (50, 0.80),
+    (60, 0.75),
+    (70, 0.70),
+]
 
 
-def _nearest_lab(bh_name: str, symbol: str, field: str,
-                 con: sqlite3.Connection) -> float | None:
-    """Giá trị lab trung bình (Cc/Cs/e0/PC) từ HK gần nhất cùng zone + cùng symbol."""
-    zone = bh_name.split("-")[0]
-    r = con.execute(f"""
-        SELECT AVG(lt.{field}) val,
-               sqrt(power(b.x_coord_m - bx.x_coord_m,2) +
-                    power(b.y_coord_m - bx.y_coord_m,2)) dist
-        FROM lab_tests lt
-        JOIN boreholes b  ON lt.borehole_id = b.id
-        JOIN boreholes bx ON bx.name = ?
-        JOIN layers ly ON ly.borehole_id = b.id
-            AND lt.depth_from_m >= ly.depth_top_m
-            AND lt.depth_from_m <  ly.depth_bot_m
-            AND ly.symbol = ?
-        WHERE b.name != ? AND b.name LIKE ? || '-%'
-          AND lt.{field} IS NOT NULL
-        GROUP BY b.name, b.x_coord_m, b.y_coord_m, bx.x_coord_m, bx.y_coord_m
-        ORDER BY dist LIMIT 1
-    """, (bh_name, symbol, bh_name, zone)).fetchone()
-    return float(r["val"]) if r and r["val"] else None
+def bjerrum_mu(Ip: float) -> float:
+    """Hệ số hiệu chỉnh Bjerrum μ theo chỉ số dẻo Ip (TCCS 41 Bảng C.1).
+
+    Nội suy bậc nhất giữa các điểm Ip = 10, 20, 30, 40, 50, 60, 70.
+    Ngoài bảng → clamp đầu/cuối (Ip < 10 → 1.09; Ip > 70 → 0.70).
+    """
+    if Ip is None or Ip <= 0:
+        return 1.0
+    if Ip <= _BJERRUM_MU_TABLE[0][0]:
+        return _BJERRUM_MU_TABLE[0][1]
+    if Ip >= _BJERRUM_MU_TABLE[-1][0]:
+        return _BJERRUM_MU_TABLE[-1][1]
+    for i in range(len(_BJERRUM_MU_TABLE) - 1):
+        Ip1, mu1 = _BJERRUM_MU_TABLE[i]
+        Ip2, mu2 = _BJERRUM_MU_TABLE[i + 1]
+        if Ip1 <= Ip <= Ip2:
+            return mu1 + (mu2 - mu1) * (Ip - Ip1) / (Ip2 - Ip1)
+    return 1.0
 
 
-def calc_s2_layers(
-    bh_name: str,
-    H_cdm_m: float,
-    H_soft_m: float,
-    q_kPa: float,
-    gwt_depth_m: float = 0.0,
-    db_path: Path | None = None,
-) -> dict:
-    """Lún S2 = lún cố kết lớp đất yếu dưới đáy trụ CDM.
-
-    Công thức: TCVN 9403:2012 Phụ lục C §5.3 — dùng Cc/Cs cho từng lớp.
-    Tải q không suy giảm khi truyền qua đáy khối CDM (giả định phổ biến).
-    Priority Cc/Cs: lab_tests HK hiện tại → HK gần nhất cùng zone/symbol → Cs=0.15Cc
+def apply_bjerrum_correction(Su_kPa: float, Ip: float) -> dict:
+    """Áp dụng C.5: Cu = μ · Su. Trả về dict đầy đủ phục vụ tracing.
 
     Returns:
-        S2_cm (float), layers (list[dict]), H_below_m (float), warnings (list[str])
+        {'Su_kPa': float, 'Ip': float, 'mu': float, 'Cu_kPa': float}
     """
-    if H_cdm_m is None or H_soft_m is None:
-        return {"S2_cm": 0.0, "layers": [], "H_below_m": 0.0,
-                "warnings": ["Thiếu H_cdm_m hoặc H_soft_m"]}
-
-    H_below = round(H_soft_m - H_cdm_m, 3)
-    if H_below <= 0.01:
-        return {"S2_cm": 0.0, "layers": [], "H_below_m": 0.0, "warnings": []}
-
-    db = Path(db_path) if db_path else _DB
-    warnings: list[str] = []
-    layer_results: list[dict] = []
-    S2_total = 0.0
-
-    with sqlite3.connect(db) as con:
-        con.row_factory = sqlite3.Row
-        bh = con.execute(
-            "SELECT id, elevation_m FROM boreholes WHERE name=?", (bh_name,)
-        ).fetchone()
-        if not bh:
-            return {"S2_cm": 0.0, "layers": [], "H_below_m": H_below,
-                    "warnings": [f"Không tìm thấy borehole '{bh_name}'"]}
-        bh_id = int(bh["id"])
-
-        lyrs = con.execute("""
-            SELECT symbol, depth_top_m, depth_bot_m,
-                   COALESCE(thickness_m, depth_bot_m - depth_top_m) thick
-            FROM layers
-            WHERE borehole_id=? AND depth_bot_m > ? AND depth_top_m < ?
-            ORDER BY depth_top_m
-        """, (bh_id, H_cdm_m, H_soft_m)).fetchall()
-
-        for idx, lyr in enumerate(lyrs):
-            sym   = lyr["symbol"]
-            d_top = max(float(lyr["depth_top_m"]), H_cdm_m)
-            d_bot = min(float(lyr["depth_bot_m"]), H_soft_m)
-            H_i   = d_bot - d_top
-            if H_i < 0.01:
-                continue
-
-            lab = con.execute("""
-                SELECT AVG(Cc) Cc, AVG(Cs) Cs, AVG(e0) e0, AVG(PC_kPa) PC
-                FROM lab_tests
-                WHERE borehole_id=? AND depth_from_m>=? AND depth_from_m<?
-                  AND e0 IS NOT NULL AND e0 > 0
-            """, (bh_id, float(lyr["depth_top_m"]), float(lyr["depth_bot_m"]))).fetchone()
-
-            e0 = float(lab["e0"]) if lab and lab["e0"] else None
-            Cc = float(lab["Cc"]) if lab and lab["Cc"] else None
-            Cs = float(lab["Cs"]) if lab and lab["Cs"] else None
-            PC = float(lab["PC"]) if lab and lab["PC"] else None
-            cc_src = "lab"
-
-            # Fallback: HK gần nhất cùng zone + symbol
-            if e0 is None or Cc is None:
-                e0_nb = _nearest_lab(bh_name, sym, "e0", con)
-                Cc_nb = _nearest_lab(bh_name, sym, "Cc", con)
-                if e0_nb and Cc_nb:
-                    e0 = e0_nb if e0 is None else e0
-                    Cc = Cc_nb if Cc is None else Cc
-                    if Cs is None:
-                        Cs = _nearest_lab(bh_name, sym, "Cs", con)
-                    if PC is None:
-                        PC = _nearest_lab(bh_name, sym, "PC_kPa", con)
-                    nb_name = con.execute("""
-                        SELECT b.name FROM boreholes b
-                        JOIN boreholes bx ON bx.name=?
-                        WHERE b.name LIKE ? || '-%' AND b.name!=?
-                        ORDER BY sqrt(power(b.x_coord_m-bx.x_coord_m,2)+
-                                      power(b.y_coord_m-bx.y_coord_m,2)) LIMIT 1
-                    """, (bh_name, bh_name.split("-")[0], bh_name)).fetchone()
-                    nb_label = nb_name["name"] if nb_name else "nearest"
-                    cc_src = f"fallback:{nb_label}"
-                    warnings.append(
-                        f"Lớp {sym} ({d_top:.1f}–{d_bot:.1f}m): "
-                        f"dùng Cc={Cc:.3f} từ {nb_label} (fallback)"
-                    )
-
-            if e0 is None or Cc is None:
-                warnings.append(
-                    f"Lớp {sym} ({d_top:.1f}–{d_bot:.1f}m): thiếu Cc/e0 — bỏ qua"
-                )
-                layer_results.append({
-                    "symbol": sym, "depth_top_m": round(d_top, 2),
-                    "depth_bot_m": round(d_bot, 2), "H_i_m": round(H_i, 2),
-                    "e0": None, "Cc": None, "Cs": None, "PC_kPa": None,
-                    "sigma_v0_kPa": None, "sigma_vf_kPa": None,
-                    "oc_status": "no_data", "Si_cm": 0.0, "cc_source": "missing",
-                })
-                continue
-
-            if Cs is None:
-                Cs = 0.15 * Cc
-                warnings.append(f"Lớp {sym}: Cs=None → Cs=0.15×Cc={Cs:.4f}")
-
-            d_mid = (d_top + d_bot) / 2.0
-            sv0 = _sigma_v0_at(d_mid, bh_id, con, gwt_depth_m)
-            svf = sv0 + q_kPa
-
-            if PC is None or sv0 >= PC:
-                oc = "NC"; ref = PC or sv0
-            elif svf <= PC:
-                oc = "OC"; ref = PC
-            else:
-                oc = "crossPC"; ref = PC
-
-            if oc == "OC":
-                Si = H_i * Cs / (1 + e0) * math.log10(svf / sv0)
-            elif oc == "NC":
-                Si = H_i * Cc / (1 + e0) * math.log10(svf / max(sv0, 1.0))
-            else:
-                Si = (H_i * Cs / (1 + e0) * math.log10(ref / sv0) +
-                      H_i * Cc / (1 + e0) * math.log10(svf / ref))
-            Si_cm = max(0.0, Si * 100.0)
-            S2_total += Si_cm
-
-            layer_results.append({
-                "symbol": sym, "depth_top_m": round(d_top, 2),
-                "depth_bot_m": round(d_bot, 2), "H_i_m": round(H_i, 2),
-                "e0": round(e0, 3), "Cc": round(Cc, 3), "Cs": round(Cs, 4),
-                "PC_kPa": round(PC, 1) if PC else None,
-                "sigma_v0_kPa": round(sv0, 1), "sigma_vf_kPa": round(svf, 1),
-                "oc_status": oc, "Si_cm": round(Si_cm, 2), "cc_source": cc_src,
-            })
-
+    mu = bjerrum_mu(Ip)
     return {
-        "S2_cm":     round(S2_total, 2),
-        "layers":    layer_results,
-        "H_below_m": round(H_below, 2),
-        "warnings":  warnings,
+        "Su_kPa": float(Su_kPa) if Su_kPa is not None else None,
+        "Ip":     float(Ip)     if Ip     is not None else None,
+        "mu":     float(mu),
+        "Cu_kPa": float(Su_kPa) * mu if Su_kPa is not None else None,
     }
 
 
-# ──────────────────────────────────────────────────────────────────
-# 8. NHẬN DIỆN ĐẤT YẾU — TCCS 41:2022 ĐIỀU 4.1
-# ──────────────────────────────────────────────────────────────────
-
-# Ký hiệu luôn là đất yếu (không cần kiểm tra chỉ tiêu thí nghiệm)
-_ALWAYS_SOFT_SYMBOLS: tuple[str, ...] = ("1", "1b", "XMD")
-
-# Ngưỡng phân loại (Bảng 4, TCCS 41:2022 Điều 4.1)
-_SOFT_CRITERIA = {
-    "e_clay":      1.5,   # hệ số rỗng tối thiểu — đất sét
-    "e_silt":      1.0,   # hệ số rỗng tối thiểu — sét pha / bùn
-    "c_max_kPa":  15.0,   # lực dính tối đa
-    "phi_max_deg": 10.0,  # góc ma sát tối đa
-    "Cu_VST_max":  35.0,  # cường độ cắt cánh tối đa (kPa)
-    "N_SPT_max":    5,    # giá trị SPT tối đa
-    "qc_max_MPa":  0.1,   # sức kháng mũi CPT tối đa (MPa)
-}
-
-
-def classify_soft_soil(
-    symbol: str,
-    e0: float | None = None,
-    c_kPa: float | None = None,
-    phi_deg: float | None = None,
-    Cu_VST_kPa: float | None = None,
-    N_SPT: int | None = None,
-    qc_MPa: float | None = None,
-    is_clay: bool = True,
+def build_mu_by_loc(
+    loc_names: list[str],
+    soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
+    db_path: Optional[Path] = None,
 ) -> dict:
-    """Phân loại đất yếu theo TCCS 41:2022 Điều 4.1.
+    """Tính Ip TB + μ Bjerrum cho danh sách hố khoan — phục vụ vẽ Cu = μ·Su.
 
-    Thứ tự ưu tiên:
-      1. symbol trong _ALWAYS_SOFT_SYMBOLS → is_soft=True ngay lập tức
-      2. Kiểm tra từng chỉ tiêu thí nghiệm — bất kỳ 1 chỉ tiêu đạt → is_soft=True
-      3. Nếu không có dữ liệu nào → is_soft=None (không xác định)
+    Query batch (1 query) — tránh N+1 trên lab_tests.
 
     Args:
-        symbol:     Ký hiệu lớp đất (vd '1', '2', 'F', 'XMD')
-        e0:         Hệ số rỗng tự nhiên
-        c_kPa:      Lực dính (kPa) — từ cắt phẳng hoặc UU
-        phi_deg:    Góc ma sát (độ)
-        Cu_VST_kPa: Cường độ cắt cánh hiện trường (kPa)
-        N_SPT:      Giá trị SPT (blow count)
-        qc_MPa:     Sức kháng mũi CPT (MPa)
-        is_clay:    True = sét (e_min=1.5), False = sét pha/bùn (e_min=1.0)
+        loc_names: ['KE-HK1', 'KE-HK2', 'BXN-CV-HK1', ...]
+        soft_symbols: lọc lớp yếu theo `symbol_tcvn`
+        db_path: optional, mặc định dùng `_DB`
 
     Returns:
-        dict với:
-          "is_soft":      bool | None
-          "reason":       str  — lý do phân loại
-          "criteria_met": list[str] — danh sách chỉ tiêu thỏa mãn
-          "symbol":       str
+        {bh_name: {'Ip': float, 'mu': float}} — chỉ chứa HK có Ip > 0
     """
-    criteria_met: list[str] = []
-
-    # 1. Ký hiệu luôn mềm
-    if symbol in _ALWAYS_SOFT_SYMBOLS:
-        return {
-            "is_soft":      True,
-            "reason":       f"Ký hiệu '{symbol}' thuộc nhóm luôn là đất yếu (TCCS 41 §4.1)",
-            "criteria_met": [f"symbol={symbol}"],
-            "symbol":       symbol,
-        }
-
-    # 2. Kiểm tra từng chỉ tiêu
-    e_min = _SOFT_CRITERIA["e_clay"] if is_clay else _SOFT_CRITERIA["e_silt"]
-
-    if e0 is not None and e0 > 0:
-        if e0 >= e_min:
-            criteria_met.append(f"e0={e0:.2f} >= {e_min}")
-
-    if c_kPa is not None and c_kPa >= 0:
-        if c_kPa <= _SOFT_CRITERIA["c_max_kPa"]:
-            criteria_met.append(f"c={c_kPa:.1f} <= {_SOFT_CRITERIA['c_max_kPa']} kPa")
-
-    if phi_deg is not None and phi_deg >= 0:
-        if phi_deg < _SOFT_CRITERIA["phi_max_deg"]:
-            criteria_met.append(f"phi={phi_deg:.1f}° < {_SOFT_CRITERIA['phi_max_deg']}°")
-
-    if Cu_VST_kPa is not None and Cu_VST_kPa > 0:
-        if Cu_VST_kPa <= _SOFT_CRITERIA["Cu_VST_max"]:
-            criteria_met.append(f"Cu_VST={Cu_VST_kPa:.1f} <= {_SOFT_CRITERIA['Cu_VST_max']} kPa")
-
-    if N_SPT is not None and N_SPT >= 0:
-        if N_SPT <= _SOFT_CRITERIA["N_SPT_max"]:
-            criteria_met.append(f"N={N_SPT} <= {_SOFT_CRITERIA['N_SPT_max']}")
-
-    if qc_MPa is not None and qc_MPa > 0:
-        if qc_MPa <= _SOFT_CRITERIA["qc_max_MPa"]:
-            criteria_met.append(f"qc={qc_MPa:.3f} <= {_SOFT_CRITERIA['qc_max_MPa']} MPa")
-
-    # 3. Không có dữ liệu nào
-    has_data = any(v is not None for v in (e0, c_kPa, phi_deg, Cu_VST_kPa, N_SPT, qc_MPa))
-    if not has_data:
-        return {
-            "is_soft":      None,
-            "reason":       "Không có dữ liệu thí nghiệm để phân loại",
-            "criteria_met": [],
-            "symbol":       symbol,
-        }
-
-    is_soft = len(criteria_met) > 0
-    return {
-        "is_soft":      is_soft,
-        "reason":       ("Đạt " + str(len(criteria_met)) + " chỉ tiêu đất yếu")
-                        if is_soft else "Không đạt chỉ tiêu đất yếu nào",
-        "criteria_met": criteria_met,
-        "symbol":       symbol,
-    }
-
-
-def classify_zone_from_db(zone_code: str, db_path: Path | None = None) -> list[dict]:
-    """Phân loại toàn bộ mẫu lab của một zone từ SQLite.
-
-    Trả về list[dict] — mỗi dict là một mẫu với trường "is_soft".
-    Kết quả cũng được ghi vào bảng `soft_soil_classification` (upsert).
-    """
-    db = Path(db_path) if db_path else _DB
-    results: list[dict] = []
-
-    with sqlite3.connect(db) as con:
+    if not loc_names:
+        return {}
+    _p = db_path or _DB
+    out: dict = {}
+    ph_sym = ",".join("?" * len(soft_symbols))
+    ph_loc = ",".join("?" * len(loc_names))
+    with sqlite3.connect(_p) as con:
         con.row_factory = sqlite3.Row
-
-        # Tạo bảng nếu chưa có
-        con.execute("""
-            CREATE TABLE IF NOT EXISTS soft_soil_classification (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                borehole_name TEXT NOT NULL,
-                depth_from_m  REAL,
-                depth_to_m    REAL,
-                symbol        TEXT,
-                e0            REAL,
-                c_kPa         REAL,
-                phi_deg       REAL,
-                Cu_VST_kPa    REAL,
-                is_soft       INTEGER,
-                criteria_met  TEXT,
-                reason        TEXT,
-                classified_at TEXT DEFAULT (datetime('now','localtime'))
-            )
-        """)
-        con.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_ssc_unique
-            ON soft_soil_classification(borehole_name, depth_from_m, depth_to_m)
-        """)
-
-        rows = con.execute("""
-            SELECT b.name bh_name,
-                   lt.depth_from_m, lt.depth_to_m,
-                   lt.e0, lt.c_kPa, lt.phi_deg, lt.Cu_UU_kPa,
-                   ly.symbol
+        rows = con.execute(f"""
+            SELECT b.name AS bh_name, AVG(lt.Ip) AS Ip_avg
             FROM lab_tests lt
             JOIN boreholes b ON lt.borehole_id = b.id
-            LEFT JOIN layers ly ON ly.borehole_id = b.id
-                AND lt.depth_from_m >= ly.depth_top_m
-                AND lt.depth_from_m <  ly.depth_bot_m
-            WHERE b.name LIKE ? || '-%'
-            ORDER BY b.name, lt.depth_from_m
-        """, (zone_code,)).fetchall()
-
+            WHERE b.name IN ({ph_loc})
+              AND lt.Ip IS NOT NULL AND lt.Ip > 0
+              AND lt.symbol_tcvn IN ({ph_sym})
+            GROUP BY b.name
+        """, (*loc_names, *soft_symbols)).fetchall()
         for r in rows:
-            sym = r["symbol"] or "?"
-            res = classify_soft_soil(
-                symbol=sym,
-                e0=r["e0"],
-                c_kPa=r["c_kPa"],
-                phi_deg=r["phi_deg"],
-                Cu_VST_kPa=r["Cu_UU_kPa"],
-            )
-            entry = {
-                "borehole_name": r["bh_name"],
-                "depth_from_m":  r["depth_from_m"],
-                "depth_to_m":    r["depth_to_m"],
-                "symbol":        sym,
-                **res,
-            }
-            results.append(entry)
-            con.execute("""
-                INSERT INTO soft_soil_classification
-                    (borehole_name, depth_from_m, depth_to_m, symbol,
-                     e0, c_kPa, phi_deg, is_soft, criteria_met, reason)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
-                ON CONFLICT(borehole_name, depth_from_m, depth_to_m)
-                DO UPDATE SET
-                    symbol=excluded.symbol, e0=excluded.e0,
-                    c_kPa=excluded.c_kPa, phi_deg=excluded.phi_deg,
-                    is_soft=excluded.is_soft,
-                    criteria_met=excluded.criteria_met,
-                    reason=excluded.reason,
-                    classified_at=datetime('now','localtime')
-            """, (
-                r["bh_name"], r["depth_from_m"], r["depth_to_m"], sym,
-                r["e0"], r["c_kPa"], r["phi_deg"],
-                1 if res["is_soft"] else (0 if res["is_soft"] is False else None),
-                ", ".join(res["criteria_met"]),
-                res["reason"],
-            ))
-        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            _Ip = float(r["Ip_avg"]) if r["Ip_avg"] is not None else None
+            if _Ip is not None:
+                out[r["bh_name"]] = {
+                    "Ip": _Ip,
+                    "mu": float(bjerrum_mu(_Ip)),
+                }
+    return out
 
-    return results
+
+def get_Ip_avg_for_bh(bh_name: str, soft_symbols: tuple = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH"),
+                      db_path: Optional[Path] = None) -> Optional[float]:
+    """Trả về Ip trung bình của các mẫu lab thuộc lớp đất yếu của HK.
+
+    soft_symbols mặc định gồm symbol_tcvn của lớp yếu (CH/MH/đất hữu cơ).
+    """
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+        ph = ",".join("?" * len(soft_symbols))
+        r = con.execute(f"""
+            SELECT AVG(lt.Ip) AS Ip_avg, COUNT(lt.Ip) AS n
+            FROM lab_tests lt
+            JOIN boreholes b ON lt.borehole_id = b.id
+            WHERE b.name = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+              AND lt.symbol_tcvn IN ({ph})
+        """, (bh_name, *soft_symbols)).fetchone()
+        if r and r["n"] > 0 and r["Ip_avg"] is not None:
+            return float(r["Ip_avg"])
+        return None
 
 
 # ──────────────────────────────────────────────────────────────────
-# 8. DEMO
+# 6b. TCCS 41 — BẢNG 1 GIỚI HẠN ĐỘ LÚN CỐ KẾT CHO PHÉP CÒN LẠI ΔS
+# ──────────────────────────────────────────────────────────────────
+
+def create_tccs41_limits_table(db_path: Optional[Path] = None) -> None:
+    """Tạo bảng tccs41_settlement_limits trong TTHC.sqlite — idempotent.
+
+    Bảng 1 — Điều 6.2.3 TCCS 41:2022/TCĐBVN.
+    Phần độ lún cố kết cho phép còn lại ΔS tại mọi vị trí của đoạn nền đắp
+    trên đất yếu trong thời hạn t năm sau khi thi công xong mặt đường.
+
+      t = 15 năm — kết cấu mặt đường mềm
+      t = 30 năm — kết cấu mặt đường cứng
+    """
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tccs41_settlement_limits (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                road_class_code   TEXT NOT NULL,
+                road_class_desc   TEXT NOT NULL,
+                position_code     TEXT NOT NULL,
+                position_desc     TEXT NOT NULL,
+                delta_S_cm_max    REAL NOT NULL,
+                t_years_flexible  INTEGER DEFAULT 15,
+                t_years_rigid     INTEGER DEFAULT 30,
+                source            TEXT DEFAULT 'TCCS 41:2022 Bảng 1 — Điều 6.2.3',
+                updated_at        TEXT DEFAULT (datetime('now','localtime')),
+                UNIQUE (road_class_code, position_code)
+            )
+        """)
+        # Populate 6 ô từ Bảng 1
+        _rows = [
+            # cat1 — Cao tốc / ≥ 80 km/h / A1
+            ("cat1", "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+             "near_bridge",  "Đoạn gần mố cầu",                       10.0),
+            ("cat1", "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+             "side_culvert", "Đoạn hai bên cống hoặc cống chui",      20.0),
+            ("cat1", "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+             "general",      "Các đoạn nền đắp thông thường",         30.0),
+            # cat2 — ≤ 60 km/h / A1
+            ("cat2", "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+             "near_bridge",  "Đoạn gần mố cầu",                       20.0),
+            ("cat2", "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+             "side_culvert", "Đoạn hai bên cống hoặc cống chui",      30.0),
+            ("cat2", "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+             "general",      "Các đoạn nền đắp thông thường",         40.0),
+        ]
+        for rc, rd, pc, pd_, dS in _rows:
+            con.execute("""
+                INSERT INTO tccs41_settlement_limits
+                    (road_class_code, road_class_desc, position_code, position_desc, delta_S_cm_max)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (road_class_code, position_code) DO UPDATE SET
+                    road_class_desc = excluded.road_class_desc,
+                    position_desc   = excluded.position_desc,
+                    delta_S_cm_max  = excluded.delta_S_cm_max,
+                    updated_at      = datetime('now','localtime')
+            """, (rc, rd, pc, pd_, dS))
+        con.commit()
+
+
+def get_allowable_residual_settlement(
+    road_class_code: str = "cat1",
+    position_code: str = "general",
+    db_path: Optional[Path] = None,
+) -> dict:
+    """Tra cứu giới hạn ΔS cho phép từ bảng TCCS 41:2022 Bảng 1.
+
+    Args:
+        road_class_code: 'cat1' (≥80 km/h, A1) hoặc 'cat2' (≤60 km/h, A1)
+        position_code:   'near_bridge' | 'side_culvert' | 'general'
+
+    Returns:
+        {'delta_S_cm_max': float, 'road_class_desc': str, 'position_desc': str,
+         't_years_flexible': 15, 't_years_rigid': 30}
+        Raises ValueError nếu không tìm thấy.
+    """
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+        # Tự tạo bảng nếu chưa có (idempotent)
+        try:
+            r = con.execute("""
+                SELECT road_class_desc, position_desc, delta_S_cm_max,
+                       t_years_flexible, t_years_rigid
+                FROM tccs41_settlement_limits
+                WHERE road_class_code = ? AND position_code = ?
+            """, (road_class_code, position_code)).fetchone()
+        except sqlite3.OperationalError:
+            create_tccs41_limits_table(_p)
+            r = con.execute("""
+                SELECT road_class_desc, position_desc, delta_S_cm_max,
+                       t_years_flexible, t_years_rigid
+                FROM tccs41_settlement_limits
+                WHERE road_class_code = ? AND position_code = ?
+            """, (road_class_code, position_code)).fetchone()
+        if not r:
+            raise ValueError(
+                f"Không tìm thấy giới hạn ΔS cho road_class={road_class_code!r}, "
+                f"position={position_code!r}. Dùng cat1/cat2 + near_bridge/side_culvert/general."
+            )
+        return {
+            "delta_S_cm_max":  float(r["delta_S_cm_max"]),
+            "road_class_desc": r["road_class_desc"],
+            "position_desc":   r["position_desc"],
+            "t_years_flexible": int(r["t_years_flexible"]),
+            "t_years_rigid":    int(r["t_years_rigid"]),
+        }
+
+
+def list_tccs41_limits(db_path: Optional[Path] = None) -> list[dict]:
+    """Trả về tất cả 6 ô của Bảng 1 dưới dạng list[dict] — phục vụ UI hiển thị bảng."""
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        con.row_factory = sqlite3.Row
+        try:
+            rows = con.execute("""
+                SELECT road_class_code, road_class_desc, position_code,
+                       position_desc, delta_S_cm_max
+                FROM tccs41_settlement_limits
+                ORDER BY road_class_code, position_code
+            """).fetchall()
+        except sqlite3.OperationalError:
+            create_tccs41_limits_table(_p)
+            rows = con.execute("""
+                SELECT road_class_code, road_class_desc, position_code,
+                       position_desc, delta_S_cm_max
+                FROM tccs41_settlement_limits
+                ORDER BY road_class_code, position_code
+            """).fetchall()
+        return [dict(r) for r in rows]
+
+
+# ──────────────────────────────────────────────────────────────────
+# 6c. TCCS 41 PHỤ LỤC E — ĐOẠN CHUYỂN TIẾP ĐƯỜNG ↔ CẦU (CỐNG)
+# ──────────────────────────────────────────────────────────────────
+# Bảng E.1 (độ bằng phẳng i) — lưu denominator: i = 1/denominator.
+_SMOOTHNESS_TABLE_E1 = {
+    # (road_class, structure, speed_kmh) → denominator (None = không quy định)
+    ("cao_toc",  "cau",  40):  None,
+    ("cao_toc",  "cau",  60):  175,
+    ("cao_toc",  "cau",  80):  200,
+    ("cao_toc",  "cau", 100):  250,
+    ("cao_toc",  "cau", 120):  250,
+    ("cao_toc",  "cong", 40):  None,
+    ("cao_toc",  "cong", 60):  150,
+    ("cao_toc",  "cong", 80):  150,
+    ("cao_toc",  "cong",100):  150,
+    ("cao_toc",  "cong",120):  150,
+    ("cap_I_IV", "cau",  40):  125,
+    ("cap_I_IV", "cau",  60):  150,
+    ("cap_I_IV", "cau",  80):  175,
+    ("cap_I_IV", "cau", 100):  200,
+    ("cap_I_IV", "cau", 120):  200,
+    ("cap_I_IV", "cong", 40):  125,
+    ("cap_I_IV", "cong", 60):  125,
+    ("cap_I_IV", "cong", 80):  150,
+    ("cap_I_IV", "cong",100):  150,
+    ("cap_I_IV", "cong",120):  150,
+}
+
+# Bảng E.2 (chiều dài bản quá độ) — (min, max) m
+_APPROACH_SLAB_E2 = {
+    "small":  (5.0,  None),   # Cầu nhỏ ≥ 5 m
+    "medium": (8.0,  12.0),   # Cầu trung 8–12 m
+    "large":  (8.0,  12.0),   # Cầu lớn 8–12 m
+}
+
+# Độ lún dư mố cầu theo TCVN 11823 — Điều E.3.2.2.2
+DELTA_SC_TCVN11823_100YR_M = 0.0254   # 25,4 mm
+DELTA_SC_TCVN11823_15YR_M  = 0.0038   # 3,8 mm
+
+
+def get_smoothness_limit(road_class_code: str, structure: str,
+                         speed_kmh: int) -> dict:
+    """Tra Bảng E.1 → trả về (i, denominator).
+
+    Args:
+        road_class_code: 'cao_toc' (TCVN 5729) hoặc 'cap_I_IV' (TCVN 4054)
+        structure:       'cau' hoặc 'cong'
+        speed_kmh:       40 / 60 / 80 / 100 / 120
+
+    Returns:
+        {'denominator': int|None, 'i_value': float|None, 'i_text': str}
+        Ví dụ: denominator=200 → i = 1/200 = 0.005
+    """
+    key = (road_class_code, structure, int(speed_kmh))
+    denom = _SMOOTHNESS_TABLE_E1.get(key)
+    if denom is None:
+        return {"denominator": None, "i_value": None, "i_text": "—"}
+    return {
+        "denominator": int(denom),
+        "i_value":     1.0 / denom,
+        "i_text":      f"1/{denom}",
+    }
+
+
+def get_approach_slab_length(bridge_type_code: str) -> dict:
+    """Tra Bảng E.2 → trả về (L_min, L_max) m.
+
+    bridge_type_code: 'small' | 'medium' | 'large'
+    """
+    if bridge_type_code not in _APPROACH_SLAB_E2:
+        raise ValueError(
+            f"bridge_type_code không hợp lệ: {bridge_type_code!r}. "
+            "Dùng 'small' / 'medium' / 'large'."
+        )
+    Lmin, Lmax = _APPROACH_SLAB_E2[bridge_type_code]
+    return {
+        "L_min_m":      float(Lmin),
+        "L_max_m":      float(Lmax) if Lmax is not None else None,
+        "L_text":       (f">= {Lmin:.0f} m" if Lmax is None
+                         else f"{Lmin:.0f} ÷ {Lmax:.0f} m"),
+        "thickness_rule": "t >= max(L/20, 300 mm)",
+    }
+
+
+def calc_approach_slab_thickness(L_m: float) -> dict:
+    """E.3.3.2.2: t = max(L/20, 300 mm)."""
+    t_L20_m = L_m / 20.0
+    t_min_m = 0.300
+    t_m     = max(t_L20_m, t_min_m)
+    governs = "L/20" if t_L20_m >= t_min_m else "300 mm tối thiểu"
+    return {
+        "L_m":     float(L_m),
+        "t_L20_m": float(t_L20_m),
+        "t_min_m": t_min_m,
+        "t_m":     float(t_m),
+        "governs": governs,
+    }
+
+
+def calc_transition_length(
+    deltaSf_m: float,
+    deltaS1_m: float,
+    S_denominator: float,
+    H_m: float,
+    structure: str = "cau",
+    D_m: Optional[float] = None,
+    deltaSc_m: float = DELTA_SC_TCVN11823_15YR_M,
+    deltaScg_m: float = 0.0,
+    extra_m: float = 4.0,
+) -> dict:
+    """Tính chiều dài đoạn chuyển tiếp Lct theo công thức E.1–E.4.
+
+    Args:
+        deltaSf_m:    Độ lún dư đoạn gần mố/cống (m) — sau 15/30 năm
+        deltaS1_m:    Độ lún dư đoạn nền thông thường (m) — sau 15/30 năm
+        S_denominator: Mẫu số độ bằng phẳng Bảng E.1 (S = 1/denominator)
+        H_m:          Chiều cao đất đắp sau mố / cạnh cống (m)
+        structure:    'cau' (dùng E.2) hoặc 'cong' (dùng E.3)
+        D_m:          Khẩu độ cống (m) — bắt buộc khi structure='cong'
+        deltaSc_m:    Độ lún dư mố cầu — mặc định 3,8 mm (TCVN 11823 — 15 năm)
+        deltaScg_m:   Độ lún dư thiết kế cống (m) — mặc định 0
+        extra_m:      Số m cộng thêm (3 ÷ 5 m) cho min của L1 đoạn gần mố
+
+    Returns:
+        dict gồm L1_calc, L1_min, L1, L2, Lct, governs_L1, formula_id
+    """
+    S = 1.0 / float(S_denominator)
+
+    if structure == "cau":
+        # E.2: đoạn gần mố cầu
+        L1_calc = max(0.0, (deltaSf_m - deltaSc_m) / S)
+        L1_min  = 3.0 * H_m + float(extra_m)
+        formula_id = "E.2"
+        ref_value = deltaSc_m
+    elif structure == "cong":
+        if D_m is None or D_m <= 0:
+            raise ValueError("structure='cong' yêu cầu D_m (khẩu độ cống) > 0")
+        # E.3: đoạn cạnh cống
+        L1_calc = max(0.0, (deltaSf_m - deltaScg_m) / S)
+        L1_min  = float(D_m) + 2.0 * H_m
+        formula_id = "E.3"
+        ref_value = deltaScg_m
+    else:
+        raise ValueError(f"structure không hợp lệ: {structure!r}. Dùng 'cau' hoặc 'cong'.")
+
+    L1 = max(L1_calc, L1_min)
+    governs_L1 = "công thức" if L1_calc >= L1_min else "giá trị tối thiểu"
+
+    # E.4: L2 = (ΔS1 − ΔSf) / S
+    L2 = max(0.0, (deltaS1_m - deltaSf_m) / S)
+
+    Lct = L1 + L2
+
+    return {
+        "L1_calc_m":    round(L1_calc, 2),
+        "L1_min_m":     round(L1_min, 2),
+        "L1_m":         round(L1, 2),
+        "L2_m":         round(L2, 2),
+        "Lct_m":        round(Lct, 2),
+        "S":            S,
+        "S_text":       f"1/{int(S_denominator)}",
+        "governs_L1":   governs_L1,
+        "formula_id":   formula_id,
+        "ref_deltaS_m": ref_value,
+    }
+
+
+def create_appendix_E_tables(db_path: Optional[Path] = None) -> None:
+    """Tạo + populate 2 bảng SQLite cho Phụ lục E — idempotent."""
+    _p = db_path or _DB
+    with sqlite3.connect(_p) as con:
+        # Bảng E.1 — độ bằng phẳng
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tccs41_smoothness_limits (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                road_class_code TEXT NOT NULL,
+                structure       TEXT NOT NULL,
+                speed_kmh       INTEGER NOT NULL,
+                i_denominator   INTEGER,
+                source          TEXT DEFAULT 'TCCS 41:2022 Bảng E.1',
+                updated_at      TEXT DEFAULT (datetime('now','localtime')),
+                UNIQUE (road_class_code, structure, speed_kmh)
+            )
+        """)
+        for (rc, struct, v), denom in _SMOOTHNESS_TABLE_E1.items():
+            con.execute("""
+                INSERT INTO tccs41_smoothness_limits
+                    (road_class_code, structure, speed_kmh, i_denominator)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (road_class_code, structure, speed_kmh) DO UPDATE SET
+                    i_denominator = excluded.i_denominator,
+                    updated_at    = datetime('now','localtime')
+            """, (rc, struct, v, denom))
+
+        # Bảng E.2 — chiều dài bản quá độ
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tccs41_approach_slab (
+                id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                bridge_type_code    TEXT NOT NULL UNIQUE,
+                bridge_type_desc    TEXT NOT NULL,
+                L_min_m             REAL NOT NULL,
+                L_max_m             REAL,
+                thickness_rule      TEXT DEFAULT 't >= max(L/20, 300 mm)',
+                depth_below_pvmt_mm INTEGER DEFAULT 700,
+                slope_pct_min       REAL DEFAULT 4.0,
+                slope_pct_max       REAL DEFAULT 10.0,
+                source              TEXT DEFAULT 'TCCS 41:2022 Bảng E.2',
+                updated_at          TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+        _slab_rows = [
+            ("small",  "Cầu nhỏ",  5.0,  None),
+            ("medium", "Cầu trung", 8.0, 12.0),
+            ("large",  "Cầu lớn",  8.0, 12.0),
+        ]
+        for code, desc, lmin, lmax in _slab_rows:
+            con.execute("""
+                INSERT INTO tccs41_approach_slab
+                    (bridge_type_code, bridge_type_desc, L_min_m, L_max_m)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT (bridge_type_code) DO UPDATE SET
+                    bridge_type_desc = excluded.bridge_type_desc,
+                    L_min_m          = excluded.L_min_m,
+                    L_max_m          = excluded.L_max_m,
+                    updated_at       = datetime('now','localtime')
+            """, (code, desc, lmin, lmax))
+        con.commit()
+
+
+# ──────────────────────────────────────────────────────────────────
+# 7. DEMO
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import sys

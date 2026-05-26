@@ -13,11 +13,271 @@
       "cat2_side_bridge": 30,
       "cat2_general": 40
     },
+    "residual_settlement_table": {
+      "_ref": "TCCS 41:2022/TCĐBVN — Bảng 1 — Điều 6.2.3",
+      "_note": "Phần độ lún cố kết cho phép còn lại ΔS tại mọi vị trí của đoạn nền đắp trên đất yếu trong thời hạn t năm sau khi thi công xong kết cấu mặt đường",
+      "t_years_flexible_pavement": 15,
+      "t_years_rigid_pavement": 30,
+      "formula_36": "ΔS = Sc × (1 - Ut)",
+      "rows": [
+        {
+          "road_class_code": "cat1",
+          "road_class_desc": "Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế ≥ 80 km/h và có tầng mặt cấp cao A1",
+          "speed_min_kmh": 80,
+          "pavement_grade": "A1",
+          "limits_cm": {
+            "near_bridge":   10,
+            "side_culvert":  20,
+            "general":       30
+          }
+        },
+        {
+          "road_class_code": "cat2",
+          "road_class_desc": "Đường có tốc độ thiết kế ≤ 60 km/h và có tầng mặt cấp cao A1",
+          "speed_max_kmh": 60,
+          "pavement_grade": "A1",
+          "limits_cm": {
+            "near_bridge":   20,
+            "side_culvert":  30,
+            "general":       40
+          }
+        }
+      ],
+      "position_labels_vi": {
+        "near_bridge":  "Đoạn gần mố cầu",
+        "side_culvert": "Đoạn hai bên cống hoặc cống chui",
+        "general":      "Các đoạn nền đắp thông thường"
+      }
+    },
     "settlement_rate_max_cm_per_year": 2.0,
     "stability_Fs_min": {
-      "construction": 1.1,
-      "cat2_general": 1.2,
-      "cat1_highway": 1.4
+      "construction": 1.10,
+      "cat2_general":  1.20,
+      "cat1_highway":  1.40
+    },
+    "appendix_E_transition_zone": {
+      "_ref": "TCCS 41:2022/TCĐBVN — Phụ lục E — Đoạn chuyển tiếp giữa đường và cầu (cống)",
+      "_note": "Quy định về độ bằng phẳng, chiều dài đoạn chuyển tiếp, bản quá độ và giải pháp xử lý đất yếu",
+      "delta_Sc_TCVN11823_m": {
+        "100_years": 0.0254,
+        "15_years":  0.0038,
+        "_note": "Độ lún dư mố cầu TCVN 11823: 25,4 mm trong 100 năm; 3,8 mm trong 15 năm"
+      },
+      "t_years_pavement": {
+        "flexible": 15,
+        "rigid":    30
+      },
+      "smoothness_table_E1": {
+        "_ref": "Bảng E.1 — Quy định độ bằng phẳng i theo phương dọc tim đường",
+        "_value_format": "i_denominator (i = 1/denominator)",
+        "rows": [
+          {
+            "road_class_code": "cao_toc",
+            "road_class_desc": "Đường cao tốc (TCVN 5729)",
+            "structure": "cau",
+            "limits_by_speed_kmh": { "40": null, "60": 175, "80": 200, "100": 250, "120": 250 }
+          },
+          {
+            "road_class_code": "cao_toc",
+            "road_class_desc": "Đường cao tốc (TCVN 5729)",
+            "structure": "cong",
+            "limits_by_speed_kmh": { "40": null, "60": 150, "80": 150, "100": 150, "120": 150 }
+          },
+          {
+            "road_class_code": "cap_I_IV",
+            "road_class_desc": "Đường ô tô cấp I–IV (TCVN 4054)",
+            "structure": "cau",
+            "limits_by_speed_kmh": { "40": 125, "60": 150, "80": 175, "100": 200, "120": 200 }
+          },
+          {
+            "road_class_code": "cap_I_IV",
+            "road_class_desc": "Đường ô tô cấp I–IV (TCVN 4054)",
+            "structure": "cong",
+            "limits_by_speed_kmh": { "40": 125, "60": 125, "80": 150, "100": 150, "120": 150 }
+          }
+        ],
+        "precamber_max_slope_inv": 125,
+        "_precamber_note": "Cho phép tạo 'vồng' trước với độ dốc dọc tối đa 1/125"
+      },
+      "transition_length_formulas": {
+        "_ref": "Công thức E.1, E.2, E.3, E.4",
+        "E1_Lct_total":          "Lct >= L1 + L2",
+        "E2_L1_near_bridge":     "L1 >= (DeltaSf - DeltaSc)/S, min = 3*H + (3..5) m",
+        "E3_L1_side_culvert":    "L1 >= (DeltaSf - DeltaScg)/S, min = D + 2*H",
+        "E4_L2":                 "L2 >= (DeltaS1 - DeltaSf)/S",
+        "min_extra_m_range":     [3.0, 5.0],
+        "fill_slope_ratio":      "1:2"
+      },
+      "approach_slab_E2": {
+        "_ref": "Bảng E.2 — Chiều dài bản quá độ",
+        "_unit": "m",
+        "rows": [
+          { "bridge_type_code": "small",  "bridge_type_desc": "Cầu nhỏ",  "length_min_m":  5,   "length_max_m": null },
+          { "bridge_type_code": "medium", "bridge_type_desc": "Cầu trung", "length_min_m":  8,   "length_max_m":   12 },
+          { "bridge_type_code": "large",  "bridge_type_desc": "Cầu lớn",  "length_min_m":  8,   "length_max_m":   12 }
+        ],
+        "thickness_rule": "t >= max(L/20, 300 mm)",
+        "depth_below_pavement_mm": 700,
+        "slope_pct_range": [4, 10],
+        "reinforcement": "Cốt thép 2 lớp trên và dưới",
+        "split_segment_m_range": [4, 8],
+        "_split_note": "Khi L quá lớn → chia nhiều đoạn (4–8) m"
+      },
+      "soft_soil_treatment_E422": {
+        "_ref": "E.4.2 — Giải pháp xử lý đất yếu trong đoạn chuyển tiếp",
+        "segment_length_m_range": [5, 15],
+        "min_consolidation_pct_before_abutment": 90,
+        "methods": [
+          "Thay đất",
+          "Chất tải tạm / gia tải khử lún",
+          "Bấc thấm + cọc cát thoát nước thẳng đứng",
+          "Bơm hút chân không",
+          "Đầm rung nền",
+          "Cọc đất xi măng / cọc đất vôi",
+          "Cọc vật liệu hạt (cọc cát, cọc đá dăm)"
+        ],
+        "alternative_when_infeasible": [
+          "Sàn giảm tải trên hệ móng cọc BTCT",
+          "Cống hộp dọc thay thế phần nền đắp đầu cầu"
+        ],
+        "pile_step_design": {
+          "depth_reduction_step_pct": [10, 15],
+          "spacing_increase_factor":   [1.2, 1.5],
+          "_note": "Khi dùng cọc gia cố — thay đổi chiều sâu + mật độ cọc theo bậc thang để đảm bảo độ bằng phẳng Bảng E.1"
+        }
+      },
+      "H_max_recommended_m": {
+        "no_soft_soil":   6.0,
+        "with_soft_soil": 4.0,
+        "_note": "E.4.1 — chiều cao đất đắp sau mố cầu, cạnh cống nên chọn nhỏ hơn các giá trị này"
+      }
+    },
+    "sw_overturning_diagram": {
+      "_ref": "49-ke-sw-overturning-diagram.md — Hình minh họa tải trọng gây lật quanh chân cừ",
+      "_note": "Cấu hình matplotlib diagram cho expander 'Sơ đồ minh họa' Mục E tab ke_sw",
+      "figsize_inches":      [11, 8],
+      "dpi_streamlit":       110,
+      "Fs_min_overturning":  1.20,
+      "colors": {
+        "fill_front":         "#D2B48C",
+        "natural_front":      "#A4D2EB",
+        "natural_back":       "#B8D8B8",
+        "pile":               "#1565C0",
+        "pivot":              "#FF6B6B",
+        "pivot_edge":         "#a01010",
+        "active_pressure":    "#D32F2F",
+        "active_tri_fill":    "#FFCDD2",
+        "passive_pressure":   "#2E7D32",
+        "passive_tri_fill":   "#C8E6C9",
+        "moment_lat":         "#D32F2F",
+        "moment_giu":         "#2E7D32",
+        "water_front":        "#1E90FF",
+        "water_back":         "#0066CC",
+        "surcharge":          "#D32F2F"
+      },
+      "components": [
+        "earth_layers (fill_front, natural_front, natural_back)",
+        "sheet_pile (vertical strip)",
+        "pivot_point (toe)",
+        "water_table_lines (front + back)",
+        "surcharge_arrows (q on front top)",
+        "active_pressure_triangle + arrows (front)",
+        "passive_pressure_triangle + arrows (back, below dredge)",
+        "lever_arms z_a + z_p (annotation arrows)",
+        "moment_arcs M_lat (CCW) + M_giu (CW) around toe",
+        "Fs_result_box (LaTeX, color-coded pass/fail)"
+      ],
+      "default_soil_for_demo": {
+        "_note": "Khi không có dữ liệu lớp cụ thể — dùng sét bùn yếu chung",
+        "phi_deg": 2.0,
+        "c_kPa":   10.0,
+        "gamma_kNm3":     14.8,
+        "gamma_sub_kNm3": 4.99
+      },
+      "default_fill_for_demo": {
+        "phi_deg": 25.0,
+        "c_kPa":   0.0,
+        "gamma_kNm3":     18.0,
+        "gamma_sub_kNm3": 8.0
+      }
+    },
+    "sw_stability_search": {
+      "_ref": "48-ke-sw-L-optimal-search.md — Thuật toán tìm L cừ SW tối ưu lặp +1m",
+      "_note": "Áp dụng trong Mục E tab ke_sw khi HK có Fs không đạt — tự động lặp tăng L",
+      "Fs_thresholds": {
+        "Bishop":              1.40,
+        "Spencer":              1.40,
+        "Morgenstern_Price":    1.40,
+        "Overturning":          1.20,
+        "_min_slip_methods":    1.40,
+        "_min_overturning":     1.20,
+        "_combined_pass":       "min(Fs_Bishop, Fs_Spencer, Fs_MP) >= 1.40 AND Fs_lat >= 1.20"
+      },
+      "search_params": {
+        "L_increment_m":       1.0,
+        "L_max_default_m":     50.0,
+        "L_max_from_catalog":  true,
+        "_L_max_note":         "L_max thực tế lấy từ sw_pile_catalog.json[pile_type].L_max_m"
+      },
+      "save_policy": {
+        "save_every_iteration":  true,
+        "_note":                 "Lưu cả bước KHÔNG ĐẠT vào ke_sw_L_iteration — phục vụ tra cứu",
+        "mark_final_pass":       true,
+        "_final_note":           "Bước đầu tiên đạt → is_final=1; các bước trước is_final=0"
+      },
+      "sqlite_table": "ke_sw_L_iteration",
+      "ui_trigger_label":     "Tìm L tối ưu cho HK chưa đạt",
+      "ui_show_history":      true
+    },
+    "cdm_profile_plot": {
+      "_ref": "scripts/app_cdm.py — tab tvtk_prep section 5 + ke_sw VST charts",
+      "_doc": "47-tvtk-cdm-trac-doc-luong-chinh.md",
+      "_note": "Quy ước hiển thị trắc dọc CDM 3 zone + bảng L_CDM đào/đắp + Cu tính toán trên VST charts",
+      "soft_symbols_for_H_calc": ["1", "1b", "2", "XMD"],
+      "soft_symbols_for_Ip_avg": ["1", "1b", "CH", "MH", "CH-OH", "MH-OH"],
+      "excavation_warning_rule": "warn nếu (elev - top) > penetration_m — gợi ý xem lại top_elev_m cho từng zone",
+      "profile_chart_colors": {
+        "natural_ground":      "#7B3F00",
+        "design_elev":         "#2ca02c",
+        "cdm_top":             "#1a6fbd",
+        "soft_layer_bottom":   "#e377c2",
+        "cdm_pile_bottom":     "#d62728",
+        "cdm_pile_tip_marker": "#ff7f0e",
+        "fill_area":           "rgba(210,180,100,0.22)",
+        "cdm_treatment_area":  "rgba(30,120,200,0.16)",
+        "cu_corrected":        "#15803d"
+      },
+      "vst_chart_traces": {
+        "Su_VST":        { "color": "borehole_color", "marker": "circle", "linewidth": 1.8 },
+        "Cu_corrected":  { "color": "#15803d",        "marker": "diamond", "linewidth": 2.4,
+                           "formula": "Cu = mu * Su (TCCS 41 C.5)" },
+        "Cu_TB_line":    { "color": "#15803d", "dash": "dashdot", "linewidth": 1.5 }
+      },
+      "L_CDM_table_columns": [
+        "Hố khoan", "Khu vực", "Cao độ TN (m)", "Đỉnh cọc TK (m)",
+        "Đào/Đắp (m)", "H đất yếu (m)", "L (không đào) m", "L CDM (m)", "Ghi chú"
+      ]
+    },
+    "bjerrum_correction": {
+      "_ref": "TCCS 41:2022/TCĐBVN — Phụ lục C.3.2 — Bảng C.1 — Công thức C.5",
+      "_note": "Cường độ kháng cắt tính toán c_u = μ · S_u (VST). Áp dụng cho lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp; xem góc ma sát φ = 0.",
+      "formula_C5": "c_u^i = mu * S_u^i",
+      "interpolation": "linear",
+      "out_of_range": "clamp_to_endpoints",
+      "mu_by_Ip": [
+        { "Ip": 10, "mu": 1.09  },
+        { "Ip": 20, "mu": 1.00  },
+        { "Ip": 30, "mu": 0.925 },
+        { "Ip": 40, "mu": 0.86  },
+        { "Ip": 50, "mu": 0.80  },
+        { "Ip": 60, "mu": 0.75  },
+        { "Ip": 70, "mu": 0.70  }
+      ],
+      "applies_to": [
+        "Es = 250 * Cu (Mesri & Olson 1974) - dùng Cu sau hiệu chỉnh thay vì Su gốc",
+        "Rs = alpha * Cu * P * L (sức kháng ma sát thân cọc trong sét)",
+        "Bishop / Fellenius lớp yếu: c = Cu, phi = 0"
+      ]
     }
   },
   "tccs41_sampling_requirements": {
