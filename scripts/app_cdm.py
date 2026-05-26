@@ -15979,6 +15979,7 @@ if _page == "tvtk_prep":
 
     if _qtt_elev_pts:
         import plotly.graph_objects as _go_surf
+        from plotly.subplots import make_subplots as _make_subplots
         _xs_raw = sorted(set(r[0] for r in _qtt_elev_pts))
         _ys_raw = sorted(set(r[1] for r in _qtt_elev_pts))
         _nx, _ny = len(_xs_raw), len(_ys_raw)
@@ -15992,97 +15993,103 @@ if _page == "tvtk_prep":
             if r[2] is not None: _Z_nat[_j, _i]  = r[2]
             if r[3] is not None: _Z_des[_j, _i]  = r[3]
             if r[4] is not None: _Z_fill[_j, _i] = r[4]
-        _X_grid = _np_surf.array(_xs_raw)
-        _Y_grid = _np_surf.array(_ys_raw)
 
-        with st.expander("Bề mặt cao độ 3D — Quảng Trường Trung Tâm (QTT)", expanded=True):
-            _surf_mode = st.radio(
-                "Hiển thị:",
-                ["Tự nhiên + Thiết kế", "Chênh cao (đắp/đào)"],
-                horizontal=True, key="_surf_mode_qtt",
+        _fill_flat = _Z_fill[~_np_surf.isnan(_Z_fill)].ravel()
+        _fill_abs  = float(_np_surf.nanmax(_np_surf.abs(_Z_fill)))
+
+        # Ranh CDM overlay (Scatter)
+        def _bnd_scatter(row, col):
+            if not _qtt_boundary:
+                return None
+            bx = [v[0] for v in _qtt_boundary] + [_qtt_boundary[0][0]]
+            by = [v[1] for v in _qtt_boundary] + [_qtt_boundary[0][1]]
+            return _go_surf.Scatter(
+                x=bx, y=by, mode="lines",
+                line=dict(color="#f59e0b", width=2.5, dash="dot"),
+                name="Ranh CDM", showlegend=(row == 1 and col == 1),
+                hoverinfo="skip",
             )
 
-            _col3d_a, _col3d_b = st.columns([3, 1])
+        with st.expander("Bề mặt cao độ — Quảng Trường Trung Tâm (QTT)", expanded=True):
+            _col2d_a, _col2d_b = st.columns([4, 1])
 
-            if _surf_mode == "Tự nhiên + Thiết kế":
-                _fig3d = _go_surf.Figure()
-                _fig3d.add_trace(_go_surf.Surface(
-                    x=_X_grid, y=_Y_grid, z=_Z_nat,
-                    name="Cao độ tự nhiên",
-                    colorscale="Blues",
-                    opacity=0.85,
-                    showscale=False,
-                    hovertemplate="E=%{x:.1f}<br>N=%{y:.1f}<br>Tự nhiên=%{z:.2f}m<extra></extra>",
-                ))
-                _fig3d.add_trace(_go_surf.Surface(
-                    x=_X_grid, y=_Y_grid, z=_Z_des,
-                    name="Cao độ thiết kế",
-                    colorscale="Oranges",
-                    opacity=0.75,
-                    showscale=False,
-                    hovertemplate="E=%{x:.1f}<br>N=%{y:.1f}<br>Thiết kế=%{z:.2f}m<extra></extra>",
-                ))
-                _fig3d_title = "Bề mặt cao độ tự nhiên (xanh) và thiết kế (cam)"
-            else:
-                _fig3d = _go_surf.Figure()
-                _fig3d.add_trace(_go_surf.Surface(
-                    x=_X_grid, y=_Y_grid, z=_Z_fill,
-                    colorscale=[
-                        [0.0, "#d32f2f"], [0.35, "#ef9a9a"], [0.5, "#ffffff"],
-                        [0.65, "#90caf9"], [1.0, "#1565c0"],
-                    ],
-                    zmid=0,
-                    showscale=True,
-                    colorbar=dict(title="Đắp/Đào (m)", thickness=16, len=0.7),
-                    hovertemplate="E=%{x:.1f}<br>N=%{y:.1f}<br>Chênh=%{z:.2f}m<extra></extra>",
-                ))
-                _fig3d_title = "Chênh cao độ thiết kế − tự nhiên (đỏ = đào, xanh = đắp)"
+            _fig2d = _make_subplots(
+                rows=1, cols=3,
+                subplot_titles=["Cao độ tự nhiên (m)", "Cao độ thiết kế (m)", "Chênh cao: TK − TN (m)"],
+                shared_yaxes=True,
+                horizontal_spacing=0.06,
+            )
 
-            # Ranh CDM overlay (projected onto mean design elevation)
+            _common_xy = dict(
+                x=_xs_raw, y=_ys_raw,
+                xaxis_type="linear",
+                hoverongaps=False,
+            )
+
+            # Panel 1 — tự nhiên
+            _fig2d.add_trace(_go_surf.Heatmap(
+                z=_Z_nat, colorscale="Blues",
+                colorbar=dict(x=0.28, len=0.85, thickness=12, title="m"),
+                hovertemplate="E=%{x:.0f}<br>N=%{y:.0f}<br>TN=%{z:.2f}m<extra></extra>",
+                **_common_xy,
+            ), row=1, col=1)
             if _qtt_boundary:
-                _bnd_z = float(_np_surf.nanmean(_Z_des)) if _surf_mode == "Tự nhiên + Thiết kế" else 0.0
-                _fig3d.add_trace(_go_surf.Scatter3d(
-                    x=[v[0] for v in _qtt_boundary] + [_qtt_boundary[0][0]],
-                    y=[v[1] for v in _qtt_boundary] + [_qtt_boundary[0][1]],
-                    z=[_bnd_z] * (len(_qtt_boundary) + 1),
-                    mode="lines",
-                    line=dict(color="#f59e0b", width=4),
-                    name="Ranh vùng xử lý nền CDM",
-                    hoverinfo="skip",
-                ))
+                _fig2d.add_trace(_bnd_scatter(1, 1), row=1, col=1)
 
-            _fig3d.update_layout(
-                height=600,
-                title=_fig3d_title,
+            # Panel 2 — thiết kế
+            _fig2d.add_trace(_go_surf.Heatmap(
+                z=_Z_des, colorscale="Oranges",
+                colorbar=dict(x=0.63, len=0.85, thickness=12, title="m"),
+                hovertemplate="E=%{x:.0f}<br>N=%{y:.0f}<br>TK=%{z:.2f}m<extra></extra>",
+                showlegend=False,
+                **_common_xy,
+            ), row=1, col=2)
+            if _qtt_boundary:
+                _fig2d.add_trace(_bnd_scatter(1, 2), row=1, col=2)
+
+            # Panel 3 — chênh cao (đỏ=đào, xanh=đắp)
+            _fig2d.add_trace(_go_surf.Heatmap(
+                z=_Z_fill,
+                colorscale=[
+                    [0.0,  "#b71c1c"], [0.3, "#ef9a9a"], [0.5, "#f5f5f5"],
+                    [0.7, "#90caf9"],  [1.0, "#0d47a1"],
+                ],
+                cmid=0,
+                cmin=-_fill_abs, cmax=_fill_abs,
+                colorbar=dict(x=0.99, len=0.85, thickness=12, title="m"),
+                hovertemplate="E=%{x:.0f}<br>N=%{y:.0f}<br>Fill=%{z:+.2f}m<extra></extra>",
+                showlegend=False,
+                **_common_xy,
+            ), row=1, col=3)
+            if _qtt_boundary:
+                _fig2d.add_trace(_bnd_scatter(1, 3), row=1, col=3)
+
+            _fig2d.update_layout(
+                height=420,
                 template="plotly_dark",
-                scene=dict(
-                    xaxis_title="Easting (m)",
-                    yaxis_title="Northing (m)",
-                    zaxis_title="Cao độ (m)",
-                    aspectmode="manual",
-                    aspectratio=dict(x=1.2, y=1.0, z=0.35),
-                    camera=dict(eye=dict(x=1.4, y=-1.6, z=0.8)),
-                ),
-                margin=dict(l=0, r=0, t=50, b=0),
-                legend=dict(orientation="h", y=1.05, font=dict(size=10)),
+                margin=dict(l=10, r=80, t=50, b=10),
+                legend=dict(orientation="h", y=1.12, font=dict(size=10)),
             )
-            _col3d_a.plotly_chart(_fig3d, use_container_width=True,
+            for _c in (1, 2, 3):
+                _fig2d.update_xaxes(title_text="Easting (m)", row=1, col=_c, tickangle=-30)
+            _fig2d.update_yaxes(title_text="Northing (m)", row=1, col=1)
+
+            _col2d_a.plotly_chart(_fig2d, use_container_width=True,
                                   config={"scrollZoom": True, "displayModeBar": True})
 
-            # Bảng thống kê tóm tắt
-            _fill_flat = _Z_fill[~_np_surf.isnan(_Z_fill)].ravel()
-            _col3d_b.markdown("**Thống kê chênh cao**")
-            _col3d_b.metric("Cần đào (max)", f"{_fill_flat.min():.2f} m")
-            _col3d_b.metric("Cần đắp (max)", f"{_fill_flat.max():.2f} m")
-            _col3d_b.metric("TB toàn khu", f"{_fill_flat.mean():+.2f} m")
+            # Thống kê
+            _col2d_b.markdown("**Thống kê chênh cao**")
+            _col2d_b.metric("Cần đào (max)", f"{_fill_flat.min():.2f} m")
+            _col2d_b.metric("Cần đắp (max)", f"{_fill_flat.max():.2f} m")
+            _col2d_b.metric("TB toàn khu", f"{_fill_flat.mean():+.2f} m")
             _n_dao = int((_fill_flat < -0.05).sum())
             _n_dap = int((_fill_flat >  0.05).sum())
-            _col3d_b.metric("Điểm cần đào", f"{_n_dao} / {len(_fill_flat)}")
-            _col3d_b.metric("Điểm cần đắp", f"{_n_dap} / {len(_fill_flat)}")
-            _col3d_b.caption(
-                f"Cao độ tự nhiên: {_np_surf.nanmin(_Z_nat):.2f}–{_np_surf.nanmax(_Z_nat):.2f} m  \n"
-                f"Cao độ thiết kế: {_np_surf.nanmin(_Z_des):.2f}–{_np_surf.nanmax(_Z_des):.2f} m  \n"
-                f"Lưới 20×20 m, {len(_qtt_elev_pts)} điểm"
+            _col2d_b.metric("Điểm cần đào", f"{_n_dao} / {len(_fill_flat)}")
+            _col2d_b.metric("Điểm cần đắp", f"{_n_dap} / {len(_fill_flat)}")
+            _col2d_b.caption(
+                f"Tự nhiên: {_np_surf.nanmin(_Z_nat):.2f}–{_np_surf.nanmax(_Z_nat):.2f} m  \n"
+                f"Thiết kế: {_np_surf.nanmin(_Z_des):.2f}–{_np_surf.nanmax(_Z_des):.2f} m  \n"
+                f"Lưới 20×20 m · {len(_qtt_elev_pts)} điểm"
             )
 
     # ── Trắc dọc cao độ Kè KE ────────────────────────────────────────────────
