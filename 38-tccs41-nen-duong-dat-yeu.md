@@ -5,75 +5,6 @@
 
 ---
 
-## 0. Nhận dạng đất yếu (Điều 4) — ƯU TIÊN ĐỌC TRƯỚC
-
-### 0.1 Nhận dạng theo hệ số rỗng và cường độ kháng cắt (Điều 4.1)
-
-#### Sét và sét pha — đất yếu khi thỏa ÍT NHẤT MỘT điều kiện:
-
-| Chỉ tiêu | Ngưỡng đất yếu | Nguồn thí nghiệm | Cột SQLite |
-|----------|---------------|-----------------|------------|
-| Hệ số rỗng **e** | Sét: $e \geq 1{,}5$ · Sét pha: $e \geq 1{,}0$ | Nén cố kết (oedometer) | `lab_tests.e0` |
-| Lực kháng cắt **c** | $c \leq 15\ \text{kPa}$ | Cắt nhanh UU trong phòng | `lab_tests.c_kPa` |
-| Góc ma sát trong **φ** | $\varphi < 10°$ | Cắt nhanh UU trong phòng | `lab_tests.phi_deg` |
-| Cường độ cắt cánh **Cu** | $C_u \leq 35\ \text{kPa}$ | Cắt cánh hiện trường (VST) | `vane_shear_tests.Su_kPa` |
-| Xuyên tĩnh **qc** | $q_c \leq 0{,}1\ \text{MPa}$ | CPT | *(chưa có bảng)* |
-| SPT | $N < 5$ | SPT | `spt_values.N` |
-
-**Thêm điều kiện nhận dạng chung:**
-- Độ ẩm $W$ gần bằng hoặc cao hơn giới hạn chảy $W_L$
-
-#### Bùn cát và bùn cát mịn — đất yếu khi:
-
-$$e > 1{,}0 \quad \text{và} \quad G_s > 0{,}8$$
-
-#### Đất hữu cơ — đầm lầy than bùn:
-
-| Hàm lượng hữu cơ | Phân loại |
-|:-:|---|
-| 20 ÷ 30 % | Đất nhiễm than bùn |
-| 30 ÷ 60 % | Đất than bùn |
-| > 60 % | Than bùn |
-
-Đất hữu cơ được xem là đất yếu khi đồng thời đạt các trị số **e, c, φ, Cu** như mục trên.
-
----
-
-### 0.2 Nhận dạng theo trạng thái tự nhiên (Điều 4.2)
-
-Chỉ số trạng thái (chỉ số chảy):
-
-$$B = \frac{W - W_p}{W_L - W_p}$$
-
-| Giá trị B | Trạng thái | Đánh giá |
-|:-:|---|---|
-| $B > 1$ | Chảy | Đất yếu — phải xử lý |
-| $0{,}75 < B \leq 1{,}0$ | Dẻo chảy | Đất yếu loại I |
-| $0{,}50 < B \leq 0{,}75$ | Dẻo mềm | Đất yếu loại II — cần kiểm tra |
-| $B \leq 0{,}5$ | Dẻo cứng → cứng | Không phải đất yếu |
-
----
-
-### 0.3 Áp dụng cho dự án TTHC
-
-**Nguyên tắc phân loại layer trong SQLite `layers.symbol`:**
-
-| Symbol | Mô tả địa tầng | Phân loại mặc định | Ghi chú |
-|--------|---------------|-------------------|---------|
-| `1` | Bùn sét / sét mềm lớp trên | **Đất yếu** (luôn) | Cu_VST thực đo |
-| `1b` | Sét mềm dưới lớp 1 | **Đất yếu** (luôn) | Tiếp giáp lớp 1 |
-| `XMD` | Bùn xen mỏng (KE-HK8) | **Đất yếu** (luôn) | Đặc biệt, không có e0 |
-| `2`, `2b`, `3` | Sét dẻo / cứng hơn | **Kiểm tra e₀**: yếu nếu $e_0 > 1{,}0$ | Tra `lab_tests.e0` |
-| `4`, `5a`, `5b` | Cát / sét cứng | Không yếu | Bỏ qua |
-| `F` | Đất đắp | Không yếu | |
-
-**Hàm Python:** `scripts/settlement_calc.py::classify_soft_soil(lab_row, vst_su, spt_N)`  
-**Bảng SQLite:** `soft_soil_classification` — lưu kết quả phân loại per mẫu thí nghiệm
-
----
-
----
-
 ## 1. Phân loại đất yếu (Điều 4.1)
 
 | Loại | Chỉ số chảy B | Mô tả | Trạng thái chịu tải |
@@ -225,14 +156,69 @@ def check_samples_vs_tccs41(zone_code) -> dict:
 
 ---
 
-## 3. Tiêu chuẩn độ lún còn lại sau thi công (Bảng 1 — Điều 6.1)
+## 3. Tiêu chuẩn độ lún cố kết cho phép còn lại ΔS (Bảng 1 — Điều 6.2.3)
 
-| Loại đường | Đoạn gần mố cầu (m) | Đoạn hai bên cầu/cống chui | Đoạn thông thường |
+**Điều 6.2.3:** Sau khi hoàn thành công trình nền mặt đường xây dựng trên vùng đất yếu, phần độ lún cố kết $\Delta S$ tiếp tục xảy ra sau đó tại mọi vị trí của nền đường trong thời hạn khai thác sử dụng $t$ năm với:
+
+- **$t = 15$ năm** — kết cấu mặt đường **mềm** (bê tông nhựa, láng nhựa)
+- **$t = 30$ năm** — kết cấu mặt đường **cứng** (bê tông xi măng)
+
+được cho phép như sau:
+
+### Bảng 1 — Phần độ lún cố kết cho phép còn lại ΔS
+
+| Loại, cấp đường | Đoạn gần mố cầu | Đoạn hai bên cống / cống chui | Các đoạn nền đắp thông thường |
 |---|:---:|:---:|:---:|
-| Cao tốc ≥ 80 km/h, tăng mặt cao A1 | **≤ 10 cm** | **≤ 20 cm** | **≤ 30 cm** |
-| Đường cấp ≤ 60 km/h, tăng mặt cao A2 | **≤ 20 cm** | **≤ 30 cm** | **≤ 40 cm** |
+| **1.** Đường cao tốc, đường ô tô các cấp có tốc độ thiết kế $\geq 80$ km/h và có tầng mặt cấp cao A1 | **≤ 10 cm** | **≤ 20 cm** | **≤ 30 cm** |
+| **2.** Đường có tốc độ thiết kế $\leq 60$ km/h và có tầng mặt cấp cao A1 | **≤ 20 cm** | **≤ 30 cm** | **≤ 40 cm** |
 
-**Tốc độ lún còn lại:** ≤ 2 cm/năm sau khi làm xong mặt đường
+**Chú thích:**
+
+- Phần độ lún cố kết còn lại $\Delta S$ là phần lún cố kết **chưa hết** sau khi làm xong áo đường của đoạn nền đắp trên đất yếu.
+- Trị số $\Delta S$ được xác định theo công thức **(36)** tùy thuộc độ cố kết $U$ đạt được vào thời điểm làm xong kết cấu mặt đường:
+
+$$\Delta S = S_c \cdot (1 - U_t)$$
+
+trong đó $S_c$ = tổng lún cố kết sơ cấp dự báo (theo Điều 9), $U_t$ = độ cố kết đạt được tại thời điểm $t$ làm xong mặt đường.
+
+**Tốc độ lún còn lại:** $\leq 2$ cm/năm sau khi làm xong mặt đường (Điều 6.2.4)
+
+---
+
+## 3b. Cường độ kháng cắt tính toán $c_u$ — Hiệu chỉnh Bjerrum (Phụ lục C.3.2)
+
+**Phạm vi:** Đối với các lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp — sử dụng kết quả thí nghiệm cắt cánh hiện trường (VST), trị số cường độ kháng cắt **tính toán** $c_u^i$ được xác định theo công thức C.5 (xem góc ma sát $\varphi = 0$):
+
+$$c_u^i = \mu \cdot S_u^i \qquad \text{(C.5)}$$
+
+**Trong đó:**
+
+| Ký hiệu | Ý nghĩa | Đơn vị |
+|---|---|---|
+| $S_u^i$ | Cường độ kháng cắt nguyên trạng không thoát nước của lớp $i$ — từ VST | kPa |
+| $\mu$ | Hệ số hiệu chỉnh Bjerrum (Bảng C.1) — xét ảnh hưởng bất đẳng hướng, tốc độ cắt và tính phá hoại liên tiếp của đất yếu | — |
+| $c_u^i$ | Cường độ kháng cắt **tính toán** dùng cho tính ổn định, sức chịu tải | kPa |
+
+### Bảng C.1 — Trị số μ theo chỉ số dẻo $I_p$
+
+| $I_p$ | 10 | 20 | 30 | 40 | 50 | 60 | 70 |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| $\mu$ | **1,09** | **1,00** | **0,925** | **0,86** | **0,80** | **0,75** | **0,70** |
+
+**Quy tắc nội suy:**
+- Giữa các khoảng → **nội suy bậc nhất** ($I_p = 25 \Rightarrow \mu = 0{,}9625$).
+- Ngoài bảng → clamp đầu/cuối ($I_p < 10 \Rightarrow \mu = 1{,}09$; $I_p > 70 \Rightarrow \mu = 0{,}70$).
+
+**Phương án thay thế (C.5b):** Có thể dùng đặc trưng sức kháng cắt theo thí nghiệm cắt không cố kết không thoát nước trong phòng ($c_i, \varphi_i$) thay vì VST — đưa vào tính toán theo công thức (C.1) hoặc (C.2).
+
+**Áp dụng trong dự án:**
+
+| Tính toán | Trước hiệu chỉnh | Sau hiệu chỉnh |
+|---|---|---|
+| Mô đun đàn hồi đất yếu $E_s$ | $E_s = 250 \cdot S_u$ (Mesri 1974) | $E_s = 250 \cdot c_u = 250 \cdot \mu \cdot S_u$ |
+| Sức kháng ma sát thân cọc trong sét | $R_s = \alpha \cdot S_u \cdot P \cdot L$ | $R_s = \alpha \cdot c_u \cdot P \cdot L$ |
+| Hệ số ổn định Bishop / Fellenius (lớp yếu) | $c = S_u$, $\varphi = 0$ | $c = c_u = \mu \cdot S_u$, $\varphi = 0$ |
+| Bishop với áp lực nước lỗ rỗng (cố kết) | giữ nguyên $c', \varphi'$ | giữ nguyên |
 
 ---
 

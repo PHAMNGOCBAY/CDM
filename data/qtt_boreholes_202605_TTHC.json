@@ -1,0 +1,1772 @@
+{
+  "_meta": {
+    "generated": "2026-05-26",
+    "zone": "QTTTTP",
+    "n_boreholes": 6,
+    "source": "QTTTTP HCM.Tru- INPUT SQLITE-20260526.dxf",
+    "description": "Hố khoan Quảng Trường Trung Tâm TTHC HCM — 6 HK ND-02..ND-07",
+    "coord_system": "VN-2000, x_coord_m=Northing, y_coord_m=Easting"
+  },
+  "boreholes": [
+    {
+      "name": "ND-02",
+      "db_name": "QTTTTP-ND-02",
+      "zone": "QTTTTP",
+      "northing_m": 1191680.407,
+      "easting_m": 605239.025,
+      "elevation_m": 1.7,
+      "total_depth_m": 31.0,
+      "date_start": "2026-05-11",
+      "date_end": "2026-05-12",
+      "layers": [
+        {
+          "symbol": "F",
+          "uscs": "F",
+          "description": "San lấp, đất đắp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.8,
+          "thickness_m": 2.8,
+          "mrl_top_m": 1.7,
+          "mrl_bot_m": -1.1
+        },
+        {
+          "symbol": "1",
+          "uscs": "CH",
+          "description": "Bùn sét, rất dẻo, trạng thái chảy đến dẻo mềm, màu xám xanh",
+          "depth_top_m": 2.8,
+          "depth_bot_m": 25.0,
+          "thickness_m": 22.2,
+          "mrl_top_m": -1.1,
+          "mrl_bot_m": -23.3
+        },
+        {
+          "symbol": "2",
+          "uscs": "CL-CH",
+          "description": "Sét ít dẻo đến rất dẻo, dẻo cứng đến nửa cứng",
+          "depth_top_m": 25.0,
+          "depth_bot_m": 27.2,
+          "thickness_m": 2.2,
+          "mrl_top_m": -23.3,
+          "mrl_bot_m": -25.5
+        },
+        {
+          "symbol": "3",
+          "uscs": "ML",
+          "description": "Cát bụi, kết cấu chặt vừa",
+          "depth_top_m": 27.2,
+          "depth_bot_m": 31.0,
+          "thickness_m": 3.8,
+          "mrl_top_m": -25.5,
+          "mrl_bot_m": -29.3
+        }
+      ],
+      "spt": [
+        {
+          "depth_from_m": 2.0,
+          "depth_to_m": 2.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 4.0,
+          "depth_to_m": 4.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 6.0,
+          "depth_to_m": 6.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 8.0,
+          "depth_to_m": 8.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 10.0,
+          "depth_to_m": 10.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 12.0,
+          "depth_to_m": 12.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 14.0,
+          "depth_to_m": 14.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 16.0,
+          "depth_to_m": 16.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 18.0,
+          "depth_to_m": 18.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 20.0,
+          "depth_to_m": 20.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 22.0,
+          "depth_to_m": 22.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 24.0,
+          "depth_to_m": 24.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 26.0,
+          "depth_to_m": 26.45,
+          "blow_seating": 2,
+          "blow_n1": 3,
+          "blow_n2": 5,
+          "N_value": 8
+        },
+        {
+          "depth_from_m": 28.0,
+          "depth_to_m": 28.45,
+          "blow_seating": 8,
+          "blow_n1": 12,
+          "blow_n2": 20,
+          "N_value": 32
+        },
+        {
+          "depth_from_m": 30.0,
+          "depth_to_m": 30.45,
+          "blow_seating": 8,
+          "blow_n1": 11,
+          "blow_n2": 19,
+          "N_value": 30
+        },
+        {
+          "depth_from_m": 31.0,
+          "depth_to_m": 31.45,
+          "blow_seating": 3,
+          "blow_n1": 9,
+          "blow_n2": 12,
+          "N_value": 21
+        }
+      ],
+      "samples": [
+        {
+          "sample_code": "D1",
+          "sample_type": "D",
+          "depth_from_m": 1.8,
+          "depth_to_m": 2.0
+        },
+        {
+          "sample_code": "U1",
+          "sample_type": "U",
+          "depth_from_m": 3.4,
+          "depth_to_m": 4.0
+        },
+        {
+          "sample_code": "U2",
+          "sample_type": "U",
+          "depth_from_m": 5.4,
+          "depth_to_m": 6.0
+        },
+        {
+          "sample_code": "U3",
+          "sample_type": "U",
+          "depth_from_m": 7.4,
+          "depth_to_m": 8.0
+        },
+        {
+          "sample_code": "U4",
+          "sample_type": "U",
+          "depth_from_m": 9.4,
+          "depth_to_m": 10.0
+        },
+        {
+          "sample_code": "U5",
+          "sample_type": "U",
+          "depth_from_m": 11.4,
+          "depth_to_m": 12.0
+        },
+        {
+          "sample_code": "U6",
+          "sample_type": "U",
+          "depth_from_m": 13.4,
+          "depth_to_m": 14.0
+        },
+        {
+          "sample_code": "U7",
+          "sample_type": "U",
+          "depth_from_m": 15.4,
+          "depth_to_m": 16.0
+        },
+        {
+          "sample_code": "U8",
+          "sample_type": "U",
+          "depth_from_m": 17.4,
+          "depth_to_m": 18.0
+        },
+        {
+          "sample_code": "U9",
+          "sample_type": "U",
+          "depth_from_m": 19.4,
+          "depth_to_m": 20.0
+        },
+        {
+          "sample_code": "U10",
+          "sample_type": "U",
+          "depth_from_m": 21.4,
+          "depth_to_m": 22.0
+        },
+        {
+          "sample_code": "U11",
+          "sample_type": "U",
+          "depth_from_m": 23.4,
+          "depth_to_m": 24.0
+        },
+        {
+          "sample_code": "U12",
+          "sample_type": "U",
+          "depth_from_m": 25.4,
+          "depth_to_m": 26.0
+        },
+        {
+          "sample_code": "D2",
+          "sample_type": "D",
+          "depth_from_m": 27.4,
+          "depth_to_m": 28.0
+        },
+        {
+          "sample_code": "D3",
+          "sample_type": "D",
+          "depth_from_m": 29.8,
+          "depth_to_m": 30.0
+        },
+        {
+          "sample_code": "D4",
+          "sample_type": "D",
+          "depth_from_m": 30.8,
+          "depth_to_m": 31.0
+        }
+      ]
+    },
+    {
+      "name": "ND-03",
+      "db_name": "QTTTTP-ND-03",
+      "zone": "QTTTTP",
+      "northing_m": 1191670.883,
+      "easting_m": 605340.45,
+      "elevation_m": 1.891,
+      "total_depth_m": 36.0,
+      "date_start": "2026-05-11",
+      "date_end": "2026-05-14",
+      "layers": [
+        {
+          "symbol": "F",
+          "uscs": "F",
+          "description": "San lấp, đất đắp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 3.0,
+          "thickness_m": 3.0,
+          "mrl_top_m": 1.891,
+          "mrl_bot_m": -1.109
+        },
+        {
+          "symbol": "1",
+          "uscs": "CH",
+          "description": "Bùn sét, rất dẻo, trạng thái chảy đến dẻo mềm, màu xám xanh",
+          "depth_top_m": 3.0,
+          "depth_bot_m": 22.8,
+          "thickness_m": 19.8,
+          "mrl_top_m": -1.109,
+          "mrl_bot_m": -20.909
+        },
+        {
+          "symbol": "2",
+          "uscs": "CL-CH",
+          "description": "Sét ít dẻo đến rất dẻo, dẻo cứng đến nửa cứng",
+          "depth_top_m": 22.8,
+          "depth_bot_m": 31.0,
+          "thickness_m": 8.2,
+          "mrl_top_m": -20.909,
+          "mrl_bot_m": -29.109
+        },
+        {
+          "symbol": "4",
+          "uscs": "SM",
+          "description": "Cát lẫn bụi, kết cấu chặt vừa đến chặt",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 36.0,
+          "thickness_m": 5.0,
+          "mrl_top_m": -29.109,
+          "mrl_bot_m": -34.109
+        }
+      ],
+      "spt": [
+        {
+          "depth_from_m": 4.0,
+          "depth_to_m": 4.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 6.0,
+          "depth_to_m": 6.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 8.0,
+          "depth_to_m": 8.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 10.0,
+          "depth_to_m": 10.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 12.0,
+          "depth_to_m": 12.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 14.0,
+          "depth_to_m": 14.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 16.0,
+          "depth_to_m": 16.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 18.0,
+          "depth_to_m": 18.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 20.0,
+          "depth_to_m": 20.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 22.0,
+          "depth_to_m": 22.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 24.0,
+          "depth_to_m": 24.45,
+          "blow_seating": 2,
+          "blow_n1": 2,
+          "blow_n2": 4,
+          "N_value": 6
+        },
+        {
+          "depth_from_m": 26.0,
+          "depth_to_m": 26.45,
+          "blow_seating": 2,
+          "blow_n1": 2,
+          "blow_n2": 4,
+          "N_value": 6
+        },
+        {
+          "depth_from_m": 28.0,
+          "depth_to_m": 28.45,
+          "blow_seating": 2,
+          "blow_n1": 4,
+          "blow_n2": 6,
+          "N_value": 10
+        },
+        {
+          "depth_from_m": 30.0,
+          "depth_to_m": 30.45,
+          "blow_seating": 3,
+          "blow_n1": 3,
+          "blow_n2": 6,
+          "N_value": 9
+        },
+        {
+          "depth_from_m": 32.0,
+          "depth_to_m": 32.45,
+          "blow_seating": 5,
+          "blow_n1": 9,
+          "blow_n2": 14,
+          "N_value": 23
+        },
+        {
+          "depth_from_m": 34.0,
+          "depth_to_m": 34.45,
+          "blow_seating": 10,
+          "blow_n1": 14,
+          "blow_n2": 24,
+          "N_value": 38
+        },
+        {
+          "depth_from_m": 36.0,
+          "depth_to_m": 36.45,
+          "blow_seating": 15,
+          "blow_n1": 17,
+          "blow_n2": 32,
+          "N_value": 49
+        }
+      ],
+      "samples": [
+        {
+          "sample_code": "D1",
+          "sample_type": "D",
+          "depth_from_m": 1.8,
+          "depth_to_m": 2.0
+        },
+        {
+          "sample_code": "U1",
+          "sample_type": "U",
+          "depth_from_m": 3.4,
+          "depth_to_m": 4.0
+        },
+        {
+          "sample_code": "U2",
+          "sample_type": "U",
+          "depth_from_m": 5.4,
+          "depth_to_m": 6.0
+        },
+        {
+          "sample_code": "U3",
+          "sample_type": "U",
+          "depth_from_m": 7.4,
+          "depth_to_m": 8.0
+        },
+        {
+          "sample_code": "U4",
+          "sample_type": "U",
+          "depth_from_m": 9.4,
+          "depth_to_m": 10.0
+        },
+        {
+          "sample_code": "U5",
+          "sample_type": "U",
+          "depth_from_m": 11.4,
+          "depth_to_m": 12.0
+        },
+        {
+          "sample_code": "U6",
+          "sample_type": "U",
+          "depth_from_m": 13.4,
+          "depth_to_m": 14.0
+        },
+        {
+          "sample_code": "U7",
+          "sample_type": "U",
+          "depth_from_m": 15.4,
+          "depth_to_m": 16.0
+        },
+        {
+          "sample_code": "U8",
+          "sample_type": "U",
+          "depth_from_m": 17.4,
+          "depth_to_m": 18.0
+        },
+        {
+          "sample_code": "U9",
+          "sample_type": "U",
+          "depth_from_m": 19.4,
+          "depth_to_m": 20.0
+        },
+        {
+          "sample_code": "U10",
+          "sample_type": "U",
+          "depth_from_m": 21.4,
+          "depth_to_m": 22.0
+        },
+        {
+          "sample_code": "U11",
+          "sample_type": "U",
+          "depth_from_m": 23.4,
+          "depth_to_m": 24.0
+        },
+        {
+          "sample_code": "U12",
+          "sample_type": "U",
+          "depth_from_m": 25.4,
+          "depth_to_m": 26.0
+        },
+        {
+          "sample_code": "U13",
+          "sample_type": "U",
+          "depth_from_m": 27.4,
+          "depth_to_m": 28.0
+        },
+        {
+          "sample_code": "U14",
+          "sample_type": "U",
+          "depth_from_m": 29.4,
+          "depth_to_m": 30.0
+        },
+        {
+          "sample_code": "U15",
+          "sample_type": "U",
+          "depth_from_m": 31.4,
+          "depth_to_m": 32.0
+        },
+        {
+          "sample_code": "U16",
+          "sample_type": "U",
+          "depth_from_m": 33.4,
+          "depth_to_m": 34.0
+        },
+        {
+          "sample_code": "U17",
+          "sample_type": "U",
+          "depth_from_m": 35.4,
+          "depth_to_m": 36.0
+        }
+      ]
+    },
+    {
+      "name": "ND-04",
+      "db_name": "QTTTTP-ND-04",
+      "zone": "QTTTTP",
+      "northing_m": 1191661.331,
+      "easting_m": 605441.004,
+      "elevation_m": 1.095,
+      "total_depth_m": 33.0,
+      "date_start": "2026-05-13",
+      "date_end": "2026-05-21",
+      "layers": [
+        {
+          "symbol": "1",
+          "uscs": "CH",
+          "description": "Bùn sét, rất dẻo, trạng thái chảy đến dẻo mềm, màu xám xanh",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 29.5,
+          "thickness_m": 29.5,
+          "mrl_top_m": 1.095,
+          "mrl_bot_m": -28.405
+        },
+        {
+          "symbol": "3",
+          "uscs": "ML",
+          "description": "Cát bụi, kết cấu chặt vừa",
+          "depth_top_m": 29.5,
+          "depth_bot_m": 32.6,
+          "thickness_m": 3.1,
+          "mrl_top_m": -28.405,
+          "mrl_bot_m": -31.505
+        },
+        {
+          "symbol": "4",
+          "uscs": "SM",
+          "description": "Cát lẫn bụi, kết cấu chặt vừa đến chặt",
+          "depth_top_m": 32.6,
+          "depth_bot_m": 33.0,
+          "thickness_m": 0.4,
+          "mrl_top_m": -31.505,
+          "mrl_bot_m": -31.905
+        }
+      ],
+      "spt": [
+        {
+          "depth_from_m": 2.0,
+          "depth_to_m": 2.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 4.0,
+          "depth_to_m": 4.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 6.0,
+          "depth_to_m": 6.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 8.0,
+          "depth_to_m": 8.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 10.0,
+          "depth_to_m": 10.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 12.0,
+          "depth_to_m": 12.45,
+          "blow_seating": 1,
+          "blow_n1": 0,
+          "blow_n2": 1,
+          "N_value": 1
+        },
+        {
+          "depth_from_m": 14.0,
+          "depth_to_m": 14.45,
+          "blow_seating": 1,
+          "blow_n1": 0,
+          "blow_n2": 1,
+          "N_value": 1
+        },
+        {
+          "depth_from_m": 16.0,
+          "depth_to_m": 16.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 18.0,
+          "depth_to_m": 18.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 20.0,
+          "depth_to_m": 20.45,
+          "blow_seating": 1,
+          "blow_n1": 1,
+          "blow_n2": 2,
+          "N_value": 3
+        },
+        {
+          "depth_from_m": 22.0,
+          "depth_to_m": 22.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 24.0,
+          "depth_to_m": 24.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 26.0,
+          "depth_to_m": 26.45,
+          "blow_seating": 1,
+          "blow_n1": 0,
+          "blow_n2": 1,
+          "N_value": 1
+        },
+        {
+          "depth_from_m": 28.0,
+          "depth_to_m": 28.45,
+          "blow_seating": 1,
+          "blow_n1": 0,
+          "blow_n2": 1,
+          "N_value": 1
+        },
+        {
+          "depth_from_m": 30.0,
+          "depth_to_m": 30.45,
+          "blow_seating": 5,
+          "blow_n1": 7,
+          "blow_n2": 12,
+          "N_value": 19
+        },
+        {
+          "depth_from_m": 32.0,
+          "depth_to_m": 32.45,
+          "blow_seating": 5,
+          "blow_n1": 8,
+          "blow_n2": 13,
+          "N_value": 21
+        }
+      ],
+      "samples": [
+        {
+          "sample_code": "U1",
+          "sample_type": "U",
+          "depth_from_m": 1.4,
+          "depth_to_m": 2.0
+        },
+        {
+          "sample_code": "U2",
+          "sample_type": "U",
+          "depth_from_m": 3.4,
+          "depth_to_m": 4.0
+        },
+        {
+          "sample_code": "U3",
+          "sample_type": "U",
+          "depth_from_m": 5.4,
+          "depth_to_m": 6.0
+        },
+        {
+          "sample_code": "U4",
+          "sample_type": "U",
+          "depth_from_m": 7.4,
+          "depth_to_m": 8.0
+        },
+        {
+          "sample_code": "U5",
+          "sample_type": "U",
+          "depth_from_m": 9.4,
+          "depth_to_m": 10.0
+        },
+        {
+          "sample_code": "U6",
+          "sample_type": "U",
+          "depth_from_m": 11.4,
+          "depth_to_m": 12.0
+        },
+        {
+          "sample_code": "U7",
+          "sample_type": "U",
+          "depth_from_m": 13.4,
+          "depth_to_m": 14.0
+        },
+        {
+          "sample_code": "U8",
+          "sample_type": "U",
+          "depth_from_m": 15.4,
+          "depth_to_m": 16.0
+        },
+        {
+          "sample_code": "U9",
+          "sample_type": "U",
+          "depth_from_m": 17.4,
+          "depth_to_m": 18.0
+        },
+        {
+          "sample_code": "U10",
+          "sample_type": "U",
+          "depth_from_m": 19.4,
+          "depth_to_m": 20.0
+        },
+        {
+          "sample_code": "U11",
+          "sample_type": "U",
+          "depth_from_m": 21.4,
+          "depth_to_m": 22.0
+        },
+        {
+          "sample_code": "U12",
+          "sample_type": "U",
+          "depth_from_m": 23.4,
+          "depth_to_m": 24.0
+        },
+        {
+          "sample_code": "U13",
+          "sample_type": "U",
+          "depth_from_m": 25.4,
+          "depth_to_m": 26.0
+        },
+        {
+          "sample_code": "U14",
+          "sample_type": "U",
+          "depth_from_m": 27.4,
+          "depth_to_m": 28.0
+        },
+        {
+          "sample_code": "D1",
+          "sample_type": "D",
+          "depth_from_m": 29.8,
+          "depth_to_m": 30.0
+        },
+        {
+          "sample_code": "D2",
+          "sample_type": "D",
+          "depth_from_m": 31.8,
+          "depth_to_m": 32.0
+        },
+        {
+          "sample_code": "U15",
+          "sample_type": "U",
+          "depth_from_m": 32.7,
+          "depth_to_m": 33.0
+        }
+      ]
+    },
+    {
+      "name": "ND-05",
+      "db_name": "QTTTTP-ND-05",
+      "zone": "QTTTTP",
+      "northing_m": 1191736.974,
+      "easting_m": 605446.0,
+      "elevation_m": 3.197,
+      "total_depth_m": 36.0,
+      "date_start": "2026-05-13",
+      "date_end": "2026-05-21",
+      "layers": [
+        {
+          "symbol": "F",
+          "uscs": "F",
+          "description": "San lấp, đất đắp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.9,
+          "thickness_m": 2.9,
+          "mrl_top_m": 3.197,
+          "mrl_bot_m": 0.297
+        },
+        {
+          "symbol": "1",
+          "uscs": "CH",
+          "description": "Bùn sét, rất dẻo, trạng thái chảy đến dẻo mềm, màu xám xanh",
+          "depth_top_m": 2.9,
+          "depth_bot_m": 31.0,
+          "thickness_m": 28.1,
+          "mrl_top_m": 0.297,
+          "mrl_bot_m": -27.803
+        },
+        {
+          "symbol": "2",
+          "uscs": "CL-CH",
+          "description": "Sét ít dẻo đến rất dẻo, dẻo cứng đến nửa cứng",
+          "depth_top_m": 31.0,
+          "depth_bot_m": 33.0,
+          "thickness_m": 2.0,
+          "mrl_top_m": -27.803,
+          "mrl_bot_m": -29.803
+        },
+        {
+          "symbol": "4",
+          "uscs": "SM",
+          "description": "Cát lẫn bụi, kết cấu chặt vừa đến chặt",
+          "depth_top_m": 33.0,
+          "depth_bot_m": 34.8,
+          "thickness_m": 1.8,
+          "mrl_top_m": -29.803,
+          "mrl_bot_m": -31.603
+        },
+        {
+          "symbol": "4",
+          "uscs": "SM",
+          "description": "Cát lẫn bụi, kết cấu chặt vừa đến chặt",
+          "depth_top_m": 34.8,
+          "depth_bot_m": 36.0,
+          "thickness_m": 1.2,
+          "mrl_top_m": -31.603,
+          "mrl_bot_m": -32.803
+        }
+      ],
+      "spt": [
+        {
+          "depth_from_m": 4.0,
+          "depth_to_m": 4.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 6.0,
+          "depth_to_m": 6.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 8.0,
+          "depth_to_m": 8.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 10.0,
+          "depth_to_m": 10.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 12.0,
+          "depth_to_m": 12.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 14.0,
+          "depth_to_m": 14.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 16.0,
+          "depth_to_m": 16.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 18.0,
+          "depth_to_m": 18.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 20.0,
+          "depth_to_m": 20.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 22.0,
+          "depth_to_m": 22.45,
+          "blow_seating": 1,
+          "blow_n1": 1,
+          "blow_n2": 2,
+          "N_value": 3
+        },
+        {
+          "depth_from_m": 24.0,
+          "depth_to_m": 24.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 26.0,
+          "depth_to_m": 26.45,
+          "blow_seating": 1,
+          "blow_n1": 1,
+          "blow_n2": 2,
+          "N_value": 3
+        },
+        {
+          "depth_from_m": 28.0,
+          "depth_to_m": 28.45,
+          "blow_seating": 1,
+          "blow_n1": 1,
+          "blow_n2": 2,
+          "N_value": 3
+        },
+        {
+          "depth_from_m": 30.0,
+          "depth_to_m": 30.45,
+          "blow_seating": 2,
+          "blow_n1": 3,
+          "blow_n2": 5,
+          "N_value": 8
+        },
+        {
+          "depth_from_m": 32.0,
+          "depth_to_m": 32.45,
+          "blow_seating": 3,
+          "blow_n1": 4,
+          "blow_n2": 7,
+          "N_value": 11
+        },
+        {
+          "depth_from_m": 34.0,
+          "depth_to_m": 34.45,
+          "blow_seating": 4,
+          "blow_n1": 7,
+          "blow_n2": 11,
+          "N_value": 18
+        },
+        {
+          "depth_from_m": 36.0,
+          "depth_to_m": 36.45,
+          "blow_seating": 10,
+          "blow_n1": 18,
+          "blow_n2": 28,
+          "N_value": 46
+        }
+      ],
+      "samples": [
+        {
+          "sample_code": "U1",
+          "sample_type": "U",
+          "depth_from_m": 3.4,
+          "depth_to_m": 4.0
+        },
+        {
+          "sample_code": "U2",
+          "sample_type": "U",
+          "depth_from_m": 5.4,
+          "depth_to_m": 6.0
+        },
+        {
+          "sample_code": "U3",
+          "sample_type": "U",
+          "depth_from_m": 7.4,
+          "depth_to_m": 8.0
+        },
+        {
+          "sample_code": "U4",
+          "sample_type": "U",
+          "depth_from_m": 9.4,
+          "depth_to_m": 10.0
+        },
+        {
+          "sample_code": "U5",
+          "sample_type": "U",
+          "depth_from_m": 11.4,
+          "depth_to_m": 12.0
+        },
+        {
+          "sample_code": "U6",
+          "sample_type": "U",
+          "depth_from_m": 13.4,
+          "depth_to_m": 14.0
+        },
+        {
+          "sample_code": "U7",
+          "sample_type": "U",
+          "depth_from_m": 15.4,
+          "depth_to_m": 16.0
+        },
+        {
+          "sample_code": "U8",
+          "sample_type": "U",
+          "depth_from_m": 17.4,
+          "depth_to_m": 18.0
+        },
+        {
+          "sample_code": "U9",
+          "sample_type": "U",
+          "depth_from_m": 19.4,
+          "depth_to_m": 20.0
+        },
+        {
+          "sample_code": "U10",
+          "sample_type": "U",
+          "depth_from_m": 21.4,
+          "depth_to_m": 22.0
+        },
+        {
+          "sample_code": "U11",
+          "sample_type": "U",
+          "depth_from_m": 23.4,
+          "depth_to_m": 24.0
+        },
+        {
+          "sample_code": "U12",
+          "sample_type": "U",
+          "depth_from_m": 25.4,
+          "depth_to_m": 26.0
+        },
+        {
+          "sample_code": "U13",
+          "sample_type": "U",
+          "depth_from_m": 27.4,
+          "depth_to_m": 28.0
+        },
+        {
+          "sample_code": "U14",
+          "sample_type": "U",
+          "depth_from_m": 29.4,
+          "depth_to_m": 30.0
+        },
+        {
+          "sample_code": "U15",
+          "sample_type": "U",
+          "depth_from_m": 31.4,
+          "depth_to_m": 32.0
+        },
+        {
+          "sample_code": "U16",
+          "sample_type": "U",
+          "depth_from_m": 33.4,
+          "depth_to_m": 34.0
+        },
+        {
+          "sample_code": "U17",
+          "sample_type": "U",
+          "depth_from_m": 35.4,
+          "depth_to_m": 36.0
+        }
+      ]
+    },
+    {
+      "name": "ND-06",
+      "db_name": "QTTTTP-ND-06",
+      "zone": "QTTTTP",
+      "northing_m": 1191761.037,
+      "easting_m": 605349.44,
+      "elevation_m": 4.237,
+      "total_depth_m": 36.0,
+      "date_start": "2026-05-11",
+      "date_end": "2026-05-14",
+      "layers": [
+        {
+          "symbol": "F",
+          "uscs": "F",
+          "description": "San lấp, đất đắp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 2.6,
+          "thickness_m": 2.6,
+          "mrl_top_m": 4.237,
+          "mrl_bot_m": 1.637
+        },
+        {
+          "symbol": "1",
+          "uscs": "CH",
+          "description": "Bùn sét, rất dẻo, trạng thái chảy đến dẻo mềm, màu xám xanh",
+          "depth_top_m": 2.6,
+          "depth_bot_m": 31.5,
+          "thickness_m": 28.9,
+          "mrl_top_m": 1.637,
+          "mrl_bot_m": -27.263
+        },
+        {
+          "symbol": "4",
+          "uscs": "SM",
+          "description": "Cát lẫn bụi, kết cấu chặt vừa đến chặt",
+          "depth_top_m": 31.5,
+          "depth_bot_m": 36.0,
+          "thickness_m": 4.5,
+          "mrl_top_m": -27.263,
+          "mrl_bot_m": -31.763
+        }
+      ],
+      "spt": [
+        {
+          "depth_from_m": 4.0,
+          "depth_to_m": 4.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 6.0,
+          "depth_to_m": 6.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 8.0,
+          "depth_to_m": 8.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 10.0,
+          "depth_to_m": 10.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 12.0,
+          "depth_to_m": 12.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 14.0,
+          "depth_to_m": 14.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 16.0,
+          "depth_to_m": 16.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 18.0,
+          "depth_to_m": 18.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 20.0,
+          "depth_to_m": 20.45,
+          "blow_seating": 3,
+          "blow_n1": 3,
+          "blow_n2": 6,
+          "N_value": 9
+        },
+        {
+          "depth_from_m": 22.0,
+          "depth_to_m": 22.45,
+          "blow_seating": 2,
+          "blow_n1": 3,
+          "blow_n2": 5,
+          "N_value": 8
+        },
+        {
+          "depth_from_m": 24.0,
+          "depth_to_m": 24.45,
+          "blow_seating": 0,
+          "blow_n1": 1,
+          "blow_n2": 1,
+          "N_value": 2
+        },
+        {
+          "depth_from_m": 26.0,
+          "depth_to_m": 26.45,
+          "blow_seating": 2,
+          "blow_n1": 2,
+          "blow_n2": 4,
+          "N_value": 6
+        },
+        {
+          "depth_from_m": 28.0,
+          "depth_to_m": 28.45,
+          "blow_seating": 1,
+          "blow_n1": 1,
+          "blow_n2": 2,
+          "N_value": 3
+        },
+        {
+          "depth_from_m": 30.0,
+          "depth_to_m": 30.45,
+          "blow_seating": 2,
+          "blow_n1": 2,
+          "blow_n2": 4,
+          "N_value": 6
+        },
+        {
+          "depth_from_m": 32.0,
+          "depth_to_m": 32.45,
+          "blow_seating": 4,
+          "blow_n1": 5,
+          "blow_n2": 9,
+          "N_value": 14
+        },
+        {
+          "depth_from_m": 34.0,
+          "depth_to_m": 34.45,
+          "blow_seating": 5,
+          "blow_n1": 6,
+          "blow_n2": 11,
+          "N_value": 17
+        },
+        {
+          "depth_from_m": 36.0,
+          "depth_to_m": 36.45,
+          "blow_seating": 7,
+          "blow_n1": 9,
+          "blow_n2": 16,
+          "N_value": 25
+        }
+      ],
+      "samples": [
+        {
+          "sample_code": "U1",
+          "sample_type": "U",
+          "depth_from_m": 3.4,
+          "depth_to_m": 4.0
+        },
+        {
+          "sample_code": "U2",
+          "sample_type": "U",
+          "depth_from_m": 5.4,
+          "depth_to_m": 6.0
+        },
+        {
+          "sample_code": "U3",
+          "sample_type": "U",
+          "depth_from_m": 7.4,
+          "depth_to_m": 8.0
+        },
+        {
+          "sample_code": "U4",
+          "sample_type": "U",
+          "depth_from_m": 9.4,
+          "depth_to_m": 10.0
+        },
+        {
+          "sample_code": "U5",
+          "sample_type": "U",
+          "depth_from_m": 11.4,
+          "depth_to_m": 12.0
+        },
+        {
+          "sample_code": "U6",
+          "sample_type": "U",
+          "depth_from_m": 13.4,
+          "depth_to_m": 14.0
+        },
+        {
+          "sample_code": "U7",
+          "sample_type": "U",
+          "depth_from_m": 15.4,
+          "depth_to_m": 16.0
+        },
+        {
+          "sample_code": "U8",
+          "sample_type": "U",
+          "depth_from_m": 17.4,
+          "depth_to_m": 18.0
+        },
+        {
+          "sample_code": "U9",
+          "sample_type": "U",
+          "depth_from_m": 19.4,
+          "depth_to_m": 20.0
+        },
+        {
+          "sample_code": "U10",
+          "sample_type": "U",
+          "depth_from_m": 21.4,
+          "depth_to_m": 22.0
+        },
+        {
+          "sample_code": "U11",
+          "sample_type": "U",
+          "depth_from_m": 23.4,
+          "depth_to_m": 24.0
+        },
+        {
+          "sample_code": "U12",
+          "sample_type": "U",
+          "depth_from_m": 25.4,
+          "depth_to_m": 26.0
+        },
+        {
+          "sample_code": "U13",
+          "sample_type": "U",
+          "depth_from_m": 27.4,
+          "depth_to_m": 28.0
+        },
+        {
+          "sample_code": "U14",
+          "sample_type": "U",
+          "depth_from_m": 29.4,
+          "depth_to_m": 30.0
+        },
+        {
+          "sample_code": "U15",
+          "sample_type": "U",
+          "depth_from_m": 31.4,
+          "depth_to_m": 32.0
+        },
+        {
+          "sample_code": "U16",
+          "sample_type": "U",
+          "depth_from_m": 33.4,
+          "depth_to_m": 34.0
+        },
+        {
+          "sample_code": "U17",
+          "sample_type": "U",
+          "depth_from_m": 35.4,
+          "depth_to_m": 36.0
+        }
+      ]
+    },
+    {
+      "name": "ND-07",
+      "db_name": "QTTTTP-ND-07",
+      "zone": "QTTTTP",
+      "northing_m": 1191785.152,
+      "easting_m": 605252.89,
+      "elevation_m": 3.467,
+      "total_depth_m": 36.0,
+      "date_start": "2026-05-08",
+      "date_end": "2026-05-12",
+      "layers": [
+        {
+          "symbol": "F",
+          "uscs": "F",
+          "description": "San lấp, đất đắp",
+          "depth_top_m": 0.0,
+          "depth_bot_m": 3.0,
+          "thickness_m": 3.0,
+          "mrl_top_m": 3.467,
+          "mrl_bot_m": 0.467
+        },
+        {
+          "symbol": "1",
+          "uscs": "CH",
+          "description": "Bùn sét, rất dẻo, trạng thái chảy đến dẻo mềm, màu xám xanh",
+          "depth_top_m": 3.0,
+          "depth_bot_m": 18.8,
+          "thickness_m": 15.8,
+          "mrl_top_m": 0.467,
+          "mrl_bot_m": -15.333
+        },
+        {
+          "symbol": "1",
+          "uscs": "CH",
+          "description": "Bùn sét, rất dẻo, trạng thái chảy đến dẻo mềm, màu xám xanh",
+          "depth_top_m": 18.8,
+          "depth_bot_m": 23.0,
+          "thickness_m": 4.2,
+          "mrl_top_m": -15.333,
+          "mrl_bot_m": -19.533
+        },
+        {
+          "symbol": "2",
+          "uscs": "CL-CH",
+          "description": "Sét ít dẻo đến rất dẻo, dẻo cứng đến nửa cứng",
+          "depth_top_m": 23.0,
+          "depth_bot_m": 33.2,
+          "thickness_m": 10.2,
+          "mrl_top_m": -19.533,
+          "mrl_bot_m": -29.733
+        },
+        {
+          "symbol": "4",
+          "uscs": "SM",
+          "description": "Cát lẫn bụi, kết cấu chặt vừa đến chặt",
+          "depth_top_m": 33.2,
+          "depth_bot_m": 36.0,
+          "thickness_m": 2.8,
+          "mrl_top_m": -29.733,
+          "mrl_bot_m": -32.533
+        }
+      ],
+      "spt": [
+        {
+          "depth_from_m": 4.0,
+          "depth_to_m": 4.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 6.0,
+          "depth_to_m": 6.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 8.0,
+          "depth_to_m": 8.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 10.0,
+          "depth_to_m": 10.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 12.0,
+          "depth_to_m": 12.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 14.0,
+          "depth_to_m": 14.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 16.0,
+          "depth_to_m": 16.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 18.0,
+          "depth_to_m": 18.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 20.0,
+          "depth_to_m": 20.45,
+          "blow_seating": 2,
+          "blow_n1": 2,
+          "blow_n2": 4,
+          "N_value": 6
+        },
+        {
+          "depth_from_m": 22.0,
+          "depth_to_m": 22.45,
+          "blow_seating": 0,
+          "blow_n1": 0,
+          "blow_n2": 0,
+          "N_value": 0
+        },
+        {
+          "depth_from_m": 24.0,
+          "depth_to_m": 24.45,
+          "blow_seating": 2,
+          "blow_n1": 3,
+          "blow_n2": 5,
+          "N_value": 8
+        },
+        {
+          "depth_from_m": 26.0,
+          "depth_to_m": 26.45,
+          "blow_seating": 2,
+          "blow_n1": 3,
+          "blow_n2": 5,
+          "N_value": 8
+        },
+        {
+          "depth_from_m": 28.0,
+          "depth_to_m": 28.45,
+          "blow_seating": 2,
+          "blow_n1": 4,
+          "blow_n2": 6,
+          "N_value": 10
+        },
+        {
+          "depth_from_m": 30.0,
+          "depth_to_m": 30.45,
+          "blow_seating": 2,
+          "blow_n1": 3,
+          "blow_n2": 5,
+          "N_value": 8
+        },
+        {
+          "depth_from_m": 32.0,
+          "depth_to_m": 32.45,
+          "blow_seating": 3,
+          "blow_n1": 4,
+          "blow_n2": 7,
+          "N_value": 11
+        },
+        {
+          "depth_from_m": 34.0,
+          "depth_to_m": 34.45,
+          "blow_seating": 5,
+          "blow_n1": 8,
+          "blow_n2": 13,
+          "N_value": 21
+        },
+        {
+          "depth_from_m": 36.0,
+          "depth_to_m": 36.45,
+          "blow_seating": 7,
+          "blow_n1": 9,
+          "blow_n2": 16,
+          "N_value": 25
+        }
+      ],
+      "samples": [
+        {
+          "sample_code": "D1",
+          "sample_type": "D",
+          "depth_from_m": 1.8,
+          "depth_to_m": 2.0
+        },
+        {
+          "sample_code": "U1",
+          "sample_type": "U",
+          "depth_from_m": 3.4,
+          "depth_to_m": 4.0
+        },
+        {
+          "sample_code": "U2",
+          "sample_type": "U",
+          "depth_from_m": 5.4,
+          "depth_to_m": 6.0
+        },
+        {
+          "sample_code": "U3",
+          "sample_type": "U",
+          "depth_from_m": 7.4,
+          "depth_to_m": 8.0
+        },
+        {
+          "sample_code": "U4",
+          "sample_type": "U",
+          "depth_from_m": 9.4,
+          "depth_to_m": 10.0
+        },
+        {
+          "sample_code": "U5",
+          "sample_type": "U",
+          "depth_from_m": 11.4,
+          "depth_to_m": 12.0
+        },
+        {
+          "sample_code": "U6",
+          "sample_type": "U",
+          "depth_from_m": 13.4,
+          "depth_to_m": 14.0
+        },
+        {
+          "sample_code": "U7",
+          "sample_type": "U",
+          "depth_from_m": 15.4,
+          "depth_to_m": 16.0
+        },
+        {
+          "sample_code": "U8",
+          "sample_type": "U",
+          "depth_from_m": 17.4,
+          "depth_to_m": 18.0
+        },
+        {
+          "sample_code": "U9",
+          "sample_type": "U",
+          "depth_from_m": 19.4,
+          "depth_to_m": 20.0
+        },
+        {
+          "sample_code": "U10",
+          "sample_type": "U",
+          "depth_from_m": 21.4,
+          "depth_to_m": 22.0
+        },
+        {
+          "sample_code": "U11",
+          "sample_type": "U",
+          "depth_from_m": 23.4,
+          "depth_to_m": 24.0
+        },
+        {
+          "sample_code": "U12",
+          "sample_type": "U",
+          "depth_from_m": 25.4,
+          "depth_to_m": 26.0
+        },
+        {
+          "sample_code": "U13",
+          "sample_type": "U",
+          "depth_from_m": 27.4,
+          "depth_to_m": 28.0
+        },
+        {
+          "sample_code": "U14",
+          "sample_type": "U",
+          "depth_from_m": 29.4,
+          "depth_to_m": 30.0
+        },
+        {
+          "sample_code": "U15",
+          "sample_type": "U",
+          "depth_from_m": 31.4,
+          "depth_to_m": 32.0
+        },
+        {
+          "sample_code": "U16",
+          "sample_type": "U",
+          "depth_from_m": 33.4,
+          "depth_to_m": 34.0
+        },
+        {
+          "sample_code": "U17",
+          "sample_type": "U",
+          "depth_from_m": 35.4,
+          "depth_to_m": 36.0
+        }
+      ]
+    }
+  ]
+}
