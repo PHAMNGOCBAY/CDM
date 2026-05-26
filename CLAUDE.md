@@ -2222,6 +2222,49 @@ K_DEFAULT_BY_ZONE = {"KE": 3,   "BXN": 3,   "NHC": 4}
 
 ---
 
+### 42b. Auto-sync worktree → main local (BẮT BUỘC sau mỗi commit)
+
+**File:** `sync_local.py` + `sync_local.bat` + `watch_local.bat` (project root)
+
+#### Vấn đề
+
+Khi Claude làm việc trong **worktree** (`.claude/worktrees/<name>/`), code chỉ có ở worktree. Streamlit local (port 8503) đọc từ `<root>/scripts/`. **Phải copy worktree → main scripts/** để local thấy update.
+
+#### Lệnh
+
+```bash
+# One-shot sync (sau mỗi commit worktree)
+python sync_local.py
+
+# Watch mode (chạy nền — auto sync mỗi 2s)
+python sync_local.py --watch
+```
+
+Hoặc double-click `sync_local.bat` / `watch_local.bat`.
+
+#### Logic `sync_local.py`
+
+1. Tự tìm worktree đang active trong `.claude/worktrees/`
+2. `git diff --name-only origin/main..HEAD` → lấy danh sách file branch đã sửa
+3. Copy từng file `worktree/<f>` → `root/<f>` (chỉ khi khác size/mtime)
+4. Streamlit `--server.runOnSave=true` tự reload
+
+#### Quy ước workflow Claude (BẮT BUỘC)
+
+Sau mỗi `git commit && git push` trong worktree:
+
+```bash
+python "G:/My Drive/AI-SUC TAI COC THEO DAT NEN/sync_local.py"
+```
+
+→ Đảm bảo http://localhost:8503 luôn có code mới nhất.
+
+#### Watch mode
+
+`watch_local.bat` chạy 1 lần đầu phiên, sau đó tự sync mọi file thay đổi trong worktree mỗi 2s — không cần chạy manual nữa.
+
+---
+
 ### 43. Hệ số nền $k_h$ Winkler dùng Cu tính toán Bjerrum (BẮT BUỘC)
 
 **File tài liệu:** [56-ke-sw-kh-from-cu-tinh-toan.md](56-ke-sw-kh-from-cu-tinh-toan.md)
