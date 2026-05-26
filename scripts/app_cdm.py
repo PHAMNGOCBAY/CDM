@@ -4729,9 +4729,9 @@ elif _page == "sample_check":
     )
 
     if _HAS_537:
-        # Tải dữ liệu 4 khu vực (thêm QTT)
+        # Tải dữ liệu 3 khu vực
         _chk_all = {}
-        for _zc in ["NHC", "BXN", "KE", "QTT"]:
+        for _zc in ["NHC", "BXN", "KE"]:
             try:
                 _chk_all[_zc] = _chk537(_zc)
             except Exception as _ex:
@@ -4739,8 +4739,8 @@ elif _page == "sample_check":
 
         # Metric cards tóm tắt
         _lun_params = ["Cc", "Cs", "Cv", "PC"]
-        _met_cols = st.columns(4)
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
+        _met_cols = st.columns(3)
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
             if _zc not in _chk_all:
                 continue
             _s       = _chk_all[_zc]["zone_summary"]
@@ -4777,7 +4777,7 @@ elif _page == "sample_check":
             return ""
 
         # Bảng chi tiết per khu vực
-        for _zc in ["NHC", "BXN", "KE", "QTT"]:
+        for _zc in ["NHC", "BXN", "KE"]:
             if _zc not in _chk_all:
                 continue
             st.markdown(f"**Khu vực {_zc} — Chi tiết theo lớp đất**")
@@ -4804,11 +4804,11 @@ elif _page == "sample_check":
                 use_container_width=True, hide_index=True,
             )
 
-        # Tóm tắt 4 khu vực
+        # Tóm tắt 3 khu vực
         st.divider()
-        st.markdown("**Tóm tắt 4 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
+        st.markdown("**Tóm tắt 3 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
         _sum_rows = []
-        for _zc in ["NHC", "BXN", "KE", "QTT"]:
+        for _zc in ["NHC", "BXN", "KE"]:
             if _zc not in _chk_all:
                 continue
             _s = _chk_all[_zc]["zone_summary"]
@@ -4825,8 +4825,7 @@ elif _page == "sample_check":
             st.table(pd.DataFrame(_sum_rows))
         st.info(
             "Xanh = đủ n≥6 | Đỏ = thiếu mẫu (<6) | '-' = không có mẫu hoặc không áp dụng. "
-            "Khu vực KE chưa có mẫu Cc — ưu tiên bổ sung. "
-            "QTT: 3/6 hố khoan có KQTN (ND-02, ND-06, ND-07); ND-03/04/05 cần bổ sung."
+            "Khu vực KE chưa có mẫu Cc — ưu tiên bổ sung."
         )
 
     # ── B. TCVN 9403:2012 Bảng B.1 — QC mẫu CDM ────────────────────────────
@@ -4854,9 +4853,9 @@ elif _page == "sample_check":
         )
     else:
         st.markdown("**Nhập số liệu kiểm tra thực tế:**")
-        _qc_cols = st.columns(4)
+        _qc_cols = st.columns(3)
         _qc_zone_inputs = {}
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
             with _qc_cols[_ci]:
                 st.markdown(f"**Khu vực {_zc}**")
                 _n_col = st.number_input(f"Số cột CDM ({_zc})", 0, 10000, 0, 50,
@@ -8201,6 +8200,176 @@ if _page == "ke_sw":
                 height=320, margin=dict(t=40, b=40),
             )
             st.plotly_chart(_fig_cat, use_container_width=True)
+
+    # ── A.2 Thông số PLAXIS 2D Plate (EI/EA/d_eq/w) ─────────────────────────
+    st.markdown("#### A.2. Thông số PLAXIS 2D Plate (EI / EA / d_eq / w)")
+
+    # Expander render trực tiếp MD 57
+    with st.expander(
+        "Công thức và lý thuyết (TCCS / ACI 318 + Plaxis 2D plate plain strain)",
+        expanded=False,
+    ):
+        _md_plaxis = _ROOT / "57-sw-plaxis-EI-EA.md"
+        try:
+            if _md_plaxis.exists():
+                st.markdown(_md_plaxis.read_text(encoding="utf-8"))
+            else:
+                st.warning("Không tìm thấy 57-sw-plaxis-EI-EA.md")
+        except Exception as _exc_md_pl:
+            st.error(f"Lỗi đọc tài liệu: {_exc_md_pl}")
+
+    # Selectbox cọc + cấp BT
+    _plaxis_piles  = ["SW-600B", "SW-740", "SW-840"]
+    _plaxis_fc_opt = {"C50 (B45)": 50, "C60 (B55)": 60,
+                       "C70 (B65)": 70, "C80 (B75)": 80}
+
+    # Load cấu hình PLAXIS đã lưu trước (nếu có)
+    try:
+        import sqlite3 as _sq_pl
+        _con_pl_cfg = _sq_pl.connect(str(_DB))
+        _con_pl_cfg.execute("""
+            CREATE TABLE IF NOT EXISTS ke_sw_plaxis_config (
+                id            INTEGER PRIMARY KEY CHECK (id = 1),
+                pile          TEXT DEFAULT 'SW-740',
+                fc_label      TEXT DEFAULT 'C70 (B65)',
+                fc_MPa        REAL DEFAULT 70.0,
+                updated_at    TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+        _con_pl_cfg.commit()
+        _saved_pl_cfg = _con_pl_cfg.execute(
+            "SELECT pile, fc_label FROM ke_sw_plaxis_config WHERE id=1"
+        ).fetchone()
+        _con_pl_cfg.close()
+        _saved_pile  = _saved_pl_cfg[0] if _saved_pl_cfg else "SW-740"
+        _saved_fcLbl = _saved_pl_cfg[1] if _saved_pl_cfg else "C70 (B65)"
+    except Exception:
+        _saved_pile, _saved_fcLbl = "SW-740", "C70 (B65)"
+
+    _pile_idx_def = (_plaxis_piles.index(_saved_pile)
+                     if _saved_pile in _plaxis_piles else 1)
+    _fc_keys_list = list(_plaxis_fc_opt.keys())
+    _fc_idx_def   = (_fc_keys_list.index(_saved_fcLbl)
+                     if _saved_fcLbl in _fc_keys_list else 2)
+
+    _c_pa1, _c_pa2, _c_pa3, _c_pa_s = st.columns([1, 1, 1.6, 0.6])
+    _plaxis_pile = _c_pa1.selectbox(
+        "Loại cọc SW",
+        options=_plaxis_piles,
+        index=_pile_idx_def,
+        key="_plaxis_pile_pick",
+    )
+    _plaxis_fc_lbl = _c_pa2.selectbox(
+        "Cấp bê tông",
+        options=_fc_keys_list,
+        index=_fc_idx_def,
+        key="_plaxis_fc_pick",
+    )
+    _plaxis_fc = _plaxis_fc_opt[_plaxis_fc_lbl]
+    # Nút Lưu cấu hình PLAXIS
+    if _c_pa_s.button("Lưu", key="_plaxis_cfg_save", use_container_width=True,
+                      type="primary", help="Lưu lựa chọn cọc + cấp BT vào cơ sở dữ liệu"):
+        try:
+            _con_sv = _sq_pl.connect(str(_DB))
+            _con_sv.execute("""
+                INSERT INTO ke_sw_plaxis_config (id, pile, fc_label, fc_MPa)
+                VALUES (1, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    pile=excluded.pile, fc_label=excluded.fc_label,
+                    fc_MPa=excluded.fc_MPa,
+                    updated_at=datetime('now','localtime')
+            """, (_plaxis_pile, _plaxis_fc_lbl, float(_plaxis_fc)))
+            _con_sv.commit()
+            _con_sv.close()
+            st.success(
+                f"Đã lưu cấu hình PLAXIS: **{_plaxis_pile}** + **{_plaxis_fc_lbl}**"
+            )
+        except Exception as _exc_sv:
+            st.error(f"Lỗi lưu: {_exc_sv}")
+
+    # Compute EI/EA on-the-fly (dual-path import)
+    _sw_pl_mod = None
+    try:
+        import sw_plaxis_params as _sw_pl_mod
+    except ImportError:
+        try:
+            from scripts import sw_plaxis_params as _sw_pl_mod
+        except ImportError:
+            _sw_pl_mod = None
+
+    if _sw_pl_mod is None:
+        st.error("Module sw_plaxis_params không khả dụng.")
+    else:
+        try:
+            _r_pl = _sw_pl_mod.compute_plate_params(_plaxis_pile, _plaxis_fc)
+            _c_pa3.caption(
+                f"**{_plaxis_pile}** + **{_plaxis_fc_lbl}** "
+                f"→ Ec = {_r_pl['Ec_MPa']:.0f} MPa "
+                f"(công thức 4730·√fc)"
+            )
+
+            # Hiển thị metric chính cho Plaxis
+            st.markdown("##### Thông số nhập PLAXIS 2D (per m wall length, plain strain)")
+            _c_m1, _c_m2, _c_m3, _c_m4 = st.columns(4)
+            _c_m1.metric("EA (kN/m)", f"{_r_pl['EA_per_m_kN_per_m']:,.0f}",
+                         help="Axial stiffness per m wall")
+            _c_m2.metric("EI (kN·m²/m)", f"{_r_pl['EI_per_m_kNm2_per_m']:,.0f}",
+                         help="Bending stiffness per m wall")
+            _c_m3.metric("d_eq (m)", f"{_r_pl['d_eq_m']:.4f}",
+                         help="Thickness equivalent = √(12·EI/EA)")
+            _c_m4.metric("w (kN/m²)", f"{_r_pl['w_kN_per_m2']:.3f}",
+                         help="Weight per area")
+
+            _c_m5, _c_m6, _c_m7, _c_m8 = st.columns(4)
+            _c_m5.metric("ν Poisson", f"{_r_pl['nu']:.2f}",
+                         help="0.18 cho BT dự ứng lực")
+            _c_m6.metric("Mp (kN·m/m)",
+                         f"{_r_pl['plaxis_inputs']['Mp_kNm_per_m']:.1f}",
+                         help="Moment kháng nứt cho Elastoplastic plate")
+            _c_m7.metric("EA per cừ (kN)",
+                         f"{_r_pl['EA_per_pile_kN']:,.0f}",
+                         help="Cho 1 cừ riêng (tham khảo)")
+            _c_m8.metric("EI per cừ (kN·m²)",
+                         f"{_r_pl['EI_per_pile_kNm2']:,.0f}",
+                         help="Cho 1 cừ riêng (tham khảo)")
+
+            # Hộp copy-ready cho Plaxis
+            st.markdown("##### Copy giá trị nhập PLAXIS Material → Plate:")
+            _txt_plaxis = (
+                f"Material type:  Elastoplastic\n"
+                f"Identification: {_plaxis_pile}_{_plaxis_fc_lbl.split()[0]}\n"
+                f"EA = {_r_pl['EA_per_m_kN_per_m']:,.0f}  kN/m\n"
+                f"EI = {_r_pl['EI_per_m_kNm2_per_m']:,.0f}  kN·m²/m\n"
+                f"d  = {_r_pl['d_eq_m']:.4f}  m\n"
+                f"w  = {_r_pl['w_kN_per_m2']:.3f}  kN/m²\n"
+                f"ν  = {_r_pl['nu']:.2f}\n"
+                f"Mp = {_r_pl['plaxis_inputs']['Mp_kNm_per_m']:.1f}  kN·m/m"
+            )
+            st.code(_txt_plaxis, language="text")
+
+            # Bảng tóm tắt tất cả 12 case
+            st.markdown("##### Bảng tổng hợp 3 cọc × 4 cấp bê tông")
+            _all_pl = _sw_pl_mod.compute_all()
+            _tbl_pl = []
+            for r in _all_pl:
+                _tbl_pl.append({
+                    "Cọc":               r["pile"],
+                    "BT":                r["fc_label"],
+                    "Ec (MPa)":          f"{r['Ec_MPa']:.0f}",
+                    "EA (kN/m)":         f"{r['EA_per_m_kN_per_m']:,.0f}",
+                    "EI (kN·m²/m)":      f"{r['EI_per_m_kNm2_per_m']:,.0f}",
+                    "d_eq (m)":          f"{r['d_eq_m']:.4f}",
+                    "w (kN/m²)":         f"{r['w_kN_per_m2']:.3f}",
+                    "Mp (kN·m/m)":       f"{r['plaxis_inputs']['Mp_kNm_per_m']:.1f}",
+                })
+            st.table(pd.DataFrame(_tbl_pl))
+            st.caption(
+                "**Plain strain:** EA và EI per m wall length (KHÔNG per 1 cừ). "
+                "PLAXIS 2D plate dùng các giá trị này trực tiếp. "
+                "d_eq chỉ để hiển thị, không vào tính toán."
+            )
+        except Exception as _exc_pl:
+            st.error(f"Lỗi tính EI/EA: {_exc_pl}")
 
     # ── B. Kết quả thiết kế TTHC ────────────────────────────────────────────────
     st.divider()
@@ -15449,6 +15618,27 @@ if _page == "tvtk_prep":
     st.markdown("## Tài liệu chuẩn bị thống nhất đầu vào")
     st.caption("Khu vực: Kè Công Viên · Bãi Đỗ Xe Ngầm · Nhà Hành Chính  |  Họp TVTK 26/5/2026")
 
+    # ── Hình nội dung họp 26/5/2026 — 2 trang ────────────────────────────
+    _meeting_img1 = _ROOT / "data" / "images" / "meeting_20260526.jpg"
+    _meeting_img2 = _ROOT / "data" / "images" / "meeting_20260526_2.jpg"
+    _mc1, _mc2 = st.columns(2)
+    if _meeting_img1.exists():
+        _mc1.image(
+            str(_meeting_img1),
+            caption="Nội dung họp TVTK 26/5/2026 — Trang 1",
+            use_container_width=True,
+        )
+    else:
+        _mc1.caption(f"_(Không tìm thấy: {_meeting_img1.name})_")
+    if _meeting_img2.exists():
+        _mc2.image(
+            str(_meeting_img2),
+            caption="Nội dung họp TVTK 26/5/2026 — Trang 2",
+            use_container_width=True,
+        )
+    else:
+        _mc2.caption(f"_(Không tìm thấy: {_meeting_img2.name})_")
+
     _cv = _sq.connect(_DB)
     _cv.row_factory = _sq.Row
 
@@ -16153,7 +16343,7 @@ if _page == "tvtk_prep":
                 ("side_culvert", "Đoạn hai bên cống / cống chui"),
                 ("near_bridge",  "Đoạn gần mố cầu"),
             ]
-            _c_lim1, _c_lim2, _c_lim3 = st.columns([1.4, 1.4, 1.0])
+            _c_lim1, _c_lim2, _c_lim3, _c_lim_s = st.columns([1.3, 1.3, 0.9, 0.7])
             _rc_pick = _c_lim1.selectbox(
                 "Cấp đường (TCCS 41 Bảng 1)",
                 options=[k for k, _ in _RC_OPTS],
@@ -16168,7 +16358,20 @@ if _page == "tvtk_prep":
                 index=[k for k, _ in _POS_OPTS].index(_pos_def) if _pos_def in dict(_POS_OPTS) else 0,
                 key="_tv_tccs41_pos",
             )
-            # Persist lựa chọn
+            # Nút Lưu cấu hình cấp đường + vị trí
+            if _c_lim_s.button("Lưu", key="_tv_tccs41_save",
+                               use_container_width=True, type="primary",
+                               help="Lưu cấp đường + vị trí TCCS 41 vào cơ sở dữ liệu"):
+                _cv.execute(
+                    "UPDATE tvtk_cdm_config SET road_class_code=?, position_code=? WHERE id=1",
+                    (_rc_pick, _pos_pick),
+                )
+                _cv.commit()
+                st.success(
+                    f"Đã lưu TCCS 41: **{dict(_RC_OPTS)[_rc_pick]}** + "
+                    f"**{dict(_POS_OPTS)[_pos_pick]}**"
+                )
+            # Auto persist khi đổi (không cần bấm Lưu)
             _cv.execute(
                 "UPDATE tvtk_cdm_config SET road_class_code=?, position_code=? WHERE id=1",
                 (_rc_pick, _pos_pick),
