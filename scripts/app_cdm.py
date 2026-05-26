@@ -1870,7 +1870,7 @@ def _build_mu_by_loc(
     Phục vụ vẽ Cu = μ·Su trên biểu đồ VST theo TCCS 41 Phụ lục C.3.2.
     """
     try:
-        from scripts.settlement_calc import build_mu_by_loc as _build_pub
+        from settlement_calc import build_mu_by_loc as _build_pub
         return _build_pub(loc_names, soft_symbols, db_path=_DB)
     except Exception:
         return {}
@@ -9943,7 +9943,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
                 # Lazy import Bjerrum + helper Cu = μ·Su từ VST cho mỗi layer
                 try:
-                    from scripts.settlement_calc import bjerrum_mu as _bj_mu_kh
+                    from settlement_calc import bjerrum_mu as _bj_mu_kh
                 except Exception:
                     _bj_mu_kh = None
 
@@ -11654,7 +11654,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _con_md.row_factory = sqlite3.Row
                             # Ip TB + μ Bjerrum cho HK này (1 lần)
                             try:
-                                from scripts.settlement_calc import bjerrum_mu as _bj_mu_md
+                                from settlement_calc import bjerrum_mu as _bj_mu_md
                             except Exception:
                                 _bj_mu_md = None
                             _ip_md_r = _con_md.execute("""
@@ -12184,7 +12184,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 """, (_bh_short_dl,)).fetchall()
                                 # Bjerrum μ cho HK (1 lần)
                                 try:
-                                    from scripts.settlement_calc import bjerrum_mu as _bj_mu_dl
+                                    from settlement_calc import bjerrum_mu as _bj_mu_dl
                                 except Exception:
                                     _bj_mu_dl = None
                                 _r_ip_dl = _con_dl.execute("""
@@ -16023,7 +16023,7 @@ if _page == "tvtk_prep":
 
             # Lazy import Bjerrum
             try:
-                from scripts.settlement_calc import bjerrum_mu as _bj_mu
+                from settlement_calc import bjerrum_mu as _bj_mu
             except Exception:
                 _bj_mu = None
 
@@ -16113,7 +16113,7 @@ if _page == "tvtk_prep":
             # ── Giới hạn ΔS cho phép theo TCCS 41:2022 Bảng 1 — Điều 6.2.3 ──
             # Tạo bảng + populate nếu chưa có (idempotent)
             try:
-                from scripts.settlement_calc import (
+                from settlement_calc import (
                     create_tccs41_limits_table as _make_tccs41_lim,
                     get_allowable_residual_settlement as _get_ds_limit,
                 )
@@ -16444,7 +16444,7 @@ if _page == "tvtk_prep":
         # Bjerrum μ + Ip per HK — TÍNH ON-THE-FLY cho TẤT CẢ HK trong biểu đồ
         # (Không phụ thuộc tvtk_bh_cdm vì biểu đồ có thể có HK ngoài tuyến CDM)
         try:
-            from scripts.settlement_calc import bjerrum_mu as _bj_mu_vst
+            from settlement_calc import bjerrum_mu as _bj_mu_vst
         except Exception:
             _bj_mu_vst = None
 
@@ -17356,13 +17356,20 @@ if _page == "tvtk_prep":
         except Exception as _exc_md:
             st.error(f"Lỗi đọc file lý thuyết: {_exc_md}")
 
-    # 8.1 — Tham số clustering
+    # 8.1 — Tham số clustering (dual-path import — Cloud vs local)
     try:
-        from scripts.cdm_zoning import (
-            build_features_for_zone, run_clustering, delaunay_edges,
-            check_P5_qc, check_P7_gradient, save_clusters_to_db,
-            get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
-        )
+        try:
+            from cdm_zoning import (
+                build_features_for_zone, run_clustering, delaunay_edges,
+                check_P5_qc, check_P7_gradient, save_clusters_to_db,
+                get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
+            )
+        except ImportError:
+            from scripts.cdm_zoning import (
+                build_features_for_zone, run_clustering, delaunay_edges,
+                check_P5_qc, check_P7_gradient, save_clusters_to_db,
+                get_qu_samples_for_zone, I_CP_BY_ZONE, K_DEFAULT_BY_ZONE,
+            )
         _zone_pick_8 = st.radio(
             "Khu vực phân tích:",
             options=["KE", "BXN", "NHC"],

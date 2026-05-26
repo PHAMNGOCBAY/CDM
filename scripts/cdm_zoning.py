@@ -65,10 +65,14 @@ def build_features_for_zone(
     Returns: [{bh_name, x, y, H_soft, Cu, N_spt, e0, Cc, S1, n_qu_samples}, ...]
     """
     _p = db_path or _DB
+    # Dual-path import — Cloud (main = scripts/app_cdm.py) vs local (cwd = root)
     try:
-        from scripts.settlement_calc import bjerrum_mu
+        from settlement_calc import bjerrum_mu
     except ImportError:
-        bjerrum_mu = lambda ip: 1.0
+        try:
+            from scripts.settlement_calc import bjerrum_mu
+        except ImportError:
+            bjerrum_mu = lambda ip: 1.0
 
     out = []
     with sqlite3.connect(_p) as con:
