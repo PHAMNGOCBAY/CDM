@@ -8362,7 +8362,7 @@ if _page == "ke_sw":
                     "w (kN/m²)":         f"{r['w_kN_per_m2']:.3f}",
                     "Mp (kN·m/m)":       f"{r['plaxis_inputs']['Mp_kNm_per_m']:.1f}",
                 })
-            st.table(_pd.DataFrame(_tbl_pl))
+            st.table(pd.DataFrame(_tbl_pl))
             st.caption(
                 "**Plain strain:** EA và EI per m wall length (KHÔNG per 1 cừ). "
                 "PLAXIS 2D plate dùng các giá trị này trực tiếp. "
