@@ -360,6 +360,29 @@ def build_lateral_load(geom: WallGeometry,
 
 def kh_clay_matlock(z_m: float, D_m: float, Su_kPa: float, gamma_kNm3: float,
                     eps50: float = 0.02) -> float:
+    """Hệ số nền ngang kh cho sét — Matlock 1970.
+
+    QUAN TRỌNG: tham số `Su_kPa` phải là **cường độ kháng cắt TÍNH TOÁN**
+    theo TCCS 41:2022 Phụ lục C.3.2 — Công thức C.5:
+
+        Cu = μ × Su_VST
+
+    với μ là hệ số hiệu chỉnh Bjerrum tra Bảng C.1 theo chỉ số dẻo Ip.
+    KHÔNG truyền Su VST nguyên (chưa hiệu chỉnh) — sẽ cho kh quá lớn ~10-15%.
+
+    Công thức:
+        Np  = min(3 + γ·z / max(Cu, 1), 9)        — hệ số khả năng chịu tải
+        pu  = Np · Cu · D                          — sức chịu tải giới hạn ngang
+        y50 = 2.5 · eps50 · D                      — chuyển vị tại 50% pu
+        kh  = pu / y50                             — kN/m³
+
+    Args:
+        z_m:        Độ sâu (m, dương = đi xuống)
+        D_m:        Đường kính / bề rộng cừ (m)
+        Su_kPa:     Cu TÍNH TOÁN = μ × Su_VST (kPa)
+        gamma_kNm3: Dung trọng đất hiệu quả (kN/m³)
+        eps50:      Biến dạng tại 50% qu, mặc định 0.02
+    """
     Np = min(3.0 + gamma_kNm3 * z_m / max(Su_kPa, 1.0), 9.0)
     pu = Np * Su_kPa * D_m
     y50 = 2.5 * eps50 * D_m

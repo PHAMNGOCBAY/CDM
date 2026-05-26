@@ -259,6 +259,22 @@
         "Đào/Đắp (m)", "H đất yếu (m)", "L (không đào) m", "L CDM (m)", "Ghi chú"
       ]
     },
+    "kh_winkler_from_cu_calc": {
+      "_ref": "56-ke-sw-kh-from-cu-tinh-toan.md — kh Winkler dùng Cu tính toán Bjerrum",
+      "_note": "Hệ số nền kh phải tính từ Cu = μ·Su (TCCS 41 C.5), KHÔNG dùng Su VST nguyên",
+      "formula_matlock": "kh = N_p · c_u / (2.5 · eps50)",
+      "N_p_formula": "min(3 + gamma_eff · z / max(c_u, 1), 9)",
+      "eps50_default": 0.02,
+      "cu_priority_order": [
+        "VST + Bjerrum (Cu = mu × Su_VST trong phạm vi lớp)",
+        "Lab UU (Cu_UU_kPa)",
+        "c direct shear (c_kPa)",
+        "Default 11.0 kPa"
+      ],
+      "soft_symbols_for_Ip_avg": ["1", "1b", "CH", "MH", "CH-OH", "MH-OH"],
+      "applied_in_app_cdm_lines": [9930, 11650, 12166],
+      "deviation_from_raw_Su_pct": "10-15% (mu ~ 0.86-0.91 cho KE)"
+    },
     "bjerrum_correction": {
       "_ref": "TCCS 41:2022/TCĐBVN — Phụ lục C.3.2 — Bảng C.1 — Công thức C.5",
       "_note": "Cường độ kháng cắt tính toán c_u = μ · S_u (VST). Áp dụng cho lớp đất tự nhiên yếu hoặc không yếu nằm dưới nền đắp; xem góc ma sát φ = 0.",

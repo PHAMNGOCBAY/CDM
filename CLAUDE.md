@@ -2219,3 +2219,64 @@ K_DEFAULT_BY_ZONE = {"KE": 3,   "BXN": 3,   "NHC": 4}
 - **Delaunay same-cluster:** line xám `#BBBBBB` width 1.2 liền
 - **Delaunay cross-boundary:** line đỏ `#D32F2F` width 2.0 đứt (dot)
 - **Aspect ratio:** `scaleanchor='x', scaleratio=1` (tỷ lệ thật)
+
+---
+
+### 43. Hệ số nền $k_h$ Winkler dùng Cu tính toán Bjerrum (BẮT BUỘC)
+
+**File tài liệu:** [56-ke-sw-kh-from-cu-tinh-toan.md](56-ke-sw-kh-from-cu-tinh-toan.md)
+**JSON config:** `data/tccs41_params.json` → `tccs41_limits.kh_winkler_from_cu_calc`
+**Python:** `scripts/wall_internal_force.py` `kh_clay_matlock()` + 3 caller trong `app_cdm.py`
+
+#### Quy tắc bắt buộc
+
+`kh_clay_matlock(z, D, Su_kPa, ...)` — **tham số `Su_kPa` PHẢI là $c_u$ tính toán** = $\mu \cdot S_u$ theo TCCS 41 Phụ lục C.3.2 — Công thức C.5. **KHÔNG truyền $S_u$ VST nguyên** — kết quả $k_h$ sẽ quá lớn ~10–15%.
+
+#### Thứ tự ưu tiên $c_u$ khi build `SoilLayer`
+
+| Ưu tiên | Nguồn | Tag |
+|:---:|---|:---:|
+| 1 | **VST + Bjerrum** (Cu = μ·$\overline{S_u}_{VST}$ trong phạm vi lớp) | `'VST+mu'` |
+| 2 | Lab UU (`lab_tests.Cu_UU_kPa`) | `'UU'` |
+| 3 | $c$ direct shear (`lab_tests.c_kPa`) | `'shear_c'` |
+| 4 | Mặc định 11,0 kPa | `'default'` |
+
+#### Pattern khi build SoilLayer (3 nơi trong app_cdm.py)
+
+```python
+# 1. Ip TB cho HK (1 lần)
+ip_avg = SELECT AVG(Ip) FROM lab_tests WHERE bh=? 
+         AND symbol_tcvn IN ('1','1b','CH','MH','CH-OH','MH-OH')
+mu = bjerrum_mu(ip_avg)
+
+# 2. Per layer: Su VST trong phạm vi depth_top..depth_bot
+for layer in layers:
+    su_vst = SELECT AVG(v.Su_kPa) FROM vane_shear_tests v
+             JOIN vst_locations vl ON v.vst_loc_id = vl.id
+             WHERE vl.name = bh AND v.depth_m BETWEEN top AND bot
+    cu = (su_vst * mu) if su_vst else (Cu_UU or c_kPa or 11.0)
+    SoilLayer(Su_kPa=cu, ...)   # truyền Cu tính toán, không Su gốc
+```
+
+#### Vị trí code 3 caller
+
+| Line app_cdm.py | Mục đích | Status |
+|:---:|---|:---:|
+| ~9930 | `_solve_pynite()` builder Winkler chính | Đã sửa |
+| ~11650 | Winkler tải phân bố Boussinesq (D.1) | Đã sửa |
+| ~12166 | `drained_layers` Back (lò xo phía Back) | Đã sửa |
+
+#### Caption công thức kh UI
+
+```latex
+k_h = \dfrac{p_u}{y_{50}} = \dfrac{N_p \cdot c_u}{2{,}5 \cdot \varepsilon_{50}} \quad [\text{kN/m}^3]
+```
+
+với chú thích: "**Cu tính toán** = μ·Su_VST theo TCCS 41 Phụ lục C.3.2 (Công thức C.5). KHÔNG dùng Su VST nguyên — sẽ cho kh quá lớn ~10–15%."
+
+#### Sample verify KE-HK2
+
+- Ip TB lớp yếu = 35,9 → μ = 0,887
+- Su VST lớp 1 = 12,9 → **Cu = 11,45 kPa**
+- $N_p = 5,18$, $D = 0,84$ m, $\varepsilon_{50} = 0,02$
+- **$k_h$ = 1186 kN/m³** (vs 1338 kN/m³ nếu dùng Su nguyên — **chênh +12,8%**)
