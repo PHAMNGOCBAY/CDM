@@ -4729,9 +4729,9 @@ elif _page == "sample_check":
     )
 
     if _HAS_537:
-        # Tải dữ liệu 4 khu vực
+        # Tải dữ liệu 3 khu vực
         _chk_all = {}
-        for _zc in ["NHC", "BXN", "KE", "QTT"]:
+        for _zc in ["NHC", "BXN", "KE"]:
             try:
                 _chk_all[_zc] = _chk537(_zc)
             except Exception as _ex:
@@ -4739,8 +4739,8 @@ elif _page == "sample_check":
 
         # Metric cards tóm tắt
         _lun_params = ["Cc", "Cs", "Cv", "PC"]
-        _met_cols = st.columns(4)
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
+        _met_cols = st.columns(3)
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
             if _zc not in _chk_all:
                 continue
             _s       = _chk_all[_zc]["zone_summary"]
@@ -4777,7 +4777,7 @@ elif _page == "sample_check":
             return ""
 
         # Bảng chi tiết per khu vực
-        for _zc in ["NHC", "BXN", "KE", "QTT"]:
+        for _zc in ["NHC", "BXN", "KE"]:
             if _zc not in _chk_all:
                 continue
             st.markdown(f"**Khu vực {_zc} — Chi tiết theo lớp đất**")
@@ -4804,11 +4804,11 @@ elif _page == "sample_check":
                 use_container_width=True, hide_index=True,
             )
 
-        # Tóm tắt 4 khu vực
+        # Tóm tắt 3 khu vực
         st.divider()
-        st.markdown("**Tóm tắt 4 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
+        st.markdown("**Tóm tắt 3 khu vực — Thông số lún chính (Cc/Cs/Cv/PC)**")
         _sum_rows = []
-        for _zc in ["NHC", "BXN", "KE", "QTT"]:
+        for _zc in ["NHC", "BXN", "KE"]:
             if _zc not in _chk_all:
                 continue
             _s = _chk_all[_zc]["zone_summary"]
@@ -4825,7 +4825,7 @@ elif _page == "sample_check":
             st.table(pd.DataFrame(_sum_rows))
         st.info(
             "Xanh = đủ n≥6 | Đỏ = thiếu mẫu (<6) | '-' = không có mẫu hoặc không áp dụng. "
-            "KE chưa có mẫu Cc | QTT có KQTN cho ND-02/06/07 (3/6 hố khoan)."
+            "Khu vực KE chưa có mẫu Cc — ưu tiên bổ sung."
         )
 
     # ── B. TCVN 9403:2012 Bảng B.1 — QC mẫu CDM ────────────────────────────
@@ -4853,9 +4853,9 @@ elif _page == "sample_check":
         )
     else:
         st.markdown("**Nhập số liệu kiểm tra thực tế:**")
-        _qc_cols = st.columns(4)
+        _qc_cols = st.columns(3)
         _qc_zone_inputs = {}
-        for _ci, _zc in enumerate(["NHC", "BXN", "KE", "QTT"]):
+        for _ci, _zc in enumerate(["NHC", "BXN", "KE"]):
             with _qc_cols[_ci]:
                 st.markdown(f"**Khu vực {_zc}**")
                 _n_col = st.number_input(f"Số cột CDM ({_zc})", 0, 10000, 0, 50,
@@ -8370,6 +8370,96 @@ if _page == "ke_sw":
             )
         except Exception as _exc_pl:
             st.error(f"Lỗi tính EI/EA: {_exc_pl}")
+
+    # ── A.3 Mô đun đàn hồi Ec bê tông (4 tiêu chuẩn) ─────────────────────────
+    st.markdown("#### A.3. Mô đun đàn hồi Ec bê tông — So sánh 4 tiêu chuẩn")
+
+    with st.expander(
+        "Công thức và bảng tra Ec (TCVN 5574 + ACI 318 + EC2 + AS 3600)",
+        expanded=False,
+    ):
+        _md_ec_path = _ROOT / "58-concrete-modulus.md"
+        try:
+            if _md_ec_path.exists():
+                st.markdown(_md_ec_path.read_text(encoding="utf-8"))
+            else:
+                st.warning("Không tìm thấy 58-concrete-modulus.md")
+        except Exception as _exc_ec:
+            st.error(f"Lỗi đọc tài liệu: {_exc_ec}")
+
+    # Module Python (dual-path import)
+    _cm_mod = None
+    try:
+        import concrete_modulus as _cm_mod
+    except ImportError:
+        try:
+            from scripts import concrete_modulus as _cm_mod
+        except ImportError:
+            _cm_mod = None
+
+    if _cm_mod is not None:
+        # Input + compare
+        _c_ec1, _c_ec2, _c_ec3 = st.columns([1, 1, 2])
+        _ec_fc = _c_ec1.number_input(
+            "f_c cylinder (MPa)",
+            min_value=15.0, max_value=120.0, value=70.0, step=5.0,
+            format="%.1f", key="_ec_fc_input",
+            help="Cường độ nén bê tông cylinder",
+        )
+        _ec_rho = _c_ec2.number_input(
+            "Density ρ (kg/m³)",
+            min_value=2000.0, max_value=2800.0, value=2400.0, step=50.0,
+            format="%.0f", key="_ec_rho_input",
+            help="Density cho công thức AS 3600",
+        )
+        try:
+            _r_ec = _cm_mod.compare_all(_ec_fc, rho_kg_m3=_ec_rho)
+            _c_ec3.caption(
+                f"**Cấp B gần nhất:** {_r_ec['grade_tcvn_guess']}  "
+                f"→ Ec TB = **{_r_ec['mean_MPa']:.0f} MPa** "
+                f"(σ {_r_ec['std_pct']:.1f}% giữa 4 công thức)"
+            )
+
+            # 4 metric cards so sánh
+            _c_ec_m1, _c_ec_m2, _c_ec_m3, _c_ec_m4 = st.columns(4)
+            _c_ec_m1.metric("ACI 318",   f"{_r_ec['Ec_ACI318_MPa']:.0f} MPa",
+                            help="Ec = 4730·√fc (đơn giản, bảo thủ)")
+            _c_ec_m2.metric("EC2 (EN 1992)", f"{_r_ec['Ec_EC2_MPa']:.0f} MPa",
+                            help="Ec = 22·(fcm/10)^0.3, fcm = fc + 8")
+            _c_ec_m3.metric("TCVN 5574", f"{_r_ec['Ec_TCVN5574_MPa']:.0f} MPa"
+                            if _r_ec['Ec_TCVN5574_MPa'] else "—",
+                            help="Bảng tra theo cấp B (TCVN 5574:2018)")
+            _c_ec_m4.metric("AS 3600 (Úc)", f"{_r_ec['Ec_AS3600_MPa']:.0f} MPa",
+                            help="Ec = ρ^1.5 · 0.043·√fc")
+
+            # Bảng tra full 14 cấp B
+            st.markdown("##### Bảng tra Ec đầy đủ 14 cấp B (B15–B100)")
+            _all_ec = _cm_mod.list_all()
+            if not _all_ec:
+                _cm_mod.save_to_db()
+                _all_ec = _cm_mod.list_all()
+            _tbl_ec = []
+            for r in _all_ec:
+                _tbl_ec.append({
+                    "Cấp B":       r["grade_tcvn"],
+                    "fc (MPa)":    f"{r['fc_MPa']:.1f}",
+                    "ACI 318":     f"{r['Ec_ACI318_MPa']:,.0f}",
+                    "EC2":         f"{r['Ec_EC2_MPa']:,.0f}",
+                    "TCVN 5574":   f"{r['Ec_TCVN5574_MPa']:,.0f}",
+                    "AS 3600":     f"{r['Ec_AS3600_MPa']:,.0f}",
+                    "TB (MPa)":    f"{r['mean_MPa']:,.0f}",
+                    "σ %":         f"{r['std_pct']:.1f}",
+                })
+            st.table(pd.DataFrame(_tbl_ec))
+            st.caption(
+                "**ACI 318 bảo thủ nhất** · **TCVN 5574 + EC2 cao hơn** "
+                "(thực tế hơn cho BT cường độ cao). σ giảm khi fc tăng → "
+                "BT cường độ cao đồng nhất hơn giữa các tiêu chuẩn."
+            )
+        except Exception as _exc_ec2:
+            st.error(f"Lỗi tính Ec: {_exc_ec2}")
+    else:
+        st.warning("Module concrete_modulus không khả dụng.")
 
     # ── B. Kết quả thiết kế TTHC ────────────────────────────────────────────────
     st.divider()
@@ -15661,10 +15751,10 @@ if _page == "tvtk_prep":
 
     # ── 1. Phân khu địa chất ────────────────────────────────────────────────
     st.markdown("### 1. Sơ bộ phân khu địa chất / thiết kế")
-    _zones_tv = _cv.execute("SELECT id, code, name_vi AS name, notes FROM zones WHERE code != 'QTT' ORDER BY id").fetchall()
+    _zones_tv = _cv.execute("SELECT id, code, name_vi AS name, notes FROM zones ORDER BY id").fetchall()
     _bhs_tv   = _cv.execute("""
         SELECT b.id, b.zone_id, b.name, b.elevation_m, b.x_coord_m, b.y_coord_m, b.depth_m
-        FROM boreholes b WHERE b.zone_id IN (1,2,3) ORDER BY b.zone_id, b.name
+        FROM boreholes b WHERE b.zone_id IN (1,2,3,4) ORDER BY b.zone_id, b.name
     """).fetchall()
 
     # Load CDM selection sớm — dùng cho cả bình đồ lẫn bảng thống kê
@@ -15741,8 +15831,8 @@ if _page == "tvtk_prep":
         "SELECT easting_m, northing_m FROM cdm_toado WHERE zone='KE' AND id % 15 = 0"
     ).fetchall()
 
-    _zone_codes  = {1: "KE", 2: "BXN", 3: "NHC"}
-    _zone_colors = {1: "#f97316", 2: "#3b82f6", 3: "#22c55e"}
+    _zone_codes  = {1: "KE", 2: "BXN", 3: "NHC", 4: "QTT"}
+    _zone_colors = {1: "#f97316", 2: "#3b82f6", 3: "#22c55e", 4: "#F9A825"}
     _fig_tv = _go_tv.Figure()
 
     # CDM point cloud (nền)
@@ -15765,7 +15855,7 @@ if _page == "tvtk_prep":
     _vis_yes = True if _tv_filter in ["Tất cả", "Tham gia tính CDM"] else "legendonly"
     _vis_no  = True if _tv_filter in ["Tất cả", "Không tham gia CDM"] else "legendonly"
 
-    for _zid in (1, 2, 3):
+    for _zid in (1, 2, 3, 4):
         _zname   = _zone_codes[_zid]
         _zcol    = _zone_colors[_zid]
         _pts_all = [b for b in _bhs_tv if b["zone_id"] == _zid and b["y_coord_m"]]
@@ -15813,12 +15903,13 @@ if _page == "tvtk_prep":
 
     # ── 2. Cao độ tự nhiên – cao độ thiết kế ────────────────────────────────
     st.markdown("### 2. Cao độ tự nhiên – cao độ thiết kế")
-    _c2a, _c2b, _c2c, _c2s = st.columns([1, 1, 1, 0.6])
+    _c2a, _c2b, _c2c, _c2d, _c2s = st.columns([1, 1, 1, 1, 0.6])
     _des_ke  = _c2a.number_input("Cao độ TK kè KE (m)",   value=_tv_load("KE",  "design_elev_m", 2.70), step=0.05, format="%.2f", key="_tv_desKE")
     _des_bxn = _c2b.number_input("Cao độ TK BXN (m)",     value=_tv_load("BXN", "design_elev_m", 3.00), step=0.05, format="%.2f", key="_tv_desBXN")
     _des_nhc = _c2c.number_input("Cao độ TK NHC (m)",     value=_tv_load("NHC", "design_elev_m", 2.50), step=0.05, format="%.2f", key="_tv_desNHC")
+    _des_qtt = _c2d.number_input("Cao độ TK QTT (m)",     value=_tv_load("QTT", "design_elev_m", 2.50), step=0.05, format="%.2f", key="_tv_desQTT")
     if _c2s.button("Lưu cao độ TK", key="_tv_save_des", use_container_width=True):
-        for _zc, _dv in (("KE", _des_ke), ("BXN", _des_bxn), ("NHC", _des_nhc)):
+        for _zc, _dv in (("KE", _des_ke), ("BXN", _des_bxn), ("NHC", _des_nhc), ("QTT", _des_qtt)):
             _cv.execute("""
                 INSERT INTO tvtk_config (zone_code, design_elev_m)
                 VALUES (?, ?)
@@ -15827,7 +15918,7 @@ if _page == "tvtk_prep":
             """, (_zc, _dv))
         _cv.commit()
         st.success("Đã lưu cao độ thiết kế.")
-    _des_map = {1: _des_ke, 2: _des_bxn, 3: _des_nhc}
+    _des_map = {1: _des_ke, 2: _des_bxn, 3: _des_nhc, 4: _des_qtt}
 
     # Bảng chọn HK tham gia tính CDM — bảng và _saved_sel đã load ở Section 1
 
