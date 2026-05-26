@@ -15569,16 +15569,26 @@ if _page == "tvtk_prep":
     st.markdown("## Tài liệu chuẩn bị thống nhất đầu vào")
     st.caption("Khu vực: Kè Công Viên · Bãi Đỗ Xe Ngầm · Nhà Hành Chính  |  Họp TVTK 26/5/2026")
 
-    # ── Hình nội dung họp 26/5/2026 ──────────────────────────────────────
-    _meeting_img = _ROOT / "data" / "images" / "meeting_20260526.jpg"
-    if _meeting_img.exists():
-        st.image(
-            str(_meeting_img),
-            caption="Nội dung họp TVTK ngày 26/5/2026",
+    # ── Hình nội dung họp 26/5/2026 — 2 trang ────────────────────────────
+    _meeting_img1 = _ROOT / "data" / "images" / "meeting_20260526.jpg"
+    _meeting_img2 = _ROOT / "data" / "images" / "meeting_20260526_2.jpg"
+    _mc1, _mc2 = st.columns(2)
+    if _meeting_img1.exists():
+        _mc1.image(
+            str(_meeting_img1),
+            caption="Nội dung họp TVTK 26/5/2026 — Trang 1",
             use_container_width=True,
         )
     else:
-        st.caption(f"_(Không tìm thấy hình họp: {_meeting_img.name})_")
+        _mc1.caption(f"_(Không tìm thấy: {_meeting_img1.name})_")
+    if _meeting_img2.exists():
+        _mc2.image(
+            str(_meeting_img2),
+            caption="Nội dung họp TVTK 26/5/2026 — Trang 2",
+            use_container_width=True,
+        )
+    else:
+        _mc2.caption(f"_(Không tìm thấy: {_meeting_img2.name})_")
 
     _cv = _sq.connect(_DB)
     _cv.row_factory = _sq.Row
