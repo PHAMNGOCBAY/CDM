@@ -15968,6 +15968,123 @@ if _page == "tvtk_prep":
     _n_sel = int(_edited["Tính CDM"].sum())
     st.caption(f"Đã chọn **{_n_sel}** / {len(_edited)} hố khoan tham gia tính toán CDM.")
 
+    # ── 2b. Bề mặt 3D cao độ QTT ─────────────────────────────────────────────
+    import numpy as _np_surf
+    _qtt_elev_pts = _cv.execute(
+        "SELECT easting_m, northing_m, elev_nat_m, elev_des_m, fill_m FROM qtt_elevation_points ORDER BY easting_m, northing_m"
+    ).fetchall()
+    _qtt_boundary = _cv.execute(
+        "SELECT easting_m, northing_m FROM qtt_cdm_boundary ORDER BY vertex_order"
+    ).fetchall()
+
+    if _qtt_elev_pts:
+        import plotly.graph_objects as _go_surf
+        _xs_raw = sorted(set(r[0] for r in _qtt_elev_pts))
+        _ys_raw = sorted(set(r[1] for r in _qtt_elev_pts))
+        _nx, _ny = len(_xs_raw), len(_ys_raw)
+        _xi_map = {x: i for i, x in enumerate(_xs_raw)}
+        _yi_map = {y: j for j, y in enumerate(_ys_raw)}
+        _Z_nat  = _np_surf.full((_ny, _nx), _np_surf.nan)
+        _Z_des  = _np_surf.full((_ny, _nx), _np_surf.nan)
+        _Z_fill = _np_surf.full((_ny, _nx), _np_surf.nan)
+        for r in _qtt_elev_pts:
+            _i, _j = _xi_map[r[0]], _yi_map[r[1]]
+            if r[2] is not None: _Z_nat[_j, _i]  = r[2]
+            if r[3] is not None: _Z_des[_j, _i]  = r[3]
+            if r[4] is not None: _Z_fill[_j, _i] = r[4]
+        _X_grid = _np_surf.array(_xs_raw)
+        _Y_grid = _np_surf.array(_ys_raw)
+
+        with st.expander("Bề mặt cao độ 3D — Quảng Trường Trung Tâm (QTT)", expanded=True):
+            _surf_mode = st.radio(
+                "Hiển thị:",
+                ["Tự nhiên + Thiết kế", "Chênh cao (đắp/đào)"],
+                horizontal=True, key="_surf_mode_qtt",
+            )
+
+            _col3d_a, _col3d_b = st.columns([3, 1])
+
+            if _surf_mode == "Tự nhiên + Thiết kế":
+                _fig3d = _go_surf.Figure()
+                _fig3d.add_trace(_go_surf.Surface(
+                    x=_X_grid, y=_Y_grid, z=_Z_nat,
+                    name="Cao độ tự nhiên",
+                    colorscale="Blues",
+                    opacity=0.85,
+                    showscale=False,
+                    hovertemplate="E=%{x:.1f}<br>N=%{y:.1f}<br>Tự nhiên=%{z:.2f}m<extra></extra>",
+                ))
+                _fig3d.add_trace(_go_surf.Surface(
+                    x=_X_grid, y=_Y_grid, z=_Z_des,
+                    name="Cao độ thiết kế",
+                    colorscale="Oranges",
+                    opacity=0.75,
+                    showscale=False,
+                    hovertemplate="E=%{x:.1f}<br>N=%{y:.1f}<br>Thiết kế=%{z:.2f}m<extra></extra>",
+                ))
+                _fig3d_title = "Bề mặt cao độ tự nhiên (xanh) và thiết kế (cam)"
+            else:
+                _fig3d = _go_surf.Figure()
+                _fig3d.add_trace(_go_surf.Surface(
+                    x=_X_grid, y=_Y_grid, z=_Z_fill,
+                    colorscale=[
+                        [0.0, "#d32f2f"], [0.35, "#ef9a9a"], [0.5, "#ffffff"],
+                        [0.65, "#90caf9"], [1.0, "#1565c0"],
+                    ],
+                    zmid=0,
+                    showscale=True,
+                    colorbar=dict(title="Đắp/Đào (m)", thickness=16, len=0.7),
+                    hovertemplate="E=%{x:.1f}<br>N=%{y:.1f}<br>Chênh=%{z:.2f}m<extra></extra>",
+                ))
+                _fig3d_title = "Chênh cao độ thiết kế − tự nhiên (đỏ = đào, xanh = đắp)"
+
+            # Ranh CDM overlay (projected onto mean design elevation)
+            if _qtt_boundary:
+                _bnd_z = float(_np_surf.nanmean(_Z_des)) if _surf_mode == "Tự nhiên + Thiết kế" else 0.0
+                _fig3d.add_trace(_go_surf.Scatter3d(
+                    x=[v[0] for v in _qtt_boundary] + [_qtt_boundary[0][0]],
+                    y=[v[1] for v in _qtt_boundary] + [_qtt_boundary[0][1]],
+                    z=[_bnd_z] * (len(_qtt_boundary) + 1),
+                    mode="lines",
+                    line=dict(color="#f59e0b", width=4),
+                    name="Ranh vùng xử lý nền CDM",
+                    hoverinfo="skip",
+                ))
+
+            _fig3d.update_layout(
+                height=600,
+                title=_fig3d_title,
+                template="plotly_dark",
+                scene=dict(
+                    xaxis_title="Easting (m)",
+                    yaxis_title="Northing (m)",
+                    zaxis_title="Cao độ (m)",
+                    aspectmode="manual",
+                    aspectratio=dict(x=1.2, y=1.0, z=0.35),
+                    camera=dict(eye=dict(x=1.4, y=-1.6, z=0.8)),
+                ),
+                margin=dict(l=0, r=0, t=50, b=0),
+                legend=dict(orientation="h", y=1.05, font=dict(size=10)),
+            )
+            _col3d_a.plotly_chart(_fig3d, use_container_width=True,
+                                  config={"scrollZoom": True, "displayModeBar": True})
+
+            # Bảng thống kê tóm tắt
+            _fill_flat = _Z_fill[~_np_surf.isnan(_Z_fill)].ravel()
+            _col3d_b.markdown("**Thống kê chênh cao**")
+            _col3d_b.metric("Cần đào (max)", f"{_fill_flat.min():.2f} m")
+            _col3d_b.metric("Cần đắp (max)", f"{_fill_flat.max():.2f} m")
+            _col3d_b.metric("TB toàn khu", f"{_fill_flat.mean():+.2f} m")
+            _n_dao = int((_fill_flat < -0.05).sum())
+            _n_dap = int((_fill_flat >  0.05).sum())
+            _col3d_b.metric("Điểm cần đào", f"{_n_dao} / {len(_fill_flat)}")
+            _col3d_b.metric("Điểm cần đắp", f"{_n_dap} / {len(_fill_flat)}")
+            _col3d_b.caption(
+                f"Cao độ tự nhiên: {_np_surf.nanmin(_Z_nat):.2f}–{_np_surf.nanmax(_Z_nat):.2f} m  \n"
+                f"Cao độ thiết kế: {_np_surf.nanmin(_Z_des):.2f}–{_np_surf.nanmax(_Z_des):.2f} m  \n"
+                f"Lưới 20×20 m, {len(_qtt_elev_pts)} điểm"
+            )
+
     # ── Trắc dọc cao độ Kè KE ────────────────────────────────────────────────
     import numpy as _np_e
     _ke_bhs_e = sorted(
