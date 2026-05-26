@@ -16021,11 +16021,15 @@ if _page == "tvtk_prep":
                 except Exception:
                     pass
 
-            # Lazy import Bjerrum
+            # Lazy import Bjerrum — dual-path (Cloud + local)
+            _bj_mu = None
             try:
                 from settlement_calc import bjerrum_mu as _bj_mu
-            except Exception:
-                _bj_mu = None
+            except ImportError:
+                try:
+                    from scripts.settlement_calc import bjerrum_mu as _bj_mu
+                except ImportError:
+                    pass
 
             _SOFT_SYM = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
             _ph_sym = ",".join("?" * len(_SOFT_SYM))
@@ -16441,12 +16445,17 @@ if _page == "tvtk_prep":
             if r.get("_bh_name", "").startswith("KE-")
         }
 
-        # Bjerrum μ + Ip per HK — TÍNH ON-THE-FLY cho TẤT CẢ HK trong biểu đồ
-        # (Không phụ thuộc tvtk_bh_cdm vì biểu đồ có thể có HK ngoài tuyến CDM)
+        # Bjerrum μ + Ip per HK — LUÔN COMPUTE FRESH từ lab_tests.Ip
+        # (Không dùng tvtk_bh_cdm vì có thể chứa mu=1.0 từ code cũ import fail)
+        # Dual-path import (Cloud sys.path[0]=scripts/ vs local cwd=root)
+        _bj_mu_vst = None
         try:
             from settlement_calc import bjerrum_mu as _bj_mu_vst
-        except Exception:
-            _bj_mu_vst = None
+        except ImportError:
+            try:
+                from scripts.settlement_calc import bjerrum_mu as _bj_mu_vst
+            except ImportError:
+                pass
 
         # Query Ip TB cho TẤT CẢ KE HK 1 lần (batch — tránh N+1 queries)
         _SOFT_SYM_VST = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
@@ -16461,25 +16470,13 @@ if _page == "tvtk_prep":
             GROUP BY b.name
         """, _SOFT_SYM_VST).fetchall()
 
-        # Ưu tiên giá trị đã lưu trong tvtk_bh_cdm (giữ tính nhất quán với bảng 3 PA)
-        _bj_saved = {
-            r["bh_name"]: {"Ip": r["Ip_avg"], "mu": r["bjerrum_mu"]}
-            for r in _cv.execute("""
-                SELECT bh_name, Ip_avg, bjerrum_mu
-                FROM tvtk_bh_cdm
-                WHERE bh_name LIKE 'KE-%' AND bjerrum_mu IS NOT NULL
-            """).fetchall()
-        }
-
         _bj_per_bh = {}
         for _r_ip in _ip_rows:
             _bh_k = _r_ip["bh_name"]
             _Ip_k = float(_r_ip["Ip_avg"]) if _r_ip["Ip_avg"] is not None else None
-            # Ưu tiên giá trị đã lưu
-            if _bh_k in _bj_saved and _bj_saved[_bh_k]["mu"] is not None:
-                _bj_per_bh[_bh_k] = _bj_saved[_bh_k]
-            elif _Ip_k is not None and _bj_mu_vst is not None:
-                _bj_per_bh[_bh_k] = {"Ip": _Ip_k, "mu": float(_bj_mu_vst(_Ip_k))}
+            if _Ip_k is not None and _bj_mu_vst is not None:
+                _mu_k = float(_bj_mu_vst(_Ip_k))
+                _bj_per_bh[_bh_k] = {"Ip": _Ip_k, "mu": _mu_k}
 
         _bh_names_sorted = sorted(_vst_by_bh.keys(),
                                   key=lambda n: int(n.replace("KE-HK", "") or 0))
