@@ -16022,7 +16022,6 @@ if _page == "tvtk_prep":
 
             _common_xy = dict(
                 x=_xs_raw, y=_ys_raw,
-                xaxis_type="linear",
                 hoverongaps=False,
             )
 
@@ -16033,8 +16032,8 @@ if _page == "tvtk_prep":
                 hovertemplate="E=%{x:.0f}<br>N=%{y:.0f}<br>TN=%{z:.2f}m<extra></extra>",
                 **_common_xy,
             ), row=1, col=1)
-            if _qtt_boundary:
-                _fig2d.add_trace(_bnd_scatter(1, 1), row=1, col=1)
+            _bnd1 = _bnd_scatter(1, 1)
+            if _bnd1: _fig2d.add_trace(_bnd1, row=1, col=1)
 
             # Panel 2 — thiết kế
             _fig2d.add_trace(_go_surf.Heatmap(
@@ -16044,8 +16043,8 @@ if _page == "tvtk_prep":
                 showlegend=False,
                 **_common_xy,
             ), row=1, col=2)
-            if _qtt_boundary:
-                _fig2d.add_trace(_bnd_scatter(1, 2), row=1, col=2)
+            _bnd2 = _bnd_scatter(1, 2)
+            if _bnd2: _fig2d.add_trace(_bnd2, row=1, col=2)
 
             # Panel 3 — chênh cao (đỏ=đào, xanh=đắp)
             _fig2d.add_trace(_go_surf.Heatmap(
@@ -16061,8 +16060,8 @@ if _page == "tvtk_prep":
                 showlegend=False,
                 **_common_xy,
             ), row=1, col=3)
-            if _qtt_boundary:
-                _fig2d.add_trace(_bnd_scatter(1, 3), row=1, col=3)
+            _bnd3 = _bnd_scatter(1, 3)
+            if _bnd3: _fig2d.add_trace(_bnd3, row=1, col=3)
 
             _fig2d.update_layout(
                 height=420,
