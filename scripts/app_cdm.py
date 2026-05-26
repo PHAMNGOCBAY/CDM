@@ -10265,6 +10265,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 for _r in _rows_py:
                     # Cu TÍNH TOÁN ưu tiên VST hiệu chỉnh Bjerrum (TCCS 41 C.5)
                     _cu_lab = _r["Cu_UU_kPa"]
+                    # Query Su VST trung bình trong phạm vi lớp
                     _con_vst = sqlite3.connect(_DB)
                     _con_vst.row_factory = sqlite3.Row
                     _r_vst = _con_vst.execute("""
@@ -10275,6 +10276,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     """, (_bh_short, _r["depth_top_m"], _r["depth_bot_m"])).fetchone()
                     _con_vst.close()
                     _su_vst = float(_r_vst[0]) if _r_vst and _r_vst[0] else None
+                    # Ưu tiên: Cu = μ·Su_VST > Cu_UU lab > c_kPa > default 11
                     if _su_vst is not None:
                         _cu_calc = _su_vst * _mu_bj_kh
                     elif _cu_lab is not None:
