@@ -8201,6 +8201,127 @@ if _page == "ke_sw":
             )
             st.plotly_chart(_fig_cat, use_container_width=True)
 
+    # ── A.2 Thông số PLAXIS 2D Plate (EI/EA/d_eq/w) ─────────────────────────
+    st.markdown("#### A.2. Thông số PLAXIS 2D Plate (EI / EA / d_eq / w)")
+
+    # Expander render trực tiếp MD 57
+    with st.expander(
+        "Công thức và lý thuyết (TCCS / ACI 318 + Plaxis 2D plate plain strain)",
+        expanded=False,
+    ):
+        _md_plaxis = _ROOT / "57-sw-plaxis-EI-EA.md"
+        try:
+            if _md_plaxis.exists():
+                st.markdown(_md_plaxis.read_text(encoding="utf-8"))
+            else:
+                st.warning("Không tìm thấy 57-sw-plaxis-EI-EA.md")
+        except Exception as _exc_md_pl:
+            st.error(f"Lỗi đọc tài liệu: {_exc_md_pl}")
+
+    # Selectbox cọc + cấp BT
+    _plaxis_piles  = ["SW-600B", "SW-740", "SW-840"]
+    _plaxis_fc_opt = {"C50 (B45)": 50, "C60 (B55)": 60,
+                       "C70 (B65)": 70, "C80 (B75)": 80}
+
+    _c_pa1, _c_pa2, _c_pa3 = st.columns([1, 1, 2])
+    _plaxis_pile = _c_pa1.selectbox(
+        "Loại cọc SW",
+        options=_plaxis_piles,
+        index=1,   # mặc định SW-740
+        key="_plaxis_pile_pick",
+    )
+    _plaxis_fc_lbl = _c_pa2.selectbox(
+        "Cấp bê tông",
+        options=list(_plaxis_fc_opt.keys()),
+        index=2,   # mặc định C70
+        key="_plaxis_fc_pick",
+    )
+    _plaxis_fc = _plaxis_fc_opt[_plaxis_fc_lbl]
+
+    # Compute EI/EA on-the-fly (dual-path import)
+    _sw_pl_mod = None
+    try:
+        import sw_plaxis_params as _sw_pl_mod
+    except ImportError:
+        try:
+            from scripts import sw_plaxis_params as _sw_pl_mod
+        except ImportError:
+            _sw_pl_mod = None
+
+    if _sw_pl_mod is None:
+        st.error("Module sw_plaxis_params không khả dụng.")
+    else:
+        try:
+            _r_pl = _sw_pl_mod.compute_plate_params(_plaxis_pile, _plaxis_fc)
+            _c_pa3.caption(
+                f"**{_plaxis_pile}** + **{_plaxis_fc_lbl}** "
+                f"→ Ec = {_r_pl['Ec_MPa']:.0f} MPa "
+                f"(công thức 4730·√fc)"
+            )
+
+            # Hiển thị metric chính cho Plaxis
+            st.markdown("##### Thông số nhập PLAXIS 2D (per m wall length, plain strain)")
+            _c_m1, _c_m2, _c_m3, _c_m4 = st.columns(4)
+            _c_m1.metric("EA (kN/m)", f"{_r_pl['EA_per_m_kN_per_m']:,.0f}",
+                         help="Axial stiffness per m wall")
+            _c_m2.metric("EI (kN·m²/m)", f"{_r_pl['EI_per_m_kNm2_per_m']:,.0f}",
+                         help="Bending stiffness per m wall")
+            _c_m3.metric("d_eq (m)", f"{_r_pl['d_eq_m']:.4f}",
+                         help="Thickness equivalent = √(12·EI/EA)")
+            _c_m4.metric("w (kN/m²)", f"{_r_pl['w_kN_per_m2']:.3f}",
+                         help="Weight per area")
+
+            _c_m5, _c_m6, _c_m7, _c_m8 = st.columns(4)
+            _c_m5.metric("ν Poisson", f"{_r_pl['nu']:.2f}",
+                         help="0.18 cho BT dự ứng lực")
+            _c_m6.metric("Mp (kN·m/m)",
+                         f"{_r_pl['plaxis_inputs']['Mp_kNm_per_m']:.1f}",
+                         help="Moment kháng nứt cho Elastoplastic plate")
+            _c_m7.metric("EA per cừ (kN)",
+                         f"{_r_pl['EA_per_pile_kN']:,.0f}",
+                         help="Cho 1 cừ riêng (tham khảo)")
+            _c_m8.metric("EI per cừ (kN·m²)",
+                         f"{_r_pl['EI_per_pile_kNm2']:,.0f}",
+                         help="Cho 1 cừ riêng (tham khảo)")
+
+            # Hộp copy-ready cho Plaxis
+            st.markdown("##### Copy giá trị nhập PLAXIS Material → Plate:")
+            _txt_plaxis = (
+                f"Material type:  Elastoplastic\n"
+                f"Identification: {_plaxis_pile}_{_plaxis_fc_lbl.split()[0]}\n"
+                f"EA = {_r_pl['EA_per_m_kN_per_m']:,.0f}  kN/m\n"
+                f"EI = {_r_pl['EI_per_m_kNm2_per_m']:,.0f}  kN·m²/m\n"
+                f"d  = {_r_pl['d_eq_m']:.4f}  m\n"
+                f"w  = {_r_pl['w_kN_per_m2']:.3f}  kN/m²\n"
+                f"ν  = {_r_pl['nu']:.2f}\n"
+                f"Mp = {_r_pl['plaxis_inputs']['Mp_kNm_per_m']:.1f}  kN·m/m"
+            )
+            st.code(_txt_plaxis, language="text")
+
+            # Bảng tóm tắt tất cả 12 case
+            st.markdown("##### Bảng tổng hợp 3 cọc × 4 cấp bê tông")
+            _all_pl = _sw_pl_mod.compute_all()
+            _tbl_pl = []
+            for r in _all_pl:
+                _tbl_pl.append({
+                    "Cọc":               r["pile"],
+                    "BT":                r["fc_label"],
+                    "Ec (MPa)":          f"{r['Ec_MPa']:.0f}",
+                    "EA (kN/m)":         f"{r['EA_per_m_kN_per_m']:,.0f}",
+                    "EI (kN·m²/m)":      f"{r['EI_per_m_kNm2_per_m']:,.0f}",
+                    "d_eq (m)":          f"{r['d_eq_m']:.4f}",
+                    "w (kN/m²)":         f"{r['w_kN_per_m2']:.3f}",
+                    "Mp (kN·m/m)":       f"{r['plaxis_inputs']['Mp_kNm_per_m']:.1f}",
+                })
+            st.table(_pd.DataFrame(_tbl_pl))
+            st.caption(
+                "**Plain strain:** EA và EI per m wall length (KHÔNG per 1 cừ). "
+                "PLAXIS 2D plate dùng các giá trị này trực tiếp. "
+                "d_eq chỉ để hiển thị, không vào tính toán."
+            )
+        except Exception as _exc_pl:
+            st.error(f"Lỗi tính EI/EA: {_exc_pl}")
+
     # ── B. Kết quả thiết kế TTHC ────────────────────────────────────────────────
     st.divider()
     st.markdown("### B. Kết quả thiết kế — Kè Công Viên TTHC")
