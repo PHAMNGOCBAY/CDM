@@ -17538,6 +17538,161 @@ $$E_c = k \times \frac{q_{u,\text{design}}}{2} \quad (k = 100)$$
     st.table(_pd_tv.DataFrame(_gwt_rows))
     st.caption("Lưu ý: Mực nước ngầm ảnh hưởng trực tiếp đến áp lực thấm, ổn định hố đào và thiết kế tiêu thoát nước.")
 
+    # ── Biểu đồ thủy văn sông Sài Gòn (trạm Phú An 1977–2024) ──────────────
+    _tv_json = _ROOT / "data" / "thuyvan_phuan_summary.json"
+    _tv_stat_json = _ROOT / "data" / "thuyvan_phuan_stats.json"
+    if _tv_json.exists() and _HAS_PLOTLY:
+        import json as _jstv
+        import numpy as _nptv
+        _tv_d   = _jstv.loads(_tv_json.read_text(encoding="utf-8"))
+        _tv_st  = _jstv.loads(_tv_stat_json.read_text(encoding="utf-8")) if _tv_stat_json.exists() else {}
+        _tv_ann = _tv_d.get("annual", [])
+
+        _yrs = [r["year"] for r in _tv_ann]
+        _avg = [r["avg_cm"] for r in _tv_ann]
+        _mx  = [r["max_cm"] for r in _tv_ann]
+
+        # Hồi quy tuyến tính cho avg và max
+        _yr_arr = _nptv.array(_yrs, dtype=float)
+        _avg_arr = _nptv.array(_avg, dtype=float)
+        _mx_arr  = _nptv.array(_mx, dtype=float)
+        _pa_avg = _nptv.polyfit(_yr_arr, _avg_arr, 1)
+        _pa_mx  = _nptv.polyfit(_yr_arr, _mx_arr,  1)
+
+        # Dự đoán đến 2100 (tuyến tính)
+        _yr_proj = _nptv.array([2024, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100])
+        _avg_proj = _nptv.polyval(_pa_avg, _yr_proj)
+        _mx_proj  = _nptv.polyval(_pa_mx,  _yr_proj)
+
+        # Biểu đồ Plotly
+        import plotly.graph_objects as _go_tv
+        _fig_tv = _go_tv.Figure()
+
+        # Cột: MNTB hàng năm
+        _fig_tv.add_trace(_go_tv.Bar(
+            x=_yrs, y=_avg,
+            name="MNTB năm (cm)",
+            marker_color="#5B9BD5", opacity=0.75,
+            hovertemplate="Năm %{x}: %{y:.1f} cm<extra></extra>",
+        ))
+        # Đường: Đỉnh triều cao nhất năm
+        _fig_tv.add_trace(_go_tv.Scatter(
+            x=_yrs, y=_mx,
+            name="Đỉnh triều cao nhất năm (cm)",
+            mode="lines+markers",
+            line=dict(color="#E36C09", width=1.5),
+            marker=dict(size=4),
+            hovertemplate="Năm %{x}: %{y:.0f} cm<extra></extra>",
+        ))
+
+        # Xu thế MNTB (1977–2024)
+        _yr_fit_ext = list(range(1977, 2025))
+        _fig_tv.add_trace(_go_tv.Scatter(
+            x=_yr_fit_ext,
+            y=[_nptv.polyval(_pa_avg, y) for y in _yr_fit_ext],
+            name=f"Xu thế MNTB (+{_pa_avg[0]*10:.2f} cm/decade)",
+            mode="lines",
+            line=dict(color="#2E75B6", width=2, dash="dash"),
+            hoverinfo="skip",
+        ))
+        # Xu thế đỉnh triều (1977–2024)
+        _fig_tv.add_trace(_go_tv.Scatter(
+            x=_yr_fit_ext,
+            y=[_nptv.polyval(_pa_mx, y) for y in _yr_fit_ext],
+            name=f"Xu thế đỉnh triều (+{_pa_mx[0]*10:.2f} cm/decade)",
+            mode="lines",
+            line=dict(color="#C55A11", width=2, dash="dash"),
+            hoverinfo="skip",
+        ))
+
+        # Đường chiếu đến 2100 (nét chấm)
+        _fig_tv.add_trace(_go_tv.Scatter(
+            x=list(_yr_proj), y=list(_avg_proj),
+            name="Dự đoán MNTB (tuyến tính)",
+            mode="lines+markers",
+            line=dict(color="#4472C4", width=1.5, dash="dot"),
+            marker=dict(symbol="diamond", size=7),
+            hovertemplate="Năm %{x}: %{y:.1f} cm (dự đoán)<extra></extra>",
+        ))
+        _fig_tv.add_trace(_go_tv.Scatter(
+            x=list(_yr_proj), y=list(_mx_proj),
+            name="Dự đoán đỉnh triều (tuyến tính)",
+            mode="lines+markers",
+            line=dict(color="#ED7D31", width=1.5, dash="dot"),
+            marker=dict(symbol="diamond", size=7),
+            hovertemplate="Năm %{x}: %{y:.0f} cm (dự đoán)<extra></extra>",
+        ))
+
+        # Vùng tô bóng cho phần chiếu tương lai
+        _fig_tv.add_vrect(
+            x0=2024, x1=2100,
+            fillcolor="rgba(255,200,100,0.08)",
+            layer="below", line_width=0,
+        )
+        # Nhãn mốc 2050 / 2080 / 2100
+        _avg50 = float(_nptv.polyval(_pa_avg, 2050))
+        _avg80 = float(_nptv.polyval(_pa_avg, 2080))
+        _avg100= float(_nptv.polyval(_pa_avg, 2100))
+        _mx50  = float(_nptv.polyval(_pa_mx,  2050))
+        _mx80  = float(_nptv.polyval(_pa_mx,  2080))
+        _mx100 = float(_nptv.polyval(_pa_mx,  2100))
+        for _yr_m, _av_m, _mx_m, _col in (
+            (2050, _avg50, _mx50,  "#7030A0"),
+            (2080, _avg80, _mx80,  "#C00000"),
+            (2100, _avg100, _mx100, "#7F0000"),
+        ):
+            _fig_tv.add_vline(x=_yr_m, line_dash="dot", line_color=_col, line_width=1, opacity=0.5)
+            _fig_tv.add_annotation(
+                x=_yr_m, y=_mx_m + 8,
+                text=f"<b>{_yr_m}</b><br>TB: {_av_m:.0f}cm<br>Max: {_mx_m:.0f}cm",
+                showarrow=False, font=dict(size=10, color=_col),
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor=_col, borderwidth=1,
+            )
+
+        # Hline P95 = +48 cm
+        _fig_tv.add_hline(y=48, line_dash="longdash", line_color="#00B050", line_width=1.5,
+                          annotation_text="P95=+48cm (thiết kế)", annotation_position="top left",
+                          annotation_font_color="#00B050")
+
+        _fig_tv.update_layout(
+            title="Mực nước trung bình ngày & Đỉnh triều cao nhất — Trạm Phú An, sông Sài Gòn (1977–2024 + dự đoán đến 2100)",
+            xaxis_title="Năm",
+            yaxis_title="Cao độ mực nước (cm, hệ Quốc gia)",
+            height=440,
+            margin=dict(t=55, b=40, l=60, r=20),
+            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="left", x=0),
+            hovermode="x unified",
+            xaxis=dict(range=[1975, 2102]),
+        )
+        st.plotly_chart(_fig_tv, use_container_width=True)
+
+        # Bảng dự đoán mực nước
+        _pred_rows = []
+        for _yr_p, _av_p, _mx_p in (
+            (2050, _avg50, _mx50),
+            (2080, _avg80, _mx80),
+            (2100, _avg100, _mx100),
+        ):
+            _delta_av = _av_p - float(_nptv.polyval(_pa_avg, 2024))
+            _delta_mx = _mx_p - float(_nptv.polyval(_pa_mx,  2024))
+            _pred_rows.append({
+                "Năm mốc": str(_yr_p),
+                "MNTB dự đoán (cm)": f"{_av_p:.0f}",
+                "Tăng so với 2024 (cm)": f"+{_delta_av:.0f}",
+                "Đỉnh triều dự đoán (cm)": f"{_mx_p:.0f}",
+                "Tăng đỉnh triều (cm)": f"+{_delta_mx:.0f}",
+                "Cao độ thiết kế kè (m)": f"+{(_mx_p / 100 + 0.3):.2f}",
+            })
+        st.markdown("**Dự đoán mực nước theo xu thế tuyến tính (ngoại suy từ 1977–2024):**")
+        st.table(_pd_tv.DataFrame(_pred_rows))
+        st.caption(
+            "Nguồn dữ liệu: Trạm Phú An, sông Sài Gòn — 17 530 ngày đo (1977–2024). "
+            f"Xu thế: MNTB +{_pa_avg[0]*10:.2f} cm/thập kỷ · Đỉnh triều +{_pa_mx[0]*10:.2f} cm/thập kỷ. "
+            "Cao độ thiết kế kè = đỉnh triều dự đoán + 30 cm dự phòng sóng vỗ. "
+            "Chưa tính thêm nước biển dâng do biến đổi khí hậu theo IPCC AR6."
+        )
+
     st.divider()
 
     # ── 8. Phân vùng gia cố CDM ──────────────────────────────────────────────
