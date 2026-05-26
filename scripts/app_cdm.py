@@ -8223,20 +8223,69 @@ if _page == "ke_sw":
     _plaxis_fc_opt = {"C50 (B45)": 50, "C60 (B55)": 60,
                        "C70 (B65)": 70, "C80 (B75)": 80}
 
-    _c_pa1, _c_pa2, _c_pa3 = st.columns([1, 1, 2])
+    # Load cấu hình PLAXIS đã lưu trước (nếu có)
+    try:
+        import sqlite3 as _sq_pl
+        _con_pl_cfg = _sq_pl.connect(str(_DB))
+        _con_pl_cfg.execute("""
+            CREATE TABLE IF NOT EXISTS ke_sw_plaxis_config (
+                id            INTEGER PRIMARY KEY CHECK (id = 1),
+                pile          TEXT DEFAULT 'SW-740',
+                fc_label      TEXT DEFAULT 'C70 (B65)',
+                fc_MPa        REAL DEFAULT 70.0,
+                updated_at    TEXT DEFAULT (datetime('now','localtime'))
+            )
+        """)
+        _con_pl_cfg.commit()
+        _saved_pl_cfg = _con_pl_cfg.execute(
+            "SELECT pile, fc_label FROM ke_sw_plaxis_config WHERE id=1"
+        ).fetchone()
+        _con_pl_cfg.close()
+        _saved_pile  = _saved_pl_cfg[0] if _saved_pl_cfg else "SW-740"
+        _saved_fcLbl = _saved_pl_cfg[1] if _saved_pl_cfg else "C70 (B65)"
+    except Exception:
+        _saved_pile, _saved_fcLbl = "SW-740", "C70 (B65)"
+
+    _pile_idx_def = (_plaxis_piles.index(_saved_pile)
+                     if _saved_pile in _plaxis_piles else 1)
+    _fc_keys_list = list(_plaxis_fc_opt.keys())
+    _fc_idx_def   = (_fc_keys_list.index(_saved_fcLbl)
+                     if _saved_fcLbl in _fc_keys_list else 2)
+
+    _c_pa1, _c_pa2, _c_pa3, _c_pa_s = st.columns([1, 1, 1.6, 0.6])
     _plaxis_pile = _c_pa1.selectbox(
         "Loại cọc SW",
         options=_plaxis_piles,
-        index=1,   # mặc định SW-740
+        index=_pile_idx_def,
         key="_plaxis_pile_pick",
     )
     _plaxis_fc_lbl = _c_pa2.selectbox(
         "Cấp bê tông",
-        options=list(_plaxis_fc_opt.keys()),
-        index=2,   # mặc định C70
+        options=_fc_keys_list,
+        index=_fc_idx_def,
         key="_plaxis_fc_pick",
     )
     _plaxis_fc = _plaxis_fc_opt[_plaxis_fc_lbl]
+    # Nút Lưu cấu hình PLAXIS
+    if _c_pa_s.button("Lưu", key="_plaxis_cfg_save", use_container_width=True,
+                      type="primary", help="Lưu lựa chọn cọc + cấp BT vào cơ sở dữ liệu"):
+        try:
+            _con_sv = _sq_pl.connect(str(_DB))
+            _con_sv.execute("""
+                INSERT INTO ke_sw_plaxis_config (id, pile, fc_label, fc_MPa)
+                VALUES (1, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    pile=excluded.pile, fc_label=excluded.fc_label,
+                    fc_MPa=excluded.fc_MPa,
+                    updated_at=datetime('now','localtime')
+            """, (_plaxis_pile, _plaxis_fc_lbl, float(_plaxis_fc)))
+            _con_sv.commit()
+            _con_sv.close()
+            st.success(
+                f"Đã lưu cấu hình PLAXIS: **{_plaxis_pile}** + **{_plaxis_fc_lbl}**"
+            )
+        except Exception as _exc_sv:
+            st.error(f"Lỗi lưu: {_exc_sv}")
 
     # Compute EI/EA on-the-fly (dual-path import)
     _sw_pl_mod = None
@@ -16294,7 +16343,7 @@ if _page == "tvtk_prep":
                 ("side_culvert", "Đoạn hai bên cống / cống chui"),
                 ("near_bridge",  "Đoạn gần mố cầu"),
             ]
-            _c_lim1, _c_lim2, _c_lim3 = st.columns([1.4, 1.4, 1.0])
+            _c_lim1, _c_lim2, _c_lim3, _c_lim_s = st.columns([1.3, 1.3, 0.9, 0.7])
             _rc_pick = _c_lim1.selectbox(
                 "Cấp đường (TCCS 41 Bảng 1)",
                 options=[k for k, _ in _RC_OPTS],
@@ -16309,7 +16358,20 @@ if _page == "tvtk_prep":
                 index=[k for k, _ in _POS_OPTS].index(_pos_def) if _pos_def in dict(_POS_OPTS) else 0,
                 key="_tv_tccs41_pos",
             )
-            # Persist lựa chọn
+            # Nút Lưu cấu hình cấp đường + vị trí
+            if _c_lim_s.button("Lưu", key="_tv_tccs41_save",
+                               use_container_width=True, type="primary",
+                               help="Lưu cấp đường + vị trí TCCS 41 vào cơ sở dữ liệu"):
+                _cv.execute(
+                    "UPDATE tvtk_cdm_config SET road_class_code=?, position_code=? WHERE id=1",
+                    (_rc_pick, _pos_pick),
+                )
+                _cv.commit()
+                st.success(
+                    f"Đã lưu TCCS 41: **{dict(_RC_OPTS)[_rc_pick]}** + "
+                    f"**{dict(_POS_OPTS)[_pos_pick]}**"
+                )
+            # Auto persist khi đổi (không cần bấm Lưu)
             _cv.execute(
                 "UPDATE tvtk_cdm_config SET road_class_code=?, position_code=? WHERE id=1",
                 (_rc_pick, _pos_pick),
