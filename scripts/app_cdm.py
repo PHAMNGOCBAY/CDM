@@ -1778,7 +1778,7 @@ _DEFAULTS = {
     "cdm_gamma": 15.0,
     "cdm_elevation": 0.0,
     "cdm_D": 0.8,
-    "cdm_e": 1.6,
+    "cdm_e": 1.8,
     "cdm_L_ngam": 0.5,
     "cdm_Lc": 26.2,
     "cdm_CDTK": 0.8,
@@ -1799,9 +1799,9 @@ _DEFAULTS = {
     "lang": "VN",
     "cdm_loads": {
         "q_traffic": 20.0,
-        "z_tk":   3.5,
+        "z_tk":   2.70,
         "h_road": 0.8,   "g_road": 24.0,
-        "h_fill": 1.5,   "g_fill": 18.0,
+        "h_fill": 0.70,  "g_fill": 18.0,
         "h_mat":  0.4,   "g_mat":  22.5,
     },
 }
