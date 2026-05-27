@@ -1,11 +1,10 @@
 {
   "_meta": {
     "source": "TTHC.sqlite — cdm_design, tvtk_cdm_config, tvtk_soil_params, tvtk_bh_cdm",
-    "updated": "2026-05-25",
+    "updated": "2026-05-27 23:17:13",
     "project": "202605-TTHC",
     "note": "Snapshot kết quả thiết kế sơ bộ CDM 3 khu vực — TCVN 9403:2012 Phụ lục C"
   },
-
   "config": {
     "D_mm": 800,
     "spacing_m": 1.8,
@@ -18,9 +17,9 @@
     "Cc_col_kPa": 400,
     "Ec_kPa": 40000,
     "area_ratio": 0.1551,
-    "_formula": "a = pi*D^2/4 / s^2 = 0.5027/3.24 = 0.1551 | Cc = qu/2 = 400 kPa | Ec = k*Cc = 100*400 = 40000 kPa"
+    "_formula": "a = pi*D^2/4 / s^2 = 0.5027/3.24 = 0.1551 | Cc = qu/2 = 400 kPa | Ec = k*Cc = 100*400 = 40000 kPa",
+    "settlement_design_elev_m": 2.7
   },
-
   "cdm_design": [
     {
       "zone_code": "BXN",
@@ -86,7 +85,6 @@
       "_S_giam_pct": 92.5
     }
   ],
-
   "soil_params": [
     {
       "zone_code": "BXN",
@@ -120,22 +118,38 @@
       "n_Cc": 4
     }
   ],
-
   "cdm_borehole_H_soft": {
     "_note": "H_soft = tong chieu day lop yeu (symbol IN 1,1b,2,XMD) theo SQLite layers table",
-    "BXN-CV-HK1":  20.3, "BXN-CV-HK5":  20.8, "BXN-CV-HK6":  21.7,
-    "BXN-CV-HK10": 23.9, "BXN-CV-HK12": 22.0, "BXN-CV-HK14": 21.4,
-    "BXN-CV-HK15": 21.5, "BXN-CV-HK16": 22.5, "BXN-CV-HK17": 19.0,
-    "BXN-HK2": 0.0, "BXN-HK3": 0.0,
-    "KE-HK1":  24.8, "KE-HK2":  20.0, "KE-HK3":  19.2,
-    "KE-HK4":  21.3, "KE-HK5":  20.1, "KE-HK6":  23.5,
-    "KE-HK7":  21.0, "KE-HK8":  25.9, "KE-HK9":  23.5,
-    "KE-HK10": 27.0, "KE-HK12": 27.0,
-    "NHC-BH-03": 25.4, "NHC-BH-05": 24.8, "NHC-BH-20": 30.6,
-    "NHC-BH-25": 18.2, "NHC-BH-28": 29.1, "NHC-BH-34": 37.1,
+    "BXN-CV-HK1": 20.3,
+    "BXN-CV-HK5": 20.8,
+    "BXN-CV-HK6": 21.7,
+    "BXN-CV-HK10": 23.9,
+    "BXN-CV-HK12": 22.0,
+    "BXN-CV-HK14": 21.4,
+    "BXN-CV-HK15": 21.5,
+    "BXN-CV-HK16": 22.5,
+    "BXN-CV-HK17": 19.0,
+    "BXN-HK2": 0.0,
+    "BXN-HK3": 0.0,
+    "KE-HK1": 24.8,
+    "KE-HK2": 20.0,
+    "KE-HK3": 19.2,
+    "KE-HK4": 21.3,
+    "KE-HK5": 20.1,
+    "KE-HK6": 23.5,
+    "KE-HK7": 21.0,
+    "KE-HK8": 25.9,
+    "KE-HK9": 23.5,
+    "KE-HK10": 27.0,
+    "KE-HK12": 27.0,
+    "NHC-BH-03": 25.4,
+    "NHC-BH-05": 24.8,
+    "NHC-BH-20": 30.6,
+    "NHC-BH-25": 18.2,
+    "NHC-BH-28": 29.1,
+    "NHC-BH-34": 37.1,
     "NHC-BH-37": 26.8
   },
-
   "formulas": {
     "_ref": "TCVN 9403:2012 Phu luc C",
     "S1": "S1 = q * H / (a * Ec + (1-a) * Es)",
@@ -146,11 +160,39 @@
     "a_triangle": "a = pi * D^2 / 4 / (sqrt(3)/2 * s^2)  (bo tri tam giac)",
     "S_reduction": "S_red = S1_CDM / S_no_treat_consolidation"
   },
-
   "L_cdm_formula": {
     "_note": "Chieu dai coc CDM thiet ke theo nguyen tac",
     "formula": "L = top_elev_m - elevation_m + H_soft_m + penetration_m",
     "top_elev_m": 0.8,
     "penetration_m": 1.0
+  },
+  "fill_composition": {
+    "design_elev_m": 2.7,
+    "layers": [
+      {
+        "order": 1,
+        "name": "Áo đường",
+        "h_m": 0.8,
+        "gamma_kNm3": 24.0,
+        "q_component_kPa": 19.2
+      },
+      {
+        "order": 2,
+        "name": "He — cát đắp",
+        "h_m": 0.7,
+        "gamma_kNm3": 18.0,
+        "q_component_kPa": 12.6
+      },
+      {
+        "order": 3,
+        "name": "Hse — đệm cát",
+        "h_m": 0.4,
+        "gamma_kNm3": 22.5,
+        "q_component_kPa": 9.0
+      }
+    ],
+    "total_h_m": 1.9,
+    "q_kPa": 40.8,
+    "_formula": "q = Σ(h_i · γ_i)"
   }
 }
