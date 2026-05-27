@@ -1766,6 +1766,18 @@ def q_static(loads: dict) -> float:
             + loads.get("h_mat",  0.4) * loads.get("g_mat",  22.5))
 
 
+@st.cache_data(show_spinner=False)
+def _cdm_length_for_settlement(bh, q, a, Ec, Su, dS, hclay, db_str, mu=1.0,
+                               B_load=None, alpha_sand=2000.0):
+    """Lặp tìm chiều dài cọc CDM ngắn nhất để S1+S2 ≤ ΔS (TCCS 41). Cache theo input.
+    mu: hệ số Bjerrum (Es=250·μ·Su) · B_load: bề rộng tải Boussinesq · alpha_sand: Es=α·N."""
+    from cdm_length_optimize import find_cdm_length
+    return find_cdm_length(bh, q_kPa=q, a=a, Ec_kPa=Ec, Su_kPa=Su,
+                           target_dS_cm=dS, h_clay_m=hclay, L_step_m=0.5,
+                           mu=mu, B_load_m=B_load, alpha_sand_kPa=alpha_sand,
+                           db_path=Path(db_str))
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # SESSION STATE INIT
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1780,6 +1792,11 @@ _DEFAULTS = {
     "cdm_D": 0.8,
     "cdm_e": 1.8,
     "cdm_L_ngam": 0.5,
+    "cdm_road_class": "cat2",
+    "cdm_position": "near_bridge",
+    "cdm_use_bous": True,
+    "cdm_B_load": 20.0,
+    "cdm_alpha_sand": 2000.0,
     "cdm_Lc": 26.2,
     "cdm_CDTK": 0.8,
     "cdm_qu": 800.0,
@@ -2423,8 +2440,185 @@ def _draw_cdm_section(
     return fig
 
 
-def _draw_cdm_grid(D: float, arr: str, e_ref: float):
-    """Sơ đồ bố trí lưới cọc CDM (plan view)."""
+def _draw_q_tip_diagram(q_kPa: float, clay_top_m: float, tip_depth_m: float,
+                        h_below_m: float, S1_cm=None, S2_cm=None,
+                        figsize: tuple = (4.2, 5.6)):
+    """Sơ đồ tải trọng q truyền qua khối CDM xuống mũi cọc → Δσ=q gây lún cố kết S2
+    ở lớp đất nén lún bên dưới mũi."""
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+
+    W   = 6.0
+    surf = 0.0
+    clay_top = max(0.0, float(clay_top_m or 0.0))
+    tip = max(clay_top + 0.5, float(tip_depth_m or clay_top + 1.0))
+    h_below = max(2.0, float(h_below_m or 4.0))
+    bot = tip + h_below
+
+    fig, ax = plt.subplots(figsize=figsize)
+    fig.patch.set_facecolor("#FFFFFF")
+
+    # Đất đắp trên cùng
+    if clay_top > 0.05:
+        ax.add_patch(mpatches.Rectangle((0, surf), W, clay_top,
+                     facecolor="#D2B48C", edgecolor="#8B5A2B", lw=1))
+        ax.text(W / 2, clay_top / 2, "Đất đắp", ha="center", va="center", fontsize=8)
+    # Khối gia cố CDM (clay_top → tip)
+    ax.add_patch(mpatches.Rectangle((0, clay_top), W, tip - clay_top,
+                 facecolor="#E8F0E3", edgecolor="#9CAF88", lw=0.8))
+    for i in range(5):
+        cx = (i + 0.5) * W / 5
+        ax.add_patch(mpatches.Rectangle((cx - 0.16, clay_top), 0.32, tip - clay_top,
+                     facecolor="#1565C0", alpha=0.55, edgecolor="#0D47A1", lw=0.6))
+    _s1_txt = f"\n(S1 = {S1_cm:.1f} cm)" if S1_cm is not None else ""
+    ax.text(W / 2, (clay_top + tip) / 2, "Khối gia cố\nCDM" + _s1_txt,
+            ha="center", va="center", fontsize=7, color="#0D47A1")
+    # Lớp nén lún dưới mũi (vùng gây S2)
+    ax.add_patch(mpatches.Rectangle((0, tip), W, bot - tip,
+                 facecolor="#FFE0B2", edgecolor="#E59866", lw=0.8))
+    _s2_txt = f"\n(S2 = {S2_cm:.1f} cm)" if S2_cm is not None else ""
+    ax.text(W / 2, (tip + bot) / 2, "Đất nén lún\ndưới mũi" + _s2_txt,
+            ha="center", va="center", fontsize=7, color="#7E5109")
+
+    # Tải q trên mặt
+    for i in range(6):
+        _x = (i + 0.5) * W / 6
+        ax.annotate("", xy=(_x, surf), xytext=(_x, surf - 1.1),
+                    arrowprops=dict(arrowstyle="-|>", color="#C62828", lw=1.5))
+    ax.plot([0, W], [surf - 1.1, surf - 1.1], color="#C62828", lw=1.2)
+    ax.text(W / 2, surf - 1.5, f"q = {q_kPa:.1f} kN/m²", ha="center", va="bottom",
+            fontsize=9, color="#C62828", fontweight="bold")
+
+    # Đường mũi cọc + Δσ=q truyền xuống đất dưới mũi
+    ax.axhline(tip, color="#000000", lw=1.1, ls="--")
+    ax.text(0.1, tip - 0.15, f"Mũi cọc (z = {tip:.1f} m)", fontsize=7, va="bottom")
+    for i in range(6):
+        _x = (i + 0.5) * W / 6
+        ax.annotate("", xy=(_x, tip + 1.2), xytext=(_x, tip),
+                    arrowprops=dict(arrowstyle="-|>", color="#E65100", lw=1.3))
+    ax.text(W + 0.2, tip + 0.6, "Δσ = q\ntruyền tới\nmũi cọc", ha="left", va="center",
+            fontsize=7, color="#E65100")
+
+    # Mũi tên lún S2 bên phải
+    ax.annotate("", xy=(W + 1.4, bot), xytext=(W + 1.4, tip),
+                arrowprops=dict(arrowstyle="-|>", color="#7E5109", lw=2.2))
+    if S2_cm is not None:
+        ax.text(W + 1.6, (tip + bot) / 2, f"S2 = {S2_cm:.1f} cm", fontsize=7.5,
+                color="#7E5109", rotation=90, va="center", ha="left")
+
+    ax.set_xlim(-0.4, W + 2.4)
+    ax.set_ylim(bot + 0.5, surf - 2.2)
+    ax.set_ylabel("Độ sâu (m)", fontsize=8)
+    ax.set_xticks([])
+    ax.tick_params(labelsize=7)
+    ax.set_title("Tải trọng q → mũi cọc → lún cố kết S2", fontsize=9)
+    fig.tight_layout()
+    return fig
+
+
+def _draw_soilcol_stress_elev(bh_name: str, q_self_kPa: float = 0.0,
+                              db_path=None, figsize: tuple = (6.8, 6.2)):
+    """Cột địa chất + biểu đồ σ'v0 (trọng lượng bản thân) — 2 subplot DÙNG CHUNG
+    trục cao độ (sharey) nên căn đúng cao độ. Có đường ranh giới từng lớp (để thấy
+    σ'v0 đổi dốc qua mỗi lớp — liên tục, KHÔNG có bước nhảy) + đường 10%.
+    Trả về dict {fig, found_10, y10, lim, sv0_max, use_elev} hoặc None."""
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
+    import sqlite3 as _sq
+    from settlement_calc import build_stress_profile as _bsp
+
+    db_path = db_path or _DB
+    with _sq.connect(str(db_path)) as con:
+        con.row_factory = _sq.Row
+        bh = con.execute("SELECT id, elevation_m FROM boreholes WHERE name=?",
+                         (bh_name,)).fetchone()
+        if bh is None:
+            return None
+        collar = bh["elevation_m"]
+        layers = [dict(r) for r in con.execute(
+            "SELECT depth_top_m, depth_bot_m, symbol FROM layers "
+            "WHERE borehole_id=? ORDER BY depth_top_m", (bh["id"],))]
+    if not layers:
+        return None
+    prof = _bsp(bh_name, gwt_depth_m=0.0, db_path=db_path)
+    if not prof:
+        return None
+
+    use_elev = collar is not None
+    C = float(collar) if use_elev else 0.0
+
+    def yv(depth: float) -> float:           # depth (m) → giá trị trục Y
+        return (C - depth) if use_elev else depth
+
+    fig, (axc, axs) = plt.subplots(
+        1, 2, figsize=figsize, sharey=True,
+        gridspec_kw={"width_ratios": [0.55, 1.45], "wspace": 0.06})
+
+    # ── Trái: cột địa chất (theo cao độ) ──
+    for ly in layers:
+        sym = ly["symbol"] or ""
+        col = _LAYER_COLORS.get(sym, _LAYER_DEFAULT_COLOR)
+        yt, yb = yv(ly["depth_top_m"]), yv(ly["depth_bot_m"])
+        lo, hi = min(yt, yb), max(yt, yb)
+        axc.add_patch(mpatches.Rectangle((0, lo), 1, hi - lo,
+                      facecolor=col, edgecolor="#555", lw=0.6))
+        if hi - lo > 0.3:
+            axc.text(0.5, (yt + yb) / 2, sym, ha="center", va="center",
+                     fontsize=7, color="#111", fontweight="bold")
+    axc.set_xlim(0, 1); axc.set_xticks([])
+    axc.set_title("Cột địa chất", fontsize=9)
+    axc.set_ylabel("Cao độ (m)" if use_elev else "Độ sâu (m)", fontsize=9)
+
+    # ── Phải: σ'v0 + σv + Pc (theo cao độ) ──
+    yy  = [yv(p["depth_m"]) for p in prof]
+    sv0 = [p["sigma_v0_kPa"] for p in prof]
+    svt = [p["sigma_v_kPa"] for p in prof]
+    pcd = [yv(p["depth_m"]) for p in prof if p.get("PC_kPa")]
+    pcv = [p["PC_kPa"] for p in prof if p.get("PC_kPa")]
+    # ranh giới từng lớp (đường ngang mảnh) — để thấy chỗ σ'v0 đổi dốc
+    for ly in layers:
+        axs.axhline(yv(ly["depth_bot_m"]), color="#CCC", lw=0.6, ls="-", zorder=0)
+    axs.plot(svt, yy, color="#9e9e9e", lw=1.2, ls="--", label="σv tổng")
+    axs.plot(sv0, yy, color="#1565C0", lw=2.2, label="σ'v0 hữu hiệu")
+    if pcv:
+        axs.scatter(pcv, pcd, s=20, color="#2E7D32", zorder=5, label="Pc")
+    # giá trị σ'v0 dọc đường (giãn cách ≥ 4 m theo độ sâu)
+    _last = -99.0
+    for p in prof:
+        if p["depth_m"] - _last >= 4.0:
+            axs.annotate(f"{p['sigma_v0_kPa']:.0f}",
+                         (p["sigma_v0_kPa"], yv(p["depth_m"])), fontsize=6.3,
+                         color="#0D47A1", xytext=(3, 0),
+                         textcoords="offset points", va="center")
+            _last = p["depth_m"]
+    # đường 10%: σ'v0 = 10·q
+    found_10, y10, lim = False, None, (10.0 * q_self_kPa if q_self_kPa > 0 else 0.0)
+    if lim > 0:
+        for k in range(1, len(prof)):
+            a0, a1 = prof[k - 1]["sigma_v0_kPa"], prof[k]["sigma_v0_kPa"]
+            if a0 < lim <= a1 and a1 != a0:
+                f = (lim - a0) / (a1 - a0)
+                d10 = prof[k - 1]["depth_m"] + f * (prof[k]["depth_m"] - prof[k - 1]["depth_m"])
+                y10 = yv(d10); found_10 = True
+                axs.axhline(y10, color="#C62828", lw=1.5, ls=":", label="Δσ/σ'v0=10%")
+                axs.text(lim, y10, f" 10% (σ'v0={lim:.0f})", fontsize=6.5,
+                         color="#C62828", va="bottom", ha="left")
+                break
+    axs.set_xlabel("Ứng suất (kPa)", fontsize=9)
+    axs.set_title("σ'v0 — trọng lượng bản thân", fontsize=9)
+    axs.grid(alpha=0.3)
+    axs.legend(fontsize=6.5, loc="lower right")
+    axs.tick_params(labelsize=8); axc.tick_params(labelsize=8)
+
+    if not use_elev:
+        axc.invert_yaxis()   # sharey → cả 2 đảo (độ sâu tăng xuống)
+    fig.tight_layout()
+    return {"fig": fig, "found_10": found_10, "y10": y10, "lim": lim,
+            "sv0_max": max(sv0), "use_elev": use_elev}
+
+
+def _draw_cdm_grid(D: float, arr: str, e_ref: float, figsize: tuple = (5, 4.5)):
+    """Sơ đồ bố trí lưới cọc CDM (plan view). figsize nhỏ hơn → sơ đồ thu nhỏ."""
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
 
@@ -2444,7 +2638,7 @@ def _draw_cdm_grid(D: float, arr: str, e_ref: float):
     all_py = [p[1] for p in centers]
     pad = e_ref * 0.75
 
-    fig, ax = plt.subplots(figsize=(5, 4.5))
+    fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor("#FAFAFA")
     ax.set_facecolor("#F0F4F8")
     ax.set_aspect("equal")
@@ -5429,16 +5623,32 @@ elif _page == "params":
             D      = st.number_input(_t("D_lbl"), 0.5, 1.2, _get("cdm_D"), 0.05)
             e      = st.number_input("Khoảng cách e (m)", 0.8, 4.0, _get("cdm_e"), 0.1)
             CDTK   = st.number_input(_t("CDTK_lbl"), -5.0, 10.0, _get("cdm_CDTK"), 0.1)
-            L_ngam = st.number_input("Ngàm vào đất tốt (m)", 0.0, 5.0, _get("cdm_L_ngam"), 0.1,
-                                     help="Chiều dài cọc CDM ngàm vào lớp đất tốt bên dưới lớp bùn")
+            # ── Độ lún cho phép ΔS (TCCS 41) — tra theo cấp đường + vị trí, cho nhập tay ──
+            _rc_opts  = {"cat1": "Cao tốc / ≥80 km/h (A1)", "cat2": "≤60 km/h (A1)"}
+            _pos_opts = {"near_bridge": "Gần mố cầu", "side_culvert": "Hai bên cống",
+                         "general": "Đoạn thông thường"}
+            _rc  = st.selectbox("Cấp đường (TCCS 41)", list(_rc_opts),
+                                format_func=lambda k: _rc_opts[k],
+                                index=list(_rc_opts).index(_get("cdm_road_class") or "cat2"))
+            _pos = st.selectbox("Vị trí đoạn nền", list(_pos_opts),
+                                format_func=lambda k: _pos_opts[k],
+                                index=list(_pos_opts).index(_get("cdm_position") or "near_bridge"))
+            _ds_lookup = 30.0
+            try:
+                from settlement_calc import get_allowable_residual_settlement as _get_ds
+                _ds_lookup = float(_get_ds(_rc, _pos, db_path=_DB)["delta_S_cm_max"])
+            except Exception:
+                pass
+            # Đổi cấp/vị trí → tra lại ΔS; ngoài ra giữ giá trị kỹ sư nhập tay
+            if (_get("cdm_road_class") != _rc or _get("cdm_position") != _pos
+                    or "cdm_dS_allow" not in st.session_state):
+                st.session_state["cdm_dS_allow"] = _ds_lookup
+            dS_allow = st.number_input("Độ lún cho phép ΔS (cm)", 1.0, 100.0, step=1.0,
+                                       key="cdm_dS_allow",
+                                       help=f"TCCS 41 Bảng 1 tra ra {_ds_lookup:.0f} cm — chỉnh tay nếu cần")
+            st.caption(f"TCCS 41: {_rc_opts[_rc]} · {_pos_opts[_pos]} → ΔS tra = {_ds_lookup:.0f} cm")
             _top_clay_c1 = _get("cdm_top_clay")
-            _h_clay_c1   = _get("cdm_h_clay")
             _gap_c1      = CDTK - _top_clay_c1          # khoảng từ đỉnh bùn lên đỉnh cọc
-            Lc           = round(_gap_c1 + _h_clay_c1 + L_ngam, 1)
-            st.info(
-                f"Lc = {_gap_c1:.1f} + {_h_clay_c1:.1f} + {L_ngam:.1f} = **{Lc:.1f} m**\n\n"
-                f"*(đỉnh bùn→cọc) + h_bùn + ngàm*"
-            )
             _ld0 = _get("cdm_loads")
             _He_v  = _ld0.get("h_fill", 1.5)
             _Hse_v = _ld0.get("h_mat",  0.4)
@@ -5446,8 +5656,9 @@ elif _page == "params":
             arr  = st.radio(_t("arr_lbl"), ["triangle", "square"],
                             format_func=lambda x: _t("arr_tri") if x == "triangle" else _t("arr_sq"),
                             index=["triangle", "square"].index(_get("cdm_arrangement")))
-            st.session_state.update({"cdm_D": D, "cdm_e": e, "cdm_L_ngam": L_ngam,
-                                      "cdm_Lc": Lc, "cdm_CDTK": CDTK, "cdm_arrangement": arr})
+            st.session_state.update({"cdm_D": D, "cdm_e": e, "cdm_CDTK": CDTK,
+                                      "cdm_arrangement": arr,
+                                      "cdm_road_class": _rc, "cdm_position": _pos})
 
         with c2:
             st.markdown(f"**{_t('material')}**")
@@ -5502,10 +5713,26 @@ elif _page == "params":
             st.session_state["_applied_fields"] = _apf
 
             st.info(_t("bot_clay_info", v=top_clay - h_clay))
-            Es_show = 250 * Su
-            st.info(f"Es = 250×Su = {int(Es_show):,} kN/m²")
+            # Hệ số Bjerrum μ theo Ip lớp yếu của HK thiết kế → cu = μ·Su (TCCS 41 C.5)
+            _mu_cdm = 1.0
+            _ip_cdm = None
+            _bh_for_mu = _get("cdm_bh")
+            if _bh_for_mu:
+                try:
+                    from settlement_calc import bjerrum_mu as _bjm, get_Ip_avg_for_bh as _gip
+                    _ip_cdm = _gip(_bh_for_mu, db_path=_DB)
+                    _mu_cdm = _bjm(_ip_cdm) if _ip_cdm else 1.0
+                except Exception:
+                    _mu_cdm = 1.0
+            _cu_cdm  = _mu_cdm * Su
+            _Es_show = 250 * _cu_cdm
+            if _mu_cdm < 0.999 and _ip_cdm:
+                st.info(f"Es = 250×cu = {int(_Es_show):,} kN/m²  "
+                        f"(cu = μ·Su = {_mu_cdm:.3f}×{Su:.1f} = {_cu_cdm:.1f}; Ip = {_ip_cdm:.0f})")
+            else:
+                st.info(f"Es = 250×Su = {int(_Es_show):,} kN/m²")
             st.session_state.update({"cdm_top_clay": top_clay, "cdm_h_clay": h_clay,
-                                     "cdm_Su": Su, "cdm_gamma": gamma})
+                                     "cdm_Su": Su, "cdm_gamma": gamma, "cdm_mu": _mu_cdm})
 
         with c4:
             st.markdown(f"**{_t('loads_title')}**")
@@ -5566,6 +5793,205 @@ elif _page == "params":
             q_tot = q_total(ld)
             st.success(f"**q = {q_tot:.2f} kN/m²**")
             st.session_state["cdm_loads"] = ld
+
+    # ══ Chiều dài cọc CDM theo độ lún cho phép ΔS (TCCS 41) — lặp tìm cọc tối ưu ══
+    st.divider()
+    st.markdown("#### Chiều dài cọc CDM theo độ lún cho phép ΔS (TCCS 41)")
+    st.caption("Lặp tăng độ xuyên cọc tới khi S1 + S2 ≤ ΔS cho phép → chọn cọc NGẮN NHẤT đạt. "
+               "S1 = lún đàn hồi khối gia cố; S2 = lún cố kết phần đất nén lún còn lại dưới mũi cọc.")
+    _bh_opt   = _get("cdm_bh")
+    _q_st_opt = q_static(_get("cdm_loads"))
+    # Tham số Δσ dưới mũi cọc: Boussinesq (bề rộng tải) + Es cát = α·N
+    _bc1, _bc2, _bc3 = st.columns(3)
+    _use_bous = _bc1.checkbox("Δσ giảm dần theo Boussinesq (móng băng)", key="cdm_use_bous",
+                              help="Bật: Δσ dưới mũi giảm theo chiều sâu (tải dải). Tắt: Δσ = q không đổi.")
+    _B_load_in = _bc2.number_input("Bề rộng tải B (m)", 2.0, 200.0, step=1.0, key="cdm_B_load",
+                                   help="Bề rộng vùng gia cố / nền đắp — cho Boussinesq dải")
+    _alpha_in = _bc3.number_input("Es cát = α·N (α, kPa/nhát)", 200.0, 8000.0, step=100.0,
+                                  key="cdm_alpha_sand", help="Mô đun đàn hồi lớp cát Es = α·N (SPT)")
+    _B_pass = _B_load_in if _use_bous else None
+    try:
+        from cdm_length_optimize import area_ratio as _ar
+        _a_opt   = _ar(D, e, arr)
+        _Ec_opt  = 100.0 * qu / 2.0
+        _gap_opt = round(CDTK - top_clay, 2)
+        if not _bh_opt:
+            st.warning("Chưa chọn hố khoan thiết kế → không tính được S2. "
+                       "Hãy chọn hố khoan ở tab Địa chất / So sánh PA.")
+        else:
+            _mu_opt = float(_get("cdm_mu") or 1.0)
+            _ropt = _cdm_length_for_settlement(_bh_opt, round(_q_st_opt, 2),
+                                               round(_a_opt, 4), _Ec_opt, Su,
+                                               dS_allow, h_clay, str(_DB), _mu_opt,
+                                               _B_pass, _alpha_in)
+            if _ropt["p_optimal_m"] is not None:
+                _p   = _ropt["p_optimal_m"]
+                _Lc  = round(_gap_opt + _p, 1)
+                _Lng = round(max(0.0, _p - h_clay), 1)
+                st.session_state["cdm_Lc"]     = _Lc
+                st.session_state["cdm_L_ngam"] = _Lng
+                _m1, _m2, _m3, _m4 = st.columns(4)
+                _m1.metric("Chiều dài cọc Lc", f"{_Lc:.1f} m",
+                           help=f"Lc = (đỉnh bùn→đỉnh cọc: {_gap_opt:.1f} m) + độ xuyên {_p:.1f} m")
+                _m2.metric("Độ xuyên qua bùn", f"{_p:.1f} m",
+                           "mũi trong bùn (thả nổi)" if _p < h_clay else "qua hết bùn")
+                _m3.metric("S1 + S2 (đến 15 năm)", f"{_ropt['S_total_cm']:.1f} cm",
+                           f"≤ ΔS {dS_allow:.0f} cm")
+                _m4.metric("S1 / S2 đến 15n (cm)", f"{_ropt['S1_cm']:.1f} / {_ropt['S2_cm']:.1f}",
+                           help="S2 = lún tích lũy đến 15 năm (TCCS41): cát & sét cứng e0<1 "
+                                "lấy đủ (cố kết nhanh); sét mềm e0≥1 chỉ phần đã cố kết Si·U(15n).")
+                st.success(
+                    f"Cọc ngắn nhất đạt yêu cầu: **Lc = {_Lc:.1f} m** — "
+                    f"S1+S2 = {_ropt['S_total_cm']:.1f} cm ≤ ΔS = {dS_allow:.0f} cm."
+                )
+            else:
+                st.session_state["cdm_Lc"]     = round(_gap_opt + _ropt["p_max_m"], 1)
+                st.session_state["cdm_L_ngam"] = round(max(0.0, _ropt["p_max_m"] - h_clay), 1)
+                st.error(_ropt["note"])
+            # Sơ đồ minh họa tải trọng q truyền xuống mũi cọc → lún cố kết S2
+            if _ropt.get("tip_depth_m") is not None:
+                _dq1, _dq2 = st.columns([1, 1.25], gap="medium")
+                with _dq1:
+                    try:
+                        _ct_q   = _ropt.get("clay_top_m") or 0.0
+                        _tip_q  = _ropt.get("tip_depth_m")
+                        _hbel_q = max(2.0, (_ct_q + _ropt.get("p_max_m", _tip_q)) - _tip_q)
+                        _fig_q  = _draw_q_tip_diagram(_q_st_opt, _ct_q, _tip_q, _hbel_q,
+                                                      S1_cm=_ropt.get("S1_cm"),
+                                                      S2_cm=_ropt.get("S2_cm"))
+                        st.pyplot(_fig_q, use_container_width=True)
+                        import matplotlib.pyplot as _plt_q
+                        _plt_q.close(_fig_q)
+                    except Exception as _eq:
+                        st.caption(f"(lỗi vẽ sơ đồ tải trọng: {_eq})")
+                with _dq2:
+                    st.markdown(
+                        "**Mô hình truyền tải:** tải đắp $q$ được khối gia cố CDM (cứng) "
+                        "truyền xuống **mũi cọc**. Tại cao trình mũi, ứng suất tăng thêm "
+                        "$\\Delta\\sigma = q$ tác dụng lên lớp đất nén lún bên dưới → gây "
+                        "**lún cố kết $S_2$**.\n\n"
+                        "- Cọc càng dài (mũi càng sâu) → đất nén lún dưới mũi càng mỏng → $S_2$ càng nhỏ.\n"
+                        "- Khối gia cố phía trên chỉ lún đàn hồi $S_1$ (nhỏ).\n"
+                        "- Tổng lún công trình $= S_1 + S_2$ (so với $\\Delta S$ cho phép)."
+                    )
+            with st.expander("Bảng lặp chiều dài cọc (S1+S2 theo độ xuyên)"):
+                if _ropt["history"]:
+                    _hdf = pd.DataFrame(_ropt["history"])[["p_m", "S1_cm", "S2_cm", "S_total_cm", "ok"]]
+                    _hdf.columns = ["Độ xuyên (m)", "S1 (cm)", "S2 (cm)", "S1+S2 (cm)", "Đạt"]
+                    _hdf["Đạt"] = _hdf["Đạt"].map({True: "Đạt", False: "—"})
+                    st.dataframe(_hdf, use_container_width=True, hide_index=True)
+                _mu_show = _ropt.get("mu", 1.0)
+                _cu_show = _ropt.get("cu_kPa", Su)
+                _es_txt = (f"Es = 250×cu = {_ropt.get('Es_kPa', 250*Su):,.0f} kPa "
+                           f"(cu = μ·Su = {_mu_show:.3f}×{Su:.1f} = {_cu_show:.1f})"
+                           if _mu_show < 0.999 else f"Es = 250×Su = {250*Su:,.0f} kPa")
+                st.caption(
+                    f"q tải đắp = {_q_st_opt:.1f} kN/m² · a = {_a_opt:.3f} · "
+                    f"Ec = {_Ec_opt:,.0f} kPa · {_es_txt} · HK = {_bh_opt}"
+                )
+            # Bảng S2 từng lớp đất dưới mũi cọc (gộp phân tố theo lớp)
+            _tip_for_s2 = _ropt.get("tip_depth_m")
+            if _tip_for_s2 is not None:
+                with st.expander("S2 chi tiết theo từng lớp đất dưới mũi cọc"):
+                    try:
+                        from settlement_calc import calc_s2_below_cdm as _cs2
+                        _s2d = _cs2(_bh_opt, _tip_for_s2, q_kPa=_q_st_opt,
+                                    B_load_m=_B_pass, alpha_sand_kPa=_alpha_in, db_path=_DB)
+                        _subs = _s2d["layers"]
+                        if _subs:
+                            def _loai(_s):
+                                if _s.get("is_sand"):
+                                    return "Cát (đàn hồi)"
+                                return ("Sét cứng e0<1" if (_s.get("e0") or 1.5) < 1.0
+                                        else "Sét mềm e0≥1")
+                            _grp = []
+                            for _s in _subs:
+                                _lo = _loai(_s)
+                                if (_grp and _grp[-1]["sym"] == _s.get("symbol")
+                                        and _grp[-1]["loai"] == _lo):
+                                    _g = _grp[-1]
+                                    _g["z2"]  = _s["depth_mid_m"] + _s["H_i_m"] / 2
+                                    _g["S2f"] += _s["Si_cm"]
+                                    _g["S2y"] += _s.get("Si_15yr_cm", _s["Si_cm"])
+                                    _g["H"]   += _s["H_i_m"]
+                                    _g["U"]    = _s.get("U_t", _g["U"])
+                                else:
+                                    _grp.append({
+                                        "sym": _s.get("symbol"), "loai": _lo,
+                                        "z1": _s["depth_mid_m"] - _s["H_i_m"] / 2,
+                                        "z2": _s["depth_mid_m"] + _s["H_i_m"] / 2,
+                                        "H": _s["H_i_m"], "S2f": _s["Si_cm"],
+                                        "S2y": _s.get("Si_15yr_cm", _s["Si_cm"]),
+                                        "U": _s.get("U_t", 1.0)})
+                            _rows2 = [{"Lớp": _g["sym"] or "—", "Loại": _g["loai"],
+                                       "z (m)": f"{_g['z1']:.1f}–{_g['z2']:.1f}",
+                                       "Bề dày (m)": round(_g["H"], 1),
+                                       "U(15n) %": round(_g["U"] * 100, 1),
+                                       "S2 cố kết xong (cm)": round(_g["S2f"], 2),
+                                       "S2 đến 15n (cm)": round(_g["S2y"], 2)} for _g in _grp]
+                            st.dataframe(pd.DataFrame(_rows2), use_container_width=True,
+                                         hide_index=True)
+                            st.caption(
+                                f"S2 cố kết xong = {_s2d['S2_cm']:.1f} cm → **S2 tích lũy đến 15 năm "
+                                f"= {_s2d['S2_15yr_cm']:.1f} cm** (dùng so với ΔS). Dừng tại "
+                                f"{_s2d['stop_depth_m']:.1f} m. Cát + sét cứng e0<1 → lấy đủ (cố kết "
+                                "nhanh); sét mềm e0≥1 → chỉ phần đã cố kết Si·U(15n). "
+                                + ("Δσ giảm dần Boussinesq." if _B_pass else "Δσ = q không đổi.")
+                            )
+                        else:
+                            st.caption("(không có phân tố S2 dưới mũi)")
+                    except Exception as _e2:
+                        st.caption(f"(lỗi tính S2 từng lớp: {_e2})")
+    except Exception as _eopt:
+        st.error(f"Lỗi tính chiều dài cọc CDM: {_eopt}")
+
+    with st.expander("Công thức tính lún S2 (cố kết dưới mũi cọc CDM)"):
+        st.markdown("**Tổng lún cố kết** của phần đất nén lún còn lại bên dưới mũi cọc, "
+                    "chia thành các phân tố dày $H_i = 2$ m, cộng dồn:")
+        st.latex(r"S_2 = \sum_{i} S_{2,i}")
+        st.markdown("**Ứng suất hữu hiệu** trước/sau khi đắp tại mỗi phân tố. "
+                    "$\\Delta\\sigma$ tại mũi cọc = $q$; bên dưới giảm dần theo Boussinesq "
+                    "tải dải (móng băng) bề rộng $B$ (z' = độ sâu dưới mũi):")
+        st.latex(r"\sigma'_{vf} = \sigma'_{v0} + \Delta\sigma")
+        st.latex(r"\Delta\sigma(z') = \frac{q}{\pi}\,(\alpha + \sin\alpha), \qquad "
+                 r"\alpha = 2\arctan\!\frac{B}{2z'}")
+        st.markdown("**Lớp CÁT** → lún tức thời đàn hồi (không cố kết theo $C_c$), "
+                    "$E_s = \\alpha \\cdot N$ từ SPT:")
+        st.latex(r"S_{2,i} = \frac{\Delta\sigma \cdot H_i}{E_s}, \qquad E_s = \alpha \cdot N_{SPT}")
+        st.markdown("**Lớp SÉT** → lún cố kết (Terzaghi $C_c$ hoặc $E_{oed}$):")
+        st.markdown("**Phương pháp $C_c$ (Terzaghi 1D)** — chọn theo quan hệ giữa "
+                    "$\\sigma'_{v0}$, $\\sigma'_{vf}$ và áp lực tiền cố kết $P_c$:")
+        st.markdown("• Quá cố kết (OC) — khi $\\sigma'_{vf} \\le P_c$:")
+        st.latex(r"S_{2,i} = \frac{C_s}{1+e_0}\, H_i \, \log_{10}\frac{\sigma'_{vf}}{\sigma'_{v0}}")
+        st.markdown("• Cố kết thường (NC) — khi $\\sigma'_{v0} \\ge P_c$:")
+        st.latex(r"S_{2,i} = \frac{C_c}{1+e_0}\, H_i \, \log_{10}\frac{\sigma'_{vf}}{\sigma'_{v0}}")
+        st.markdown("• Vượt tiền cố kết (cross-$P_c$) — khi $\\sigma'_{v0} < P_c < \\sigma'_{vf}$:")
+        st.latex(r"S_{2,i} = \frac{C_s}{1+e_0}\, H_i \, \log_{10}\frac{P_c}{\sigma'_{v0}}"
+                 r" + \frac{C_c}{1+e_0}\, H_i \, \log_{10}\frac{\sigma'_{vf}}{P_c}")
+        st.markdown("**Phương pháp mô đun ép co $E_{oed}$** (dùng khi phân tố chỉ có $a_{1-2}$, $e_0$, "
+                    "không có $C_c$):")
+        st.latex(r"S_{2,i} = \frac{\Delta\sigma \cdot H_i}{E_{oed}}, \qquad "
+                 r"E_{oed} = \frac{1+e_0}{a_{1-2}} \times 98{,}0665 \ \text{kPa}")
+        st.markdown("**Điều kiện dừng** tích lũy phân tố (ảnh hưởng tải không đáng kể):")
+        st.latex(r"\frac{\Delta\sigma}{\sigma'_{v0}} < 10\%")
+        st.markdown("**Lún tích lũy đến 15 năm** (so với $\\Delta S$ cho phép TCCS 41) — "
+                    "phân loại theo hệ số rỗng $e_0$:")
+        st.latex(r"S_2 = \sum_i S_{2,i}\,U_i(t), \qquad "
+                 r"U_i = f(T_v),\ T_v = \frac{c_v \cdot t}{H_{dr}^2},\ t=15\text{ năm}")
+        st.markdown(
+            "- **Cát**: lún tức thời → $U=100\\%$ → lấy **đủ** $S_{2,i}$.\n"
+            "- **Sét cứng $e_0<1$** (cố kết nhanh, đến 15 năm coi như xong) → lấy **đủ** $S_{2,i}$.\n"
+            "- **Sét mềm $e_0\\ge 1$** (cố kết chậm): chỉ lấy phần đã cố kết $S_{2,i}\\cdot U_i(15\\text{n})$ "
+            "với $U_i$ độ cố kết sau 15 năm (thoát nước 2 mặt, $H_{dr}=H/2$)."
+        )
+        st.markdown(
+            "Trong đó: $C_c$ — chỉ số nén; $C_s$ — chỉ số nở; $e_0$ — hệ số rỗng ban đầu; "
+            "$P_c$ — áp lực tiền cố kết (kPa); $\\sigma'_{v0}$ — ứng suất hữu hiệu tự nhiên; "
+            "$\\sigma'_{vf}$ — ứng suất hữu hiệu sau khi đắp; $a_{1-2}$ — hệ số nén lún "
+            "(cm²/kgf); $H_i$ — chiều dày phân tố. Thông số mỗi phân tố ưu tiên lấy từ "
+            "thí nghiệm gần nhất trong hố khoan ($C_c$ → $E_{oed}$ → mặc định theo khu vực)."
+        )
+    st.divider()
 
     # ── Bảng thông số địa chất (từ hố khoan đã áp dụng) ────────────────────────
     _p_bh = _get("cdm_bh")
@@ -5650,10 +6076,31 @@ elif _page == "params":
             f"(Lc hiện = {_vc_Lc:.1f} m, cần ≥ {_vc_Lc + (0.5 - _vc_emb):.1f} m)."
         )
 
-    # ── Hình minh họa bên dưới: mặt cắt (trái) + lưới mặt bằng (phải) ────────
-    _col_sec, _col_grd = st.columns(2, gap="medium")
+    # ── Hình minh họa: mặt cắt CDM | cột địa chất | σ'v0 (3 hình một hàng) ──
+    # Hố khoan minh họa: ưu tiên cdm_bh; nếu chưa gán → tự lấy HK đầu tiên cùng zone có lớp
+    _bh_fig = _get("cdm_bh")
+    _bh_is_fallback = False
+    if not _bh_fig:
+        _zone_pfx = _get("cdm_zone")
+        try:
+            with _db() as _con_bh:
+                _r_bh = _con_bh.execute(
+                    "SELECT b.name FROM boreholes b WHERE b.name LIKE ? "
+                    "AND EXISTS (SELECT 1 FROM layers l WHERE l.borehole_id=b.id) "
+                    "ORDER BY b.name LIMIT 1", (f"{_zone_pfx}-%",)).fetchone()
+                if _r_bh:
+                    _bh_fig = _r_bh[0]
+                    _bh_is_fallback = True
+        except Exception:
+            pass
+    if _bh_fig:
+        st.caption(f"Hố khoan minh họa cột địa chất & ứng suất: **{_bh_fig}**"
+                   + (" — tự chọn (chưa gán hố khoan thiết kế)" if _bh_is_fallback else ""))
+
+    _col_sec, _col_cs = st.columns([1.0, 1.55], gap="medium")
 
     with _col_sec:
+        st.caption("Mặt cắt ngang CDM")
         _ld_s = _get("cdm_loads")
         _fig_sec = _draw_cdm_section(
             D=_get("cdm_D"), Lc=_get("cdm_Lc"), CDTK=_get("cdm_CDTK"),
@@ -5667,11 +6114,42 @@ elif _page == "params":
         st.pyplot(_fig_sec, use_container_width=True)
         _fig_sec.clf()
 
-    with _col_grd:
-        # Hình lưới ở tab Thông số dùng e do user nhập trực tiếp (cdm_e)
-        # — KHÔNG dùng cdm_spacings[rec_idx] (đó là kết quả từ tab So sánh)
-        _e_ref_now = _get("cdm_e")
-        _fig_grd = _draw_cdm_grid(_get("cdm_D"), _get("cdm_arrangement"), _e_ref_now)
+    with _col_cs:
+        st.caption("Cột địa chất + ứng suất σ'v0 (cùng trục cao độ)")
+        if _bh_fig:
+            try:
+                _q_self_cs = q_static(_get("cdm_loads"))
+                _res_cs = _draw_soilcol_stress_elev(_bh_fig, _q_self_cs, _DB)
+                if _res_cs:
+                    st.pyplot(_res_cs["fig"], use_container_width=True)
+                    import matplotlib.pyplot as _plt_cs
+                    _plt_cs.close(_res_cs["fig"])
+                    _unit = "cao độ" if _res_cs["use_elev"] else "độ sâu"
+                    if _res_cs["found_10"]:
+                        st.caption(
+                            f"σ'v0 = Σγ'·z (γ riêng từng lớp → đổi dốc tại ranh giới, liên tục "
+                            f"không nhảy bậc). Đường đỏ Δσ/σ'v0 = 10% tại {_unit} "
+                            f"{_res_cs['y10']:.1f} m (σ'v0 = 10·q = {_res_cs['lim']:.0f} kPa).")
+                    else:
+                        st.caption(
+                            f"σ'v0 = Σγ'·z (γ riêng từng lớp → đổi dốc tại ranh giới, liên tục "
+                            f"không nhảy bậc). Độ sâu Δσ/σ'v0 = 10% (σ'v0 = 10·q = "
+                            f"{_res_cs['lim']:.0f} kPa) nằm dưới đáy HK (σ'v0 max = "
+                            f"{_res_cs['sv0_max']:.0f} kPa).")
+                else:
+                    st.caption("(hố khoan chưa có dữ liệu lớp / hồ sơ ứng suất)")
+            except Exception as _ecs:
+                st.caption(f"(lỗi vẽ cột địa chất + ứng suất: {_ecs})")
+        else:
+            st.caption("(không có hố khoan trong khu vực — chọn hố khoan ở tab Địa chất)")
+
+    # ── Mặt bằng lưới cọc CDM — hàng riêng, thu nhỏ vừa phải ──
+    _g_left, _g_right = st.columns([0.42, 0.58], gap="medium")
+    with _g_left:
+        st.caption("Mặt bằng lưới cọc CDM")
+        _e_ref_now = _get("cdm_e")   # e user nhập (cdm_e), KHÔNG dùng cdm_spacings
+        _fig_grd = _draw_cdm_grid(_get("cdm_D"), _get("cdm_arrangement"),
+                                  _e_ref_now, figsize=(4.0, 3.6))
         st.pyplot(_fig_grd, use_container_width=True)
         _fig_grd.clf()
 

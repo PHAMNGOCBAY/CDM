@@ -572,6 +572,10 @@ def compare_methods(bh_name: str,
 # 5b. S2 — LÚN CỐ KẾT BÊN DƯỚI MŨI CỌC CDM (LUÔN TÍNH)
 # ──────────────────────────────────────────────────────────────────
 
+# Ký hiệu lớp CÁT (lún tức thời đàn hồi, KHÔNG cố kết theo Cc)
+SAND_SYMBOLS_S2 = {"F", "2a", "2b", "2c", "3a", "3b", "3c", "4", "5", "5a", "5b", "6", "7", "8"}
+
+
 def calc_s2_below_cdm(
     bh_name: str,
     cdm_tip_depth_m: float,
@@ -579,14 +583,24 @@ def calc_s2_below_cdm(
     sublayer_m: float = 2.0,
     stop_ratio: float = 0.10,
     gwt_depth_m: float = 0.0,
+    B_load_m: Optional[float] = None,
+    alpha_sand_kPa: float = 2000.0,
+    t_years_residual: float = 15.0,
+    double_drainage: bool = True,
     db_path: Optional[Path] = None,
 ) -> dict:
     """
-    Tính S2 = lún cố kết sơ cấp bên dưới mũi cọc CDM.
+    Tính S2 = lún bên dưới mũi cọc CDM (cố kết cho sét + đàn hồi cho cát).
 
     LUÔN TÍNH dù CDM hết hay chưa hết lớp bùn — chỉ dừng khi Δσ/σ'v0 < stop_ratio.
 
-    Phương pháp ưu tiên theo từng phân tố:
+    Δσ theo chiều sâu:
+      - B_load_m=None  → Δσ = q không đổi (mặc định, tương thích cũ)
+      - B_load_m>0     → Boussinesq tải dải (móng băng) bề rộng B: Δσ(z') giảm dần
+        theo z' = độ sâu dưới mũi cọc: Δσ = (q/π)(α + sin α), α = 2·atan(B/(2z'))
+
+    Phương pháp tính lún mỗi phân tố 2m:
+      - Lớp CÁT (SAND_SYMBOLS_S2) → đàn hồi: Si = Δσ·H/Es, Es = alpha_sand_kPa·N (SPT)
       1. Cc/Cs/e0/PC có trong lab_tests → Terzaghi 1D (OC/cross_PC/NC)
       2. a12_cm2kgf + e0 có trong lab_tests → Eoed = (1+e0)/a12 × 98.0665 kPa
          Si = Δσ × H / Eoed
@@ -617,7 +631,7 @@ def calc_s2_below_cdm(
 
         # Tất cả mẫu có ít nhất Cc hoặc a12 — bao gồm cả lớp bên trên để nội/ngoại suy
         all_samples = con.execute("""
-            SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, a12_cm2kgf, gamma_kNm3
+            SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, a12_cm2kgf, gamma_kNm3, Cv_cm2s
             FROM lab_tests
             WHERE borehole_id=? AND (Cc IS NOT NULL OR a12_cm2kgf IS NOT NULL)
             ORDER BY depth_from_m
@@ -629,7 +643,7 @@ def calc_s2_below_cdm(
         if not all_samples:
             zone_cc = con.execute("""
                 SELECT lt.depth_from_m, lt.depth_to_m, lt.Cc, lt.Cs, lt.e0, lt.PC_kPa,
-                       lt.a12_cm2kgf, lt.gamma_kNm3
+                       lt.a12_cm2kgf, lt.gamma_kNm3, lt.Cv_cm2s
                 FROM lab_tests lt JOIN boreholes b ON lt.borehole_id=b.id
                 WHERE b.zone_id=? AND lt.Cc IS NOT NULL
                 ORDER BY lt.depth_from_m
@@ -637,7 +651,7 @@ def calc_s2_below_cdm(
             zone_cc = [dict(r) for r in zone_cc]
             if not zone_cc:
                 zone_cc = con.execute("""
-                    SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, a12_cm2kgf, gamma_kNm3
+                    SELECT depth_from_m, depth_to_m, Cc, Cs, e0, PC_kPa, a12_cm2kgf, gamma_kNm3, Cv_cm2s
                     FROM lab_tests WHERE Cc IS NOT NULL ORDER BY depth_from_m
                 """).fetchall()
                 zone_cc = [dict(r) for r in zone_cc]
@@ -660,7 +674,45 @@ def calc_s2_below_cdm(
         ).fetchone()
         max_depth_m = float(max_depth_row[0] or 80.0)
 
+        # Lớp đất (để xác định cát/sét theo symbol mỗi phân tố)
+        soil_layers = [dict(r) for r in con.execute(
+            "SELECT depth_top_m, depth_bot_m, symbol FROM layers "
+            "WHERE borehole_id=? ORDER BY depth_top_m", (bh_id,))]
+        # SPT (để tính Es cát = alpha·N)
+        spt_rows = []
+        try:
+            spt_rows = [dict(r) for r in con.execute(
+                "SELECT depth_m, N FROM spt_values WHERE borehole_id=? ORDER BY depth_m",
+                (bh_id,))]
+        except sqlite3.Error:
+            spt_rows = []
+
     samples = all_samples if all_samples else cc_fallback_samples
+
+    def _symbol_at(depth: float):
+        for ly in soil_layers:
+            if ly["depth_top_m"] <= depth <= ly["depth_bot_m"]:
+                return ly["symbol"]
+        return None
+
+    def _spt_N_at(depth: float):
+        """N của SPT gần nhất theo độ sâu (trong ±3 m)."""
+        best, best_d = None, 3.01
+        for r in spt_rows:
+            if r["N"] is not None and abs(r["depth_m"] - depth) < best_d:
+                best, best_d = r["N"], abs(r["depth_m"] - depth)
+        return best
+
+    import math as _math
+    def _dsigma_at(z_abs: float) -> float:
+        """Δσ tại độ sâu tuyệt đối z_abs (dưới cổ HK). Boussinesq dải nếu B_load_m>0."""
+        if not B_load_m or B_load_m <= 0:
+            return q_kPa
+        zp = z_abs - cdm_tip_depth_m            # độ sâu dưới mũi cọc (mặt phẳng tải)
+        if zp <= 0.01:
+            return q_kPa
+        alpha = 2.0 * _math.atan(B_load_m / (2.0 * zp))
+        return (q_kPa / _math.pi) * (alpha + _math.sin(alpha))
 
     def _midpoint(s: dict) -> float:
         bot = s["depth_to_m"] or (s["depth_from_m"] + 1.0)
@@ -672,49 +724,59 @@ def calc_s2_below_cdm(
 
     def _interp_params(depth_mid: float) -> dict:
         """
-        Chọn thông số tại depth_mid theo thứ tự ưu tiên:
-          Cc (Terzaghi) > a12 (Eoed) — lấy từ mẫu gần nhất.
+        Chọn thông số tại depth_mid theo BẢN CHẤT ĐẤT (hệ số rỗng e0):
+          - SÉT MỀM (NC, e0≥1)  → nén nguyên sơ: Cc/Terzaghi (a12 ở 1–2 kgf/cm² là
+            nén LẠI → quá cứng cho bùn NC, KHÔNG dùng). Mượn Cc cùng lớp; thiếu → ước
+            lượng Cc ≈ 0,4(e0−0,25) (Hough).
+          - SÉT CỨNG (OC, e0<1) → nén lại: Eoed từ a12 (phù hợp đất quá cố kết).
         """
-        # Ưu tiên mẫu có Cc gần nhất bên trên
-        cc_above = [s for s in samples if s["Cc"] is not None and _midpoint(s) <= depth_mid]
-        cc_below = [s for s in samples if s["Cc"] is not None and _midpoint(s) > depth_mid]
-        a12_above = [s for s in samples if s["a12_cm2kgf"] is not None and _midpoint(s) <= depth_mid]
-        a12_below = [s for s in samples if s["a12_cm2kgf"] is not None and _midpoint(s) > depth_mid]
+        if not samples:
+            return {"method": "default", "Cc": 0.48, "Cs": 0.086, "e0": 1.5,
+                    "PC_kPa": None, "a12": None, "Eoed_kPa": None,
+                    "gamma": 18.0, "cv": None}
 
-        # Chọn mẫu Cc gần nhất
-        ref_cc = (cc_above[-1] if cc_above else
-                  cc_below[0]  if cc_below else None)
-        # Chọn mẫu a12 gần nhất
-        ref_a12 = (a12_above[-1] if a12_above else
-                   a12_below[0]  if a12_below else None)
+        def _nearest(pool):
+            return min(pool, key=lambda s: abs(_midpoint(s) - depth_mid)) if pool else None
 
-        # Mẫu bất kỳ gần nhất để lấy gamma
-        ref_any = _nearest_sample(depth_mid)
-        gamma = (ref_cc["gamma_kNm3"] if ref_cc and ref_cc.get("gamma_kNm3") else
-                 ref_a12["gamma_kNm3"] if ref_a12 and ref_a12.get("gamma_kNm3") else
-                 ref_any.get("gamma_kNm3") or 18.5)
+        # e0 đại diện tại độ sâu (mẫu gần nhất có e0) → quyết định mềm/cứng
+        e0_ref = _nearest([s for s in samples if s["e0"]])
+        e0 = (e0_ref["e0"] if e0_ref else 1.5)
+        gamma_ref = _nearest(samples)
+        gamma = (gamma_ref.get("gamma_kNm3") if gamma_ref else None) or 18.5
 
-        if ref_cc is not None:
-            Cc = ref_cc["Cc"] or 0.48
-            Cs = ref_cc["Cs"] or Cc * 0.18
-            e0 = ref_cc["e0"] or 1.5
-            return {"method": "Cc", "Cc": Cc, "Cs": Cs, "e0": e0,
-                    "PC_kPa": ref_cc["PC_kPa"], "a12": None, "Eoed_kPa": None,
-                    "gamma": gamma}
+        if e0 >= 1.0:
+            # SÉT MỀM (NC) → Cc nén nguyên sơ
+            cc_ref = _nearest([s for s in samples if s["Cc"]])
+            if cc_ref is not None:
+                Cc = cc_ref["Cc"]
+                Cs = cc_ref["Cs"] or Cc * 0.18
+                return {"method": "Cc", "Cc": Cc, "Cs": Cs,
+                        "e0": cc_ref["e0"] or e0, "PC_kPa": cc_ref["PC_kPa"],
+                        "a12": None, "Eoed_kPa": None, "gamma": gamma,
+                        "cv": cc_ref.get("Cv_cm2s")}
+            # không có Cc trong HK → ước lượng Cc từ e0 (Hough)
+            Cc_est = max(0.1, 0.4 * (e0 - 0.25))
+            return {"method": "Cc_est", "Cc": Cc_est, "Cs": Cc_est * 0.15,
+                    "e0": e0, "PC_kPa": None, "a12": None, "Eoed_kPa": None,
+                    "gamma": gamma, "cv": (e0_ref.get("Cv_cm2s") if e0_ref else None)}
 
-        if ref_a12 is not None:
-            a12 = ref_a12["a12_cm2kgf"]
-            e0  = ref_a12["e0"] or 1.0
-            Eoed = (1.0 + e0) / a12 * 98.0665   # kPa
-            return {"method": "Eoed", "Cc": None, "Cs": None, "e0": e0,
+        # SÉT CỨNG (OC, e0<1) → Eoed từ a12 (nén lại)
+        a12_ref = _nearest([s for s in samples if s["a12_cm2kgf"]])
+        if a12_ref is not None:
+            a12 = a12_ref["a12_cm2kgf"]
+            e0u = a12_ref["e0"] or e0
+            Eoed = (1.0 + e0u) / a12 * 98.0665   # kPa
+            return {"method": "Eoed", "Cc": None, "Cs": None, "e0": e0u,
                     "PC_kPa": None, "a12": a12, "Eoed_kPa": Eoed,
-                    "gamma": gamma}
-
-        # Không có mẫu nào — dùng mặc định
-        return {"method": "default", "Cc": 0.48, "Cs": 0.086, "e0": 1.5,
-                "PC_kPa": None, "a12": None, "Eoed_kPa": None, "gamma": 18.0}
-
-    sigma_v0_limit = q_kPa / stop_ratio   # dừng khi Δσ/σ'v0 < stop_ratio
+                    "gamma": gamma, "cv": a12_ref.get("Cv_cm2s")}
+        # sét cứng nhưng thiếu a12 → Cc nhỏ (nén lại ít)
+        cc_ref = _nearest([s for s in samples if s["Cc"]])
+        if cc_ref is not None:
+            return {"method": "Cc", "Cc": cc_ref["Cc"], "Cs": cc_ref["Cs"] or cc_ref["Cc"] * 0.18,
+                    "e0": cc_ref["e0"] or e0, "PC_kPa": cc_ref["PC_kPa"],
+                    "a12": None, "Eoed_kPa": None, "gamma": gamma, "cv": cc_ref.get("Cv_cm2s")}
+        return {"method": "default", "Cc": 0.15, "Cs": 0.03, "e0": e0,
+                "PC_kPa": None, "a12": None, "Eoed_kPa": None, "gamma": gamma, "cv": None}
 
     layers_out = []
     S2_total   = 0.0
@@ -724,24 +786,39 @@ def calc_s2_below_cdm(
     while z <= max_depth_m:
         p = _interp_params(z)
         sigma_v0 = calc_sigma_v0(z, p["gamma"], gwt_depth_m)
+        dsig     = _dsigma_at(z)                 # Δσ (Boussinesq nếu B_load_m>0)
 
         # Dừng khi Δσ/σ'v0 < stop_ratio
-        if sigma_v0 >= sigma_v0_limit:
+        if sigma_v0 > 0 and (dsig / sigma_v0) < stop_ratio:
             stop_reason = f"delta_sigma/sigma_v0 < {int(stop_ratio*100)}% tai z={z:.1f}m"
             break
 
-        sigma_vf = sigma_v0 + q_kPa
+        sigma_vf = sigma_v0 + dsig
         PC       = p["PC_kPa"]
+        sym      = _symbol_at(z)
+        is_sand  = (sym in SAND_SYMBOLS_S2) if sym else False
 
-        if p["method"] == "Eoed":
-            # Eoed từ hệ số nén lún a12: Si = Δσ × H / Eoed
-            Si = (q_kPa * sublayer_m) / p["Eoed_kPa"]
-            oc_status = "Eoed"
+        Es_sand = None
+        if is_sand:
+            # Lớp cát → lún tức thời đàn hồi: Si = Δσ·H/Es, Es = alpha·N (SPT)
+            N_spt = _spt_N_at(z)
+            if N_spt and N_spt > 0:
+                Es_sand = alpha_sand_kPa * N_spt
+            elif p["Eoed_kPa"]:
+                Es_sand = p["Eoed_kPa"]          # dự phòng: oedometer nếu có
+            else:
+                Es_sand = alpha_sand_kPa * 10.0  # dự phòng N≈10
+            Si = (dsig * sublayer_m) / Es_sand
+            oc_status, method_i = "sand_elastic", "sand"
+        elif p["method"] == "Eoed":
+            Si = (dsig * sublayer_m) / p["Eoed_kPa"]
+            oc_status, method_i = "Eoed", "Eoed"
         else:
-            # Terzaghi 1D (Cc hoặc default)
+            # Terzaghi 1D (Cc hoặc default) cho sét
             pc_use = PC if PC else sigma_v0 * 0.9
             Si = calc_settlement_layer(sublayer_m, p["e0"], p["Cc"], p["Cs"],
                                        sigma_v0, sigma_vf, pc_use)
+            method_i = p["method"]
             if PC is None:
                 oc_status = "unknown"
             elif sigma_vf <= PC:
@@ -756,6 +833,9 @@ def calc_s2_below_cdm(
         layers_out.append({
             "depth_mid_m":  round(z, 2),
             "H_i_m":        sublayer_m,
+            "symbol":       sym,
+            "is_sand":      is_sand,
+            "dsigma_kPa":   round(dsig, 1),
             "sigma_v0_kPa": round(sigma_v0, 1),
             "sigma_vf_kPa": round(sigma_vf, 1),
             "PC_kPa":       round(PC, 1) if PC else None,
@@ -764,20 +844,61 @@ def calc_s2_below_cdm(
             "e0":           round(p["e0"], 3),
             "a12":          round(p["a12"], 4) if p["a12"] else None,
             "Eoed_kPa":     round(p["Eoed_kPa"], 0) if p["Eoed_kPa"] else None,
+            "Es_sand_kPa":  round(Es_sand, 0) if Es_sand else None,
+            "cv_cm2s":      round(p["cv"], 6) if p.get("cv") else None,
             "Si_cm":        round(Si * 100, 2),
             "OC_status":    oc_status,
-            "method":       p["method"],
+            "method":       method_i,
         })
         z += sublayer_m
 
+    # ── Lún tích lũy ĐẾN 15 năm (TCCS 41) — để so với ΔS cho phép ──
+    # S2 = Σ phần lún đã xảy ra tới t năm:
+    #   • CÁT (lún tức thời)              → U=100% → lấy ĐỦ Si
+    #   • SÉT CỨNG e0<1 (cố kết nhanh)    → U≈100% → lấy ĐỦ Si
+    #   • SÉT MỀM e0≥1 (cố kết chậm)      → chỉ phần đã cố kết = Si·U(t)
+    _CV_DEFAULT_CM2S = 1.0e-3            # Cv mặc định khi thiếu (≈3,15 m²/năm)
+    _SEC_PER_YEAR = 3.15576e7
+    def _is_soft_clay(L):               # sét mềm = không phải cát và e0 ≥ 1
+        return (not L["is_sand"]) and ((L.get("e0") or 1.5) >= 1.0)
+    i = 0
+    while i < len(layers_out):
+        L = layers_out[i]
+        if not _is_soft_clay(L):
+            # cát hoặc sét cứng e0<1 → lún nhanh, đến 15 năm coi như xong → lấy đủ
+            L["U_t"] = 1.0
+            L["Si_15yr_cm"] = L["Si_cm"]
+            i += 1
+            continue
+        # gom cụm sét mềm (e0≥1) liên tục → tính U(t năm) → Si·U
+        j = i
+        while j < len(layers_out) and _is_soft_clay(layers_out[j]):
+            j += 1
+        grp = layers_out[i:j]
+        H_grp = sum(g["H_i_m"] for g in grp)
+        cvs = [g["cv_cm2s"] for g in grp if g.get("cv_cm2s")]
+        cv_cm2s = (sum(cvs) / len(cvs)) if cvs else _CV_DEFAULT_CM2S
+        cv_m2yr = cv_cm2s * 1e-4 * _SEC_PER_YEAR          # cm²/s → m²/năm
+        H_dr = (H_grp / 2.0) if double_drainage else H_grp
+        Tv = cv_m2yr * t_years_residual / (H_dr ** 2) if H_dr > 0 else 99.0
+        U = calc_Uv(Tv)
+        for g in grp:
+            g["U_t"] = round(U, 4)
+            g["Si_15yr_cm"] = round(g["Si_cm"] * U, 2)
+        i = j
+
+    S2_15yr = sum(g.get("Si_15yr_cm", 0.0) for g in layers_out)
+
     return {
-        "S2_cm":        round(S2_total * 100, 1),
-        "layers":       layers_out,
-        "stop_depth_m": round(z - sublayer_m / 2.0, 1),
-        "stop_reason":  stop_reason,
-        "n_layers":     len(layers_out),
-        "q_kPa":        q_kPa,
-        "warnings":     warnings_out or ([] if layers_out else ["Không có phân tố nào được tính"]),
+        "S2_cm":          round(S2_total * 100, 1),       # tổng cố kết hoàn toàn (U=100%)
+        "S2_15yr_cm":     round(S2_15yr, 1),              # tích lũy đến t năm (TCCS41)
+        "t_years":        t_years_residual,
+        "layers":         layers_out,
+        "stop_depth_m":   round(z - sublayer_m / 2.0, 1),
+        "stop_reason":    stop_reason,
+        "n_layers":       len(layers_out),
+        "q_kPa":          q_kPa,
+        "warnings":       warnings_out or ([] if layers_out else ["Không có phân tố nào được tính"]),
     }
 
 

@@ -47,6 +47,21 @@ Thứ tự ưu tiên thông số mỗi phân tố 2m:
 
 **Đã gỡ `crosscheck_settlement_calc` (cdm_column_calc.py):** hàm này chứa công thức giảm lún tuyến tính `1 − a×0.85` (không có cơ sở vật lý) — đã xóa, thay bằng comment. Tính lún CDM chính thức chỉ dùng S1 (`calc_settlement_S1`) + S2 (`calc_s2_below_cdm`).
 
+#### Tối ưu chiều dài cọc CDM theo độ lún cho phép ΔS (cập nhật 2026-05-28)
+
+**Engine:** [scripts/cdm_length_optimize.py](scripts/cdm_length_optimize.py) — `find_cdm_length()` + `area_ratio()` + `soft_profile_from_db()`.
+**UI:** tab "Thông số CDM" (`page=="params"`), cột hình học — ô **"Ngàm vào đất tốt (m)" đã thay** bằng độ lún cho phép ΔS (TCCS 41).
+
+Thiết kế ngược: cho ΔS cho phép (TCCS 41 Bảng 1, tra theo cấp đường + vị trí qua `get_allowable_residual_settlement`, **cho nhập tay đè**), lặp tăng độ xuyên cọc p (bước 0,5 m) tới khi $S_1+S_2 \le \Delta S$ → chọn cọc **NGẮN NHẤT** đạt.
+
+- $S_1 = q \cdot p / (a E_c + (1-a) E_s) \times 100$ [cm] — p = độ xuyên (toàn bộ chiều dày gia cố)
+- $S_2$ = `calc_s2_below_cdm(bh, clay_top + p, q)` — lún cố kết phần nén lún còn lại dưới mũi
+- **Độ xuyên không giới hạn ở H_soft theo ký hiệu** — chạy tới đáy vùng nén lún (lab Cc thường sâu hơn lớp bùn ký hiệu). p_max = max(depth_bot) − đỉnh bùn.
+- Cọc "thả nổi" (mũi trong bùn, p < H_soft → S2>0) được phép; xuyên hết → S2≈0.
+- Cache `@st.cache_data` qua wrapper `_cdm_length_for_settlement` (app_cdm.py). Set `cdm_Lc` + `cdm_L_ngam` (= max(0, p−H_soft)) sau khi lặp.
+- Không đạt kể cả p_max → cảnh báo "giảm khoảng cách s / tăng qu".
+- **Es = 250·cu với cu = μ·Su (Bjerrum, TCCS 41 C.5)** — `find_cdm_length(mu=...)`; μ tra theo Ip lớp yếu của `cdm_bh` (`bjerrum_mu`+`get_Ip_avg_for_bh`), chỉ áp khi có Ip (VST), không có → μ=1. Cột c3 hiển thị Es = 250×cu tương ứng.
+
 **Kết quả mẫu (NHC-BH-01, CDM full penetration tip=35m):**
 
 - S1 = 35,6 cm (đàn hồi khối gia cố)

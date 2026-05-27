@@ -72,3 +72,5 @@ data/TTHC.sqlite-wal
 # Windows
 Thumbs.db
 desktop.ini
+
+.claude/settings.local.json
