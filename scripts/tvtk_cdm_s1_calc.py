@@ -5,7 +5,8 @@ S1 = q × H / (a × Ec + (1-a) × Es)
 
 - a   = tỷ lệ diện tích thay thế (từ D_mm, spacing_m, pattern trong tvtk_cdm_config)
 - Ec  = Ec_factor × qu_kPa / 2
-- Es  = 250 × Cu_VST
+- Es  = 250 × cu  với cu = μ × Su_VST (hiệu chỉnh Bjerrum, TCCS 41 Phụ lục C.5)
+        μ tra theo Ip lớp yếu (Bảng C.1); chỉ áp cho Su từ VST, KHÔNG áp cho Cu_UU lab.
 - Cu_VST: trung bình VST của trạm gần nhất cùng zone, trong phạm vi H_soft
 
 Priority Cu_VST:
@@ -28,6 +29,13 @@ if hasattr(sys.stdout, "reconfigure"):
 _ROOT = Path(__file__).parent.parent
 _DB   = _ROOT / "data" / "TTHC.sqlite"
 
+# Hệ số hiệu chỉnh Bjerrum μ (TCCS 41 Phụ lục C.5) — dùng chung từ settlement_calc
+sys.path.insert(0, str(Path(__file__).parent))
+from settlement_calc import bjerrum_mu  # noqa: E402
+
+# Symbol lớp yếu để lấy Ip TB (theo lab_tests.symbol_tcvn, KHÁC layers.symbol)
+_SOFT_SYMBOLS_IP = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
+
 
 # ──────────────────────────────────────────────────────────────────
 # 1. HELPERS
@@ -48,6 +56,20 @@ def _zone_of(bh_name: str) -> str:
         if bh_name.startswith(prefix):
             return prefix
     return "?"
+
+
+def _ip_avg(con: sqlite3.Connection, bh_name: str) -> float | None:
+    """Ip trung bình của lớp đất yếu trong HK (lab_tests.symbol_tcvn). None nếu không có."""
+    ph = ",".join("?" * len(_SOFT_SYMBOLS_IP))
+    r = con.execute(f"""
+        SELECT AVG(lt.Ip) avg_ip, COUNT(lt.Ip) n
+        FROM lab_tests lt JOIN boreholes b ON lt.borehole_id = b.id
+        WHERE b.name = ? AND lt.Ip IS NOT NULL AND lt.Ip > 0
+          AND lt.symbol_tcvn IN ({ph})
+    """, (bh_name, *_SOFT_SYMBOLS_IP)).fetchone()
+    if r and r["n"] and r["avg_ip"] is not None:
+        return float(r["avg_ip"])
+    return None
 
 
 def _nearest_vst_su(bh_name: str, bh_x: float, bh_y: float,
@@ -181,7 +203,12 @@ def run_s1_batch(db_path: Path = _DB, verbose: bool = True) -> list[dict]:
             zone    = _zone_of(bh_name)
 
             Cu, source = _nearest_vst_su(bh_name, bh_x, bh_y, H_soft, zone, con)
-            Es = 250.0 * Cu if Cu else None
+            # Hiệu chỉnh Bjerrum: cu = μ·Su — CHỈ áp cho Su từ VST, KHÔNG áp cho Cu_UU lab
+            ip_avg  = _ip_avg(con, bh_name)
+            is_vst  = source.startswith("VST")
+            mu      = bjerrum_mu(ip_avg) if (ip_avg and is_vst) else 1.0
+            Cu_corr = (Cu * mu) if Cu else None
+            Es = 250.0 * Cu_corr if Cu_corr else None
 
             def _s1(H: float) -> float | None:
                 if not Es or H <= 0:
@@ -195,26 +222,34 @@ def run_s1_batch(db_path: Path = _DB, verbose: bool = True) -> list[dict]:
 
             con.execute("""
                 INSERT INTO tvtk_bh_cdm
-                    (bh_name, Cu_VST_avg_kPa, Es_kPa, S1_pa1_cm, S1_pa2_cm, S1_pa3_cm, updated_at)
-                VALUES (?,?,?,?,?,?,?)
+                    (bh_name, Ip_avg, bjerrum_mu, Cu_VST_avg_kPa, Cu_corrected_kPa,
+                     Es_kPa, S1_pa1_cm, S1_pa2_cm, S1_pa3_cm, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(bh_name) DO UPDATE SET
-                    Cu_VST_avg_kPa = excluded.Cu_VST_avg_kPa,
-                    Es_kPa         = excluded.Es_kPa,
-                    S1_pa1_cm      = excluded.S1_pa1_cm,
-                    S1_pa2_cm      = excluded.S1_pa2_cm,
-                    S1_pa3_cm      = excluded.S1_pa3_cm,
-                    updated_at     = excluded.updated_at
-            """, (bh_name, Cu, Es, s1_1, s1_2, s1_3, now))
+                    Ip_avg           = excluded.Ip_avg,
+                    bjerrum_mu       = excluded.bjerrum_mu,
+                    Cu_VST_avg_kPa   = excluded.Cu_VST_avg_kPa,
+                    Cu_corrected_kPa = excluded.Cu_corrected_kPa,
+                    Es_kPa           = excluded.Es_kPa,
+                    S1_pa1_cm        = excluded.S1_pa1_cm,
+                    S1_pa2_cm        = excluded.S1_pa2_cm,
+                    S1_pa3_cm        = excluded.S1_pa3_cm,
+                    updated_at       = excluded.updated_at
+            """, (bh_name, ip_avg, round(mu, 4), Cu, Cu_corr, Es, s1_1, s1_2, s1_3, now))
 
             results.append({
                 "bh_name": bh_name,
                 "Cu_kPa": round(Cu, 1) if Cu else None,
+                "Ip_avg": round(ip_avg, 1) if ip_avg else None,
+                "mu": round(mu, 3),
+                "Cu_corr_kPa": round(Cu_corr, 1) if Cu_corr else None,
                 "source": source,
                 "S1_PA1": s1_1, "S1_PA2": s1_2, "S1_PA3": s1_3,
             })
 
             if verbose:
-                cu_str = f"Cu={Cu:.1f}kPa ({source})" if Cu else f"! {source}"
+                cu_str = (f"Su={Cu:.1f}→cu={Cu_corr:.1f}kPa (μ={mu:.3f}, {source})"
+                          if Cu else f"! {source}")
                 print(f"  {bh_name}: {cu_str}  S1_PA1={s1_1}  S1_PA2={s1_2}  S1_PA3={s1_3}cm")
 
         con.commit()

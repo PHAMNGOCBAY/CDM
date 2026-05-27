@@ -43,6 +43,10 @@ Thứ tự ưu tiên thông số mỗi phân tố 2m:
 **Key trong return dict**: `"warnings"` (list[str], không phải `"warning"` singular).
 **Layer output**: có thêm cột `"method"` = `'Cc'` | `'Eoed'` | `'default'`, `"a12"`, `"Eoed_kPa"`.
 
+**q cho S2 đọc từ config (cập nhật 2026-05-27):** `compare_methods` lấy `q_kPa` qua `_cfg_q_kPa()` (đọc `tvtk_cdm_config.q_kPa` — nguồn chính `tvtk_fill_composition`), KHÔNG hardcode 40.8 → tự cập nhật khi cấu tạo tải đắp thay đổi.
+
+**Đã gỡ `crosscheck_settlement_calc` (cdm_column_calc.py):** hàm này chứa công thức giảm lún tuyến tính `1 − a×0.85` (không có cơ sở vật lý) — đã xóa, thay bằng comment. Tính lún CDM chính thức chỉ dùng S1 (`calc_settlement_S1`) + S2 (`calc_s2_below_cdm`).
+
 **Kết quả mẫu (NHC-BH-01, CDM full penetration tip=35m):**
 
 - S1 = 35,6 cm (đàn hồi khối gia cố)

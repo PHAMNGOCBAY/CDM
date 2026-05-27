@@ -91,6 +91,11 @@ Pre-migrate trước commit (idempotent ALTER TABLE try/except trong app).
 | Bishop/Fellenius lớp yếu | $c = S_u$, $\varphi = 0$ | $c = c_u$, $\varphi = 0$ |
 | Tính lún cố kết (Cc, e₀, PC) | giữ nguyên | giữ nguyên (không liên quan) |
 
+**Engine $E_s$ đã đồng bộ Bjerrum (cập nhật 2026-05-27):** cả 3 nơi tính $E_s$ dùng $E_s = 250 \cdot \mu \cdot S_u$ — chỉ áp μ cho $S_u$ từ **VST** (KHÔNG áp cho $C_{u,UU}$ lab):
+- `app_cdm.py` tab `tvtk_prep` recompute live khi "Lưu" (đã đúng từ trước)
+- `tvtk_cdm_s1_calc.py::run_s1_batch` — ghi thêm cột `Ip_avg`, `bjerrum_mu`, `Cu_corrected_kPa` vào `tvtk_bh_cdm`
+- `settlement_calc.py::compare_methods` — `Es_cdm = 250·μ·Cu_avg` (μ từ `get_Ip_avg_for_bh`)
+
 #### Tích hợp UI — Tab `tvtk_prep` section 2
 
 **Bảng 3 PA** ([app_cdm.py:15783](scripts/app_cdm.py:15783)) thêm 4 cột mới:

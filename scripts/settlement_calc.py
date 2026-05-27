@@ -425,6 +425,20 @@ def calc_time_series(S_total_cm: float,
 # 5. SO SÁNH CÁC PHƯƠNG ÁN
 # ──────────────────────────────────────────────────────────────────
 
+def _cfg_q_kPa(db_path: Optional[Path] = None) -> float:
+    """Tải phân bố q = Σ(h·γ) đọc từ tvtk_cdm_config (nguồn chính: tvtk_fill_composition).
+    Fallback 40.8 kPa nếu chưa có cấu hình."""
+    _p = db_path or _DB
+    try:
+        with sqlite3.connect(_p) as con:
+            r = con.execute("SELECT q_kPa FROM tvtk_cdm_config WHERE id=1").fetchone()
+            if r and r[0]:
+                return float(r[0])
+    except sqlite3.Error:
+        pass
+    return 40.8
+
+
 def compare_methods(bh_name: str,
                     zone_code: str,
                     H_fill_m: float = 3.0,
@@ -465,16 +479,20 @@ def compare_methods(bh_name: str,
     _qu_lab   = zone_params.get("cdm_qu_lab_kPa", 1000.0)
     _f_lab    = zone_params.get("cdm_field_lab_ratio", 0.33)
     _Ef       = zone_params.get("cdm_Ec_factor", 75.0)
-    Es_cdm    = 250.0 * _Cu_cdm
+    # cu = μ·Su (hiệu chỉnh Bjerrum theo Ip lớp yếu — TCCS 41 Phụ lục C.5)
+    _ip_cdm   = get_Ip_avg_for_bh(bh_name)
+    _mu_cdm   = bjerrum_mu(_ip_cdm)
+    Es_cdm    = 250.0 * _mu_cdm * _Cu_cdm
     Ec_cdm    = _Ef * (_f_lab * _qu_lab / 2.0)
     _d_range  = zone_params.get("soft_clay_depth_m", [0, 30])
     H_soft_cdm = float(_d_range[1] - _d_range[0])
     _q_fill    = H_fill_m * gamma_fill
     _composite = cdm_area_ratio * Ec_cdm + (1.0 - cdm_area_ratio) * Es_cdm
     S_cdm_S1   = (_q_fill * H_soft_cdm / _composite) * 100.0 if _composite > 0 else S_total * 0.3
-    # S2: lún cố kết bên dưới mũi CDM — luôn tính với q=40.8 kPa, phân tố 2m
+    # S2: lún cố kết bên dưới mũi CDM — q đọc từ cấu tạo tải (tvtk_cdm_config), phân tố 2m
     _cdm_tip   = float(_d_range[1])
-    _s2_res    = calc_s2_below_cdm(bh_name, _cdm_tip, q_kPa=40.8, sublayer_m=2.0,
+    _q_cdm     = _cfg_q_kPa()
+    _s2_res    = calc_s2_below_cdm(bh_name, _cdm_tip, q_kPa=_q_cdm, sublayer_m=2.0,
                                     stop_ratio=0.10, gwt_depth_m=gwt_depth_m)
     S_cdm_S2   = _s2_res["S2_cm"]
     S_cdm      = S_cdm_S1 + S_cdm_S2

@@ -369,58 +369,11 @@ def create_cdm_tables(db_path: Path = _DB_PATH) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Cross-check vs settlement_calc.py CDM branch
+# (Đã gỡ) crosscheck_settlement_calc — dùng hệ số giảm lún (1 − a×0.85) không có
+# cơ sở vật lý (CLAUDE.md §28). Tính lún CDM chính thức = S1 (calc_settlement_S1,
+# TCVN 9403 Phụ lục C) + S2 (settlement_calc.calc_s2_below_cdm). Không dùng lại
+# công thức giảm lún tuyến tính này.
 # ---------------------------------------------------------------------------
-
-def crosscheck_settlement_calc(
-    Cu_kPa: float = 20.0,
-    H_soft_m: float = 35.0,
-    H_fill_m: float = 3.0,
-    cdm_area_ratio: float = 0.25,
-    qu_lab_kPa: float = 400.0,
-) -> dict:
-    """
-    So sánh kết quả S_cdm từ hai phương pháp:
-      (A) cdm_column_calc.py — công thức C.2 TCVN 9403
-      (B) settlement_calc.py — hệ số giảm lún (cdm_area_ratio × 0.85)
-    """
-    # Method A: TCVN 9403 C.2
-    a = cdm_area_ratio
-    qu_field = calc_qu_field(qu_lab_kPa)
-    Cc_col = qu_field / 2.0
-    Ec = calc_Ec(Cc_col, 75.0)
-    Es = calc_Es(Cu_kPa)
-    q = 20.0 * H_fill_m
-    S1_A = calc_settlement_S1(q, H_soft_m, a, Ec, Es)
-    beta_A = calc_settlement_reduction(a, Ec, Es)
-
-    # Method B: settlement_calc.py approach (Cc-based × linear CDM reduction)
-    # S_cdm = S_Cc_total × (1 - cdm_area_ratio × 0.85)
-    # S_Cc_total must be provided by caller; here we use elastic approx for comparison only
-    S_no_treat_elastic = q * H_soft_m / Es  # elastic only — NOT the Cc consolidation
-    beta_B = 1.0 - cdm_area_ratio * 0.85
-    S1_B_elastic = S_no_treat_elastic * beta_B * 100  # cm
-
-    return {
-        "method_A_TCVN9403_elastic": {
-            "Ec_kPa": round(Ec, 0),
-            "Es_kPa": round(Es, 0),
-            "S1_cm": round(S1_A, 1),
-            "beta": round(beta_A, 3),
-            "scope": "Elastic compression of CDM reinforced zone only (S1 = qH/composite_modulus)",
-        },
-        "method_B_settlement_calc_approx": {
-            "S_no_treat_elastic_cm": round(S_no_treat_elastic * 100, 1),
-            "beta": round(beta_B, 3),
-            "S1_elastic_cm": round(S1_B_elastic, 1),
-            "scope": "Approximate linear reduction applied to Cc-based consolidation S_total",
-        },
-        "warning": (
-            "Methods measure different things: A=elastic S1 only; B=Cc consolidation×reduction. "
-            "For full CDM settlement: S_cdm_Cc = S_no_treat_Cc × beta_B. "
-            "For NHC: S_no_treat_Cc ~171 cm -> S_cdm ~171 x (1-0.25x0.85) = 134.7 cm."
-        ),
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -459,11 +412,4 @@ if __name__ == "__main__":
     for k, v in qc.items():
         print(f"  {k}: {v}")
 
-    # 4. Cross-check
-    xc = crosscheck_settlement_calc(Cu_kPa=16.0, cdm_area_ratio=0.25)
-    print("\n--- Cross-check CDM settlement ---")
-    a_res = xc['method_A_TCVN9403_elastic']
-    b_res = xc['method_B_settlement_calc_approx']
-    print(f"  TCVN9403 S1={a_res['S1_cm']:.1f} cm, beta={a_res['beta']:.3f}")
-    print(f"  settlement_calc S1={b_res['S1_elastic_cm']:.1f} cm, beta={b_res['beta']:.3f}")
-    print(f"  Warning: {xc['warning']}")
+    # (4. Cross-check đã gỡ — xem ghi chú công thức 1−a×0.85 phía trên)
