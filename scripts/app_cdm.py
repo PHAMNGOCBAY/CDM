@@ -178,7 +178,7 @@ def _load_punch_theory() -> str:
 
 st.set_page_config(
     page_title="Xử lý nền + Kè SW",
-    page_icon="🏗",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -2615,6 +2615,57 @@ def _draw_soilcol_stress_elev(bh_name: str, q_self_kPa: float = 0.0,
     fig.tight_layout()
     return {"fig": fig, "found_10": found_10, "y10": y10, "lim": lim,
             "sv0_max": max(sv0), "use_elev": use_elev}
+
+
+def _draw_settlement_budget(S1_cm: float, S2_cm: float, dS_cm: float,
+                            figsize: tuple = (7.6, 2.2)):
+    """Thanh 'ngân sách lún' trực quan cho người không chuyên: thanh ngang chồng
+    S1 + S2, vạch đỏ = mức cho phép ΔS, nền xanh (cho phép) / đỏ (vượt), kèm chữ Đạt/Không đạt."""
+    import matplotlib.pyplot as plt
+    S1 = max(0.0, float(S1_cm or 0)); S2 = max(0.0, float(S2_cm or 0))
+    dS = max(0.1, float(dS_cm or 0)); total = S1 + S2
+    ok = total <= dS + 1e-9
+    xmax = max(dS, total) * 1.25
+
+    fig, ax = plt.subplots(figsize=figsize)
+    # Nền: vùng cho phép (xanh) / vùng vượt (đỏ)
+    ax.axvspan(0, dS, color="#E8F5E9", zorder=0)
+    ax.axvspan(dS, xmax, color="#FFEBEE", zorder=0)
+    # Thanh chồng S1 + S2
+    ax.barh(0, S1, height=0.5, color="#1565C0", edgecolor="white", zorder=3)
+    ax.barh(0, S2, height=0.5, left=S1, color="#F59E0B", edgecolor="white", zorder=3)
+    if S1 > xmax * 0.04:
+        ax.text(S1 / 2, 0, f"S1\n{S1:.1f}", ha="center", va="center",
+                color="white", fontsize=9, fontweight="bold", zorder=4)
+    if S2 > xmax * 0.04:
+        ax.text(S1 + S2 / 2, 0, f"S2\n{S2:.1f}", ha="center", va="center",
+                color="white", fontsize=9, fontweight="bold", zorder=4)
+    # Vạch đỏ mức cho phép
+    ax.axvline(dS, color="#C62828", lw=2.6, ls="--", zorder=5)
+    ax.text(dS, 0.42, f"Cho phép {dS:.0f}", color="#C62828", ha="center",
+            va="bottom", fontsize=9.5, fontweight="bold")
+    # Tiêu đề đạt/không đạt bằng chữ thường
+    margin = dS - total
+    if ok:
+        title = f"ĐẠT — tổng lún {total:.1f} cm  ≤  cho phép {dS:.0f} cm  (còn dư {margin:.1f} cm)"
+        col = "#2E7D32"
+    else:
+        title = f"KHÔNG ĐẠT — tổng lún {total:.1f} cm  >  cho phép {dS:.0f} cm  (vượt {-margin:.1f} cm)"
+        col = "#C62828"
+    ax.set_title(title, color=col, fontsize=12, fontweight="bold", pad=12)
+    ax.set_xlim(0, xmax); ax.set_ylim(-0.55, 0.75)
+    ax.set_yticks([])
+    ax.set_xlabel("Độ lún công trình (cm)", fontsize=10)
+    ax.tick_params(labelsize=9)
+    # Chú thích chữ thường
+    from matplotlib.patches import Patch
+    ax.legend(handles=[
+        Patch(color="#1565C0", label="S1 — lún của khối đất gia cố cọc (phần trên)"),
+        Patch(color="#F59E0B", label="S2 — lún của đất bên dưới mũi cọc"),
+    ], loc="lower center", bbox_to_anchor=(0.5, -0.55), ncol=1, fontsize=8.5,
+       frameon=False)
+    fig.tight_layout()
+    return fig
 
 
 def _draw_cdm_grid(D: float, arr: str, e_ref: float, figsize: tuple = (5, 4.5)):
@@ -5848,6 +5899,15 @@ elif _page == "params":
                 st.session_state["cdm_Lc"]     = round(_gap_opt + _ropt["p_max_m"], 1)
                 st.session_state["cdm_L_ngam"] = round(max(0.0, _ropt["p_max_m"] - h_clay), 1)
                 st.error(_ropt["note"])
+            # Thanh "ngân sách lún" — trực quan đạt/không đạt cho người không chuyên
+            if _ropt.get("S1_cm") is not None:
+                try:
+                    _fig_bud = _draw_settlement_budget(_ropt["S1_cm"], _ropt["S2_cm"], dS_allow)
+                    st.pyplot(_fig_bud, use_container_width=True)
+                    import matplotlib.pyplot as _plt_bud
+                    _plt_bud.close(_fig_bud)
+                except Exception as _eb:
+                    st.caption(f"(lỗi vẽ thanh ngân sách lún: {_eb})")
             # Sơ đồ minh họa tải trọng q truyền xuống mũi cọc → lún cố kết S2
             if _ropt.get("tip_depth_m") is not None:
                 _dq1, _dq2 = st.columns([1, 1.25], gap="medium")
@@ -7983,12 +8043,12 @@ sau khi dỡ surcharge, lún còn lại $\Delta S$ giảm. **Không** thay đổ
                                    if r.get("Cc") is not None and r.get("e0") is not None)
                     _n_borrowed = sum(1 for r in _param_rows if r.get("_src"))
                     st.success(
-                        f"**✓ Đã kiểm tra chéo dữ liệu địa kỹ thuật — HK {_sl_bh}** "
+                        f"**Đãkiểm tra chéo dữ liệu địa kỹ thuật — HK {_sl_bh}** "
                         f"(zone {_sl_zone})  ·  "
                         f"Số lớp đất: **{_n_layers_sl}** · "
                         f"Lớp có đầy đủ Cc + e₀ (mẫu thí nghiệm): **{_n_full}** · "
                         f"Lớp dùng tham khảo từ hố khoan khác cùng khu vực: **{_n_borrowed}**",
-                        icon="✅",
+                        icon=None,
                     )
                     st.markdown("**Thông số địa chất dùng tính lún cố kết**")
                     st.dataframe(
@@ -8512,10 +8572,10 @@ Tăng ứng suất $> $ tải thiết kế → tăng tốc độ cố kết → 
                 st.error(f"Lỗi tính toán 9.2.3: {_e}")
                 _iter_res = None
         st.success(
-            f"**✓ Đã kiểm tra chéo dữ liệu địa kỹ thuật — HK {_it_bh}** "
+            f"**Đãkiểm tra chéo dữ liệu địa kỹ thuật — HK {_it_bh}** "
             f"(zone {_it_zone}) · "
             f"Mẫu thí nghiệm hố khoan hiện tại + tham khảo trung bình khu vực khi thiếu",
-            icon="✅",
+            icon=None,
         )
         if _iter_res:
             _im1, _im2, _im3 = st.columns(3)
@@ -10253,8 +10313,8 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
 
                     # ── Hàng 1: NT1 và NT2 cùng một hàng ────────────────────────
                     _nt1_col, _nt2_col = st.columns(2)
-                    _badge_nt1 = "🟢" if _marg1 >= 0 else "🔴"
-                    _badge_nt2 = "🟢" if _rat2 >= 1 else "🔴"
+                    _badge_nt1 = "—"
+                    _badge_nt2 = "—"
                     with _nt1_col:
                         st.markdown(
                             f"**NT1 — Chiều dài xuyên qua lớp yếu** {_badge_nt1} **{_res1}**"
@@ -10947,7 +11007,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             st.markdown("### E. Ổn định tổng thể — 3 phương pháp")
         with _hdr_e2:
             _refresh_e = st.button(
-                "🔄 Cập nhật 4 PP cho mọi HK",
+                "Cập nhật 4 PP cho mọi HK",
                 use_container_width=True, key="_refresh_kesw_stab_btn",
                 help="Đọc tham số từ DB (rows cũ) + tính lại 4 PP với "
                      "cung trượt qua chân cừ. Đảm bảo Mục E khớp với D.1 chi tiết.",
@@ -11002,7 +11062,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
             _stale_names = ", ".join(r["bh_name"] for r in _stale_rows[:5])
             _more = f" (+{len(_stale_rows)-5} HK khác)" if len(_stale_rows) > 5 else ""
             st.info(
-                f"⚙ **Phát hiện {len(_stale_rows)} HK có cache cũ hơn lần cập nhật "
+                f"**Phát hiện {len(_stale_rows)} HK có cache cũ hơn lần cập nhật "
                 f"địa chất ({_geo_ts})**. Tự động tính lại 4 PP cho khớp dữ liệu mới...  \n"
                 f"_{_stale_names}{_more}_"
             )
@@ -11220,7 +11280,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             _prog_R.progress((_i_R + 1) / len(_seeds_R),
                                               text=f"{_i_R + 1} / {len(_seeds_R)} HK · vừa xử lý {_bh_R}")
                     _con_R.commit()
-                    st.success(f"✓ Đã cập nhật {_n_done} HK với 3 phương pháp (cung qua chân cừ).")
+                    st.success(f"Đãcập nhật {_n_done} HK với 3 phương pháp (cung qua chân cừ).")
                     st.rerun()
             except ImportError as _e_imp_R:
                 st.error(f"Thiếu module: {_e_imp_R}")
@@ -11582,7 +11642,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                 _eps_src_lbl = ("nén 3 trục" if _eps50_source == "triaxial"
                                   else "thư viện trạng thái")
                 st.success(
-                    f"**✓ Đã kiểm tra chéo dữ liệu thiết kế gốc cho {_hk_iter}**  ·  "
+                    f"**Đãkiểm tra chéo dữ liệu thiết kế gốc cho {_hk_iter}**  ·  "
                     f"Cọc kiến nghị: **{_dpy_pile_default}**  ·  "
                     f"L = **{_dpy_L_default:.1f} m**  ·  "
                     f"Z mặt đất = **{_dpy_Z_default:+.2f} m**  ·  "
@@ -11590,7 +11650,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     f"Ctd Front = **{_dpy_su_default:.0f} kPa**  ·  "
                     f"Su Back (tự nhiên) = **{_su_back_default:.0f} kPa**  ·  "
                     f"ε₅₀ = **{_eps50_default:.4f}** ({_eps_src_lbl})",
-                    icon="✅",
+                    icon=None,
                 )
 
                 _dpy_applied = st.session_state.get("dpy_applied", {}) or {}
@@ -13511,10 +13571,10 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                                 _back_s.append(_EL_S(_e_bot_f + _shift,
                                                       _gam, _gam_sub, _phi_f, _c_b))
                                 _c_b_disp = f"{_c_b:.0f}"
-                                _on_back = "✓"
+                                _on_back = "Có"
                             else:
                                 _c_b_disp = "— (skip)"
-                                _on_back = "✗"
+                                _on_back = "Không"
                             _layers_log.append({
                                 "Symbol": _sym, "z_top (m)": f"{_e_top_f:+.2f}",
                                 "z_bot (m)": f"{_e_bot_f:+.2f}",
@@ -13544,12 +13604,12 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                              "γ": "15.0", "γ_sub": "5.0", "φ": "0.0",
                              "c Front (kPa)": f"{_su_F:.0f}",
                              "c Back (kPa)": f"{_su_B:.0f}",
-                             "Có ở Back?": "✓"},
+                             "Có ở Back?": "Có"},
                             {"Symbol": "2", "z_top (m)": f"{_Z_s - _H1_s:+.2f}",
                              "z_bot (m)": f"{_pile_bot_s - 1.0:+.2f}",
                              "γ": "18.0", "γ_sub": "8.0", "φ": "30.0",
                              "c Front (kPa)": "0", "c Back (kPa)": "0",
-                             "Có ở Back?": "✓"},
+                             "Có ở Back?": "Có"},
                         ]
                         st.caption("_(Dùng layers giả định — không có dữ liệu hồ sơ địa chất cho HK này.)_")
 
@@ -13733,7 +13793,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                     _se1, _se2 = st.columns(2)
                     _fs_sl_crit = _valid_fs_dict.get(_slip_method_sel, _res_s.Fs_global_slip)
                     _se1.metric(
-                        f"Fs trượt cung tròn ({_SLIP_METHODS[_slip_method_sel]} ★)",
+                        f"Fs trượt cung tròn ({_SLIP_METHODS[_slip_method_sel]} *)",
                         f"{_fs_sl_crit:.3f}",
                         f"min 1.40 — {'Đạt' if _fs_sl_crit >= 1.40 else 'KHÔNG ĐẠT'}",
                         delta_color="normal" if _fs_sl_crit >= 1.40 else "inverse",
@@ -13767,7 +13827,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                         _ok_m = _fs_m >= _fmin
                         _is_crit = (_critical_fs is not None
                                     and abs(_fs_m - _critical_fs) < 1e-6)
-                        _label_show = (f"{_mlabel} ★" if _is_crit
+                        _label_show = (f"{_mlabel} *" if _is_crit
                                         else _mlabel)
                         _cmp_cols[_ic].metric(
                             _label_show, f"{_fs_m:.3f}",
@@ -13775,7 +13835,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             f"{'Đạt' if _ok_m else 'KHÔNG ĐẠT'}",
                             delta_color="normal" if _ok_m else "inverse",
                         )
-                    st.caption("★ = critical (Fs nhỏ nhất).")
+                    st.caption("* = tới hạn (Fs nhỏ nhất).")
 
                     # Chi tiết tính toán + mặt trượt nguy hiểm (trải phẳng)
                     st.markdown("#### Chi tiết tính toán + mặt trượt nguy hiểm")
@@ -13879,7 +13939,7 @@ Nếu trong bảng thấy hai cọc khác loại mà W giống nhau → bug, vui
                             # Front (trái cừ, từ mặt đất Z xuống) — dùng full _layers_log
                             _draw_layers_side(_front_s, _x_min, -0.3, _Z_s)
                             # Back (phải cừ, từ Zb xuống) — CHỈ đất tự nhiên (bùn trở xuống)
-                            _back_log = [l for l in _layers_log if l.get("Có ở Back?") == "✓"]
+                            _back_log = [l for l in _layers_log if l.get("Có ở Back?") == "Có"]
                             _layers_log_save = _layers_log
                             _layers_log = _back_log
                             _draw_layers_side(_back_s, 0.3, _x_max, _Zb_s)

@@ -335,6 +335,24 @@ Mọi text hiển thị trên 8503 (`st.markdown`, `st.caption`, `st.info`, `st.
 
 ---
 
+### 23b. KHÔNG dùng emoji (BẮT BUỘC — toàn dự án, cập nhật 2026-05-28)
+
+**Tuyệt đối KHÔNG dùng emoji** ở bất kỳ đâu: câu trả lời của Claude, text UI Streamlit (`st.*`), nhãn/tiêu đề biểu đồ matplotlib & plotly, nhãn nút, `icon=` của `st.info/success/...`, comment code.
+
+| Thay vì | Dùng |
+|---|---|
+| ✅ ❌ (đạt/không đạt) | chữ **"Đạt" / "Không đạt"** + màu (matplotlib title color xanh `#2E7D32` / đỏ `#C62828`) |
+| 🟢 🔴 🟡 (badge) | chữ trạng thái, hoặc `style.map` màu nền ô bảng |
+| ✓ ✗ (cột bảng) | **"Có" / "Không"** |
+| 🔄 ⚙ 🏗 (nút/icon) | bỏ hẳn; `st.set_page_config(page_icon=None)`; `st.info(..., icon=None)` |
+| ★ (tới hạn) | `*` (ASCII) + chú thích "* = tới hạn" |
+
+**Why:** User yêu cầu rõ (2026-05-28) — emoji không phù hợp báo cáo kỹ thuật, gây rối hiển thị/in ấn.
+
+**Memory tham chiếu:** `memory/feedback_no_emoji.md`.
+
+---
+
 ### 24. Thư viện mới cho Word OMML + Typography (cập nhật 2026-05-22)
 
 Cài đặt qua `pip install`:
