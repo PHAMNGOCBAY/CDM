@@ -15970,6 +15970,14 @@ if _page == "tvtk_prep":
 
     # ── 2b. Bề mặt 3D cao độ QTT ─────────────────────────────────────────────
     import numpy as _np_surf
+    _cv.execute("""CREATE TABLE IF NOT EXISTS qtt_elevation_points (
+        easting_m  REAL NOT NULL, northing_m REAL NOT NULL,
+        elev_nat_m REAL, elev_des_m REAL, fill_m REAL,
+        PRIMARY KEY (easting_m, northing_m))""")
+    _cv.execute("""CREATE TABLE IF NOT EXISTS qtt_cdm_boundary (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        easting_m REAL, northing_m REAL, vertex_order INTEGER)""")
+    _cv.commit()
     _qtt_elev_pts = _cv.execute(
         "SELECT easting_m, northing_m, elev_nat_m, elev_des_m, fill_m FROM qtt_elevation_points ORDER BY easting_m, northing_m"
     ).fetchall()
