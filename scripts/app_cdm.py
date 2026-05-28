@@ -1797,7 +1797,6 @@ _DEFAULTS = {
     "cdm_use_bous": True,
     "cdm_B_load": 20.0,
     "cdm_alpha_sand": 2000.0,
-    "cdm_inc_traffic": True,
     "cdm_Lc": 26.2,
     "cdm_CDTK": 0.8,
     "cdm_qu": 800.0,
@@ -5852,27 +5851,25 @@ elif _page == "params":
     st.caption("Lặp tăng độ xuyên cọc tới khi S1 + S2 ≤ ΔS cho phép → chọn cọc NGẮN NHẤT đạt. "
                "S1 = lún đàn hồi khối gia cố; S2 = lún cố kết phần đất nén lún còn lại dưới mũi cọc.")
     _bh_opt   = _get("cdm_bh")
-    # Tham số Δσ dưới mũi cọc: Boussinesq (bề rộng tải) + Es cát = α·N + cộng hoạt tải
-    _bc1, _bc2, _bc3, _bc4 = st.columns(4)
+    # Tham số Δσ dưới mũi cọc: Boussinesq (bề rộng tải) + Es cát = α·N
+    _bc1, _bc2, _bc3 = st.columns(3)
     _use_bous = _bc1.checkbox("Δσ giảm dần theo Boussinesq (móng băng)", key="cdm_use_bous",
                               help="Bật: Δσ dưới mũi giảm theo chiều sâu (tải dải). Tắt: Δσ = q không đổi.")
     _B_load_in = _bc2.number_input("Bề rộng tải B (m)", 2.0, 200.0, step=1.0, key="cdm_B_load",
                                    help="Bề rộng vùng gia cố / nền đắp — cho Boussinesq dải")
     _alpha_in = _bc3.number_input("Es cát = α·N (α, kPa/nhát)", 200.0, 8000.0, step=100.0,
                                   key="cdm_alpha_sand", help="Mô đun đàn hồi lớp cát Es = α·N (SPT)")
-    _inc_traffic = _bc4.checkbox("Cộng hoạt tải vào lún (S1, S2)", key="cdm_inc_traffic",
-                                 help="Bật: q tính lún = tải đắp tĩnh + hoạt tải xe. "
-                                      "Tắt: chỉ tải đắp tĩnh (lún cố kết do tải thường xuyên).")
     _B_pass = _B_load_in if _use_bous else None
     _ld_opt   = _get("cdm_loads")
-    _q_static_v = q_static(_ld_opt)
+    # LÚN (S1, S2): chỉ tải thường xuyên (đắp), KHÔNG xét hoạt tải xe (hoạt tải tần
+    # suất ngắn, không gây cố kết). SỨC CHỊU TẢI (P_col): dùng tải tổng (có hoạt tải).
+    _q_st_opt   = q_static(_ld_opt)              # tải tính lún (không hoạt tải)
+    _q_bear_opt = q_total(_ld_opt)               # tải tính sức chịu tải (có hoạt tải)
     _q_traf_v   = _ld_opt.get("q_traffic", 20.0)
-    _q_st_opt   = (_q_static_v + _q_traf_v) if _inc_traffic else _q_static_v
     st.caption(
-        f"Tải tính lún (S1, S2) q = **{_q_st_opt:.1f} kPa** "
-        + (f"= tải đắp tĩnh {_q_static_v:.1f} + hoạt tải xe {_q_traf_v:.0f}"
-           if _inc_traffic else
-           f"= chỉ tải đắp tĩnh {_q_static_v:.1f} (chưa cộng hoạt tải {_q_traf_v:.0f})")
+        f"**Tải tính lún (S1, S2) = {_q_st_opt:.1f} kPa — tải đắp tĩnh, KHÔNG xét hoạt tải** "
+        f"(hoạt tải tần suất ngắn không gây cố kết). Tải tính sức chịu tải cọc "
+        f"= {_q_bear_opt:.1f} kPa (đắp + hoạt tải xe {_q_traf_v:.0f})."
     )
     try:
         from cdm_length_optimize import area_ratio as _ar
@@ -5958,8 +5955,8 @@ elif _page == "params":
                     # Lực nén 1 trụ theo TẬP TRUNG ỨNG SUẤT: σ_col=(Ec/Etb)·q ; P=σ_col·Ac
                     _Es_b   = 250.0 * _cu_b
                     _Etb_b  = _a_opt * _Ec_opt + (1.0 - _a_opt) * _Es_b
-                    _sigcol_b = (_Ec_opt / _Etb_b) * _q_st_opt if _Etb_b > 0 else _q_st_opt
-                    _Pcol_b = _sigcol_b * _Ac_b                   # P_col (kN)
+                    _sigcol_b = (_Ec_opt / _Etb_b) * _q_bear_opt if _Etb_b > 0 else _q_bear_opt
+                    _Pcol_b = _sigcol_b * _Ac_b                   # P_col (kN) — tải tổng có hoạt tải
                     # Profile Cu TỪNG vị trí thí nghiệm (VST → UU) từ DB, ×μ Bjerrum
                     _prof_lap = []; _ctop_lap = None; _src_lap = "TB"
                     try:
@@ -6033,7 +6030,8 @@ elif _page == "params":
                     st.caption(
                         _cu_note +
                         f"Ứng suất đầu cọc σ_col = (Ec/Etb)·q = ({_Ec_opt:,.0f}/{_Etb_b:,.0f})×"
-                        f"{_q_st_opt:.1f} = {_sigcol_b:.0f} kPa · P cọc = σ_col·Ac = {_Pcol_b:.1f} kN "
+                        f"{_q_bear_opt:.1f} = {_sigcol_b:.0f} kPa (q tổng có hoạt tải) · "
+                        f"P cọc = σ_col·Ac = {_Pcol_b:.1f} kN "
                         f"(Ac={_Ac_b:.4f}, Etb={_Etb_b:,.0f}=a·Ec+(1−a)·Es). FS = {_FS_b}. "
                         f"Q mũi = 9·Cu(mũi)·Ac. Q cho phép = min(Q thân+Q mũi, vật liệu "
                         f"{_qmat_b:.0f})/FS. Chiều dài chọn cần đạt CẢ 'Lún đạt' VÀ 'SCT đạt'."

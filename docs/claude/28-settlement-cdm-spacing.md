@@ -60,7 +60,7 @@ Thiết kế ngược: cho ΔS cho phép (TCCS 41 Bảng 1, tra theo cấp đư�
 - Cọc "thả nổi" (mũi trong bùn, p < H_soft → S2>0) được phép; xuyên hết → S2≈0.
 - Cache `@st.cache_data` qua wrapper `_cdm_length_for_settlement` (app_cdm.py). Set `cdm_Lc` + `cdm_L_ngam` (= max(0, p−H_soft)) sau khi lặp.
 - Không đạt kể cả p_max → cảnh báo "giảm khoảng cách s / tăng qu".
-- **Tùy chọn cộng hoạt tải** (checkbox `cdm_inc_traffic`, mặc định bật): q tính S1+S2 = tải đắp tĩnh `q_static` + hoạt tải xe `q_traffic`. Tắt → chỉ tải đắp tĩnh (lún cố kết do tải thường xuyên). Áp cho cả 3 loại lớp (sét e0>1, sét e0<1, cát).
+- **Tải tính LÚN (S1, S2) = tải đắp tĩnh `q_static`, KHÔNG xét hoạt tải** (hoạt tải tần suất ngắn không gây cố kết). Tải tính **SỨC CHỊU TẢI** P_col = `q_total` (đắp + hoạt tải xe) vì cọc chịu trực tiếp hoạt tải. Hai loại tải tách riêng (không dùng chung), áp cho cả 3 loại lớp.
 - **Es = 250·cu với cu = μ·Su (Bjerrum, TCCS 41 C.5)** — `find_cdm_length(mu=...)`; μ tra theo Ip lớp yếu của `cdm_bh` (`bjerrum_mu`+`get_Ip_avg_for_bh`), chỉ áp khi có Ip (VST), không có → μ=1. Cột c3 hiển thị Es = 250×cu tương ứng.
 
 #### Sức chịu tải cọc CDM (1 cọc đơn) — AIT + vật liệu (cập nhật 2026-05-28)
