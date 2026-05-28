@@ -1797,6 +1797,7 @@ _DEFAULTS = {
     "cdm_use_bous": True,
     "cdm_B_load": 20.0,
     "cdm_alpha_sand": 2000.0,
+    "cdm_inc_traffic": True,
     "cdm_Lc": 26.2,
     "cdm_CDTK": 0.8,
     "cdm_qu": 800.0,
@@ -5851,16 +5852,28 @@ elif _page == "params":
     st.caption("Lặp tăng độ xuyên cọc tới khi S1 + S2 ≤ ΔS cho phép → chọn cọc NGẮN NHẤT đạt. "
                "S1 = lún đàn hồi khối gia cố; S2 = lún cố kết phần đất nén lún còn lại dưới mũi cọc.")
     _bh_opt   = _get("cdm_bh")
-    _q_st_opt = q_static(_get("cdm_loads"))
-    # Tham số Δσ dưới mũi cọc: Boussinesq (bề rộng tải) + Es cát = α·N
-    _bc1, _bc2, _bc3 = st.columns(3)
+    # Tham số Δσ dưới mũi cọc: Boussinesq (bề rộng tải) + Es cát = α·N + cộng hoạt tải
+    _bc1, _bc2, _bc3, _bc4 = st.columns(4)
     _use_bous = _bc1.checkbox("Δσ giảm dần theo Boussinesq (móng băng)", key="cdm_use_bous",
                               help="Bật: Δσ dưới mũi giảm theo chiều sâu (tải dải). Tắt: Δσ = q không đổi.")
     _B_load_in = _bc2.number_input("Bề rộng tải B (m)", 2.0, 200.0, step=1.0, key="cdm_B_load",
                                    help="Bề rộng vùng gia cố / nền đắp — cho Boussinesq dải")
     _alpha_in = _bc3.number_input("Es cát = α·N (α, kPa/nhát)", 200.0, 8000.0, step=100.0,
                                   key="cdm_alpha_sand", help="Mô đun đàn hồi lớp cát Es = α·N (SPT)")
+    _inc_traffic = _bc4.checkbox("Cộng hoạt tải vào lún (S1, S2)", key="cdm_inc_traffic",
+                                 help="Bật: q tính lún = tải đắp tĩnh + hoạt tải xe. "
+                                      "Tắt: chỉ tải đắp tĩnh (lún cố kết do tải thường xuyên).")
     _B_pass = _B_load_in if _use_bous else None
+    _ld_opt   = _get("cdm_loads")
+    _q_static_v = q_static(_ld_opt)
+    _q_traf_v   = _ld_opt.get("q_traffic", 20.0)
+    _q_st_opt   = (_q_static_v + _q_traf_v) if _inc_traffic else _q_static_v
+    st.caption(
+        f"Tải tính lún (S1, S2) q = **{_q_st_opt:.1f} kPa** "
+        + (f"= tải đắp tĩnh {_q_static_v:.1f} + hoạt tải xe {_q_traf_v:.0f}"
+           if _inc_traffic else
+           f"= chỉ tải đắp tĩnh {_q_static_v:.1f} (chưa cộng hoạt tải {_q_traf_v:.0f})")
+    )
     try:
         from cdm_length_optimize import area_ratio as _ar
         _a_opt   = _ar(D, e, arr)
