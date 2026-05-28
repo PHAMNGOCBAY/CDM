@@ -1,0 +1,111 @@
+# Sức chịu tải cọc xi măng đất (CDM) — 1 cọc đơn
+
+Sức chịu tải cọc CDM được kiểm tra theo **hai điều kiện** và lấy giá trị nhỏ hơn:
+sức chịu tải theo **nền đất** (AIT) và theo **vật liệu cọc**. Sức chịu tải đất nền
+là **một trong các điều kiện để chọn chiều dài cọc**.
+
+**Engine:** [scripts/cdm_column_calc.py](scripts/cdm_column_calc.py) —
+`calc_bearing_soil_ait()` · `calc_bearing_material()` · `calc_cdm_pile_capacity()`
+**UI:** tab "Thuyết minh TKCS" — mục "Sức chịu tải cọc xi măng đất (1 cọc đơn)"
+**SQLite:** `tvtk_cdm_bearing` (per HK)
+
+---
+
+## 1. Theo nền đất — phương pháp Viện Kỹ thuật Châu Á (AIT)
+
+$$Q_{ult.soil} = \left(\pi d\, L_{col} + 2{,}25\,\pi d^2\right) C_{u.soil}$$
+
+- Số hạng 1 — $\pi d\, L_{col}$ — **ma sát thành** (hệ số bám dính $\alpha = 1$ cho đất yếu).
+- Số hạng 2 — $2{,}25\,\pi d^2$ — **sức kháng mũi**, tương đương $N_c \cdot A_{mũi}$ với
+  $N_c = 9$ và $A_{mũi} = \dfrac{\pi d^2}{4}$ (vì $9 \cdot \dfrac{\pi d^2}{4} = 2{,}25\,\pi d^2$).
+
+$C_{u.soil}$ lấy **giá trị sau khi đã nhân hệ số Bjerrum** (cường độ kháng cắt tính toán):
+
+$$C_{u.soil} = \mu \cdot S_{u}^{VST} \qquad \text{(TCCS 41 Phụ lục C.3.2 — Công thức C.5)}$$
+
+với $\mu$ tra theo chỉ số dẻo $I_p$ (Bảng C.1) — xem [35-tccs41-limits-transition](docs/claude/35-tccs41-limits-transition.md).
+
+---
+
+## 2. Theo vật liệu cọc
+
+$$Q_{ult.mat} = q_u \cdot A_{col}, \qquad A_{col} = \frac{\pi d^2}{4}$$
+
+- $q_u$ — cường độ nén nở hông thiết kế của cọc xi măng đất (kPa).
+
+---
+
+## 3. Sức chịu tải cho phép
+
+$$Q_a = \frac{\min\!\left(Q_{ult.soil},\; Q_{ult.mat}\right)}{FS}, \qquad FS = 2{,}5$$
+
+Thành phần nhỏ hơn là **thành phần khống chế** (nền đất hoặc vật liệu).
+
+---
+
+## 4. Tải trọng tác dụng lên một cọc
+
+$$P_{col} = q \cdot A_{\text{chi phối}}$$
+
+- Lưới vuông: $A_{\text{chi phối}} = s^2$.
+- Lưới tam giác: $A_{\text{chi phối}} = \dfrac{\sqrt{3}}{2}\,s^2$.
+- $q$ — tải phân bố nền đắp (kPa); $s$ — khoảng cách cọc (m).
+
+**Điều kiện kiểm tra:** $P_{col} \le Q_a$.
+
+---
+
+## 5. Chiều dài cọc tối thiểu theo sức chịu tải
+
+Vì $Q_{ult.soil}$ tăng tuyến tính theo $L_{col}$, đặt $Q_{ult.soil}(L) = P_{col}\cdot FS$
+(khi vật liệu đủ: $Q_{ult.mat} \ge P_{col}\cdot FS$) → giải ra chiều dài tối thiểu:
+
+$$L_{col}^{min} = \frac{\dfrac{P_{col}\cdot FS}{C_{u.soil}} - 2{,}25\,\pi d^2}{\pi d}$$
+
+Nếu $Q_{ult.mat} < P_{col}\cdot FS$ → **vật liệu khống chế**, tăng chiều dài không đủ,
+phải tăng $q_u$ cọc hoặc giảm khoảng cách $s$.
+
+**Chiều dài cọc thiết kế** lấy theo:
+
+$$L_{\text{thiết kế}} = \max\!\left(L_{\text{theo lún}},\; L_{col}^{min}(\text{SCT}),\; L_{\text{hình học}}\right)$$
+
+- $L_{\text{theo lún}}$ — đảm bảo $S_1 + S_2 \le \Delta S$ (TCCS 41).
+- $L_{col}^{min}(\text{SCT})$ — đảm bảo $P_{col} \le Q_a$.
+- $L_{\text{hình học}}$ — xuyên hết lớp đất yếu + ngàm vào lớp tốt.
+
+---
+
+## 6. Ví dụ (KE-HK2)
+
+$d = 0{,}80$ m · $L_{col} = 26{,}2$ m · $C_{u.soil} = 11{,}20$ kPa (sau Bjerrum) ·
+$q_u = 800$ kPa · $s = 1{,}8$ m · $q = 40{,}8$ kPa · $FS = 2{,}5$
+
+| Đại lượng | Giá trị |
+| --- | --- |
+| $\pi d L_{col}$ | 65,848 m² |
+| $2{,}25\,\pi d^2$ | 4,524 m² |
+| $Q_{ult.soil}$ | $(65{,}848 + 4{,}524)\times 11{,}20 = $ **788,2 kN** |
+| $A_{col} = \pi d^2/4$ | 0,5027 m² |
+| $Q_{ult.mat} = 800\times 0{,}5027$ | **402,1 kN** (khống chế) |
+| $Q_a = \min/2{,}5$ | **160,8 kN** |
+| $P_{col} = 40{,}8\times 1{,}8^2$ | 132,2 kN |
+| Kiểm tra $P_{col} \le Q_a$ | 132,2 ≤ 160,8 → **Đạt** |
+| $L_{col}^{min}$ (SCT) | 9,9 m |
+
+---
+
+## 7. Bảng ký hiệu
+
+| Ký hiệu | Đơn vị | Mô tả |
+| --- | --- | --- |
+| $d$ | m | Đường kính cọc CDM |
+| $L_{col}$ | m | Chiều dài cọc CDM |
+| $C_{u.soil}$ | kPa | Cường độ kháng cắt không thoát nước của nền (sau Bjerrum, $=\mu S_u$) |
+| $q_u$ | kPa | Cường độ nén nở hông thiết kế của cọc |
+| $A_{col}$ | m² | Diện tích tiết diện cọc |
+| $N_c$ | — | Hệ số sức chịu tải mũi (= 9) |
+| $FS$ | — | Hệ số an toàn (= 2,5) |
+| $q$ | kPa | Tải phân bố nền đắp |
+| $s$ | m | Khoảng cách cọc |
+| $P_{col}$ | kN | Tải trọng tác dụng lên một cọc |
+| $Q_a$ | kN | Sức chịu tải cho phép một cọc |

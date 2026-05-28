@@ -80,6 +80,54 @@ def calc_settlement_reduction(area_ratio: float, Ec_kPa: float, Es_kPa: float) -
 
 
 # ---------------------------------------------------------------------------
+# Sức chịu tải cọc xi măng đất (CDM single column)
+# ---------------------------------------------------------------------------
+
+def calc_bearing_soil_ait(d_m: float, L_col_m: float, Cu_soil_kPa: float) -> dict:
+    """Sức chịu tải cực hạn của 1 cọc CDM theo NỀN ĐẤT — phương pháp AIT.
+
+        Q_ult,soil = (π·d·L_col + 2,25·π·d²)·Cu,soil
+
+    Số hạng 1 = ma sát thành (α=1, đất yếu); số hạng 2 = sức kháng mũi với
+    Nc=9 vì 2,25·π·d² = 9·(π·d²/4) = Nc·A_mũi. Đơn vị: d,L [m], Cu [kPa] → Q [kN].
+    """
+    import math
+    skin_area = math.pi * d_m * L_col_m          # m²
+    tip_area  = 2.25 * math.pi * d_m ** 2         # m²  (= 9·A_tip)
+    Q = (skin_area + tip_area) * Cu_soil_kPa
+    return {
+        "Q_ult_soil_kN": round(Q, 1),
+        "skin_area_m2": round(skin_area, 3),
+        "tip_area_m2": round(tip_area, 3),
+        "method": "AIT",
+    }
+
+
+def calc_bearing_material(d_m: float, qu_col_kPa: float) -> dict:
+    """Sức chịu tải theo VẬT LIỆU cọc: Q_ult,mat = qu_col·A_col, A_col = π·d²/4."""
+    import math
+    A_col = math.pi * d_m ** 2 / 4.0
+    return {"Q_ult_material_kN": round(qu_col_kPa * A_col, 1),
+            "A_col_m2": round(A_col, 4)}
+
+
+def calc_cdm_pile_capacity(d_m: float, L_col_m: float, Cu_soil_kPa: float,
+                           qu_col_kPa: float, FS: float = 2.5) -> dict:
+    """Sức chịu tải thiết kế 1 cọc CDM = min(theo nền AIT, theo vật liệu)/FS."""
+    soil = calc_bearing_soil_ait(d_m, L_col_m, Cu_soil_kPa)
+    mat  = calc_bearing_material(d_m, qu_col_kPa)
+    Q_ult = min(soil["Q_ult_soil_kN"], mat["Q_ult_material_kN"])
+    governs = "nền đất" if soil["Q_ult_soil_kN"] <= mat["Q_ult_material_kN"] else "vật liệu"
+    return {
+        **soil, **mat,
+        "Q_ult_min_kN": round(Q_ult, 1),
+        "governs": governs,
+        "FS": FS,
+        "Q_allow_kN": round(Q_ult / FS, 1) if FS > 0 else None,
+    }
+
+
+# ---------------------------------------------------------------------------
 # QC sample adequacy (Bảng B.1, TCVN 9403:2012)
 # ---------------------------------------------------------------------------
 

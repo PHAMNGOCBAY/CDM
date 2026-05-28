@@ -62,6 +62,17 @@ Thiết kế ngược: cho ΔS cho phép (TCCS 41 Bảng 1, tra theo cấp đư�
 - Không đạt kể cả p_max → cảnh báo "giảm khoảng cách s / tăng qu".
 - **Es = 250·cu với cu = μ·Su (Bjerrum, TCCS 41 C.5)** — `find_cdm_length(mu=...)`; μ tra theo Ip lớp yếu của `cdm_bh` (`bjerrum_mu`+`get_Ip_avg_for_bh`), chỉ áp khi có Ip (VST), không có → μ=1. Cột c3 hiển thị Es = 250×cu tương ứng.
 
+#### Sức chịu tải cọc CDM (1 cọc đơn) — AIT + vật liệu (cập nhật 2026-05-28)
+
+**Tài liệu đầy đủ:** [60-cdm-suc-chiu-tai-coc.md](60-cdm-suc-chiu-tai-coc.md)
+**Engine:** `cdm_column_calc.py` — `calc_bearing_soil_ait(d,L,Cu)` · `calc_bearing_material(d,qu)` · `calc_cdm_pile_capacity(...)`
+**UI:** tab Thuyết minh TKCS, mục "Sức chịu tải cọc xi măng đất" · **SQLite:** `tvtk_cdm_bearing` (per HK)
+
+- Theo nền (AIT): $Q_{ult.soil}=(\pi d L + 2{,}25\pi d^2)\,C_{u.soil}$ — số hạng 2 = $N_c{=}9$·$A_{mũi}$. **$C_{u.soil}$ = cu SAU Bjerrum (μ·Su), KHÔNG dùng Su nguyên.**
+- Theo vật liệu: $Q_{ult.mat}=q_u\cdot\pi d^2/4$. Cho phép $Q_a=\min/FS$, FS=2,5.
+- Tải 1 cọc $P_{col}=q\cdot s^2$ (vuông) hoặc $q\cdot\tfrac{\sqrt3}{2}s^2$ (tam giác). Kiểm tra $P_{col}\le Q_a$.
+- **Sức chịu tải là 1 điều kiện chọn chiều dài:** $L_{col}^{min}=(P_{col}FS/C_u - 2{,}25\pi d^2)/(\pi d)$; chiều dài thiết kế = max(L theo lún, L theo SCT, L hình học).
+
 **Kết quả mẫu (NHC-BH-01, CDM full penetration tip=35m):**
 
 - S1 = 35,6 cm (đàn hồi khối gia cố)

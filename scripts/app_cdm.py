@@ -18294,6 +18294,122 @@ if _page == "tvtk_prep":
             })
         st.table(_pd_tv.DataFrame(_agg_rows))
 
+    # ── Sức chịu tải cọc xi măng đất (1 cọc đơn) — AIT + vật liệu ────────────
+    st.markdown("#### Sức chịu tải cọc xi măng đất (1 cọc đơn)")
+    _FS_brg = 2.5
+    _brg_cfg = _cv.execute(
+        "SELECT D_mm, spacing_m, pattern, qu_kPa, q_kPa FROM tvtk_cdm_config WHERE id=1"
+    ).fetchone()
+    _d_brg  = float(_brg_cfg["D_mm"]) / 1000.0 if _brg_cfg else 0.8
+    _s_brg  = float(_brg_cfg["spacing_m"]) if _brg_cfg else 1.8
+    _pat_brg = (_brg_cfg["pattern"] if _brg_cfg else "square") or "square"
+    _qu_brg = float(_brg_cfg["qu_kPa"]) if _brg_cfg else 800.0
+    _q_brg  = float(_brg_cfg["q_kPa"]) if _brg_cfg else 40.8
+    _trib   = (_s_brg ** 2 * (3 ** 0.5) / 2) if _pat_brg == "triangle" else _s_brg ** 2
+    _Pcol   = _q_brg * _trib
+    st.caption(
+        f"d = {_d_brg:.2f} m · qu cọc = {_qu_brg:.0f} kPa · FS = {_FS_brg} · "
+        f"Tải 1 cọc P = q × diện tích chi phối = {_q_brg:.1f} × {_trib:.2f} = {_Pcol:.1f} kN. "
+        "Cu nền = cu SAU hiệu chỉnh Bjerrum (μ·Su)."
+    )
+    _cu_map = {r["bh_name"]: dict(r) for r in _cv.execute(
+        "SELECT bh_name, Cu_corrected_kPa, Cu_VST_avg_kPa FROM tvtk_bh_cdm")}
+    try:
+        from cdm_column_calc import (calc_bearing_soil_ait as _brg_soil,
+                                     calc_bearing_material as _brg_mat)
+        _cv.execute("""CREATE TABLE IF NOT EXISTS tvtk_cdm_bearing (
+            bh_name TEXT PRIMARY KEY, d_m REAL, L_col_m REAL, Cu_soil_kPa REAL,
+            qu_col_kPa REAL, Q_soil_kN REAL, Q_material_kN REAL, Q_allow_kN REAL,
+            P_col_kN REAL, FS REAL, ok INTEGER, governs TEXT, updated_at TEXT)""")
+        _brg_rows = []
+        for b in [b for b in _bhs_tv if b["name"] in _cdm_yes]:
+            _elev_b = b["elevation_m"]
+            _hs_val = _cv.execute(
+                "SELECT COALESCE(SUM(depth_bot_m - depth_top_m), 0.0) FROM layers "
+                "WHERE borehole_id=? AND symbol IN ('1','1b','2','XMD')", (b["id"],)
+            ).fetchone()[0]
+            if _hs_val <= 0 or _elev_b is None:
+                continue
+            _L_col = _top - _elev_b + _hs_val + _pen
+            _rcu = _cu_map.get(b["name"]) or {}
+            _cu = _rcu.get("Cu_corrected_kPa") or _rcu.get("Cu_VST_avg_kPa")
+            if not _cu:
+                continue
+            _qs = _brg_soil(_d_brg, _L_col, float(_cu))["Q_ult_soil_kN"]
+            _qm = _brg_mat(_d_brg, _qu_brg)["Q_ult_material_kN"]
+            _qmin = min(_qs, _qm)
+            _gov  = "nền đất" if _qs <= _qm else "vật liệu"
+            _qa   = _qmin / _FS_brg
+            _ok   = _Pcol <= _qa
+            # Chiều dài TỐI THIỂU theo sức chịu tải: Q_soil(L)=P_col·FS (nếu vật liệu đủ)
+            import math as _m_brg
+            _reqQ = _Pcol * _FS_brg
+            if _qm < _reqQ:
+                _Lbrg = None                     # vật liệu khống chế → tăng L không cứu được
+            else:
+                _Lbrg = max(0.0, (_reqQ / float(_cu) - 2.25 * _m_brg.pi * _d_brg ** 2)
+                            / (_m_brg.pi * _d_brg))
+            _brg_rows.append({
+                "Hố khoan": b["name"], "Khu vực": _zone_codes.get(b["zone_id"], ""),
+                "L cọc (m)": f"{_L_col:.1f}",
+                "L cần SCT (m)": (f"{_Lbrg:.1f}" if _Lbrg is not None else "vật liệu hạn chế"),
+                "Cu nền (kPa)": f"{float(_cu):.1f}",
+                "Q nền (kN)": f"{_qs:.0f}", "Q vật liệu (kN)": f"{_qm:.0f}",
+                "Khống chế": _gov, "Q cho phép (kN)": f"{_qa:.0f}",
+                "Tải cọc P (kN)": f"{_Pcol:.0f}",
+                "Đánh giá": "Đạt" if _ok else "Không đạt",
+            })
+            _cv.execute("""INSERT INTO tvtk_cdm_bearing
+                (bh_name,d_m,L_col_m,Cu_soil_kPa,qu_col_kPa,Q_soil_kN,Q_material_kN,
+                 Q_allow_kN,P_col_kN,FS,ok,governs,updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'))
+                ON CONFLICT(bh_name) DO UPDATE SET d_m=excluded.d_m,L_col_m=excluded.L_col_m,
+                 Cu_soil_kPa=excluded.Cu_soil_kPa,qu_col_kPa=excluded.qu_col_kPa,
+                 Q_soil_kN=excluded.Q_soil_kN,Q_material_kN=excluded.Q_material_kN,
+                 Q_allow_kN=excluded.Q_allow_kN,P_col_kN=excluded.P_col_kN,FS=excluded.FS,
+                 ok=excluded.ok,governs=excluded.governs,updated_at=excluded.updated_at""",
+                (b["name"], _d_brg, _L_col, float(_cu), _qu_brg, _qs, _qm, _qa,
+                 _Pcol, _FS_brg, int(_ok), _gov))
+        _cv.commit()
+        if _brg_rows:
+            st.table(_pd_tv.DataFrame(_brg_rows).sort_values(["Khu vực", "Hố khoan"])
+                     .reset_index(drop=True))
+            _n_fail = sum(1 for r in _brg_rows if r["Đánh giá"] == "Không đạt")
+            if _n_fail:
+                st.warning(f"{_n_fail} hố khoan: tải 1 cọc vượt sức chịu tải cho phép — "
+                           "cần tăng qu cọc hoặc giảm khoảng cách s.")
+            else:
+                st.success("Tất cả hố khoan: tải 1 cọc ≤ sức chịu tải cho phép.")
+            st.caption(
+                "**Sức chịu tải là một điều kiện chọn chiều dài cọc.** Chiều dài thiết kế "
+                "phải ≥ **max** của: (1) L theo độ lún (S1+S2 ≤ ΔS), (2) **L cần theo sức "
+                "chịu tải** (cột trên — để Q_a ≥ tải cọc P), (3) L hình học (xuyên hết lớp "
+                "yếu + ngàm). 'vật liệu hạn chế' = tăng chiều dài không đủ, cần tăng qu cọc "
+                "hoặc giảm khoảng cách s."
+            )
+        with st.expander("Công thức sức chịu tải cọc CDM"):
+            st.markdown("**Theo nền đất (AIT):**")
+            st.latex(r"Q_{ult.soil} = (\pi d L_{col} + 2{,}25\,\pi d^2)\,C_{u.soil}")
+            st.markdown(
+                "Số hạng 1 = ma sát thành; số hạng 2 = sức kháng mũi ($N_c=9$, vì "
+                "$2{,}25\\,\\pi d^2 = 9\\cdot\\pi d^2/4$). $C_{u.soil}$ = cu **sau hiệu "
+                "chỉnh Bjerrum** ($\\mu\\cdot S_u$, TCCS 41 Phụ lục C.5)."
+            )
+            st.markdown("**Theo vật liệu cọc:**")
+            st.latex(r"Q_{ult.mat} = q_u \cdot A_{col}, \quad A_{col}=\frac{\pi d^2}{4}")
+            st.markdown(f"**Cho phép** (FS = {_FS_brg}):")
+            st.latex(r"Q_a = \frac{\min(Q_{ult.soil},\,Q_{ult.mat})}{FS}")
+            st.markdown("**Tải 1 cọc:** $P_{col} = q \\cdot A_{\\text{chi phối}}$  "
+                        "(lưới vuông $A=s^2$; lưới tam giác $A=\\tfrac{\\sqrt3}{2}s^2$). "
+                        "**Kiểm tra:** $P_{col} \\le Q_a$.")
+            st.markdown("**Chiều dài tối thiểu theo sức chịu tải** (giải $Q_{ult.soil}(L)=P_{col}\\cdot FS$):")
+            st.latex(r"L_{col}^{min} = \frac{\dfrac{P_{col}\cdot FS}{C_{u.soil}} - 2{,}25\,\pi d^2}{\pi d}")
+            st.markdown("**Chiều dài cọc thiết kế:** $L = \\max(L_{\\text{theo lún}},\\ "
+                        "L_{col}^{min}\\text{(SCT)},\\ L_{\\text{hình học}})$. "
+                        "Chi tiết: tài liệu 60-cdm-suc-chiu-tai-coc.")
+    except Exception as _ebrg:
+        st.error(f"Lỗi tính sức chịu tải cọc CDM: {_ebrg}")
+
     # ── Trắc dọc CDM 3 khu vực ─────────────────────────────────────────────
     st.markdown("#### Trắc dọc CDM theo khu vực")
     st.caption(
