@@ -5949,8 +5949,9 @@ elif _page == "params":
                     )
             with st.expander("Bảng lặp chiều dài cọc (S1+S2 theo độ xuyên) + sức chịu tải"):
                 if _ropt["history"]:
-                    import math as _m_lap
-                    _cu_b   = _ropt.get("cu_kPa", Su)             # cu sau Bjerrum
+                    import math as _m_lap, sqlite3 as _sq_lap
+                    _mu_b   = _ropt.get("mu", 1.0)
+                    _cu_b   = _ropt.get("cu_kPa", Su)             # cu TB (dự phòng)
                     _Ac_b   = _m_lap.pi * D ** 2 / 4.0            # tiết diện cọc
                     _FS_b   = 2.5
                     _qmat_b = qu * _Ac_b                          # khống chế vật liệu (kN)
@@ -5959,13 +5960,48 @@ elif _page == "params":
                     _Etb_b  = _a_opt * _Ec_opt + (1.0 - _a_opt) * _Es_b
                     _sigcol_b = (_Ec_opt / _Etb_b) * _q_st_opt if _Etb_b > 0 else _q_st_opt
                     _Pcol_b = _sigcol_b * _Ac_b                   # P_col (kN)
-                    _Qtip_b = 9.0 * _cu_b * _Ac_b                 # Q mũi = 9·Cu·Ac (không đổi)
+                    # Profile Cu TỪNG vị trí thí nghiệm (VST → UU) từ DB, ×μ Bjerrum
+                    _prof_lap = []; _ctop_lap = None; _src_lap = "TB"
+                    try:
+                        from cdm_column_calc import calc_bearing_soil_profile as _bsp_lap
+                        with _sq_lap.connect(str(_DB)) as _con_lap:
+                            _bid = _con_lap.execute("SELECT id FROM boreholes WHERE name=?",
+                                                    (_bh_opt,)).fetchone()
+                            if _bid:
+                                _ctop_lap = _con_lap.execute(
+                                    "SELECT MIN(depth_top_m) FROM layers WHERE borehole_id=? "
+                                    "AND symbol IN ('1','1b','2','XMD')", (_bid[0],)).fetchone()[0]
+                                _vp = _con_lap.execute(
+                                    "SELECT v.depth_m, v.Su_kPa FROM vane_shear_tests v "
+                                    "JOIN vst_locations vl ON v.vst_loc_id=vl.id "
+                                    "WHERE vl.name=? AND v.Su_kPa>0 ORDER BY v.depth_m",
+                                    (_bh_opt,)).fetchall()
+                                _src_lap = "VST"
+                                if not _vp:
+                                    _vp = _con_lap.execute(
+                                        "SELECT depth_from_m, Cu_UU_kPa FROM lab_tests "
+                                        "WHERE borehole_id=? AND Cu_UU_kPa>0 ORDER BY depth_from_m",
+                                        (_bid[0],)).fetchall()
+                                    _src_lap = "UU lab"
+                                _prof_lap = [(float(z), _mu_b * float(s)) for z, s in _vp]
+                    except Exception:
+                        _prof_lap = []
+                    _use_prof = bool(_prof_lap) and _ctop_lap is not None
+                    if not _use_prof:
+                        _src_lap = "TB (không có VST)"
+                    _Qtip_b = 9.0 * _cu_b * _Ac_b                 # dự phòng (cu TB)
                     _rows_lap = []
                     _p_both = None
                     for h in _ropt["history"]:
                         _p = h["p_m"]
-                        _Qskin = _m_lap.pi * D * _p * _cu_b        # Q thân theo độ xuyên
-                        _Qa = min(_Qskin + _Qtip_b, _qmat_b) / _FS_b
+                        if _use_prof:
+                            _pr = _bsp_lap(D, float(_ctop_lap), float(_ctop_lap) + _p, _prof_lap)
+                            _Qskin = _pr["Q_skin_kN"]; _Qtip_row = _pr["Q_tip_kN"]
+                            _cu_row = _pr.get("cu_tip_kPa") or _cu_b
+                        else:
+                            _Qskin = _m_lap.pi * D * _p * _cu_b
+                            _Qtip_row = _Qtip_b; _cu_row = _cu_b
+                        _Qa = min(_Qskin + _Qtip_row, _qmat_b) / _FS_b
                         _sct_ok = _Pcol_b <= _Qa
                         if h["ok"] and _sct_ok and _p_both is None:
                             _p_both = _p
@@ -5973,9 +6009,9 @@ elif _page == "params":
                             "Độ xuyên (m)": _p, "S1 (cm)": h["S1_cm"], "S2 (cm)": h["S2_cm"],
                             "S1+S2 (cm)": h["S_total_cm"],
                             "Lún đạt": "Đạt" if h["ok"] else "—",
-                            "Cu=μ·Su (kPa)": round(_cu_b, 1),
+                            "Cu mũi (kPa)": round(_cu_row, 1),
                             "Q thân/FS (kN)": round(_Qskin / _FS_b, 1),
-                            "Q mũi/FS (kN)": round(_Qtip_b / _FS_b, 1),
+                            "Q mũi/FS (kN)": round(_Qtip_row / _FS_b, 1),
                             "Q cho phép (kN)": round(_Qa, 1),
                             "P cọc (kN)": round(_Pcol_b, 1),
                             "SCT đạt": "Đạt" if _sct_ok else "—",
@@ -5987,16 +6023,20 @@ elif _page == "params":
                     else:
                         st.warning("Chưa có độ xuyên nào đạt đồng thời lún và sức chịu tải — "
                                    "tăng qu cọc hoặc giảm khoảng cách s.")
-                    _mu_b = _ropt.get("mu", 1.0)
+                    if _use_prof:
+                        _cu_note = (f"**Cu mũi lấy theo profile {_src_lap} từng vị trí thí "
+                                    f"nghiệm ({len(_prof_lap)} điểm) ×μ={_mu_b:.3f}** — đổi "
+                                    "theo độ sâu mũi (cột 'Cu mũi'), KHÔNG dùng Su trung bình. ")
+                    else:
+                        _cu_note = (f"**Cu = μ·Su = {_mu_b:.3f}×{Su:.1f} = {_cu_b:.1f} kPa** "
+                                    f"(không có VST → dùng Su nhập ở cột Địa chất). ")
                     st.caption(
-                        f"**Cu hiệu chỉnh = μ·Su = {_mu_b:.3f} × {Su:.1f} = {_cu_b:.1f} kPa** "
-                        f"(Su nhập ở cột Địa chất, μ Bjerrum theo Ip). "
+                        _cu_note +
                         f"Ứng suất đầu cọc σ_col = (Ec/Etb)·q = ({_Ec_opt:,.0f}/{_Etb_b:,.0f})×"
                         f"{_q_st_opt:.1f} = {_sigcol_b:.0f} kPa · P cọc = σ_col·Ac = {_Pcol_b:.1f} kN "
                         f"(Ac={_Ac_b:.4f}, Etb={_Etb_b:,.0f}=a·Ec+(1−a)·Es). FS = {_FS_b}. "
-                        f"Q mũi = 9·Cu·Ac = {_Qtip_b:.1f} kN. "
-                        f"Q cho phép = min(Q thân+Q mũi, vật liệu {_qmat_b:.0f})/FS. "
-                        "Chiều dài chọn cần đạt CẢ 'Lún đạt' VÀ 'SCT đạt'."
+                        f"Q mũi = 9·Cu(mũi)·Ac. Q cho phép = min(Q thân+Q mũi, vật liệu "
+                        f"{_qmat_b:.0f})/FS. Chiều dài chọn cần đạt CẢ 'Lún đạt' VÀ 'SCT đạt'."
                     )
                 _mu_show = _ropt.get("mu", 1.0)
                 _cu_show = _ropt.get("cu_kPa", Su)
