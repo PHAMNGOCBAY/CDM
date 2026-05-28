@@ -13,11 +13,20 @@ là **một trong các điều kiện để chọn chiều dài cọc**.
 
 ## 1. Theo nền đất — phương pháp Viện Kỹ thuật Châu Á (AIT)
 
-$$Q_{ult.soil} = \left(\pi d\, L_{col} + 2{,}25\,\pi d^2\right) C_{u.soil}$$
+Sức chịu tải theo nền = **ma sát thành** + **sức kháng mũi**:
 
-- Số hạng 1 — $\pi d\, L_{col}$ — **ma sát thành** (hệ số bám dính $\alpha = 1$ cho đất yếu).
-- Số hạng 2 — $2{,}25\,\pi d^2$ — **sức kháng mũi**, tương đương $N_c \cdot A_{mũi}$ với
-  $N_c = 9$ và $A_{mũi} = \dfrac{\pi d^2}{4}$ (vì $9 \cdot \dfrac{\pi d^2}{4} = 2{,}25\,\pi d^2$).
+$$Q_{ult.soil} = Q_{\text{ma sát}} + Q_{\text{mũi}}$$
+
+**Ma sát thành** (hệ số bám dính $\alpha = 1$ cho đất yếu):
+
+$$Q_{\text{ma sát}} = \pi d\, L_{col}\, C_{u.soil}$$
+
+**Sức kháng mũi** ($N_c = 9$, $A_c$ = tiết diện cọc):
+
+$$Q_{\text{mũi}} = 9\, C_{u.soil}\, A_c, \qquad A_c = \frac{\pi d^2}{4}$$
+
+Cộng lại tương đương dạng gọn $Q_{ult.soil} = \left(\pi d\, L_{col} + 2{,}25\,\pi d^2\right) C_{u.soil}$
+vì $9\,A_c = 9\cdot\dfrac{\pi d^2}{4} = 2{,}25\,\pi d^2$.
 
 $C_{u.soil}$ lấy **giá trị sau khi đã nhân hệ số Bjerrum** (cường độ kháng cắt tính toán):
 
@@ -82,10 +91,10 @@ $q_u = 800$ kPa · $s = 1{,}8$ m · $q = 40{,}8$ kPa · $FS = 2{,}5$
 
 | Đại lượng | Giá trị |
 | --- | --- |
-| $\pi d L_{col}$ | 65,848 m² |
-| $2{,}25\,\pi d^2$ | 4,524 m² |
-| $Q_{ult.soil}$ | $(65{,}848 + 4{,}524)\times 11{,}20 = $ **788,2 kN** |
-| $A_{col} = \pi d^2/4$ | 0,5027 m² |
+| $A_c = \pi d^2/4$ | 0,5027 m² |
+| $Q_{\text{ma sát}} = \pi d L_{col}\,C_u$ | $65{,}848 \times 11{,}20 = $ 737,5 kN |
+| $Q_{\text{mũi}} = 9\,C_u\,A_c$ | $9 \times 11{,}20 \times 0{,}5027 = $ 50,7 kN |
+| $Q_{ult.soil}$ | $737{,}5 + 50{,}7 = $ **788,2 kN** |
 | $Q_{ult.mat} = 800\times 0{,}5027$ | **402,1 kN** (khống chế) |
 | $Q_a = \min/2{,}5$ | **160,8 kN** |
 | $P_{col} = 40{,}8\times 1{,}8^2$ | 132,2 kN |

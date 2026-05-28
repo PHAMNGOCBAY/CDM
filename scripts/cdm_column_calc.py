@@ -86,19 +86,27 @@ def calc_settlement_reduction(area_ratio: float, Ec_kPa: float, Es_kPa: float) -
 def calc_bearing_soil_ait(d_m: float, L_col_m: float, Cu_soil_kPa: float) -> dict:
     """Sức chịu tải cực hạn của 1 cọc CDM theo NỀN ĐẤT — phương pháp AIT.
 
-        Q_ult,soil = (π·d·L_col + 2,25·π·d²)·Cu,soil
+        Q_ult,soil = Q_ma_sát_thành + Q_mũi
+        Q_ma_sát   = π·d·L_col·Cu              (α=1, đất yếu)
+        Q_mũi      = 9·Cu·A_c   với A_c = π·d²/4   (Nc = 9)
 
-    Số hạng 1 = ma sát thành (α=1, đất yếu); số hạng 2 = sức kháng mũi với
-    Nc=9 vì 2,25·π·d² = 9·(π·d²/4) = Nc·A_mũi. Đơn vị: d,L [m], Cu [kPa] → Q [kN].
+    Tương đương Q_ult,soil = (π·d·L_col + 2,25·π·d²)·Cu vì 9·A_c = 2,25·π·d².
+    Cu_soil = cường độ kháng cắt SAU hiệu chỉnh Bjerrum (μ·Su). Đơn vị: d,L [m],
+    Cu [kPa] → Q [kN].
     """
     import math
-    skin_area = math.pi * d_m * L_col_m          # m²
-    tip_area  = 2.25 * math.pi * d_m ** 2         # m²  (= 9·A_tip)
-    Q = (skin_area + tip_area) * Cu_soil_kPa
+    A_c = math.pi * d_m ** 2 / 4.0                # tiết diện cọc (m²)
+    Q_skin = math.pi * d_m * L_col_m * Cu_soil_kPa   # ma sát thành (kN)
+    Q_tip  = 9.0 * Cu_soil_kPa * A_c                 # sức kháng mũi Nc=9 (kN)
+    Q = Q_skin + Q_tip
     return {
         "Q_ult_soil_kN": round(Q, 1),
-        "skin_area_m2": round(skin_area, 3),
-        "tip_area_m2": round(tip_area, 3),
+        "Q_skin_kN": round(Q_skin, 1),
+        "Q_tip_kN": round(Q_tip, 1),
+        "skin_area_m2": round(math.pi * d_m * L_col_m, 3),
+        "tip_area_m2": round(2.25 * math.pi * d_m ** 2, 3),
+        "A_c_m2": round(A_c, 4),
+        "Nc": 9,
         "method": "AIT",
     }
 

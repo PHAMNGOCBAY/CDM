@@ -18348,7 +18348,9 @@ if _page == "tvtk_prep":
             _cu = _rcu.get("Cu_corrected_kPa") or _rcu.get("Cu_VST_avg_kPa")
             if not _cu:
                 continue
-            _qs = _brg_soil(_d_brg, _L_col, float(_cu))["Q_ult_soil_kN"]
+            _soil_r = _brg_soil(_d_brg, _L_col, float(_cu))
+            _qs = _soil_r["Q_ult_soil_kN"]
+            _q_skin = _soil_r["Q_skin_kN"]; _q_tip = _soil_r["Q_tip_kN"]
             _qm = _brg_mat(_d_brg, _qu_brg)["Q_ult_material_kN"]
             _qmin = min(_qs, _qm)
             _gov  = "nền đất" if _qs <= _qm else "vật liệu"
@@ -18367,6 +18369,7 @@ if _page == "tvtk_prep":
                 "L cọc (m)": f"{_L_col:.1f}",
                 "L cần SCT (m)": (f"{_Lbrg:.1f}" if _Lbrg is not None else "vật liệu hạn chế"),
                 "Cu nền (kPa)": f"{float(_cu):.1f}",
+                "Q thân (kN)": f"{_q_skin:.0f}", "Q mũi=9CuAc (kN)": f"{_q_tip:.0f}",
                 "Q nền (kN)": f"{_qs:.0f}", "Q vật liệu (kN)": f"{_qm:.0f}",
                 "Khống chế": _gov, "Q cho phép (kN)": f"{_qa:.0f}",
                 "Tải cọc P (kN)": f"{_Pcol:.0f}",
@@ -18401,12 +18404,14 @@ if _page == "tvtk_prep":
                 "hoặc giảm khoảng cách s."
             )
         with st.expander("Công thức sức chịu tải cọc CDM"):
-            st.markdown("**Theo nền đất (AIT):**")
-            st.latex(r"Q_{ult.soil} = (\pi d L_{col} + 2{,}25\,\pi d^2)\,C_{u.soil}")
+            st.markdown("**Theo nền đất (AIT)** = ma sát thành + sức kháng mũi:")
+            st.latex(r"Q_{\text{ma sát}} = \pi d\, L_{col}\, C_{u.soil} \qquad (\alpha=1)")
+            st.latex(r"Q_{\text{mũi}} = 9\, C_{u.soil}\, A_c, \qquad A_c = \frac{\pi d^2}{4}")
+            st.latex(r"Q_{ult.soil} = Q_{\text{ma sát}} + Q_{\text{mũi}}")
             st.markdown(
-                "Số hạng 1 = ma sát thành; số hạng 2 = sức kháng mũi ($N_c=9$, vì "
-                "$2{,}25\\,\\pi d^2 = 9\\cdot\\pi d^2/4$). $C_{u.soil}$ = cu **sau hiệu "
-                "chỉnh Bjerrum** ($\\mu\\cdot S_u$, TCCS 41 Phụ lục C.5)."
+                "$N_c=9$ cho sức kháng mũi. $C_{u.soil}$ = cu **sau hiệu chỉnh Bjerrum** "
+                "($\\mu\\cdot S_u$, TCCS 41 Phụ lục C.5) — **đã nhân hệ số**, không dùng "
+                "$S_u$ nguyên."
             )
             st.markdown("**Theo vật liệu cọc:**")
             st.latex(r"Q_{ult.mat} = q_u \cdot A_{col}, \quad A_{col}=\frac{\pi d^2}{4}")
