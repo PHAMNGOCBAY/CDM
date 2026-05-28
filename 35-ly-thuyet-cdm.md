@@ -107,17 +107,19 @@ $$Q_{ult} = Q_{mũi} + Q_{thân} \quad (\text{kN})$$
 
 **Sức chịu tải mũi trụ:**
 
-$$Q_{mũi} = 9 \times C_c \times A_c \quad (\text{kN})$$
+$$Q_{mũi} = 9 \times C_u \times A_c \quad (\text{kN})$$
 
 **Sức chịu tải do ma sát thân trụ:**
 
 $$Q_{thân} = \pi \times D \times L_c \times C_u \quad (\text{kN})$$
 
-Trong đó $A_c = \dfrac{\pi D^2}{4}$ là diện tích mặt cắt ngang trụ (m²); hệ số 9 áp dụng cho đất sét điều kiện không thoát nước.
+Trong đó $A_c = \dfrac{\pi D^2}{4}$ là diện tích mặt cắt ngang trụ (m²); hệ số $N_c = 9$ cho đất sét điều kiện không thoát nước. **$C_u$ lấy giá trị SAU hiệu chỉnh Bjerrum** ($C_u = \mu\cdot S_u$, TCCS 41 Phụ lục C.5) — dùng chung cho cả mũi và ma sát thân, KHÔNG dùng cường độ cọc $C_c$ cho sức kháng mũi.
 
-**Sức chịu tải cho phép ($FS = 2$):**
+**Sức chịu tải cho phép ($FS = 2{,}5$):**
 
-$$Q_a = \frac{Q_{ult}}{FS} \quad (\text{kN})$$
+$$Q_a = \frac{\min(Q_{ult.\text{nền}},\ Q_{ult.\text{vật liệu}})}{FS} \quad (\text{kN})$$
+
+với $Q_{ult.\text{vật liệu}} = q_u \cdot A_c$ (khống chế theo vật liệu cọc). Chi tiết: [60-cdm-suc-chiu-tai-coc.md](60-cdm-suc-chiu-tai-coc.md).
 
 ### 5.2 Ứng suất tập trung lên đầu trụ
 
@@ -196,8 +198,8 @@ $$\tau_{se} \leq \tau_{ase} \quad \Rightarrow \quad \text{Đạt (không xảy r
 | $q$ | kN/m² | Tổng tải trọng tác dụng |
 | $S_1 = qL_c/E_{tb} \times 100$ | cm | Độ lún bản thân khối CDM |
 | $S_2$ | cm | Độ lún dưới mũi trụ ($= 0$ khi trụ xuyên lớp bùn) |
-| $Q_{ult}$ | kN | Sức chịu tải giới hạn một trụ CDM |
-| $Q_a = Q_{ult}/2$ | kN | Sức chịu tải cho phép ($FS = 2$) |
+| $Q_{ult}$ | kN | Sức chịu tải giới hạn một trụ CDM (= mũi + thân) |
+| $Q_a = \min(Q_{ult.nền}, Q_{ult.vl})/2{,}5$ | kN | Sức chịu tải cho phép ($FS = 2{,}5$) |
 | $P_{col} = \sigma_{col} \cdot A_c$ | kN | Lực nén tác dụng lên một trụ CDM |
 
 ### 7.2 Ký hiệu kiểm tra chọc thủng (ALiCC – PWRI Japan)

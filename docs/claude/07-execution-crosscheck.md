@@ -65,6 +65,21 @@ Cách thực hiện:
 2. **Cập nhật CLAUDE.md** với pattern/quy tắc mới (không cần ghi chi tiết code, chỉ ghi nguyên tắc)
 3. **Lưu memory** nếu là feedback hoặc quyết định kiến trúc quan trọng
 
+### 9c. Luôn Đồng Bộ File Tài Liệu *.md (BẮT BUỘC)
+
+**Sau MỖI thay đổi công thức / phương pháp / thông số / quy trình, BẮT BUỘC cập nhật NGAY tất cả file `NN-*.md` (root) liên quan để phản ánh nội dung mới nhất — KHÔNG để tài liệu lỗi thời.**
+
+Quy tắc:
+
+- Đổi/sửa **công thức** → cập nhật mọi file MD có công thức đó (vd sửa sức chịu tải mũi → `35-ly-thuyet-cdm.md`, `60-cdm-suc-chiu-tai-coc.md`).
+- Đổi **phương pháp tính** (engine) → làm mới file MD mô tả phương pháp (vd S2 đa lớp → `59-cdm-s2-partial.md`).
+- Thêm **mục/biểu đồ/thông số** vào UI → bổ sung file MD mô tả tab (vd `54-tvtk-cdm-prep.md`).
+- Đổi **hệ số / mặc định** (FS, k, q...) → sửa con số trong MD cho khớp.
+
+**Checklist trước khi báo "xong":** đã grep nội dung cũ trong các `*.md` liên quan và cập nhật chưa? Công thức/con số trong MD có khớp code không? Nếu một công thức xuất hiện ở nhiều MD → sửa TẤT CẢ, không sót.
+
+**Lý do:** tài liệu là nguồn tra cứu (§6b ưu tiên đọc MD trước PDF). MD lỗi thời → tra cứu sai → tính sai.
+
 ### 9b. Auto-Compute — KHÔNG có nút "Build / Solve / Run" trong app
 
 **Mọi tính toán BẮT BUỘC chạy tự động khi input thay đổi.** KHÔNG dùng nút như "🔨 Build", "⚡ Solve", "🧪 Run verification" — Streamlit rerun toàn bộ script trên mỗi input change, vậy chỉ cần đặt logic compute ở script-level.

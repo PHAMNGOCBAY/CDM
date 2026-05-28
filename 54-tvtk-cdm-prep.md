@@ -205,10 +205,27 @@ User thay đổi input → bấm "Lưu"
 
 ---
 
+## 6b. Các mục bổ sung trong tab (cập nhật 2026-05-28)
+
+Ngoài section 1-5 ở trên, tab `tvtk_prep` nay có thêm:
+
+| Mục | Nội dung | Tham chiếu |
+|---|---|---|
+| Cột địa chất + σ'v0 | Cột địa chất và biểu đồ ứng suất trọng lượng bản thân **cùng trục cao độ** (sharey), đường ranh giới lớp + đường 10% ($\Delta\sigma/\sigma'_{v0}$) | — |
+| Thống kê chiều dài cọc CDM | $L = z_{đỉnh} - z_{TN} + H_{soft} + ngàm$ per HK + tổng hợp zone (quy ước đào/đắp) | — |
+| **Sức chịu tải cọc CDM** | Per HK: $Q$ nền (AIT, mũi $=9C_uA_c$ + thân), $Q$ vật liệu, $Q_a=\min/FS$ (2,5), **lực nén 1 trụ $P_{col}=\sigma_{col}A_c$ (tập trung ứng suất)**, L cần theo SCT, đạt/không đạt. Lưu `tvtk_cdm_bearing` | `60-cdm-suc-chiu-tai-coc.md` |
+| Trắc dọc CDM 3 zone | Mặt cắt dọc tuyến per zone | `47-tvtk-cdm-trac-doc-luong-chinh.md` |
+
+**S2 + chọn chiều dài cọc** (tab "Thông số CDM", khối tối ưu): lặp tăng độ xuyên tới khi $S_1+S_2 \le \Delta S$; S2 đa lớp (cát đàn hồi / sét theo $e_0$ / lún 15 năm); tùy chọn Boussinesq + cộng hoạt tải; bảng lặp hiển thị CẢ điều kiện lún VÀ sức chịu tải ($Q$ thân/FS, $Q$ mũi=9CuAc/FS vs $P_{col}$). Xem `59-cdm-s2-partial.md` Mục 11 + `60-cdm-suc-chiu-tai-coc.md`.
+
+---
+
 ## 7. Tham chiếu
 
 - App: `scripts/app_cdm.py` → `elif _page == "tvtk_prep":`
 - JSON snapshot: `data/tvtk_cdm_202605_TTHC.json`
 - Thông số TCVN 9403: `data/tcvn9403_params.json`
-- Tài liệu TCVN 9403: `39-tcvn9403-tru-dat-xi-mang.md`
+- Tài liệu TCVN 9403: `39-tcvn9403-tru-dat-xi-mang.md` · Lý thuyết: `35-ly-thuyet-cdm.md`
 - Module lún cố kết: `scripts/settlement_calc.py` + `38-tccs41-nen-duong-dat-yeu.md`
+- Sức chịu tải: `scripts/cdm_column_calc.py` + `60-cdm-suc-chiu-tai-coc.md`
+- S2 đa lớp: `59-cdm-s2-partial.md` Mục 11

@@ -2,6 +2,8 @@
 
 Khi cọc đất xi măng (CDM) **không cắm hết lớp đất yếu** (partial penetration), phần đất yếu CÒN LẠI dưới mũi cọc vẫn lún cố kết. Tài liệu này trình bày công thức tính $S_2$ theo TCVN 9403:2012 Phụ lục C + TCCS 41:2022 Điều 9 + lý thuyết Terzaghi 1943.
 
+> **CẬP NHẬT 2026-05-28 — engine hiện hành là `settlement_calc.calc_s2_below_cdm`** (không phải `cdm_s2_partial.py` cũ). Engine mới phân loại theo BẢN CHẤT đất + tính lún tích lũy đến 15 năm — xem **Mục 11** (mục 3 dưới đây mô tả lý thuyết Terzaghi nền tảng, vẫn dùng cho lớp sét).
+
 ---
 
 ## 1. Hai trường hợp thiết kế
@@ -178,3 +180,31 @@ UNIQUE: `(zone_code, bh_name, method, q_kPa)`.
 - [38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md) — TCCS 41 + Bjerrum
 - [scripts/settlement_calc.py](scripts/settlement_calc.py) — $S_1$ TCVN 9403 Phụ lục C
 - CLAUDE.md mục 35 (ΔS TCCS 41) + 36 (Bjerrum)
+
+---
+
+## 11. Engine hiện hành — `calc_s2_below_cdm` (cập nhật 2026-05-28)
+
+S2 dưới mũi cọc nay tính theo **bản chất từng phân tố** (phụ lớp 2 m), phân loại theo
+ký hiệu lớp và hệ số rỗng $e_0$:
+
+| Loại phân tố | Phương pháp tính $S_i$ |
+|---|---|
+| **Cát** (F, 2a–2c, 3a–c, 4, 5, 6, 7) | Lún tức thời đàn hồi: $S_i = \dfrac{\Delta\sigma \cdot H_i}{E_s}$, $E_s = \alpha\cdot N_{SPT}$ |
+| **Sét mềm** $e_0 \ge 1$ (cố kết thường) | Terzaghi 1D với $C_c$ (mục 3) |
+| **Sét cứng** $e_0 < 1$ (quá cố kết) | $E_{oed}$ từ $a_{1-2}$: $S_i = \dfrac{\Delta\sigma \cdot H_i}{E_{oed}}$, $E_{oed}=\dfrac{1+e_0}{a_{1-2}}\times 98{,}07$ |
+
+**Phân bố $\Delta\sigma$:** Boussinesq tải dải (móng băng) bề rộng $B$:
+$\Delta\sigma(z') = \dfrac{q}{\pi}(\alpha + \sin\alpha)$, $\alpha = 2\arctan\dfrac{B}{2z'}$ ($z'$ = độ sâu dưới mũi).
+Tùy chọn tắt → $\Delta\sigma = q$ không đổi. Dừng tích lũy khi $\Delta\sigma/\sigma'_{v0} < 10\%$.
+
+**Lún tích lũy đến 15 năm** (so với $\Delta S$ cho phép TCCS 41):
+$$S_2 = \sum_i S_{2,i}\cdot U_i(t),\quad t=15\text{ năm}$$
+- Cát + sét cứng $e_0<1$ (cố kết nhanh) → $U \approx 1$ → lấy **đủ** $S_i$.
+- Sét mềm $e_0 \ge 1$ (cố kết chậm) → chỉ phần đã cố kết $S_i\cdot U(15\text{n})$, $U$ từ $C_v$ + thoát nước 2 mặt ($H_{dr}=H/2$).
+
+**$C_u$ cho $E_s$ và sức chịu tải:** dùng giá trị SAU hiệu chỉnh Bjerrum ($\mu\cdot S_u$), KHÔNG dùng $S_u$ nguyên.
+
+**Tùy chọn cộng hoạt tải:** $q$ tính S1+S2 có thể = tải đắp tĩnh + hoạt tải xe (checkbox trên UI).
+
+**Tham chiếu:** [scripts/settlement_calc.py](scripts/settlement_calc.py) `calc_s2_below_cdm()` · [scripts/cdm_length_optimize.py](scripts/cdm_length_optimize.py) (chọn chiều dài cọc theo lún + sức chịu tải) · [60-cdm-suc-chiu-tai-coc.md](60-cdm-suc-chiu-tai-coc.md).
