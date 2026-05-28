@@ -216,7 +216,7 @@ Ngoài section 1-5 ở trên, tab `tvtk_prep` nay có thêm:
 | **Sức chịu tải cọc CDM** | Per HK: $Q$ nền (AIT, mũi $=9C_uA_c$ + thân), $Q$ vật liệu, $Q_a=\min/FS$ (2,5), **lực nén 1 trụ $P_{col}=\sigma_{col}A_c$ (tập trung ứng suất)**, L cần theo SCT, đạt/không đạt. Lưu `tvtk_cdm_bearing` | `60-cdm-suc-chiu-tai-coc.md` |
 | Trắc dọc CDM 3 zone | Mặt cắt dọc tuyến per zone | `47-tvtk-cdm-trac-doc-luong-chinh.md` |
 
-**S2 + chọn chiều dài cọc** (tab "Thông số CDM", khối tối ưu): lặp tăng độ xuyên tới khi $S_1+S_2 \le \Delta S$; S2 đa lớp (cát đàn hồi / sét theo $e_0$ / lún 15 năm); tùy chọn Boussinesq + cộng hoạt tải; bảng lặp hiển thị CẢ điều kiện lún VÀ sức chịu tải ($Q$ thân/FS, $Q$ mũi=9CuAc/FS vs $P_{col}$). Xem `59-cdm-s2-partial.md` Mục 11 + `60-cdm-suc-chiu-tai-coc.md`.
+**S2 + chọn chiều dài cọc** (tab "Thông số CDM", khối tối ưu): lặp tăng độ xuyên tới khi $S_1+S_2 \le \Delta S$; S2 đa lớp (cát đàn hồi / sét theo $e_0$ / lún 15 năm); tùy chọn Boussinesq. **Lún (S1, S2) dùng tải đắp tĩnh — KHÔNG xét hoạt tải; sức chịu tải dùng tải tổng (có hoạt tải).** Bảng lặp hiển thị CẢ điều kiện lún VÀ sức chịu tải ($Q$ thân/FS, $Q$ mũi=9·Cu(mũi)·Ac/FS vs $P_{col}$), Cu lấy theo profile VST từng vị trí. Xem `59-cdm-s2-partial.md` Mục 11 + `60-cdm-suc-chiu-tai-coc.md`.
 
 ---
 
