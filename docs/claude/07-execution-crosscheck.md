@@ -82,7 +82,7 @@ Quy tắc:
 
 ### 9b. Auto-Compute — KHÔNG có nút "Build / Solve / Run" trong app
 
-**Mọi tính toán BẮT BUỘC chạy tự động khi input thay đổi.** KHÔNG dùng nút như "🔨 Build", "⚡ Solve", "🧪 Run verification" — Streamlit rerun toàn bộ script trên mỗi input change, vậy chỉ cần đặt logic compute ở script-level.
+**Mọi tính toán BẮT BUỘC chạy tự động khi input thay đổi.** KHÔNG dùng nút như "Build", "Solve", "Run verification" — Streamlit rerun toàn bộ script trên mỗi input change, vậy chỉ cần đặt logic compute ở script-level.
 
 **Why:** Tránh quy trình "nhập → bấm → chờ → bấm tiếp" rườm rà. Người dùng nhìn kết quả live → trải nghiệm liền mạch + phù hợp luồng báo cáo Ctrl+P.
 
