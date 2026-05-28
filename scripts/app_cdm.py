@@ -1802,7 +1802,7 @@ _DEFAULTS = {
     "cdm_CDTK": 0.8,
     "cdm_qu": 800.0,
     "cdm_FS_lab": 2.0,
-    "cdm_arrangement": "triangle",
+    "cdm_arrangement": "square",
     "cdm_cement_type": "Hoàng Thạch PCB40",
     "cdm_dosage": 240,
     "cdm_WC": 1.0,
@@ -5705,9 +5705,9 @@ elif _page == "params":
             _He_v  = _ld0.get("h_fill", 1.5)
             _Hse_v = _ld0.get("h_mat",  0.4)
             st.info(f"He = **{_He_v:.2f} m**   |   Hse = **{_Hse_v:.2f} m**")
-            arr  = st.radio(_t("arr_lbl"), ["triangle", "square"],
+            arr  = st.radio(_t("arr_lbl"), ["square", "triangle"],
                             format_func=lambda x: _t("arr_tri") if x == "triangle" else _t("arr_sq"),
-                            index=["triangle", "square"].index(_get("cdm_arrangement")))
+                            index=["square", "triangle"].index(_get("cdm_arrangement") or "square"))
             st.session_state.update({"cdm_D": D, "cdm_e": e, "cdm_CDTK": CDTK,
                                       "cdm_arrangement": arr,
                                       "cdm_road_class": _rc, "cdm_position": _pos})
