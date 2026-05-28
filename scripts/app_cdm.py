@@ -18368,13 +18368,16 @@ if _page == "tvtk_prep":
     st.caption(
         f"d = {_d_brg:.2f} m · qu cọc = {_qu_brg:.0f} kPa · Ec = {_Ec_brg:,.0f} kPa · "
         f"a = {_a_brg:.3f} · FS = {_FS_brg}. Lực nén 1 trụ theo tập trung ứng suất: "
-        f"σ_col = (Ec/Etb)·q, P_col = σ_col·Ac. Cu nền = cu SAU hiệu chỉnh Bjerrum (μ·Su)."
+        f"σ_col = (Ec/Etb)·q, P_col = σ_col·Ac. **Q thân, Q mũi tính theo profile Cu TỪNG "
+        "vị trí thí nghiệm (VST/UU), KHÔNG dùng Cu trung bình** — Cu đã ×μ Bjerrum; Q mũi "
+        "dùng Cu tại cao trình mũi cọc."
     )
     _cu_map = {r["bh_name"]: dict(r) for r in _cv.execute(
         "SELECT bh_name, Cu_corrected_kPa, Cu_VST_avg_kPa FROM tvtk_bh_cdm")}
     try:
         from cdm_column_calc import (calc_bearing_soil_ait as _brg_soil,
-                                     calc_bearing_material as _brg_mat)
+                                     calc_bearing_material as _brg_mat,
+                                     calc_bearing_soil_profile as _brg_soil_prof)
         _cv.execute("""CREATE TABLE IF NOT EXISTS tvtk_cdm_bearing (
             bh_name TEXT PRIMARY KEY, d_m REAL, L_col_m REAL, Cu_soil_kPa REAL,
             qu_col_kPa REAL, Q_soil_kN REAL, Q_material_kN REAL, Q_allow_kN REAL,
@@ -18393,9 +18396,36 @@ if _page == "tvtk_prep":
             _cu = _rcu.get("Cu_corrected_kPa") or _rcu.get("Cu_VST_avg_kPa")
             if not _cu:
                 continue
-            _soil_r = _brg_soil(_d_brg, _L_col, float(_cu))
+            # Hệ số Bjerrum của HK (tỷ số cu_corrected / Su_VST trung bình)
+            _suavg = _rcu.get("Cu_VST_avg_kPa")
+            _mu_hk = (float(_rcu["Cu_corrected_kPa"]) / float(_suavg)) \
+                if (_rcu.get("Cu_corrected_kPa") and _suavg and float(_suavg) > 0) else 1.0
+            # Profile Cu theo TỪNG vị trí thí nghiệm (VST → lab UU), đã ×μ Bjerrum
+            _ctop = _cv.execute(
+                "SELECT MIN(depth_top_m) FROM layers WHERE borehole_id=? "
+                "AND symbol IN ('1','1b','2','XMD')", (b["id"],)).fetchone()[0]
+            _vst_pts = _cv.execute(
+                "SELECT v.depth_m, v.Su_kPa FROM vane_shear_tests v "
+                "JOIN vst_locations vl ON v.vst_loc_id=vl.id "
+                "WHERE vl.name=? AND v.Su_kPa>0 ORDER BY v.depth_m", (b["name"],)).fetchall()
+            _src_prof = "VST"
+            if not _vst_pts:
+                _vst_pts = _cv.execute(
+                    "SELECT depth_from_m, Cu_UU_kPa FROM lab_tests WHERE borehole_id=? "
+                    "AND Cu_UU_kPa>0 ORDER BY depth_from_m", (b["id"],)).fetchall()
+                _src_prof = "UU lab"
+            _profile = [(float(z), _mu_hk * float(s)) for z, s in _vst_pts]
+            _tip_dep = (float(_ctop) + _hs_val + _pen) if _ctop is not None else None
+            if _profile and _ctop is not None and len(_profile) >= 1:
+                _soil_r = _brg_soil_prof(_d_brg, float(_ctop), _tip_dep, _profile)
+                if _soil_r["Q_skin_kN"] <= 0:
+                    _soil_r = _brg_soil(_d_brg, _L_col, float(_cu)); _src_prof = "TB"
+            else:
+                _soil_r = _brg_soil(_d_brg, _L_col, float(_cu)); _src_prof = "TB"
             _qs = _soil_r["Q_ult_soil_kN"]
             _q_skin = _soil_r["Q_skin_kN"]; _q_tip = _soil_r["Q_tip_kN"]
+            _cu_tip = _soil_r.get("cu_tip_kPa")
+            _n_prof = _soil_r.get("n_points", 0)
             _qm = _brg_mat(_d_brg, _qu_brg)["Q_ult_material_kN"]
             _qmin = min(_qs, _qm)
             _gov  = "nền đất" if _qs <= _qm else "vật liệu"
@@ -18417,7 +18447,8 @@ if _page == "tvtk_prep":
                 "Hố khoan": b["name"], "Khu vực": _zone_codes.get(b["zone_id"], ""),
                 "L cọc (m)": f"{_L_col:.1f}",
                 "L cần SCT (m)": (f"{_Lbrg:.1f}" if _Lbrg is not None else "vật liệu hạn chế"),
-                "Cu nền (kPa)": f"{float(_cu):.1f}",
+                "Nguồn Cu": _src_prof, "Số điểm TN": _n_prof,
+                "Cu mũi (kPa)": (f"{_cu_tip:.1f}" if _cu_tip else f"{float(_cu):.1f}"),
                 "Q thân (kN)": f"{_q_skin:.0f}", "Q mũi=9CuAc (kN)": f"{_q_tip:.0f}",
                 "Q nền (kN)": f"{_qs:.0f}", "Q vật liệu (kN)": f"{_qm:.0f}",
                 "Khống chế": _gov, "Q cho phép (kN)": f"{_qa:.0f}",
@@ -18453,14 +18484,16 @@ if _page == "tvtk_prep":
                 "hoặc giảm khoảng cách s."
             )
         with st.expander("Công thức sức chịu tải cọc CDM"):
-            st.markdown("**Theo nền đất (AIT)** = ma sát thành + sức kháng mũi:")
-            st.latex(r"Q_{\text{ma sát}} = \pi d\, L_{col}\, C_{u.soil} \qquad (\alpha=1)")
-            st.latex(r"Q_{\text{mũi}} = 9\, C_{u.soil}\, A_c, \qquad A_c = \frac{\pi d^2}{4}")
+            st.markdown("**Theo nền đất (AIT)** = ma sát thành + sức kháng mũi — tích phân "
+                        "theo profile $C_u$ TỪNG vị trí thí nghiệm (không trung bình):")
+            st.latex(r"Q_{\text{ma sát}} = \pi d \int_{0}^{L_{col}} C_u(z)\, dz \qquad (\alpha=1)")
+            st.latex(r"Q_{\text{mũi}} = 9\, C_u(\text{mũi})\, A_c, \qquad A_c = \frac{\pi d^2}{4}")
             st.latex(r"Q_{ult.soil} = Q_{\text{ma sát}} + Q_{\text{mũi}}")
             st.markdown(
-                "$N_c=9$ cho sức kháng mũi. $C_{u.soil}$ = cu **sau hiệu chỉnh Bjerrum** "
-                "($\\mu\\cdot S_u$, TCCS 41 Phụ lục C.5) — **đã nhân hệ số**, không dùng "
-                "$S_u$ nguyên."
+                "$C_u(z)$ nội suy tuyến tính giữa các điểm VST/UU; $C_u(\\text{mũi})$ = giá "
+                "trị tại cao trình mũi. $N_c=9$. $C_u$ = cu **sau hiệu chỉnh Bjerrum** "
+                "($\\mu\\cdot S_u$, TCCS 41 Phụ lục C.5) — KHÔNG dùng $S_u$ nguyên, KHÔNG "
+                "dùng giá trị trung bình."
             )
             st.markdown("**Theo vật liệu cọc:**")
             st.latex(r"Q_{ult.mat} = q_u \cdot A_{col}, \quad A_{col}=\frac{\pi d^2}{4}")

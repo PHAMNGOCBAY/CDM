@@ -111,6 +111,65 @@ def calc_bearing_soil_ait(d_m: float, L_col_m: float, Cu_soil_kPa: float) -> dic
     }
 
 
+def calc_bearing_soil_profile(d_m: float, depth_top_m: float, depth_tip_m: float,
+                              cu_profile: list, alpha: float = 1.0,
+                              step_m: float = 0.5) -> dict:
+    """Sức chịu tải nền theo PROFILE Cu tại TỪNG vị trí thí nghiệm (KHÔNG trung bình).
+
+    cu_profile : list[(depth_m, cu_kPa)] — cu đã hiệu chỉnh Bjerrum tại mỗi điểm
+                 thí nghiệm (VST/lab), không cần sắp xếp trước.
+    Ma sát thành: tích phân Q_skin = α·π·d·∫ cu(z) dz từ depth_top → depth_tip,
+                  cu(z) nội suy tuyến tính giữa các điểm thí nghiệm.
+    Sức kháng mũi: Q_mũi = 9·cu(tip)·A_c, cu(tip) = cu tại cao trình mũi cọc.
+    """
+    import math
+    A_c = math.pi * d_m ** 2 / 4.0
+    pts = sorted((float(z), float(c)) for z, c in cu_profile if c and c > 0)
+    if not pts or depth_tip_m <= depth_top_m:
+        return {"Q_ult_soil_kN": 0.0, "Q_skin_kN": 0.0, "Q_tip_kN": 0.0,
+                "cu_tip_kPa": None, "cu_avg_kPa": None, "n_points": len(pts),
+                "A_c_m2": round(A_c, 4), "method": "AIT-profile"}
+    zs = [p[0] for p in pts]
+    cs = [p[1] for p in pts]
+
+    def _cu_at(z: float) -> float:
+        if z <= zs[0]:
+            return cs[0]
+        if z >= zs[-1]:
+            return cs[-1]
+        for i in range(len(zs) - 1):
+            if zs[i] <= z <= zs[i + 1]:
+                t = (z - zs[i]) / (zs[i + 1] - zs[i]) if zs[i + 1] != zs[i] else 0.0
+                return cs[i] + t * (cs[i + 1] - cs[i])
+        return cs[-1]
+
+    # Tích phân ma sát thành bằng bước step_m, lấy cu tại trung điểm mỗi bước
+    Q_skin = 0.0
+    z = depth_top_m
+    _sum_cu = 0.0
+    _nseg = 0
+    while z < depth_tip_m - 1e-9:
+        dz = min(step_m, depth_tip_m - z)
+        cu_mid = _cu_at(z + dz / 2.0)
+        Q_skin += alpha * math.pi * d_m * dz * cu_mid
+        _sum_cu += cu_mid * dz
+        _nseg += dz
+        z += dz
+    cu_tip = _cu_at(depth_tip_m)
+    Q_tip = 9.0 * cu_tip * A_c
+    cu_avg = (_sum_cu / _nseg) if _nseg > 0 else None
+    return {
+        "Q_ult_soil_kN": round(Q_skin + Q_tip, 1),
+        "Q_skin_kN": round(Q_skin, 1),
+        "Q_tip_kN": round(Q_tip, 1),
+        "cu_tip_kPa": round(cu_tip, 1),
+        "cu_avg_kPa": round(cu_avg, 1) if cu_avg else None,
+        "n_points": len(pts),
+        "A_c_m2": round(A_c, 4),
+        "method": "AIT-profile",
+    }
+
+
 def calc_bearing_material(d_m: float, qu_col_kPa: float) -> dict:
     """Sức chịu tải theo VẬT LIỆU cọc: Q_ult,mat = qu_col·A_col, A_col = π·d²/4."""
     import math

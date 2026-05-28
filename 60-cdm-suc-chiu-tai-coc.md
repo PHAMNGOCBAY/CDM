@@ -5,9 +5,14 @@ sức chịu tải theo **nền đất** (AIT) và theo **vật liệu cọc**. 
 là **một trong các điều kiện để chọn chiều dài cọc**.
 
 **Engine:** [scripts/cdm_column_calc.py](scripts/cdm_column_calc.py) —
-`calc_bearing_soil_ait()` · `calc_bearing_material()` · `calc_cdm_pile_capacity()`
+`calc_bearing_soil_ait()` (Cu đơn) · **`calc_bearing_soil_profile()` (Cu theo profile từng
+vị trí thí nghiệm — dùng trên UI)** · `calc_bearing_material()` · `calc_cdm_pile_capacity()`
 **UI:** tab "Thuyết minh TKCS" — mục "Sức chịu tải cọc xi măng đất (1 cọc đơn)"
 **SQLite:** `tvtk_cdm_bearing` (per HK)
+
+> **Q thân và Q mũi tính theo profile $C_u$ TỪNG vị trí thí nghiệm (VST/UU), KHÔNG dùng
+> $C_u$ trung bình.** $C_u(z)$ nội suy tuyến tính giữa các điểm; $C_u$ tại mũi lấy đúng cao
+> trình mũi cọc. Tất cả $C_u$ đã ×μ Bjerrum.
 
 ---
 
@@ -17,16 +22,18 @@ Sức chịu tải theo nền = **ma sát thành** + **sức kháng mũi**:
 
 $$Q_{ult.soil} = Q_{\text{ma sát}} + Q_{\text{mũi}}$$
 
-**Ma sát thành** (hệ số bám dính $\alpha = 1$ cho đất yếu):
+**Ma sát thành** — tích phân theo profile $C_u(z)$ TỪNG vị trí thí nghiệm ($\alpha = 1$):
 
-$$Q_{\text{ma sát}} = \pi d\, L_{col}\, C_{u.soil}$$
+$$Q_{\text{ma sát}} = \pi d \int_{0}^{L_{col}} C_u(z)\, dz$$
 
-**Sức kháng mũi** ($N_c = 9$, $A_c$ = tiết diện cọc):
+$C_u(z)$ nội suy tuyến tính giữa các điểm thí nghiệm VST/UU (đã ×μ Bjerrum).
 
-$$Q_{\text{mũi}} = 9\, C_{u.soil}\, A_c, \qquad A_c = \frac{\pi d^2}{4}$$
+**Sức kháng mũi** ($N_c = 9$, $C_u$ tại cao trình mũi cọc):
 
-Cộng lại tương đương dạng gọn $Q_{ult.soil} = \left(\pi d\, L_{col} + 2{,}25\,\pi d^2\right) C_{u.soil}$
-vì $9\,A_c = 9\cdot\dfrac{\pi d^2}{4} = 2{,}25\,\pi d^2$.
+$$Q_{\text{mũi}} = 9\, C_u(\text{mũi})\, A_c, \qquad A_c = \frac{\pi d^2}{4}$$
+
+Khi $C_u$ đồng nhất, công thức rút gọn $Q_{ult.soil} = \left(\pi d\, L_{col} + 2{,}25\,\pi d^2\right) C_u$
+vì $9\,A_c = 2{,}25\,\pi d^2$ — nhưng UI dùng tích phân profile, **không lấy $C_u$ trung bình**.
 
 $C_{u.soil}$ lấy **giá trị sau khi đã nhân hệ số Bjerrum** (cường độ kháng cắt tính toán):
 

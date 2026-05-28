@@ -115,6 +115,8 @@ $$Q_{thân} = \pi \times D \times L_c \times C_u \quad (\text{kN})$$
 
 Trong đó $A_c = \dfrac{\pi D^2}{4}$ là diện tích mặt cắt ngang trụ (m²); hệ số $N_c = 9$ cho đất sét điều kiện không thoát nước. **$C_u$ lấy giá trị SAU hiệu chỉnh Bjerrum** ($C_u = \mu\cdot S_u$, TCCS 41 Phụ lục C.5) — dùng chung cho cả mũi và ma sát thân, KHÔNG dùng cường độ cọc $C_c$ cho sức kháng mũi.
 
+**Thực hiện trong app:** $Q_{thân}$, $Q_{mũi}$ tính theo profile $C_u$ **từng vị trí thí nghiệm** (VST/UU), KHÔNG dùng $C_u$ trung bình: $Q_{thân}=\pi D\int_0^{L_c} C_u(z)\,dz$ (nội suy tuyến tính giữa các điểm), $Q_{mũi}=9\,C_u(\text{mũi})\,A_c$ (Cu tại cao trình mũi).
+
 **Sức chịu tải cho phép ($FS = 2{,}5$):**
 
 $$Q_a = \frac{\min(Q_{ult.\text{nền}},\ Q_{ult.\text{vật liệu}})}{FS} \quad (\text{kN})$$
