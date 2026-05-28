@@ -5947,12 +5947,39 @@ elif _page == "params":
                         "- Khối gia cố phía trên chỉ lún đàn hồi $S_1$ (nhỏ).\n"
                         "- Tổng lún công trình $= S_1 + S_2$ (so với $\\Delta S$ cho phép)."
                     )
-            with st.expander("Bảng lặp chiều dài cọc (S1+S2 theo độ xuyên)"):
+            with st.expander("Bảng lặp chiều dài cọc (S1+S2 theo độ xuyên) + sức chịu tải"):
                 if _ropt["history"]:
-                    _hdf = pd.DataFrame(_ropt["history"])[["p_m", "S1_cm", "S2_cm", "S_total_cm", "ok"]]
-                    _hdf.columns = ["Độ xuyên (m)", "S1 (cm)", "S2 (cm)", "S1+S2 (cm)", "Đạt"]
-                    _hdf["Đạt"] = _hdf["Đạt"].map({True: "Đạt", False: "—"})
-                    st.dataframe(_hdf, use_container_width=True, hide_index=True)
+                    import math as _m_lap
+                    _cu_b   = _ropt.get("cu_kPa", Su)             # cu sau Bjerrum
+                    _Ac_b   = _m_lap.pi * D ** 2 / 4.0            # tiết diện cọc
+                    _FS_b   = 2.5
+                    _qmat_b = qu * _Ac_b                          # khống chế vật liệu (kN)
+                    _trib_b = (e ** 2 * (3 ** 0.5) / 2) if arr == "triangle" else e ** 2
+                    _Pcol_b = _q_st_opt * _trib_b                 # tải 1 cọc (kN)
+                    _Qtip_b = 9.0 * _cu_b * _Ac_b                 # Q mũi = 9·Cu·Ac (không đổi)
+                    _rows_lap = []
+                    for h in _ropt["history"]:
+                        _p = h["p_m"]
+                        _Qskin = _m_lap.pi * D * _p * _cu_b        # Q thân theo độ xuyên
+                        _Qa = min(_Qskin + _Qtip_b, _qmat_b) / _FS_b
+                        _rows_lap.append({
+                            "Độ xuyên (m)": _p, "S1 (cm)": h["S1_cm"], "S2 (cm)": h["S2_cm"],
+                            "S1+S2 (cm)": h["S_total_cm"],
+                            "Lún đạt": "Đạt" if h["ok"] else "—",
+                            "Q thân/FS (kN)": round(_Qskin / _FS_b, 1),
+                            "Q mũi/FS (kN)": round(_Qtip_b / _FS_b, 1),
+                            "Q cho phép (kN)": round(_Qa, 1),
+                            "P cọc (kN)": round(_Pcol_b, 1),
+                            "SCT đạt": "Đạt" if _Pcol_b <= _Qa else "—",
+                        })
+                    st.dataframe(pd.DataFrame(_rows_lap), use_container_width=True, hide_index=True)
+                    st.caption(
+                        f"P cọc = q × diện tích chi phối = {_q_st_opt:.1f} × {_trib_b:.2f} = "
+                        f"{_Pcol_b:.1f} kN · FS = {_FS_b}. Q mũi = 9·Cu·Ac = {_Qtip_b:.1f} kN "
+                        f"(Cu={_cu_b:.1f} sau Bjerrum, Ac={_Ac_b:.4f}). Q cho phép = "
+                        f"min(Q thân + Q mũi, vật liệu {_qmat_b:.0f}) / FS. Chiều dài chọn cần "
+                        "đạt CẢ 'Lún đạt' VÀ 'SCT đạt'."
+                    )
                 _mu_show = _ropt.get("mu", 1.0)
                 _cu_show = _ropt.get("cu_kPa", Su)
                 _es_txt = (f"Es = 250×cu = {_ropt.get('Es_kPa', 250*Su):,.0f} kPa "
