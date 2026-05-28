@@ -5973,6 +5973,7 @@ elif _page == "params":
                             "Độ xuyên (m)": _p, "S1 (cm)": h["S1_cm"], "S2 (cm)": h["S2_cm"],
                             "S1+S2 (cm)": h["S_total_cm"],
                             "Lún đạt": "Đạt" if h["ok"] else "—",
+                            "Cu=μ·Su (kPa)": round(_cu_b, 1),
                             "Q thân/FS (kN)": round(_Qskin / _FS_b, 1),
                             "Q mũi/FS (kN)": round(_Qtip_b / _FS_b, 1),
                             "Q cho phép (kN)": round(_Qa, 1),
@@ -5986,11 +5987,14 @@ elif _page == "params":
                     else:
                         st.warning("Chưa có độ xuyên nào đạt đồng thời lún và sức chịu tải — "
                                    "tăng qu cọc hoặc giảm khoảng cách s.")
+                    _mu_b = _ropt.get("mu", 1.0)
                     st.caption(
+                        f"**Cu hiệu chỉnh = μ·Su = {_mu_b:.3f} × {Su:.1f} = {_cu_b:.1f} kPa** "
+                        f"(Su nhập ở cột Địa chất, μ Bjerrum theo Ip). "
                         f"Ứng suất đầu cọc σ_col = (Ec/Etb)·q = ({_Ec_opt:,.0f}/{_Etb_b:,.0f})×"
                         f"{_q_st_opt:.1f} = {_sigcol_b:.0f} kPa · P cọc = σ_col·Ac = {_Pcol_b:.1f} kN "
                         f"(Ac={_Ac_b:.4f}, Etb={_Etb_b:,.0f}=a·Ec+(1−a)·Es). FS = {_FS_b}. "
-                        f"Q mũi = 9·Cu·Ac = {_Qtip_b:.1f} kN (Cu={_cu_b:.1f} sau Bjerrum). "
+                        f"Q mũi = 9·Cu·Ac = {_Qtip_b:.1f} kN. "
                         f"Q cho phép = min(Q thân+Q mũi, vật liệu {_qmat_b:.0f})/FS. "
                         "Chiều dài chọn cần đạt CẢ 'Lún đạt' VÀ 'SCT đạt'."
                     )
