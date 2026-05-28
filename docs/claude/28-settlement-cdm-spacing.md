@@ -71,7 +71,7 @@ Thiết kế ngược: cho ΔS cho phép (TCCS 41 Bảng 1, tra theo cấp đư�
 
 - Theo nền (AIT): $Q_{ult.soil}=(\pi d L + 2{,}25\pi d^2)\,C_{u.soil}$ — số hạng 2 = $N_c{=}9$·$A_{mũi}$. **$C_{u.soil}$ = cu SAU Bjerrum (μ·Su), KHÔNG dùng Su nguyên.**
 - Theo vật liệu: $Q_{ult.mat}=q_u\cdot\pi d^2/4$. Cho phép $Q_a=\min/FS$, FS=2,5.
-- Tải 1 cọc $P_{col}=q\cdot s^2$ (vuông) hoặc $q\cdot\tfrac{\sqrt3}{2}s^2$ (tam giác). Kiểm tra $P_{col}\le Q_a$.
+- **Lực nén 1 trụ theo tập trung ứng suất** (cọc cứng hút tải): $\sigma_{col}=\tfrac{E_c}{E_{tb}}q$, $P_{col}=\sigma_{col}\cdot A_c$ với $E_{tb}=aE_c+(1-a)E_s$, $E_s=250C_u$. Chính xác hơn $q\cdot s^2$ (đất chia sẻ tải). Kiểm tra $P_{col}\le Q_a$. Bảng lặp + mục SCT đều dùng cách này.
 - **Sức chịu tải là 1 điều kiện chọn chiều dài:** $L_{col}^{min}=(P_{col}FS/C_u - 2{,}25\pi d^2)/(\pi d)$; chiều dài thiết kế = max(L theo lún, L theo SCT, L hình học).
 
 **Kết quả mẫu (NHC-BH-01, CDM full penetration tip=35m):**

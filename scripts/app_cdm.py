@@ -5954,14 +5954,21 @@ elif _page == "params":
                     _Ac_b   = _m_lap.pi * D ** 2 / 4.0            # tiết diện cọc
                     _FS_b   = 2.5
                     _qmat_b = qu * _Ac_b                          # khống chế vật liệu (kN)
-                    _trib_b = (e ** 2 * (3 ** 0.5) / 2) if arr == "triangle" else e ** 2
-                    _Pcol_b = _q_st_opt * _trib_b                 # tải 1 cọc (kN)
+                    # Lực nén 1 trụ theo TẬP TRUNG ỨNG SUẤT: σ_col=(Ec/Etb)·q ; P=σ_col·Ac
+                    _Es_b   = 250.0 * _cu_b
+                    _Etb_b  = _a_opt * _Ec_opt + (1.0 - _a_opt) * _Es_b
+                    _sigcol_b = (_Ec_opt / _Etb_b) * _q_st_opt if _Etb_b > 0 else _q_st_opt
+                    _Pcol_b = _sigcol_b * _Ac_b                   # P_col (kN)
                     _Qtip_b = 9.0 * _cu_b * _Ac_b                 # Q mũi = 9·Cu·Ac (không đổi)
                     _rows_lap = []
+                    _p_both = None
                     for h in _ropt["history"]:
                         _p = h["p_m"]
                         _Qskin = _m_lap.pi * D * _p * _cu_b        # Q thân theo độ xuyên
                         _Qa = min(_Qskin + _Qtip_b, _qmat_b) / _FS_b
+                        _sct_ok = _Pcol_b <= _Qa
+                        if h["ok"] and _sct_ok and _p_both is None:
+                            _p_both = _p
                         _rows_lap.append({
                             "Độ xuyên (m)": _p, "S1 (cm)": h["S1_cm"], "S2 (cm)": h["S2_cm"],
                             "S1+S2 (cm)": h["S_total_cm"],
@@ -5970,15 +5977,22 @@ elif _page == "params":
                             "Q mũi/FS (kN)": round(_Qtip_b / _FS_b, 1),
                             "Q cho phép (kN)": round(_Qa, 1),
                             "P cọc (kN)": round(_Pcol_b, 1),
-                            "SCT đạt": "Đạt" if _Pcol_b <= _Qa else "—",
+                            "SCT đạt": "Đạt" if _sct_ok else "—",
                         })
                     st.dataframe(pd.DataFrame(_rows_lap), use_container_width=True, hide_index=True)
+                    if _p_both is not None:
+                        st.success(f"Chiều dài đạt CẢ lún + sức chịu tải: độ xuyên ≥ "
+                                   f"**{_p_both:.1f} m** → Lc ≈ {(_gap_opt + _p_both):.1f} m.")
+                    else:
+                        st.warning("Chưa có độ xuyên nào đạt đồng thời lún và sức chịu tải — "
+                                   "tăng qu cọc hoặc giảm khoảng cách s.")
                     st.caption(
-                        f"P cọc = q × diện tích chi phối = {_q_st_opt:.1f} × {_trib_b:.2f} = "
-                        f"{_Pcol_b:.1f} kN · FS = {_FS_b}. Q mũi = 9·Cu·Ac = {_Qtip_b:.1f} kN "
-                        f"(Cu={_cu_b:.1f} sau Bjerrum, Ac={_Ac_b:.4f}). Q cho phép = "
-                        f"min(Q thân + Q mũi, vật liệu {_qmat_b:.0f}) / FS. Chiều dài chọn cần "
-                        "đạt CẢ 'Lún đạt' VÀ 'SCT đạt'."
+                        f"Ứng suất đầu cọc σ_col = (Ec/Etb)·q = ({_Ec_opt:,.0f}/{_Etb_b:,.0f})×"
+                        f"{_q_st_opt:.1f} = {_sigcol_b:.0f} kPa · P cọc = σ_col·Ac = {_Pcol_b:.1f} kN "
+                        f"(Ac={_Ac_b:.4f}, Etb={_Etb_b:,.0f}=a·Ec+(1−a)·Es). FS = {_FS_b}. "
+                        f"Q mũi = 9·Cu·Ac = {_Qtip_b:.1f} kN (Cu={_cu_b:.1f} sau Bjerrum). "
+                        f"Q cho phép = min(Q thân+Q mũi, vật liệu {_qmat_b:.0f})/FS. "
+                        "Chiều dài chọn cần đạt CẢ 'Lún đạt' VÀ 'SCT đạt'."
                     )
                 _mu_show = _ropt.get("mu", 1.0)
                 _cu_show = _ropt.get("cu_kPa", Su)
@@ -18338,19 +18352,23 @@ if _page == "tvtk_prep":
     st.markdown("#### Sức chịu tải cọc xi măng đất (1 cọc đơn)")
     _FS_brg = 2.5
     _brg_cfg = _cv.execute(
-        "SELECT D_mm, spacing_m, pattern, qu_kPa, q_kPa FROM tvtk_cdm_config WHERE id=1"
+        "SELECT D_mm, spacing_m, pattern, qu_kPa, q_kPa, Ec_factor FROM tvtk_cdm_config WHERE id=1"
     ).fetchone()
     _d_brg  = float(_brg_cfg["D_mm"]) / 1000.0 if _brg_cfg else 0.8
     _s_brg  = float(_brg_cfg["spacing_m"]) if _brg_cfg else 1.8
     _pat_brg = (_brg_cfg["pattern"] if _brg_cfg else "square") or "square"
     _qu_brg = float(_brg_cfg["qu_kPa"]) if _brg_cfg else 800.0
     _q_brg  = float(_brg_cfg["q_kPa"]) if _brg_cfg else 40.8
-    _trib   = (_s_brg ** 2 * (3 ** 0.5) / 2) if _pat_brg == "triangle" else _s_brg ** 2
-    _Pcol   = _q_brg * _trib
+    _k_brg  = float(_brg_cfg["Ec_factor"]) if _brg_cfg and _brg_cfg["Ec_factor"] else 100.0
+    import math as _m_brg0
+    _Ac_brg = _m_brg0.pi * _d_brg ** 2 / 4.0
+    _Acell  = (_s_brg ** 2 * (3 ** 0.5) / 2) if _pat_brg == "triangle" else _s_brg ** 2
+    _a_brg  = _Ac_brg / _Acell                      # tỷ lệ thay thế
+    _Ec_brg = _k_brg * _qu_brg / 2.0                # mô đun cọc Ec = k·qu/2
     st.caption(
-        f"d = {_d_brg:.2f} m · qu cọc = {_qu_brg:.0f} kPa · FS = {_FS_brg} · "
-        f"Tải 1 cọc P = q × diện tích chi phối = {_q_brg:.1f} × {_trib:.2f} = {_Pcol:.1f} kN. "
-        "Cu nền = cu SAU hiệu chỉnh Bjerrum (μ·Su)."
+        f"d = {_d_brg:.2f} m · qu cọc = {_qu_brg:.0f} kPa · Ec = {_Ec_brg:,.0f} kPa · "
+        f"a = {_a_brg:.3f} · FS = {_FS_brg}. Lực nén 1 trụ theo tập trung ứng suất: "
+        f"σ_col = (Ec/Etb)·q, P_col = σ_col·Ac. Cu nền = cu SAU hiệu chỉnh Bjerrum (μ·Su)."
     )
     _cu_map = {r["bh_name"]: dict(r) for r in _cv.execute(
         "SELECT bh_name, Cu_corrected_kPa, Cu_VST_avg_kPa FROM tvtk_bh_cdm")}
@@ -18382,6 +18400,10 @@ if _page == "tvtk_prep":
             _qmin = min(_qs, _qm)
             _gov  = "nền đất" if _qs <= _qm else "vật liệu"
             _qa   = _qmin / _FS_brg
+            # Lực nén 1 trụ (tập trung ứng suất): σ_col=(Ec/Etb)·q ; P_col=σ_col·Ac
+            _Es_hk  = 250.0 * float(_cu)
+            _Etb_hk = _a_brg * _Ec_brg + (1.0 - _a_brg) * _Es_hk
+            _Pcol   = ((_Ec_brg / _Etb_hk) * _q_brg * _Ac_brg) if _Etb_hk > 0 else _q_brg * _Ac_brg
             _ok   = _Pcol <= _qa
             # Chiều dài TỐI THIỂU theo sức chịu tải: Q_soil(L)=P_col·FS (nếu vật liệu đủ)
             import math as _m_brg
@@ -18444,8 +18466,10 @@ if _page == "tvtk_prep":
             st.latex(r"Q_{ult.mat} = q_u \cdot A_{col}, \quad A_{col}=\frac{\pi d^2}{4}")
             st.markdown(f"**Cho phép** (FS = {_FS_brg}):")
             st.latex(r"Q_a = \frac{\min(Q_{ult.soil},\,Q_{ult.mat})}{FS}")
-            st.markdown("**Tải 1 cọc:** $P_{col} = q \\cdot A_{\\text{chi phối}}$  "
-                        "(lưới vuông $A=s^2$; lưới tam giác $A=\\tfrac{\\sqrt3}{2}s^2$). "
+            st.markdown("**Lực nén 1 trụ** (tập trung ứng suất — cọc cứng hút tải):")
+            st.latex(r"\sigma_{col} = \frac{E_c}{E_{tb}}\,q_{\text{tổng}}, \qquad "
+                     r"P_{col} = \sigma_{col}\,A_c")
+            st.markdown("với $E_{tb}=a E_c+(1-a)E_s$ (mô đun tổ hợp), $E_s=250\\,C_u$. "
                         "**Kiểm tra:** $P_{col} \\le Q_a$.")
             st.markdown("**Chiều dài tối thiểu theo sức chịu tải** (giải $Q_{ult.soil}(L)=P_{col}\\cdot FS$):")
             st.latex(r"L_{col}^{min} = \frac{\dfrac{P_{col}\cdot FS}{C_{u.soil}} - 2{,}25\,\pi d^2}{\pi d}")

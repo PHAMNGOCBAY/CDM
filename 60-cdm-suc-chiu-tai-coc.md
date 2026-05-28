@@ -52,15 +52,24 @@ Thành phần nhỏ hơn là **thành phần khống chế** (nền đất hoặ
 
 ---
 
-## 4. Tải trọng tác dụng lên một cọc
+## 4. Lực nén lên một cọc — tập trung ứng suất
 
-$$P_{col} = q \cdot A_{\text{chi phối}}$$
+Trong nền hỗn hợp, cọc cứng **hút ứng suất** theo tỷ số mô đun (giả thiết biến dạng
+bằng nhau giữa cọc và đất):
 
-- Lưới vuông: $A_{\text{chi phối}} = s^2$.
-- Lưới tam giác: $A_{\text{chi phối}} = \dfrac{\sqrt{3}}{2}\,s^2$.
-- $q$ — tải phân bố nền đắp (kPa); $s$ — khoảng cách cọc (m).
+$$\sigma_{col} = \frac{E_c}{E_{tb}}\, q_{\text{tổng}}$$
+
+$$P_{col} = \sigma_{col} \cdot A_c, \qquad A_c = \frac{\pi d^2}{4}$$
+
+- $\sigma_{col}$ — ứng suất tại đầu cọc (kPa).
+- $E_c$ — mô đun biến dạng cọc; $E_{tb} = a\,E_c + (1-a)\,E_s$ — mô đun tổ hợp;
+  $a$ — tỷ lệ diện tích thay thế; $E_s = 250\,C_u$ (Cu sau Bjerrum).
+- $q_{\text{tổng}}$ — tải phân bố (có thể cộng hoạt tải).
 
 **Điều kiện kiểm tra:** $P_{col} \le Q_a$.
+
+(Lưu ý: cách này chính xác hơn $P_{col} = q\cdot s^2$ vì đất giữa cọc cùng chịu một
+phần tải; $\sum$ lực = $\sigma_{col}A_c + \sigma_{soil}(A_{cell}-A_c) = q\cdot A_{cell}$.)
 
 ---
 
@@ -97,9 +106,14 @@ $q_u = 800$ kPa · $s = 1{,}8$ m · $q = 40{,}8$ kPa · $FS = 2{,}5$
 | $Q_{ult.soil}$ | $737{,}5 + 50{,}7 = $ **788,2 kN** |
 | $Q_{ult.mat} = 800\times 0{,}5027$ | **402,1 kN** (khống chế) |
 | $Q_a = \min/2{,}5$ | **160,8 kN** |
-| $P_{col} = 40{,}8\times 1{,}8^2$ | 132,2 kN |
-| Kiểm tra $P_{col} \le Q_a$ | 132,2 ≤ 160,8 → **Đạt** |
-| $L_{col}^{min}$ (SCT) | 9,9 m |
+| $E_c = 100\cdot q_u/2$ | 40 000 kPa |
+| $E_s = 250\,C_u$ | 2 800 kPa |
+| $a$ (lưới vuông) | 0,155 |
+| $E_{tb} = a E_c + (1-a) E_s$ | 8 571 kPa |
+| $\sigma_{col} = (E_c/E_{tb})\,q$ | $(40000/8571)\times 40{,}8 = $ 190,4 kPa |
+| $P_{col} = \sigma_{col}\,A_c$ | $190{,}4 \times 0{,}5027 = $ **95,7 kN** |
+| Kiểm tra $P_{col} \le Q_a$ | 95,7 ≤ 160,8 → **Đạt** |
+| $L_{col}^{min}$ (SCT) | ≈ 6,7 m |
 
 ---
 
