@@ -213,7 +213,7 @@ Ngoài section 1-5 ở trên, tab `tvtk_prep` nay có thêm:
 |---|---|---|
 | Cột địa chất + σ'v0 | Cột địa chất và biểu đồ ứng suất trọng lượng bản thân **cùng trục cao độ** (sharey), đường ranh giới lớp + đường 10% ($\Delta\sigma/\sigma'_{v0}$) | — |
 | Thống kê chiều dài cọc CDM | $L = z_{đỉnh} - z_{TN} + H_{soft} + ngàm$ per HK + tổng hợp zone (quy ước đào/đắp) | — |
-| **Sức chịu tải cọc CDM** | Per HK: $Q$ nền (AIT, mũi $=9C_uA_c$ + thân), $Q$ vật liệu, $Q_a=\min/FS$ (2,5), **lực nén 1 trụ $P_{col}=\sigma_{col}A_c$ (tập trung ứng suất)**, L cần theo SCT, đạt/không đạt. Lưu `tvtk_cdm_bearing` | `60-cdm-suc-chiu-tai-coc.md` |
+| **Sức chịu tải cọc CDM** | Per HK: $Q$ nền (AIT, mũi $=9C_uA_c$ + thân, **Cu profile từng vị trí TN**), $Q$ vật liệu, $Q_a=\min/FS$ (2,5), **lực nén 1 trụ $P_{col}=\sigma_{col}A_c$ (tập trung ứng suất)**, L cần theo SCT, đạt/không đạt. **+ Kiểm tra phá hoại khối nhóm cọc** (Q khối, η nhóm, tải nhóm vs Q nhóm/FS). Lưu `tvtk_cdm_bearing` | `60-cdm-suc-chiu-tai-coc.md` |
 | Trắc dọc CDM 3 zone | Mặt cắt dọc tuyến per zone | `47-tvtk-cdm-trac-doc-luong-chinh.md` |
 
 **S2 + chọn chiều dài cọc** (tab "Thông số CDM", khối tối ưu): lặp tăng độ xuyên tới khi $S_1+S_2 \le \Delta S$; S2 đa lớp (cát đàn hồi / sét theo $e_0$ / lún 15 năm); tùy chọn Boussinesq. **Lún (S1, S2) dùng tải đắp tĩnh — KHÔNG xét hoạt tải; sức chịu tải dùng tải tổng (có hoạt tải).** Bảng lặp hiển thị CẢ điều kiện lún VÀ sức chịu tải ($Q$ thân/FS, $Q$ mũi=9·Cu(mũi)·Ac/FS vs $P_{col}$), Cu lấy theo profile VST từng vị trí. Xem `59-cdm-s2-partial.md` Mục 11 + `60-cdm-suc-chiu-tai-coc.md`.

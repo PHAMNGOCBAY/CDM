@@ -170,6 +170,49 @@ def calc_bearing_soil_profile(d_m: float, depth_top_m: float, depth_tip_m: float
     }
 
 
+def calc_block_failure(B_m: float, L_m: float, H_m: float,
+                       Cu_perim_kPa: float, Cu_base_kPa: float) -> dict:
+    """Sức chịu tải cực hạn của NHÓM cọc CDM khi phá hoại như MỘT KHỐI (block failure).
+
+        Q_block = chu_vi · H · Cu_perim  +  Nc · Cu_base · (B·L)
+        chu_vi = 2(B+L) ; A_đáy = B·L
+        Nc = 5·(1+0,2·B/L)·(1+0,2·H/B) ≤ 9   (Skempton, sét không thoát nước)
+
+    Số hạng 1 = ma sát quanh chu vi khối; số hạng 2 = sức kháng mũi khối.
+    Cu_perim = Cu trung bình dọc thân khối; Cu_base = Cu tại đáy khối (sau Bjerrum).
+    B, L = kích thước mặt bằng nhóm; H = chiều sâu khối (m).
+    """
+    if B_m <= 0 or L_m <= 0 or H_m <= 0:
+        return {"Q_block_kN": 0.0, "Nc": 0.0, "Q_perim_kN": 0.0, "Q_base_kN": 0.0}
+    Nc = min(9.0, 5.0 * (1.0 + 0.2 * B_m / L_m) * (1.0 + 0.2 * H_m / B_m))
+    perim = 2.0 * (B_m + L_m)
+    Q_perim = perim * H_m * Cu_perim_kPa
+    Q_base  = Nc * Cu_base_kPa * (B_m * L_m)
+    return {
+        "Q_block_kN": round(Q_perim + Q_base, 1),
+        "Q_perim_kN": round(Q_perim, 1),
+        "Q_base_kN": round(Q_base, 1),
+        "Nc": round(Nc, 2),
+        "A_base_m2": round(B_m * L_m, 2),
+        "perimeter_m": round(perim, 2),
+    }
+
+
+def calc_group_capacity(n_piles: int, Q_single_kN: float, Q_block_kN: float) -> dict:
+    """Sức chịu tải nhóm = min(Σ cọc đơn, khối). Hiệu suất nhóm η = Q_nhóm/(n·Q_đơn)."""
+    sum_single = n_piles * Q_single_kN
+    Q_group = min(sum_single, Q_block_kN) if Q_block_kN > 0 else sum_single
+    eta = (Q_group / sum_single) if sum_single > 0 else 1.0
+    return {
+        "n_piles": n_piles,
+        "sum_single_kN": round(sum_single, 1),
+        "Q_block_kN": round(Q_block_kN, 1),
+        "Q_group_kN": round(Q_group, 1),
+        "eta_group": round(eta, 3),
+        "governs": "khối" if Q_block_kN < sum_single else "cọc đơn",
+    }
+
+
 def calc_bearing_material(d_m: float, qu_col_kPa: float) -> dict:
     """Sức chịu tải theo VẬT LIỆU cọc: Q_ult,mat = qu_col·A_col, A_col = π·d²/4."""
     import math

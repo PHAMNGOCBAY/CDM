@@ -137,6 +137,14 @@ $$P_{col} = \sigma_{col} \times A_c \quad (\text{kN})$$
 
 $$P_{col} < Q_a \quad \Rightarrow \quad \text{Đạt}$$
 
+### 5.3 Phá hoại khối — hệ số nhóm cọc
+
+Cụm cọc CDM có thể phá hoại như một khối $B\times L$ sâu $H$:
+
+$$Q_{\text{khối}} = 2(B+L)\,H\,C_{u,tb} + N_c\,C_{u,đáy}\,(B\,L), \qquad N_c = 5\!\left(1+0{,}2\tfrac{B}{L}\right)\!\left(1+0{,}2\tfrac{H}{B}\right) \le 9$$
+
+Sức chịu tải nhóm $Q_{nhóm}=\min(n\cdot Q_{cọc đơn}, Q_{khối})$; hiệu suất nhóm $\eta=Q_{nhóm}/(n\,Q_{đơn})$. Kiểm tra: tải nhóm $q\,B\,L \le Q_{nhóm}/FS$. Chi tiết: [60-cdm-suc-chiu-tai-coc.md](60-cdm-suc-chiu-tai-coc.md) §6b.
+
 ---
 
 ## 6. Kiểm Tra Chọc Thủng Lớp Đệm Xi Măng

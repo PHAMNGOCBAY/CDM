@@ -6,7 +6,8 @@ là **một trong các điều kiện để chọn chiều dài cọc**.
 
 **Engine:** [scripts/cdm_column_calc.py](scripts/cdm_column_calc.py) —
 `calc_bearing_soil_ait()` (Cu đơn) · **`calc_bearing_soil_profile()` (Cu theo profile từng
-vị trí thí nghiệm — dùng trên UI)** · `calc_bearing_material()` · `calc_cdm_pile_capacity()`
+vị trí thí nghiệm — dùng trên UI)** · `calc_bearing_material()` · `calc_cdm_pile_capacity()` ·
+**`calc_block_failure()` + `calc_group_capacity()` (phá hoại khối nhóm cọc)**
 **UI:** tab "Thuyết minh TKCS" — mục "Sức chịu tải cọc xi măng đất (1 cọc đơn)"
 **SQLite:** `tvtk_cdm_bearing` (per HK)
 
@@ -121,6 +122,34 @@ $q_u = 800$ kPa · $s = 1{,}8$ m · $q = 40{,}8$ kPa · $FS = 2{,}5$
 | $P_{col} = \sigma_{col}\,A_c$ | $190{,}4 \times 0{,}5027 = $ **95,7 kN** |
 | Kiểm tra $P_{col} \le Q_a$ | 95,7 ≤ 160,8 → **Đạt** |
 | $L_{col}^{min}$ (SCT) | ≈ 6,7 m |
+
+---
+
+## 6b. Phá hoại khối — hệ số nhóm cọc
+
+Cụm cọc CDM có thể phá hoại như **một khối** (block failure) thay vì từng cọc rời.
+Sức chịu tải khối (kích thước mặt bằng $B\times L$, sâu $H$):
+
+$$Q_{\text{khối}} = 2(B+L)\,H\,C_{u,tb} + N_c\,C_{u,đáy}\,(B\cdot L)$$
+
+$$N_c = 5\left(1 + 0{,}2\frac{B}{L}\right)\left(1 + 0{,}2\frac{H}{B}\right) \le 9 \quad \text{(Skempton)}$$
+
+- Số hạng 1 — ma sát quanh chu vi khối; số hạng 2 — sức kháng mũi đáy khối.
+- $C_{u,tb}$ — Cu trung bình dọc thân; $C_{u,đáy}$ — Cu tại đáy khối (đều sau Bjerrum).
+
+**Sức chịu tải nhóm** và **hiệu suất nhóm** $\eta$:
+
+$$Q_{\text{nhóm}} = \min\!\left(n\cdot Q_{\text{cọc đơn}},\; Q_{\text{khối}}\right), \qquad
+\eta = \frac{Q_{\text{nhóm}}}{n\cdot Q_{\text{cọc đơn}}}$$
+
+với $n$ = số cọc trong nhóm $\approx \dfrac{B\cdot L}{\text{diện tích ô lưới}}$.
+
+**Điều kiện kiểm tra:** tải nhóm $q\cdot B\cdot L \le Q_{\text{nhóm}}/FS$.
+HK khống chế lấy theo Q cọc đơn nhỏ nhất (thiên về an toàn).
+
+**Lưu ý:** với CDM gia cố diện rộng dưới nền đắp, phương pháp thay thế diện tích
+(composite) + tải tập trung $P_{col}$ đã phản ánh tương tác nhóm; kiểm tra phá hoại khối
+là điều kiện bổ sung quan trọng cho **cụm cọc cục bộ / mố cầu**.
 
 ---
 

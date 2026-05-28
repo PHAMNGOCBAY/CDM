@@ -1797,6 +1797,8 @@ _DEFAULTS = {
     "cdm_use_bous": True,
     "cdm_B_load": 20.0,
     "cdm_alpha_sand": 2000.0,
+    "cdm_group_B": 20.0,
+    "cdm_group_L": 20.0,
     "cdm_Lc": 26.2,
     "cdm_CDTK": 0.8,
     "cdm_qu": 800.0,
@@ -18425,6 +18427,7 @@ if _page == "tvtk_prep":
             qu_col_kPa REAL, Q_soil_kN REAL, Q_material_kN REAL, Q_allow_kN REAL,
             P_col_kN REAL, FS REAL, ok INTEGER, governs TEXT, updated_at TEXT)""")
         _brg_rows = []
+        _blk_data = []   # dữ liệu cho kiểm tra phá hoại khối (per HK)
         for b in [b for b in _bhs_tv if b["name"] in _cdm_yes]:
             _elev_b = b["elevation_m"]
             _hs_val = _cv.execute(
@@ -18497,6 +18500,10 @@ if _page == "tvtk_prep":
                 "Tải cọc P (kN)": f"{_Pcol:.0f}",
                 "Đánh giá": "Đạt" if _ok else "Không đạt",
             })
+            _blk_data.append({
+                "name": b["name"], "cu_avg": (_soil_r.get("cu_avg_kPa") or float(_cu)),
+                "cu_tip": (_cu_tip or float(_cu)), "Q_single": _qs, "L_col": _L_col,
+            })
             _cv.execute("""INSERT INTO tvtk_cdm_bearing
                 (bh_name,d_m,L_col_m,Cu_soil_kPa,qu_col_kPa,Q_soil_kN,Q_material_kN,
                  Q_allow_kN,P_col_kN,FS,ok,governs,updated_at)
@@ -18525,6 +18532,44 @@ if _page == "tvtk_prep":
                 "yếu + ngàm). 'vật liệu hạn chế' = tăng chiều dài không đủ, cần tăng qu cọc "
                 "hoặc giảm khoảng cách s."
             )
+        # ── Kiểm tra phá hoại khối (nhóm cọc CDM) ──
+        if _blk_data:
+            st.markdown("**Kiểm tra phá hoại khối (nhóm cọc CDM)**")
+            _gc1, _gc2 = st.columns(2)
+            _Bg = _gc1.number_input("Bề rộng nhóm B (m)", 2.0, 200.0, step=1.0,
+                                    key="cdm_group_B", help="Bề rộng mặt bằng vùng gia cố CDM")
+            _Lg = _gc2.number_input("Chiều dài nhóm L (m)", 2.0, 500.0, step=1.0,
+                                    key="cdm_group_L", help="Chiều dài mặt bằng vùng gia cố CDM")
+            try:
+                from cdm_column_calc import (calc_block_failure as _cbf,
+                                             calc_group_capacity as _cgc)
+                _ctrl = min(_blk_data, key=lambda r: r["Q_single"])   # HK khống chế (Q nhỏ nhất)
+                _Hblk = _ctrl["L_col"]
+                _blk = _cbf(_Bg, _Lg, _Hblk, _ctrl["cu_avg"], _ctrl["cu_tip"])
+                _n_grp = max(1, int(round(_Bg * _Lg / _Acell)))
+                _grp = _cgc(_n_grp, _ctrl["Q_single"], _blk["Q_block_kN"])
+                _Qg_allow = _grp["Q_group_kN"] / _FS_brg
+                _load_grp = _q_brg * _Bg * _Lg
+                _grp_ok = _load_grp <= _Qg_allow
+                _g1, _g2, _g3, _g4 = st.columns(4)
+                _g1.metric("Q khối (kN)", f"{_blk['Q_block_kN']:,.0f}",
+                           help=f"Nc={_blk['Nc']}; chu vi·H·Cu_tb + Nc·Cu_đáy·B·L")
+                _g2.metric("η nhóm", f"{_grp['eta_group']:.2f}", f"khống chế: {_grp['governs']}")
+                _g3.metric("Q nhóm cho phép (kN)", f"{_Qg_allow:,.0f}", f"÷FS {_FS_brg}")
+                _g4.metric("Tải nhóm (kN)", f"{_load_grp:,.0f}",
+                           "Đạt" if _grp_ok else "Không đạt")
+                st.caption(
+                    f"HK khống chế **{_ctrl['name']}** (Q cọc đơn nhỏ nhất). Số cọc trong nhóm "
+                    f"n ≈ B·L / ô lưới = {_n_grp}. Q khối = chu vi·H·Cu_tb + Nc·Cu_đáy·(B·L) = "
+                    f"{_blk['Q_perim_kN']:,.0f} + {_blk['Q_base_kN']:,.0f} kN "
+                    f"(H={_Hblk:.1f} m, Cu_tb={_ctrl['cu_avg']:.1f}, Cu_đáy={_ctrl['cu_tip']:.1f} kPa, "
+                    f"Nc={_blk['Nc']}). Sức chịu tải nhóm = min(Σ {_n_grp}×cọc đơn, khối) → "
+                    f"khống chế bởi **{_grp['governs']}**. Tải nhóm = q×B×L = "
+                    f"{_q_brg:.1f}×{_Bg:.0f}×{_Lg:.0f}. Kiểm tra: tải nhóm ≤ Q nhóm/FS."
+                    + ("" if _grp_ok else " **Không đạt** — tăng qu/giảm s hoặc thu hẹp nhóm.")
+                )
+            except Exception as _eblk:
+                st.caption(f"(lỗi kiểm tra phá hoại khối: {_eblk})")
         with st.expander("Công thức sức chịu tải cọc CDM"):
             st.markdown("**Theo nền đất (AIT)** = ma sát thành + sức kháng mũi — tích phân "
                         "theo profile $C_u$ TỪNG vị trí thí nghiệm (không trung bình):")
@@ -18546,6 +18591,12 @@ if _page == "tvtk_prep":
                      r"P_{col} = \sigma_{col}\,A_c")
             st.markdown("với $E_{tb}=a E_c+(1-a)E_s$ (mô đun tổ hợp), $E_s=250\\,C_u$. "
                         "**Kiểm tra:** $P_{col} \\le Q_a$.")
+            st.markdown("**Phá hoại khối (nhóm cọc)** — cụm CDM phá như một khối B×L, sâu H:")
+            st.latex(r"Q_{\text{khối}} = 2(B+L)\,H\,C_{u,tb} + N_c\,C_{u,đáy}\,(B\,L)")
+            st.latex(r"N_c = 5\left(1+0{,}2\tfrac{B}{L}\right)\left(1+0{,}2\tfrac{H}{B}\right) \le 9")
+            st.markdown("Sức chịu tải nhóm $Q_{nhóm}=\\min(n\\cdot Q_{cọc đơn},\\ Q_{khối})$; "
+                        "hiệu suất nhóm $\\eta = Q_{nhóm}/(n\\,Q_{đơn})$. "
+                        "**Kiểm tra:** tải nhóm $q\\cdot B\\cdot L \\le Q_{nhóm}/FS$.")
             st.markdown("**Chiều dài tối thiểu theo sức chịu tải** (giải $Q_{ult.soil}(L)=P_{col}\\cdot FS$):")
             st.latex(r"L_{col}^{min} = \frac{\dfrac{P_{col}\cdot FS}{C_{u.soil}} - 2{,}25\,\pi d^2}{\pi d}")
             st.markdown("**Chiều dài cọc thiết kế:** $L = \\max(L_{\\text{theo lún}},\\ "
