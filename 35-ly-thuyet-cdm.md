@@ -74,12 +74,29 @@ $$S = S_1 + S_2 \qquad \text{(C.1)}$$
 
 ### 4.2 Độ lún bản thân khối CDM ($S_1$)
 
-$$S_1 = \frac{q \times H}{E_{tb}} \times 100 \quad (\text{cm}) \qquad \text{(C.2)}$$
+<!-- AUTO-FORMULA: cdm-s1 -->
+$$S_{1} = \frac{H q}{E_{c} a + E_{s} \left(1 - a\right)}$$
+<!-- /AUTO-FORMULA -->
+
+Đơn vị $S_1$ trả về **m**; nhân 100 khi hiển thị cm. Tương đương dạng:
+$$S_1 = \frac{q \cdot H}{E_{tb}} \qquad \text{với } E_{tb} = a \cdot E_c + (1-a) \cdot E_s \qquad \text{(C.2)}$$
 
 Trong đó:
-- $q$: tổng tải trọng tác dụng lên mặt nền (kN/m²)
+- $q$: tổng tải trọng tác dụng lên mặt nền (kPa)
 - $H = L_c$: chiều dài (chiều sâu) trụ CDM (m)
-- $E_{tb}$: mô đun tương đương (kN/m²)
+- $a$: tỷ lệ diện tích thay thế (0-1)
+- $E_c, E_s$: mô đun đàn hồi trụ và đất (kPa)
+- $E_{tb}$: mô đun tương đương (kPa)
+
+Mô đun cấu thành — render trực tiếp từ registry:
+
+<!-- AUTO-FORMULA: cdm-ec -->
+$$E_{c} = C_{c.col} k$$
+<!-- /AUTO-FORMULA -->
+
+<!-- AUTO-FORMULA: es-bjerrum -->
+$$E_{s} = 250 S_{u} \mu$$
+<!-- /AUTO-FORMULA -->
 
 ### 4.3 Độ lún dưới mũi trụ ($S_2$)
 

@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "title": "Mẫu bản tính điển hình CDM — cấu trúc trình bày per hố khoan",
+    "source": "G:/My Drive/202605-TRUNG TAM HCM/CDM/2026-06-02-TTHC-DIEN HINH.pdf (9 trang, gốc dự án RXT làm mẫu định dạng)",
+    "purpose": "Template trình bày tính chi tiết CDM cho từng HK trong 6 vùng (Bờ kè KE)",
+    "standards": ["TCVN 9403:2012", "TCCS 41:2022/TCĐBVN", "TCVN 9906:2013/2014", "TCVN 10304:2014", "TCVN 11823-5:2017", "TCVN 5574:2018"],
+    "updated": "2026-06-02"
+  },
+  "geometry_symbols": {
+    "W": "Bề rộng nhóm trụ (m)",
+    "D": "Đường kính trụ (m)",
+    "S": "Khoảng cách trụ (m)",
+    "CDTK": "Cao độ thiết kế tim đường (m)",
+    "CDld": "Cao độ đỉnh lớp đệm (m)",
+    "CDTN": "Cao độ tự nhiên (m)",
+    "CDNN": "Cao độ mực nước ngầm (m)",
+    "CD1": "Cao độ đỉnh trụ (m)",
+    "CD2": "Cao độ đáy trụ (m)",
+    "L": "Chiều dài trụ (m)"
+  },
+  "report_sections": [
+    {
+      "id": "1",
+      "title": "1. THÔNG SỐ TÍNH TOÁN",
+      "sub": [
+        {"id": "1.1", "title": "Thông số nền đắp và kết cấu áo đường",
+         "content": "Bảng lớp đắp (γ kN/m³, bề dày m, q thành phần kPa) cho phần xe chạy + vỉa hè; tổng tải q. Khối hình học W,D,S,CD1,CD2,L,CDTK,CDld,CDTN,CDNN."},
+        {"id": "1.2", "title": "Thông số địa chất",
+         "content": "Bảng per-lớp 1m: tên lớp, bề dày, loại đất, độ sâu, cao độ, γ, γ', e0, Cc, Cs, PC(pz), σ'v."}
+      ]
+    },
+    {
+      "id": "2",
+      "title": "2. TÍNH TOÁN LÚN DƯỚI CHÂN TRỤ",
+      "sub": [
+        {"id": "2.1", "title": "Thông số trụ đất gia cố xi măng",
+         "content": "D, S1, S2, Ac, A_đơn_vị, ap (hệ số cải tạo %), quck, Fs, W, CD1, CD2, L."},
+        {"id": "2.2", "title": "Độ lún bản thân khối gia cố S1",
+         "formula": "S1 = Σ P·h_i / Eeq_i ;  Eeq = Ecol·ap + Esoil·(1-ap) ;  Esoil = 250·Cu ;  Ecol = 40000",
+         "standard": "Công thức C.2 phụ lục C TCVN 9403:2012",
+         "load": "P = q_static (tải đắp tĩnh, KHÔNG hoạt tải) = 38.9 kN/m² (mẫu)",
+         "sample_result_cm": 13.20},
+        {"id": "2.3", "title": "Độ lún cố kết dưới chân trụ S2",
+         "formula": "Δp = P·W² / (W+z)² (phân bố lại dưới mũi); Si theo Cc/Cr (OC/NC) ; dừng khi Δσ/σ'v < 10%",
+         "standard": "Mục C.2 phụ lục C TCVN 9403:2012 + mục 9.1 TCCS 41:2022",
+         "load": "P' tại mặt nền = 49.3 kN/m² (mẫu)",
+         "sample_result_cm": 7.9}
+      ]
+    },
+    {
+      "id": "3",
+      "title": "III. TÍNH ĐỘ LÚN THEO THỜI GIAN",
+      "content": "Thoát nước 1 chiều thẳng đứng. Tv=(Cv_tb/H²)·t; Uv theo Tv; H = za (chiều sâu thoát nước). Bảng t=1..50 năm: Tv, Uv%, Sc(t), lún còn lại.",
+      "standard": "Mục 9.3 TCCS 41:2022/TCĐBVN",
+      "key_outputs": {
+        "S15_cm": "Độ lún cố kết sau 1 năm thi công xong tại tim = 6.04 (mẫu)",
+        "deltaS_cm": "Độ lún cố kết còn lại ΔS = 6.04 (mẫu)",
+        "S1_plus_St_cm": "Độ lún khối gia cố + lún dư phần không gia cố = 19.24 (mẫu)",
+        "S_allow_cm": "[S] cho phép = 30.00 (điều 6.3.2 TCCS 41:2022)",
+        "verdict": "Đạt nếu S1+S(t) ≤ [S]"
+      },
+      "chart": "Biểu đồ độ lún cố kết Sc theo thời gian (năm)"
+    },
+    {
+      "id": "4",
+      "title": "BẢNG TÍNH SỨC CHỊU TẢI CỌC ĐẤT GIA CỐ XI MĂNG",
+      "content": "N = q_total·S² (tải 1 cọc, q_total có hoạt tải = 54.95 mẫu). Nvl = [qa]·Ap, [qa]=quck/Fs. Nđn = α·Ap·qp + Up·Σqsi·li (D.9 TCVN 9906:2014). [N]=min(Nvl,Nđn).",
+      "standards": ["TCVN 9906:2014 D.9", "TCVN 10304:2014 G.3.2"],
+      "key_outputs": {
+        "N_kN": 178.03, "Nvl_kN": 335.10, "Ndn_kN": 728.85,
+        "N_design_kN": 335.10, "Cutd_kNm2": 62.06, "Cp_kNm2": 400.0,
+        "verdict": "Đạt nếu N ≤ [N]"
+      }
+    },
+    {
+      "id": "5",
+      "title": "KIỂM TOÁN LỚP ĐỆM / BÊ TÔNG",
+      "content": "Mtt=q·(S-d)²/8; Vtt=q·(S-d)/2. Kiểm cắt Vtt≤Vr (TCVN 11823-5) + uốn Mtt≤Mr (TCVN 5574 / 11823-5).",
+      "standards": ["TCVN 11823-5:2017", "TCVN 5574:2018"],
+      "note": "Áp cho lớp BT cứng (M150/C12). Đệm cát-XM dùng ALiCC chọc thủng (§66) — tuỳ cấu tạo."
+    }
+  ],
+  "load_convention": {
+    "q_settlement_kPa": "Tải tính LÚN = đắp tĩnh, KHÔNG hoạt tải (mẫu 38.9)",
+    "q_bearing_kPa": "Tải tính SỨC CHỊU TẢI = đắp + hoạt tải (mẫu 54.95)",
+    "note": "Khớp quy tắc dự án §28 (q_static vs q_total)"
+  },
+  "sample_geometry": {
+    "W_m": 12.0, "D_m": 0.80, "S_m": 1.80, "pattern": "Vuông",
+    "CDTK_m": 2.70, "CDld_m": 1.20, "CDTN_m": 0.22, "CDNN_m": -0.63,
+    "CD1_m": 0.80, "CD2_m": -28.20, "L_m": 29.00,
+    "ap_pct": 15.51, "quck_kPa": 800.0, "Fs": 1.20,
+    "Ecol_kPa": 40000.0, "Eeq_kPa": 8549.0
+  }
+}

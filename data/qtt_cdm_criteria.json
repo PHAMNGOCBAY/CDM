@@ -1,0 +1,91 @@
+{
+  "_meta": {
+    "description": "Cấu hình tiêu chí thiết kế CDM cho QTT — chọn ΔS + độ bằng phẳng",
+    "source": "TCCS 41:2022 Bảng 1 (Điều 6.2.3) + Bảng E.1 (Phụ lục E)",
+    "updated": "2026-05-28",
+    "version": "1.0"
+  },
+  "fill_layers_above_cdm": {
+    "_note": "Σh các lớp đắp trên đỉnh CDM (m) — phải khớp tvtk_fill_composition trong SQLite",
+    "ao_duong_m": 0.80,
+    "He_cat_dap_m": 0.70,
+    "Hse_dem_cat_m": 0.40,
+    "total_m": 1.90
+  },
+  "q_load_kPa": {
+    "_note": "Tải phân bố trên đỉnh CDM — bằng tổng γ×h của các lớp trên",
+    "value": 40.80,
+    "components": {
+      "ao_duong": 19.20,
+      "He_cat_dap": 12.60,
+      "Hse_dem_cat": 9.00
+    }
+  },
+  "settlement_limits_dS_cm": {
+    "_note": "Mức ΔS cho phép TCCS 41 Bảng 1 — 4 mức unique",
+    "options": [10, 20, 30, 40],
+    "default_recommended": 30,
+    "scope_by_value": {
+      "10": "Cao tốc / cấp 1 — Đoạn gần mố cầu",
+      "20": "Cao tốc gần cống / Cấp 2 gần mố cầu",
+      "30": "Cao tốc thường / Cấp 2 hai bên cống",
+      "40": "Cấp 2 đoạn nền đắp thông thường"
+    }
+  },
+  "smoothness_i_table": {
+    "_note": "Bảng E.1 — i_denominator. Truy vấn qua tccs41_smoothness_limits SQLite",
+    "road_classes": ["cao_toc", "cap_I_IV"],
+    "structures": ["cau", "cong"],
+    "speeds_kmh": [40, 60, 80, 100, 120],
+    "vong_max_inv": 125,
+    "_note_vong": "Cho phép tạo vồng trước với i ≤ 1/125 (TCCS 41 Phụ lục E)"
+  },
+  "cdm_default_geometry": {
+    "_note": "Cấu hình mặc định CDM — đồng bộ tvtk_cdm_config",
+    "D_mm": 800,
+    "spacing_m": 1.8,
+    "pattern": "square",
+    "Ec_factor": 100,
+    "qu_kPa": 800
+  },
+  "borrow_rule": {
+    "_note": "HK thiếu Cc → mượn HK gần nhất có Cc (§15 nearest-HK rule)",
+    "method": "nearest_euclidean_in_zone",
+    "applies_to": ["Cc", "e0", "PC_kPa"]
+  },
+  "s2_calculation_branches": {
+    "_note": "S₂ phân nhánh theo loại đất — memory feedback-s2-branches-clay-sand",
+    "clay_branch": {
+      "condition": "symbol NOT IN SAND_SYMBOLS_S2",
+      "priority_1": "Cc_Terzaghi (OC/NC/cross-PC theo σ'vf vs PC)",
+      "priority_2": "Eoed_fallback (1+e0)/a12 × 98.0665 kPa",
+      "priority_3": "Cc default từ zone hoặc dự án (cảnh báo)"
+    },
+    "sand_branch": {
+      "condition": "symbol IN SAND_SYMBOLS_S2",
+      "formula": "S_i = Δσ × h_i / Es",
+      "Es": "α_sand × N_SPT",
+      "alpha_sand_kPa_default": 2000.0,
+      "N_fallback": 10
+    },
+    "SAND_SYMBOLS_S2": [
+      "F", "2a", "2b", "2c", "3a", "3b", "3c",
+      "4", "5", "5a", "5b", "6", "7", "8"
+    ],
+    "stop_criterion": "Δσ / σ'v0 < 0.10",
+    "phantometric_step_m": 2.0
+  },
+  "zoning_default": {
+    "n_zones": 4,
+    "method": "quantile_binning_by_Lc",
+    "Lc_design_rule": "max_of_zone (an toàn)"
+  },
+  "output_word_sections": [
+    "1. Thông số đầu vào",
+    "2. Tiêu chí thiết kế đã chọn",
+    "3. Lc tối ưu cho mỗi HK",
+    "4. Kiểm tra độ bằng phẳng pair-wise",
+    "5. Phân vùng thiết kế CDM theo Lc",
+    "6. Kết luận và Khuyến nghị"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "_meta": {
+    "description": "Mô hình chi phí vật liệu dự án TTHC — single source of truth cho cost model",
+    "currency": "VND",
+    "updated": "2026-05-29",
+    "note": "Đây là giá tham chiếu nội bộ cho ước tính sơ bộ. Khi áp dụng cuối cùng phải đối chiếu báo giá thực tế của nhà thầu/khách hàng.",
+    "consumers": [
+      "scripts/cushion_design_report.py (Word builder)",
+      "scripts/cushion_design_charts.py (Pareto + so sánh)",
+      "scripts/app_cdm.py page 'cushion' (UI)"
+    ]
+  },
+  "materials": {
+    "cat_he": {
+      "name": "Cát đắp thường (He)",
+      "unit_cost_vnd_per_m3": 200000,
+      "gamma_kNm3": 18.0,
+      "source": "Giá tham chiếu Q1 TPHCM 2026-05"
+    },
+    "dem_cat_xm_base": {
+      "name": "Đệm cát-XM cường độ cơ bản q_uckse = 600 kPa",
+      "unit_cost_vnd_per_m3": 700000,
+      "gamma_kNm3": 22.5,
+      "q_uckse_base_kPa": 600,
+      "cement_content_base_kg_per_m3": 220,
+      "source": "Giá cát + xi măng + nhân công trộn (TTHC mix design tham chiếu)"
+    },
+    "ao_duong": {
+      "name": "Áo đường",
+      "unit_cost_vnd_per_m3": 1500000,
+      "gamma_kNm3": 24.0,
+      "source": "Giá tham chiếu mặt đường BTN"
+    }
+  },
+  "delta_costs": {
+    "dem_cat_xm_per_kPa": {
+      "name": "Chi phí tăng thêm mỗi kPa cường độ q_uckse",
+      "value_vnd_per_m3_per_kPa": 525,
+      "cement_factor_kg_per_kPa": 0.35,
+      "cement_price_vnd_per_kg": 1500,
+      "note": "Mỗi +100 kPa cần thêm ~35 kg/m³ xi măng. Quan hệ tuyến tính trong phạm vi 400-1500 kPa, ngoài phạm vi này cần điều chỉnh."
+    }
+  },
+  "constraints": {
+    "sigma_h_total_m": 1.10,
+    "_note": "He + Hse = 1.10m (cố định theo cao độ thiết kế và Σh đắp)"
+  }
+}

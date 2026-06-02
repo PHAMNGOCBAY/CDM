@@ -29,9 +29,15 @@ if hasattr(sys.stdout, "reconfigure"):
 _ROOT = Path(__file__).parent.parent
 _DB   = _ROOT / "data" / "TTHC.sqlite"
 
-# Hệ số hiệu chỉnh Bjerrum μ (TCCS 41 Phụ lục C.5) — dùng chung từ settlement_calc
+# Công thức S1, Ec, Es Bjerrum — single-source-of-truth từ core.formulas
 sys.path.insert(0, str(Path(__file__).parent))
-from settlement_calc import bjerrum_mu  # noqa: E402
+# FORMULA-ID: bjerrum-mu
+# FORMULA-ID: cdm-s1
+# FORMULA-ID: es-bjerrum
+# FORMULA-ID: cdm-ec
+from core.formulas.cdm import (  # noqa: E402
+    bjerrum_mu, s1_numeric, es_bjerrum_numeric, ec_numeric,
+)
 
 # Symbol lớp yếu để lấy Ip TB (theo lab_tests.symbol_tcvn, KHÁC layers.symbol)
 _SOFT_SYMBOLS_IP = ("1", "1b", "CH", "MH", "CH-OH", "MH-OH")
@@ -177,7 +183,7 @@ def run_s1_batch(db_path: Path = _DB, verbose: bool = True) -> list[dict]:
         q_kPa     = float(cfg["q_kPa"])
 
         a  = _area_ratio(D_mm, spacing_m, pattern)
-        Ec = Ec_factor * qu_kPa / 2.0
+        Ec = ec_numeric(k_factor=Ec_factor, Cc_col_kPa=qu_kPa / 2.0)  # FORMULA-ID: cdm-ec
 
         if verbose:
             print(f"CDM config: D={D_mm:.0f}mm  s={spacing_m}m  pattern={pattern}")
@@ -208,13 +214,14 @@ def run_s1_batch(db_path: Path = _DB, verbose: bool = True) -> list[dict]:
             is_vst  = source.startswith("VST")
             mu      = bjerrum_mu(ip_avg) if (ip_avg and is_vst) else 1.0
             Cu_corr = (Cu * mu) if Cu else None
-            Es = 250.0 * Cu_corr if Cu_corr else None
+            # FORMULA-ID: es-bjerrum
+            Es = es_bjerrum_numeric(mu_val=mu, Su_kPa=Cu) if (Cu is not None) else None
 
             def _s1(H: float) -> float | None:
                 if not Es or H <= 0:
                     return None
-                Ecomp = a * Ec + (1.0 - a) * Es
-                return round(q_kPa * H / Ecomp * 100.0, 2)
+                # FORMULA-ID: cdm-s1 (registry trả về m → ×100 sang cm)
+                return round(s1_numeric(q_kPa=q_kPa, H_m=H, a=a, Ec_kPa=Ec, Es_kPa=Es) * 100.0, 2)
 
             s1_1 = _s1(H_pa1)
             s1_2 = _s1(H_pa2)

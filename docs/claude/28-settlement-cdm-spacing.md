@@ -28,11 +28,20 @@ S2 = calc_s2_below_cdm(bh_name, cdm_tip_depth_m)["S2_cm"]  # cm — LUÔN TÍNH
 # Es = 250 × Cu_avg                           (tương quan Mesri)
 ```
 
-**S2 — Lún cố kết bên dưới mũi CDM (cập nhật 2026-05-26, BẮT BUỘC):**
+**S2 — Lún cố kết bên dưới mũi CDM (cập nhật 2026-05-28, BẮT BUỘC):**
 
-`calc_s2_below_cdm()` luôn tính, kể cả khi CDM hết lớp bùn. Chỉ dừng khi Δσ/σ'v0 < 10%.
+`calc_s2_below_cdm()` luôn tính, kể cả khi CDM hết lớp bùn theo ký hiệu. Chỉ dừng khi Δσ/σ'v0 < 10%.
 
-Thứ tự ưu tiên thông số mỗi phân tố 2m:
+**PHÂN NHÁNH BẮT BUỘC theo loại đất** (memory `feedback-s2-branches-clay-sand`):
+
+| Loại lớp | Điều kiện | Công thức |
+|---|---|---|
+| **Sét** | `symbol NOT IN SAND_SYMBOLS_S2` | Terzaghi 1D với Cc (phân nhánh OC/NC/cross-PC) hoặc Eoed fallback |
+| **Cát** | `symbol IN SAND_SYMBOLS_S2` | $S_i = \dfrac{\Delta\sigma \cdot h_i}{E_s}$ với $E_s = \alpha_{sand} \cdot N_{SPT}$ |
+
+`SAND_SYMBOLS_S2 = {"F", "2a", "2b", "2c", "3a", "3b", "3c", "4", "5", "5a", "5b", "6", "7", "8"}` · `alpha_sand_kPa = 2000.0` mặc định · Fallback `N ≈ 10` khi thiếu SPT trong phân tố.
+
+**Thứ tự ưu tiên thông số mỗi phân tố 2m (CHỈ cho lớp sét):**
 
 | Ưu tiên | Nguồn | Phương pháp tính Si |
 | --- | --- | --- |
@@ -40,8 +49,10 @@ Thứ tự ưu tiên thông số mỗi phân tố 2m:
 | 2 | `lab_tests.a12_cm2kgf` + `e0` gần nhất | **Eoed** = (1+e0)/a12 × 98.0665 kPa; Si = Δσ×H/Eoed |
 | 3 | Không có TN nào trong HK | Cc fallback từ cùng zone hoặc toàn dự án (cảnh báo) |
 
+Cho lớp **cát**: Es từ SPT (`spt_values.N`), không cần Cc/Eoed.
+
 **Key trong return dict**: `"warnings"` (list[str], không phải `"warning"` singular).
-**Layer output**: có thêm cột `"method"` = `'Cc'` | `'Eoed'` | `'default'`, `"a12"`, `"Eoed_kPa"`.
+**Layer output**: có thêm cột `"method"` = `'Cc'` | `'Eoed'` | `'SPT'` | `'default'`, `"a12"`, `"Eoed_kPa"`, `"N_SPT"`, `"Es_kPa"`.
 
 **q cho S2 đọc từ config (cập nhật 2026-05-27):** `compare_methods` lấy `q_kPa` qua `_cfg_q_kPa()` (đọc `tvtk_cdm_config.q_kPa` — nguồn chính `tvtk_fill_composition`), KHÔNG hardcode 40.8 → tự cập nhật khi cấu tạo tải đắp thay đổi.
 
@@ -57,7 +68,7 @@ Thiết kế ngược: cho ΔS cho phép (TCCS 41 Bảng 1, tra theo cấp đư�
 - $S_1 = q \cdot p / (a E_c + (1-a) E_s) \times 100$ [cm] — p = độ xuyên (toàn bộ chiều dày gia cố)
 - $S_2$ = `calc_s2_below_cdm(bh, clay_top + p, q)` — lún cố kết phần nén lún còn lại dưới mũi
 - **Độ xuyên không giới hạn ở H_soft theo ký hiệu** — chạy tới đáy vùng nén lún (lab Cc thường sâu hơn lớp bùn ký hiệu). p_max = max(depth_bot) − đỉnh bùn.
-- Cọc "thả nổi" (mũi trong bùn, p < H_soft → S2>0) được phép; xuyên hết → S2≈0.
+- Cọc "trong lớp bùn" (mũi trong bùn, p < H_soft → S2>0) được phép; xuyên hết → S2≈0.
 - Cache `@st.cache_data` qua wrapper `_cdm_length_for_settlement` (app_cdm.py). Set `cdm_Lc` + `cdm_L_ngam` (= max(0, p−H_soft)) sau khi lặp.
 - Không đạt kể cả p_max → cảnh báo "giảm khoảng cách s / tăng qu".
 - **Tải tính LÚN (S1, S2) = tải đắp tĩnh `q_static`, KHÔNG xét hoạt tải** (hoạt tải tần suất ngắn không gây cố kết). Tải tính **SỨC CHỊU TẢI** P_col = `q_total` (đắp + hoạt tải xe) vì cọc chịu trực tiếp hoạt tải. Hai loại tải tách riêng (không dùng chung), áp cho cả 3 loại lớp.

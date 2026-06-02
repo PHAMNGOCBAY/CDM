@@ -1,0 +1,207 @@
+{
+  "_meta": {
+    "description": "Thông số đệm cát-XM TTHC + kết quả ALiCC + khuyến nghị",
+    "source": "Hồ sơ TTHC E.2 + công thức Excel '02. Tính toán CDM (2Tm2).xlsm'",
+    "verified_date": "2026-05-29",
+    "verified_by_user": true,
+    "updated": "2026-05-29 16:29:07",
+    "gamma_fill_correction_note": "γ_fill dùng TB trọng số (áo đường + He) thay vì γ_he đơn lẻ — đúng theo lý thuyết ALiCC vì V_soil bao gồm thể tích đất đắp toàn bộ"
+  },
+  "params": {
+    "q_uckse": {
+      "value": 600.0,
+      "unit": "kPa",
+      "name": "Cường độ kháng nén của đệm cát-XM",
+      "source": "Hồ sơ TTHC E.2"
+    },
+    "Fs_punching": {
+      "value": 3.0,
+      "unit": "-",
+      "name": "Hệ số an toàn tính ứng suất cắt cho phép",
+      "source": "Hồ sơ TTHC E.2"
+    },
+    "tau_ase": {
+      "value": 100.0,
+      "unit": "kPa",
+      "name": "Ứng suất cắt cho phép = q_uckse/(2·Fs)",
+      "source": "Hồ sơ TTHC E.2 — verify 600/(2·3)=100"
+    },
+    "theta_deg": {
+      "value": 80.0,
+      "unit": "deg",
+      "name": "Góc đàn hồi dẻo (plastic arch angle)",
+      "source": "Hồ sơ TTHC E.2"
+    },
+    "gamma_hse": {
+      "value": 22.5,
+      "unit": "kN/m³",
+      "name": "Dung trọng đệm cát-XM",
+      "source": "tvtk_fill_composition layer_order=3"
+    },
+    "gamma_he": {
+      "value": 18.0,
+      "unit": "kN/m³",
+      "name": "Dung trọng cát He",
+      "source": "tvtk_fill_composition layer_order=2"
+    },
+    "gamma_aod": {
+      "value": 24.0,
+      "unit": "kN/m³",
+      "name": "Dung trọng áo đường",
+      "source": "tvtk_fill_composition layer_order=1"
+    },
+    "Hse_current": {
+      "value": 0.4,
+      "unit": "m",
+      "name": "Bề dày đệm cát-XM hiện tại",
+      "source": "tvtk_fill_composition layer_order=3"
+    },
+    "sigma_h_total": {
+      "value": 1.9,
+      "unit": "m",
+      "name": "Tổng chiều dày đắp trên đỉnh CDM",
+      "source": "tvtk_fill_composition"
+    },
+    "h_aod": {
+      "value": 0.8,
+      "unit": "m",
+      "name": "Bề dày áo đường (cố định)",
+      "source": "tvtk_fill_composition"
+    },
+    "Hse_min_alicc": {
+      "value": 0.504,
+      "unit": "m",
+      "name": "Hse_min để đạt ALiCC với γ_fill=γ_TB",
+      "source": "Tính từ engine cdm_cushion_params.find_Hse_min() — γ_TB weighted"
+    },
+    "gamma_fill_TB_Hse_0_4": {
+      "value": 21.2,
+      "unit": "kN/m³",
+      "name": "γ_fill TB trọng số khi Hse=0.40m",
+      "source": "= (0.8×24 + 0.7×18)/1.5 — công thức ALiCC chuẩn"
+    },
+    "D_cdm": {
+      "value": 0.8,
+      "unit": "m",
+      "name": "Đường kính trụ CDM",
+      "source": "tvtk_cdm_config"
+    },
+    "s_cdm": {
+      "value": 1.8,
+      "unit": "m",
+      "name": "Khoảng cách tâm trụ (lưới vuông)",
+      "source": "tvtk_cdm_config"
+    }
+  },
+  "alicc_scenarios_2026_05_29": {
+    "_note": "Tính với q_uckse=600, Fs=3, τ_ase=100, γ_fill=TB trọng số (áo đường+He), γ_hse=22.5",
+    "current_Hse_0_40m": {
+      "Hse_m": 0.4,
+      "ratio": 1.247,
+      "verdict": "KHÔNG ĐẠT — vượt giới hạn 24.7%"
+    },
+    "Hse_min_required": 0.504,
+    "scenarios": [
+      {
+        "Hse_m": 0.2,
+        "He_m": 0.9,
+        "gamma_TB": 20.82,
+        "tau_se_kPa": 245.7,
+        "ratio": 2.457,
+        "ok": false
+      },
+      {
+        "Hse_m": 0.3,
+        "He_m": 0.8,
+        "gamma_TB": 21.0,
+        "tau_se_kPa": 165.1,
+        "ratio": 1.651,
+        "ok": false
+      },
+      {
+        "Hse_m": 0.4,
+        "He_m": 0.7,
+        "gamma_TB": 21.2,
+        "tau_se_kPa": 124.7,
+        "ratio": 1.247,
+        "ok": false
+      },
+      {
+        "Hse_m": 0.48,
+        "He_m": 0.62,
+        "gamma_TB": 21.34,
+        "tau_se_kPa": 104.5,
+        "ratio": 1.045,
+        "ok": false
+      },
+      {
+        "Hse_m": 0.504,
+        "He_m": 0.596,
+        "gamma_TB": 21.38,
+        "tau_se_kPa": 100.0,
+        "ratio": 1.0,
+        "ok": true
+      },
+      {
+        "Hse_m": 0.6,
+        "He_m": 0.5,
+        "gamma_TB": 21.69,
+        "tau_se_kPa": 84.3,
+        "ratio": 0.843,
+        "ok": true
+      },
+      {
+        "Hse_m": 0.7,
+        "He_m": 0.4,
+        "gamma_TB": 22.0,
+        "tau_se_kPa": 72.7,
+        "ratio": 0.727,
+        "ok": true
+      }
+    ]
+  },
+  "design_recommendations": [
+    {
+      "id": "A",
+      "label": "Tăng cường độ XM",
+      "Hse_m": 0.4,
+      "q_uckse_kPa": 800,
+      "ratio": 0.936,
+      "cost_delta_pct": 10.0,
+      "note": "Giữ Hse=0.40m, tăng q_uckse 600→800 kPa"
+    },
+    {
+      "id": "B",
+      "label": "Tăng chiều dày đệm",
+      "Hse_m": 0.55,
+      "q_uckse_kPa": 600,
+      "ratio": 0.917,
+      "cost_delta_pct": 17.9,
+      "note": "Giữ q_uckse=600, tăng Hse 0.40→0.55m"
+    },
+    {
+      "id": "C",
+      "label": "Đệm mỏng cường độ cao",
+      "Hse_m": 0.3,
+      "q_uckse_kPa": 1000,
+      "ratio": 0.991,
+      "cost_delta_pct": 3.1,
+      "note": "Hse=0.30m + q_uckse=1000 kPa (cần mix design)"
+    }
+  ],
+  "sqlite_table": {
+    "name": "cdm_cushion_design_params",
+    "primary_key": "param_key",
+    "matrix_table": "cdm_cushion_matrix (72 rows)",
+    "save_script": "scripts/save_cushion_params.py"
+  },
+  "related_files": {
+    "engine_punching": "scripts/cdm_cushion_params.py",
+    "engine_bending_informational": "scripts/archive/cdm_cushion_bending.py",
+    "charts_helper": "scripts/cushion_design_charts.py",
+    "word_report_builder": "scripts/cushion_design_report.py",
+    "ui_page": "scripts/app_cdm.py — page 'cushion'",
+    "doc_md": "docs/claude/66-cushion-params-tthc.md",
+    "matrix_json": "data/cdm_cushion_matrix.json"
+  }
+}

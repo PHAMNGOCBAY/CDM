@@ -1,0 +1,245 @@
+{
+  "_meta": {
+    "title": "TRẮC DỌC CHO CÁC CỤM CỌC XI MĂNG CDM",
+    "area": "KE",
+    "area_desc": "Khu vực Bờ kè (Kè Công viên KE)",
+    "source": "Bản vẽ trắc dọc phân vùng CDM — 6 vùng (Phạm vi Vùng 1-6)",
+    "n_zones": 6,
+    "n_boreholes_unique": 12,
+    "updated": "2026-06-03 06:08:48"
+  },
+  "boreholes_unique": [
+    "KE-HK1",
+    "KE-HK2",
+    "KE-HK3",
+    "KE-HK4",
+    "KE-HK5",
+    "KE-HK6",
+    "KE-HK7",
+    "KE-HK8",
+    "KE-HK9",
+    "KE-HK10",
+    "KE-HK11",
+    "KE-HK12"
+  ],
+  "elevations_m": {
+    "KE-HK1": 1.83,
+    "KE-HK2": 2.034,
+    "KE-HK3": 1.256,
+    "KE-HK4": 1.824,
+    "KE-HK5": 0.883,
+    "KE-HK6": -0.16,
+    "KE-HK7": -0.561,
+    "KE-HK8": 2.579,
+    "KE-HK9": -2.25,
+    "KE-HK10": -0.381,
+    "KE-HK11": -0.22,
+    "KE-HK12": -1.058
+  },
+  "zones": [
+    {
+      "zone_no": 1,
+      "zone_name": "Vùng 1",
+      "n_boreholes": 3,
+      "bh_list": [
+        "KE-HK1",
+        "KE-HK11",
+        "KE-HK10"
+      ],
+      "total_length_m": 378.9,
+      "boreholes": [
+        {
+          "bh_name": "KE-HK1",
+          "seq": 1,
+          "position": "start",
+          "elevation_m": 1.83,
+          "dist_to_next_m": 226.0
+        },
+        {
+          "bh_name": "KE-HK11",
+          "seq": 2,
+          "position": "mid",
+          "elevation_m": -0.22,
+          "dist_to_next_m": 152.9
+        },
+        {
+          "bh_name": "KE-HK10",
+          "seq": 3,
+          "position": "end",
+          "elevation_m": -0.381,
+          "dist_to_next_m": null
+        }
+      ]
+    },
+    {
+      "zone_no": 2,
+      "zone_name": "Vùng 2",
+      "n_boreholes": 3,
+      "bh_list": [
+        "KE-HK11",
+        "KE-HK10",
+        "KE-HK9"
+      ],
+      "total_length_m": 320.6,
+      "boreholes": [
+        {
+          "bh_name": "KE-HK11",
+          "seq": 1,
+          "position": "start",
+          "elevation_m": -0.22,
+          "dist_to_next_m": 152.9
+        },
+        {
+          "bh_name": "KE-HK10",
+          "seq": 2,
+          "position": "mid",
+          "elevation_m": -0.381,
+          "dist_to_next_m": 167.7
+        },
+        {
+          "bh_name": "KE-HK9",
+          "seq": 3,
+          "position": "end",
+          "elevation_m": -2.25,
+          "dist_to_next_m": null
+        }
+      ]
+    },
+    {
+      "zone_no": 3,
+      "zone_name": "Vùng 3",
+      "n_boreholes": 3,
+      "bh_list": [
+        "KE-HK10",
+        "KE-HK9",
+        "KE-HK8"
+      ],
+      "total_length_m": 317.2,
+      "boreholes": [
+        {
+          "bh_name": "KE-HK10",
+          "seq": 1,
+          "position": "start",
+          "elevation_m": -0.381,
+          "dist_to_next_m": 167.7
+        },
+        {
+          "bh_name": "KE-HK9",
+          "seq": 2,
+          "position": "mid",
+          "elevation_m": -2.25,
+          "dist_to_next_m": 149.5
+        },
+        {
+          "bh_name": "KE-HK8",
+          "seq": 3,
+          "position": "end",
+          "elevation_m": 2.579,
+          "dist_to_next_m": null
+        }
+      ]
+    },
+    {
+      "zone_no": 4,
+      "zone_name": "Vùng 4",
+      "n_boreholes": 3,
+      "bh_list": [
+        "KE-HK7",
+        "KE-HK6",
+        "KE-HK12"
+      ],
+      "total_length_m": 325.1,
+      "boreholes": [
+        {
+          "bh_name": "KE-HK7",
+          "seq": 1,
+          "position": "start",
+          "elevation_m": -0.561,
+          "dist_to_next_m": 190.3
+        },
+        {
+          "bh_name": "KE-HK6",
+          "seq": 2,
+          "position": "mid",
+          "elevation_m": -0.16,
+          "dist_to_next_m": 134.8
+        },
+        {
+          "bh_name": "KE-HK12",
+          "seq": 3,
+          "position": "end",
+          "elevation_m": -1.058,
+          "dist_to_next_m": null
+        }
+      ]
+    },
+    {
+      "zone_no": 5,
+      "zone_name": "Vùng 5",
+      "n_boreholes": 3,
+      "bh_list": [
+        "KE-HK1",
+        "KE-HK2",
+        "KE-HK3"
+      ],
+      "total_length_m": 287.5,
+      "boreholes": [
+        {
+          "bh_name": "KE-HK1",
+          "seq": 1,
+          "position": "start",
+          "elevation_m": 1.83,
+          "dist_to_next_m": 130.6
+        },
+        {
+          "bh_name": "KE-HK2",
+          "seq": 2,
+          "position": "mid",
+          "elevation_m": 2.034,
+          "dist_to_next_m": 156.9
+        },
+        {
+          "bh_name": "KE-HK3",
+          "seq": 3,
+          "position": "end",
+          "elevation_m": 1.256,
+          "dist_to_next_m": null
+        }
+      ]
+    },
+    {
+      "zone_no": 6,
+      "zone_name": "Vùng 6",
+      "n_boreholes": 3,
+      "bh_list": [
+        "KE-HK3",
+        "KE-HK4",
+        "KE-HK5"
+      ],
+      "total_length_m": 298.7,
+      "boreholes": [
+        {
+          "bh_name": "KE-HK3",
+          "seq": 1,
+          "position": "start",
+          "elevation_m": 1.256,
+          "dist_to_next_m": 167.9
+        },
+        {
+          "bh_name": "KE-HK4",
+          "seq": 2,
+          "position": "mid",
+          "elevation_m": 1.824,
+          "dist_to_next_m": 130.8
+        },
+        {
+          "bh_name": "KE-HK5",
+          "seq": 3,
+          "position": "end",
+          "elevation_m": 0.883,
+          "dist_to_next_m": null
+        }
+      ]
+    }
+  ]
+}

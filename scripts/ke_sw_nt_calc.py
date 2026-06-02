@@ -15,6 +15,7 @@ lấy tên cọc kiến nghị và danh sách HK trên tuyến.
 from __future__ import annotations
 import json
 import sqlite3
+import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -22,6 +23,15 @@ _ROOT   = Path(__file__).resolve().parent.parent
 DB_PATH = _ROOT / "data" / "TTHC.sqlite"
 KE_JSON = _ROOT / "data" / "ke_sw_202605_TTHC.json"
 SW_JSON = _ROOT / "data" / "sw_pile_catalog.json"
+
+# Single-source-of-truth công thức — registry §61
+sys.path.insert(0, str(Path(__file__).parent))
+# FORMULA-ID: nt2-rs-alpha
+# FORMULA-ID: nt2-rp-clay
+from core.formulas.bearing import (  # noqa: E402
+    nt2_rs_alpha_numeric as _rs_alpha_numeric,
+    nt2_rp_clay_numeric as _rp_clay_numeric,
+)
 
 # ── Hằng số thiết kế kè KE ───────────────────────────────────────────────────
 TOP_KE_M   = 2.70    # cao độ đỉnh kè (m)
@@ -674,7 +684,9 @@ def calc_nt2_layers(
                 "không xác định được su — bỏ qua ma sát"
             )
         alpha  = _alpha_tomlinson(su) if su > 0 else 0.0
-        Rs_lyr = round(alpha * su * perimeter_m * L_lyr, 1)
+        # FORMULA-ID: nt2-rs-alpha
+        Rs_lyr = round(_rs_alpha_numeric(alpha_val=alpha, cu_kPa=su,
+                                          P_m=perimeter_m, L_m=L_lyr), 1)
         Rs_clay_total += Rs_lyr
         rows.append({
             "symbol":          symbol,
@@ -712,7 +724,8 @@ def calc_nt2_layers(
                 f"Mũi cọc trong lớp cát '{tip_symbol}' nhưng không có SPT → Rp = 0"
             )
     else:
-        Rp_kN = round(9.0 * tip_su * Ap_m2, 1) if tip_su > 0 else 0.0
+        # FORMULA-ID: nt2-rp-clay
+        Rp_kN = round(_rp_clay_numeric(cu_kPa=tip_su, Ap_m2=Ap_m2), 1) if tip_su > 0 else 0.0
 
     # ── φ_stat động ───────────────────────────────────────────────────────────
     if phi_stat is None:
@@ -862,6 +875,7 @@ def calc_nt2_all_methods(
             su = L["su"]; sig = L["sigma_v"]; OCR = L["OCR"]
             if method == "alpha":
                 alpha = _alpha_tomlinson(su) if su > 0 else 0.0
+                # FORMULA-ID: nt2-rs-alpha (Rs = qs·P·L, qs = α·cu)
                 qs = alpha * su
             elif method == "beta":
                 beta = _beta_esrig_kirby(OCR)
@@ -873,7 +887,8 @@ def calc_nt2_all_methods(
             Rs_lyr = qs * perimeter_m * L["L"]
             Rs_total += Rs_lyr
             if L["is_tip"]:
-                tip_qp_kPa = 9.0 * su   # qp sét = 9·Su
+                # FORMULA-ID: nt2-rp-clay (Rp = qp·A_p, qp = 9·cu)
+                tip_qp_kPa = 9.0 * su
                 tip_method_used = method
             per_layer.append({"sym": L["symbol"], "L": round(L["L"],2),
                               "qs": round(qs,1), "Rs": round(Rs_lyr,1), "m": method})

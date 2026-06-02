@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "description": "Cấu hình multi-zone CDM analysis — BXN/NHC/KE_park/KE_levee",
+    "source": "TCCS 41:2022 + TCVN 9403:2012; tham chiếu §63 docs/claude/63-multi-zone-cdm-analysis.md",
+    "updated": "2026-05-28",
+    "version": "1.0"
+  },
+  "zones": {
+    "QTT": {
+      "description": "Quảng Trường Trung Tâm",
+      "bh_prefix": "ND-",
+      "design_elev_source": "grid_qtt_elevation_points",
+      "force_full_penetration": false
+    },
+    "BXN": {
+      "description": "Bãi Đỗ Xe Ngầm",
+      "bh_prefix": "BXN-CV-",
+      "design_elev_source": "global_config",
+      "force_full_penetration": false
+    },
+    "NHC": {
+      "description": "Nhà Hành Chính",
+      "bh_prefix": "NHC-BH-",
+      "design_elev_source": "global_config",
+      "force_full_penetration": false
+    },
+    "KE_park": {
+      "description": "Công Viên (KE không trên tuyến kè)",
+      "bh_prefix": "KE-HK",
+      "design_elev_source": "global_config",
+      "force_full_penetration": false,
+      "subzone_filter": {
+        "table": "ke_sw_design",
+        "column": "on_sw_alignment",
+        "value": 0
+      }
+    },
+    "KE_levee": {
+      "description": "Bờ Kè — luôn xuyên hết lớp bùn",
+      "bh_prefix": "KE-HK",
+      "design_elev_source": "global_config",
+      "force_full_penetration": true,
+      "L_ngam_m": 1.0,
+      "subzone_filter": {
+        "table": "ke_sw_design",
+        "column": "on_sw_alignment",
+        "value": 1
+      }
+    }
+  },
+  "design_elev_global_m": 2.70,
+  "fill_total_thickness_m": 1.90,
+  "q_kPa": 40.80,
+  "cdm_default_geometry": {
+    "D_mm": 800,
+    "spacing_m": 1.8,
+    "pattern": "square",
+    "Ec_factor": 100,
+    "qu_kPa": 800
+  },
+  "ke_levee_rule": {
+    "_note": "Bờ kè bắt buộc cọc CDM xuyên hết lớp bùn — quy tắc thiết kế an toàn",
+    "p_target_formula": "H_soft + L_ngam_m",
+    "L_ngam_m_default": 1.0,
+    "evaluate": "Lc cố định, chỉ kiểm tra S_total <= ΔS"
+  },
+  "borrow_rule_per_zone": {
+    "_note": "Khi HK trong zone thiếu Cc → mượn HK CÙNG ZONE có Cc gần nhất theo Euclidean E/N",
+    "method": "nearest_euclidean_in_zone",
+    "applies_to": ["Cc", "e0", "PC_kPa", "Ip"]
+  },
+  "sqlite_tables": {
+    "_note": "4 bảng kết quả lưu trong data/TTHC.sqlite + LOCAL DB",
+    "cdm_zone_design_results": {
+      "primary_key": ["zone_code", "bh_name", "delta_S_cm"],
+      "rows_expected": 128,
+      "purpose": "Lc tối ưu cho mỗi HK × ΔS"
+    },
+    "cdm_zone_smoothness_results": {
+      "primary_key": ["zone_code", "delta_S_cm", "hk_i", "hk_j"],
+      "rows_expected": 257,
+      "purpose": "Cặp HK pair-wise + chênh lún + i_inv_actual (i_inv_max=125 loose)"
+    },
+    "cdm_zone_s_lc_curves": {
+      "primary_key": ["zone_code", "bh_name", "p_m"],
+      "rows_expected": 1075,
+      "purpose": "S(p) sweep cho mỗi HK (p = 0.5..35m bước 1m)"
+    },
+    "cdm_qtt_grid_lc": {
+      "primary_key": ["delta_S_cm", "easting_m", "northing_m"],
+      "rows_expected": 648,
+      "purpose": "Grid Lc 162 điểm QTT × 4 ΔS"
+    }
+  }
+}

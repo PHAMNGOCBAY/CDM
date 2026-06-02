@@ -59,12 +59,12 @@ scripts/app_fem2d.py
 *.zip
 *.bak
 logs/
-data/*_backup*.sqlite
-data/*_corrupt*.sqlite
 
-# SQLite WAL journal files (local only)
-data/TTHC.sqlite-shm
-data/TTHC.sqlite-wal
+# Corrupt / backup SQLite copies (never commit — chỉ giữ data/TTHC.sqlite chính)
+data/*.bak_corrupt
+data/*.corrupt2
+*corrupt*.sqlite
+*backup*.sqlite
 
 # Duplicate SQLite at root (use data/TTHC.sqlite)
 /TTHC.sqlite
@@ -72,5 +72,3 @@ data/TTHC.sqlite-wal
 # Windows
 Thumbs.db
 desktop.ini
-
-.claude/settings.local.json

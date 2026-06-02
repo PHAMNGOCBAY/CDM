@@ -9,7 +9,7 @@ CDM (độ xuyên vào lớp bùn) NGẮN NHẤT sao cho tổng lún S1 + S2 ≤
   với H_gc = độ xuyên cọc vào lớp bùn (m) — phần bùn được gia cố.
 - S2 = lún cố kết phần bùn CÒN LẠI bên dưới mũi cọc (settlement_calc.calc_s2_below_cdm).
 
-Cọc "thả nổi": khi rút ngắn để S1+S2 tăng tới ΔS, mũi cọc nằm trong lớp bùn
+Cọc "trong lớp bùn": khi rút ngắn để S1+S2 tăng tới ΔS, mũi cọc nằm trong lớp bùn
 (chưa xuyên hết) → còn S2 > 0. Khi xuyên hết bùn → S2 ≈ 0.
 
 Đơn vị: q [kPa] · H [m] · Ec/Es [kPa] · ΔS, S1, S2 [cm].
@@ -79,7 +79,11 @@ def find_cdm_length(
     alpha_sand_kPa: float = 2000.0,
     t_years_residual: float = 15.0,
     db_path: Optional[Path] = None,
+    gwl_elev_m: Optional[float] = None,
 ) -> dict:
+    """gwl_elev_m: cao độ tuyệt đối MNN (m). Nếu cung cấp, tự suy gwt_depth
+    từ cao độ TN của HK. Xem §69 effective-stress-rule.
+    """
     """Tìm độ xuyên cọc CDM vào bùn (p) ngắn nhất sao cho S1+S2 ≤ ΔS.
 
     Trả về dict:
@@ -95,6 +99,16 @@ def find_cdm_length(
     cu_kPa = mu * Su_kPa
     Es_kPa = Es_factor * cu_kPa
     composite = a * Ec_kPa + (1.0 - a) * Es_kPa
+
+    # gwt_depth từ cao độ MNN tuyệt đối (§69)
+    gwt_depth_m = 0.0
+    if gwl_elev_m is not None:
+        with sqlite3.connect(db_path) as con:
+            _row = con.execute(
+                "SELECT elevation_m FROM boreholes WHERE name = ?",
+                (bh_name,)).fetchone()
+        if _row and _row[0] is not None:
+            gwt_depth_m = max(0.0, float(_row[0]) - gwl_elev_m)
 
     # Hình học lớp bùn
     db_top, db_H = soft_profile_from_db(bh_name, db_path)
@@ -122,7 +136,8 @@ def find_cdm_length(
         tip_depth = clay_top + p
         _s2 = calc_s2_below_cdm(bh_name, tip_depth, q_kPa=q_kPa,
                                 B_load_m=B_load_m, alpha_sand_kPa=alpha_sand_kPa,
-                                t_years_residual=t_years_residual, db_path=db_path)
+                                t_years_residual=t_years_residual,
+                                gwt_depth_m=gwt_depth_m, db_path=db_path)
         # So sánh với ΔS cho phép dùng LÚN TÍCH LŨY ĐẾN t năm (TCCS 41):
         # sét mềm e0≥1 ×U(t); sét cứng e0<1 + cát lấy đủ
         S2 = _s2.get("S2_15yr_cm", _s2["S2_cm"])

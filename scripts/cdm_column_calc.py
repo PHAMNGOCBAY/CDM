@@ -80,164 +80,6 @@ def calc_settlement_reduction(area_ratio: float, Ec_kPa: float, Es_kPa: float) -
 
 
 # ---------------------------------------------------------------------------
-# Sức chịu tải cọc xi măng đất (CDM single column)
-# ---------------------------------------------------------------------------
-
-def calc_bearing_soil_ait(d_m: float, L_col_m: float, Cu_soil_kPa: float) -> dict:
-    """Sức chịu tải cực hạn của 1 cọc CDM theo NỀN ĐẤT — phương pháp AIT.
-
-        Q_ult,soil = Q_ma_sát_thành + Q_mũi
-        Q_ma_sát   = π·d·L_col·Cu              (α=1, đất yếu)
-        Q_mũi      = 9·Cu·A_c   với A_c = π·d²/4   (Nc = 9)
-
-    Tương đương Q_ult,soil = (π·d·L_col + 2,25·π·d²)·Cu vì 9·A_c = 2,25·π·d².
-    Cu_soil = cường độ kháng cắt SAU hiệu chỉnh Bjerrum (μ·Su). Đơn vị: d,L [m],
-    Cu [kPa] → Q [kN].
-    """
-    import math
-    A_c = math.pi * d_m ** 2 / 4.0                # tiết diện cọc (m²)
-    Q_skin = math.pi * d_m * L_col_m * Cu_soil_kPa   # ma sát thành (kN)
-    Q_tip  = 9.0 * Cu_soil_kPa * A_c                 # sức kháng mũi Nc=9 (kN)
-    Q = Q_skin + Q_tip
-    return {
-        "Q_ult_soil_kN": round(Q, 1),
-        "Q_skin_kN": round(Q_skin, 1),
-        "Q_tip_kN": round(Q_tip, 1),
-        "skin_area_m2": round(math.pi * d_m * L_col_m, 3),
-        "tip_area_m2": round(2.25 * math.pi * d_m ** 2, 3),
-        "A_c_m2": round(A_c, 4),
-        "Nc": 9,
-        "method": "AIT",
-    }
-
-
-def calc_bearing_soil_profile(d_m: float, depth_top_m: float, depth_tip_m: float,
-                              cu_profile: list, alpha: float = 1.0,
-                              step_m: float = 0.5) -> dict:
-    """Sức chịu tải nền theo PROFILE Cu tại TỪNG vị trí thí nghiệm (KHÔNG trung bình).
-
-    cu_profile : list[(depth_m, cu_kPa)] — cu đã hiệu chỉnh Bjerrum tại mỗi điểm
-                 thí nghiệm (VST/lab), không cần sắp xếp trước.
-    Ma sát thành: tích phân Q_skin = α·π·d·∫ cu(z) dz từ depth_top → depth_tip,
-                  cu(z) nội suy tuyến tính giữa các điểm thí nghiệm.
-    Sức kháng mũi: Q_mũi = 9·cu(tip)·A_c, cu(tip) = cu tại cao trình mũi cọc.
-    """
-    import math
-    A_c = math.pi * d_m ** 2 / 4.0
-    pts = sorted((float(z), float(c)) for z, c in cu_profile if c and c > 0)
-    if not pts or depth_tip_m <= depth_top_m:
-        return {"Q_ult_soil_kN": 0.0, "Q_skin_kN": 0.0, "Q_tip_kN": 0.0,
-                "cu_tip_kPa": None, "cu_avg_kPa": None, "n_points": len(pts),
-                "A_c_m2": round(A_c, 4), "method": "AIT-profile"}
-    zs = [p[0] for p in pts]
-    cs = [p[1] for p in pts]
-
-    def _cu_at(z: float) -> float:
-        if z <= zs[0]:
-            return cs[0]
-        if z >= zs[-1]:
-            return cs[-1]
-        for i in range(len(zs) - 1):
-            if zs[i] <= z <= zs[i + 1]:
-                t = (z - zs[i]) / (zs[i + 1] - zs[i]) if zs[i + 1] != zs[i] else 0.0
-                return cs[i] + t * (cs[i + 1] - cs[i])
-        return cs[-1]
-
-    # Tích phân ma sát thành bằng bước step_m, lấy cu tại trung điểm mỗi bước
-    Q_skin = 0.0
-    z = depth_top_m
-    _sum_cu = 0.0
-    _nseg = 0
-    while z < depth_tip_m - 1e-9:
-        dz = min(step_m, depth_tip_m - z)
-        cu_mid = _cu_at(z + dz / 2.0)
-        Q_skin += alpha * math.pi * d_m * dz * cu_mid
-        _sum_cu += cu_mid * dz
-        _nseg += dz
-        z += dz
-    cu_tip = _cu_at(depth_tip_m)
-    Q_tip = 9.0 * cu_tip * A_c
-    cu_avg = (_sum_cu / _nseg) if _nseg > 0 else None
-    return {
-        "Q_ult_soil_kN": round(Q_skin + Q_tip, 1),
-        "Q_skin_kN": round(Q_skin, 1),
-        "Q_tip_kN": round(Q_tip, 1),
-        "cu_tip_kPa": round(cu_tip, 1),
-        "cu_avg_kPa": round(cu_avg, 1) if cu_avg else None,
-        "n_points": len(pts),
-        "A_c_m2": round(A_c, 4),
-        "method": "AIT-profile",
-    }
-
-
-def calc_block_failure(B_m: float, L_m: float, H_m: float,
-                       Cu_perim_kPa: float, Cu_base_kPa: float) -> dict:
-    """Sức chịu tải cực hạn của NHÓM cọc CDM khi phá hoại như MỘT KHỐI (block failure).
-
-        Q_block = chu_vi · H · Cu_perim  +  Nc · Cu_base · (B·L)
-        chu_vi = 2(B+L) ; A_đáy = B·L
-        Nc = 5·(1+0,2·B/L)·(1+0,2·H/B) ≤ 9   (Skempton, sét không thoát nước)
-
-    Số hạng 1 = ma sát quanh chu vi khối; số hạng 2 = sức kháng mũi khối.
-    Cu_perim = Cu trung bình dọc thân khối; Cu_base = Cu tại đáy khối (sau Bjerrum).
-    B, L = kích thước mặt bằng nhóm; H = chiều sâu khối (m).
-    """
-    if B_m <= 0 or L_m <= 0 or H_m <= 0:
-        return {"Q_block_kN": 0.0, "Nc": 0.0, "Q_perim_kN": 0.0, "Q_base_kN": 0.0}
-    Nc = min(9.0, 5.0 * (1.0 + 0.2 * B_m / L_m) * (1.0 + 0.2 * H_m / B_m))
-    perim = 2.0 * (B_m + L_m)
-    Q_perim = perim * H_m * Cu_perim_kPa
-    Q_base  = Nc * Cu_base_kPa * (B_m * L_m)
-    return {
-        "Q_block_kN": round(Q_perim + Q_base, 1),
-        "Q_perim_kN": round(Q_perim, 1),
-        "Q_base_kN": round(Q_base, 1),
-        "Nc": round(Nc, 2),
-        "A_base_m2": round(B_m * L_m, 2),
-        "perimeter_m": round(perim, 2),
-    }
-
-
-def calc_group_capacity(n_piles: int, Q_single_kN: float, Q_block_kN: float) -> dict:
-    """Sức chịu tải nhóm = min(Σ cọc đơn, khối). Hiệu suất nhóm η = Q_nhóm/(n·Q_đơn)."""
-    sum_single = n_piles * Q_single_kN
-    Q_group = min(sum_single, Q_block_kN) if Q_block_kN > 0 else sum_single
-    eta = (Q_group / sum_single) if sum_single > 0 else 1.0
-    return {
-        "n_piles": n_piles,
-        "sum_single_kN": round(sum_single, 1),
-        "Q_block_kN": round(Q_block_kN, 1),
-        "Q_group_kN": round(Q_group, 1),
-        "eta_group": round(eta, 3),
-        "governs": "khối" if Q_block_kN < sum_single else "cọc đơn",
-    }
-
-
-def calc_bearing_material(d_m: float, qu_col_kPa: float) -> dict:
-    """Sức chịu tải theo VẬT LIỆU cọc: Q_ult,mat = qu_col·A_col, A_col = π·d²/4."""
-    import math
-    A_col = math.pi * d_m ** 2 / 4.0
-    return {"Q_ult_material_kN": round(qu_col_kPa * A_col, 1),
-            "A_col_m2": round(A_col, 4)}
-
-
-def calc_cdm_pile_capacity(d_m: float, L_col_m: float, Cu_soil_kPa: float,
-                           qu_col_kPa: float, FS: float = 2.5) -> dict:
-    """Sức chịu tải thiết kế 1 cọc CDM = min(theo nền AIT, theo vật liệu)/FS."""
-    soil = calc_bearing_soil_ait(d_m, L_col_m, Cu_soil_kPa)
-    mat  = calc_bearing_material(d_m, qu_col_kPa)
-    Q_ult = min(soil["Q_ult_soil_kN"], mat["Q_ult_material_kN"])
-    governs = "nền đất" if soil["Q_ult_soil_kN"] <= mat["Q_ult_material_kN"] else "vật liệu"
-    return {
-        **soil, **mat,
-        "Q_ult_min_kN": round(Q_ult, 1),
-        "governs": governs,
-        "FS": FS,
-        "Q_allow_kN": round(Q_ult / FS, 1) if FS > 0 else None,
-    }
-
-
-# ---------------------------------------------------------------------------
 # QC sample adequacy (Bảng B.1, TCVN 9403:2012)
 # ---------------------------------------------------------------------------
 
@@ -527,16 +369,217 @@ def create_cdm_tables(db_path: Path = _DB_PATH) -> None:
 
 
 # ---------------------------------------------------------------------------
-# (Đã gỡ) crosscheck_settlement_calc — dùng hệ số giảm lún (1 − a×0.85) không có
-# cơ sở vật lý (CLAUDE.md §28). Tính lún CDM chính thức = S1 (calc_settlement_S1,
-# TCVN 9403 Phụ lục C) + S2 (settlement_calc.calc_s2_below_cdm). Không dùng lại
-# công thức giảm lún tuyến tính này.
+# Cross-check vs settlement_calc.py CDM branch
 # ---------------------------------------------------------------------------
+
+def crosscheck_settlement_calc(
+    Cu_kPa: float = 20.0,
+    H_soft_m: float = 35.0,
+    H_fill_m: float = 3.0,
+    cdm_area_ratio: float = 0.25,
+    qu_lab_kPa: float = 400.0,
+) -> dict:
+    """
+    So sánh kết quả S_cdm từ hai phương pháp:
+      (A) cdm_column_calc.py — công thức C.2 TCVN 9403
+      (B) settlement_calc.py — hệ số giảm lún (cdm_area_ratio × 0.85)
+    """
+    # Method A: TCVN 9403 C.2
+    a = cdm_area_ratio
+    qu_field = calc_qu_field(qu_lab_kPa)
+    Cc_col = qu_field / 2.0
+    Ec = calc_Ec(Cc_col, 75.0)
+    Es = calc_Es(Cu_kPa)
+    q = 20.0 * H_fill_m
+    S1_A = calc_settlement_S1(q, H_soft_m, a, Ec, Es)
+    beta_A = calc_settlement_reduction(a, Ec, Es)
+
+    # Method B: settlement_calc.py approach (Cc-based × linear CDM reduction)
+    # S_cdm = S_Cc_total × (1 - cdm_area_ratio × 0.85)
+    # S_Cc_total must be provided by caller; here we use elastic approx for comparison only
+    S_no_treat_elastic = q * H_soft_m / Es  # elastic only — NOT the Cc consolidation
+    beta_B = 1.0 - cdm_area_ratio * 0.85
+    S1_B_elastic = S_no_treat_elastic * beta_B * 100  # cm
+
+    return {
+        "method_A_TCVN9403_elastic": {
+            "Ec_kPa": round(Ec, 0),
+            "Es_kPa": round(Es, 0),
+            "S1_cm": round(S1_A, 1),
+            "beta": round(beta_A, 3),
+            "scope": "Elastic compression of CDM reinforced zone only (S1 = qH/composite_modulus)",
+        },
+        "method_B_settlement_calc_approx": {
+            "S_no_treat_elastic_cm": round(S_no_treat_elastic * 100, 1),
+            "beta": round(beta_B, 3),
+            "S1_elastic_cm": round(S1_B_elastic, 1),
+            "scope": "Approximate linear reduction applied to Cc-based consolidation S_total",
+        },
+        "warning": (
+            "Methods measure different things: A=elastic S1 only; B=Cc consolidation×reduction. "
+            "For full CDM settlement: S_cdm_Cc = S_no_treat_Cc × beta_B. "
+            "For NHC: S_no_treat_Cc ~171 cm -> S_cdm ~171 x (1-0.25x0.85) = 134.7 cm."
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------
 # CLI demo
 # ---------------------------------------------------------------------------
+
+def calc_bearing_soil_ait(d_m: float, L_col_m: float, Cu_soil_kPa: float) -> dict:
+    """Sức chịu tải cực hạn của 1 cọc CDM theo NỀN ĐẤT — phương pháp AIT.
+
+        Q_ult,soil = Q_ma_sát_thành + Q_mũi
+        Q_ma_sát   = π·d·L_col·Cu              (α=1, đất yếu)
+        Q_mũi      = 9·Cu·A_c   với A_c = π·d²/4   (Nc = 9)
+
+    Tương đương Q_ult,soil = (π·d·L_col + 2,25·π·d²)·Cu vì 9·A_c = 2,25·π·d².
+    Cu_soil = cường độ kháng cắt SAU hiệu chỉnh Bjerrum (μ·Su). Đơn vị: d,L [m],
+    Cu [kPa] → Q [kN].
+    """
+    import math
+    A_c = math.pi * d_m ** 2 / 4.0                # tiết diện cọc (m²)
+    Q_skin = math.pi * d_m * L_col_m * Cu_soil_kPa   # ma sát thành (kN)
+    Q_tip  = 9.0 * Cu_soil_kPa * A_c                 # sức kháng mũi Nc=9 (kN)
+    Q = Q_skin + Q_tip
+    return {
+        "Q_ult_soil_kN": round(Q, 1),
+        "Q_skin_kN": round(Q_skin, 1),
+        "Q_tip_kN": round(Q_tip, 1),
+        "skin_area_m2": round(math.pi * d_m * L_col_m, 3),
+        "tip_area_m2": round(2.25 * math.pi * d_m ** 2, 3),
+        "A_c_m2": round(A_c, 4),
+        "Nc": 9,
+        "method": "AIT",
+    }
+
+
+def calc_bearing_soil_profile(d_m: float, depth_top_m: float, depth_tip_m: float,
+                              cu_profile: list, alpha: float = 1.0,
+                              step_m: float = 0.5) -> dict:
+    """Sức chịu tải nền theo PROFILE Cu tại TỪNG vị trí thí nghiệm (KHÔNG trung bình).
+
+    cu_profile : list[(depth_m, cu_kPa)] — cu đã hiệu chỉnh Bjerrum tại mỗi điểm
+                 thí nghiệm (VST/lab), không cần sắp xếp trước.
+    Ma sát thành: tích phân Q_skin = α·π·d·∫ cu(z) dz từ depth_top → depth_tip,
+                  cu(z) nội suy tuyến tính giữa các điểm thí nghiệm.
+    Sức kháng mũi: Q_mũi = 9·cu(tip)·A_c, cu(tip) = cu tại cao trình mũi cọc.
+    """
+    import math
+    A_c = math.pi * d_m ** 2 / 4.0
+    pts = sorted((float(z), float(c)) for z, c in cu_profile if c and c > 0)
+    if not pts or depth_tip_m <= depth_top_m:
+        return {"Q_ult_soil_kN": 0.0, "Q_skin_kN": 0.0, "Q_tip_kN": 0.0,
+                "cu_tip_kPa": None, "cu_avg_kPa": None, "n_points": len(pts),
+                "A_c_m2": round(A_c, 4), "method": "AIT-profile"}
+    zs = [p[0] for p in pts]
+    cs = [p[1] for p in pts]
+
+    def _cu_at(z: float) -> float:
+        if z <= zs[0]:
+            return cs[0]
+        if z >= zs[-1]:
+            return cs[-1]
+        for i in range(len(zs) - 1):
+            if zs[i] <= z <= zs[i + 1]:
+                t = (z - zs[i]) / (zs[i + 1] - zs[i]) if zs[i + 1] != zs[i] else 0.0
+                return cs[i] + t * (cs[i + 1] - cs[i])
+        return cs[-1]
+
+    # Tích phân ma sát thành bằng bước step_m, lấy cu tại trung điểm mỗi bước
+    Q_skin = 0.0
+    z = depth_top_m
+    _sum_cu = 0.0
+    _nseg = 0
+    while z < depth_tip_m - 1e-9:
+        dz = min(step_m, depth_tip_m - z)
+        cu_mid = _cu_at(z + dz / 2.0)
+        Q_skin += alpha * math.pi * d_m * dz * cu_mid
+        _sum_cu += cu_mid * dz
+        _nseg += dz
+        z += dz
+    cu_tip = _cu_at(depth_tip_m)
+    Q_tip = 9.0 * cu_tip * A_c
+    cu_avg = (_sum_cu / _nseg) if _nseg > 0 else None
+    return {
+        "Q_ult_soil_kN": round(Q_skin + Q_tip, 1),
+        "Q_skin_kN": round(Q_skin, 1),
+        "Q_tip_kN": round(Q_tip, 1),
+        "cu_tip_kPa": round(cu_tip, 1),
+        "cu_avg_kPa": round(cu_avg, 1) if cu_avg else None,
+        "n_points": len(pts),
+        "A_c_m2": round(A_c, 4),
+        "method": "AIT-profile",
+    }
+
+
+def calc_block_failure(B_m: float, L_m: float, H_m: float,
+                       Cu_perim_kPa: float, Cu_base_kPa: float) -> dict:
+    """Sức chịu tải cực hạn của NHÓM cọc CDM khi phá hoại như MỘT KHỐI (block failure).
+
+        Q_block = chu_vi · H · Cu_perim  +  Nc · Cu_base · (B·L)
+        chu_vi = 2(B+L) ; A_đáy = B·L
+        Nc = 5·(1+0,2·B/L)·(1+0,2·H/B) ≤ 9   (Skempton, sét không thoát nước)
+
+    Số hạng 1 = ma sát quanh chu vi khối; số hạng 2 = sức kháng mũi khối.
+    Cu_perim = Cu trung bình dọc thân khối; Cu_base = Cu tại đáy khối (sau Bjerrum).
+    B, L = kích thước mặt bằng nhóm; H = chiều sâu khối (m).
+    """
+    if B_m <= 0 or L_m <= 0 or H_m <= 0:
+        return {"Q_block_kN": 0.0, "Nc": 0.0, "Q_perim_kN": 0.0, "Q_base_kN": 0.0}
+    Nc = min(9.0, 5.0 * (1.0 + 0.2 * B_m / L_m) * (1.0 + 0.2 * H_m / B_m))
+    perim = 2.0 * (B_m + L_m)
+    Q_perim = perim * H_m * Cu_perim_kPa
+    Q_base  = Nc * Cu_base_kPa * (B_m * L_m)
+    return {
+        "Q_block_kN": round(Q_perim + Q_base, 1),
+        "Q_perim_kN": round(Q_perim, 1),
+        "Q_base_kN": round(Q_base, 1),
+        "Nc": round(Nc, 2),
+        "A_base_m2": round(B_m * L_m, 2),
+        "perimeter_m": round(perim, 2),
+    }
+
+
+def calc_group_capacity(n_piles: int, Q_single_kN: float, Q_block_kN: float) -> dict:
+    """Sức chịu tải nhóm = min(Σ cọc đơn, khối). Hiệu suất nhóm η = Q_nhóm/(n·Q_đơn)."""
+    sum_single = n_piles * Q_single_kN
+    Q_group = min(sum_single, Q_block_kN) if Q_block_kN > 0 else sum_single
+    eta = (Q_group / sum_single) if sum_single > 0 else 1.0
+    return {
+        "n_piles": n_piles,
+        "sum_single_kN": round(sum_single, 1),
+        "Q_block_kN": round(Q_block_kN, 1),
+        "Q_group_kN": round(Q_group, 1),
+        "eta_group": round(eta, 3),
+        "governs": "khối" if Q_block_kN < sum_single else "cọc đơn",
+    }
+
+
+def calc_bearing_material(d_m: float, qu_col_kPa: float) -> dict:
+    """Sức chịu tải theo VẬT LIỆU cọc: Q_ult,mat = qu_col·A_col, A_col = π·d²/4."""
+    import math
+    A_col = math.pi * d_m ** 2 / 4.0
+    return {"Q_ult_material_kN": round(qu_col_kPa * A_col, 1),
+            "A_col_m2": round(A_col, 4)}
+
+
+def calc_cdm_pile_capacity(d_m: float, L_col_m: float, Cu_soil_kPa: float,
+                           qu_col_kPa: float, FS: float = 2.5) -> dict:
+    """Sức chịu tải thiết kế 1 cọc CDM = min(theo nền AIT, theo vật liệu)/FS."""
+    soil = calc_bearing_soil_ait(d_m, L_col_m, Cu_soil_kPa)
+    mat  = calc_bearing_material(d_m, qu_col_kPa)
+    Q_ult = min(soil["Q_ult_soil_kN"], mat["Q_ult_material_kN"])
+    governs = "nền đất" if soil["Q_ult_soil_kN"] <= mat["Q_ult_material_kN"] else "vật liệu"
+    return {
+        **soil, **mat,
+        "Q_ult_min_kN": round(Q_ult, 1),
+        "governs": governs,
+        "FS": FS,
+        "Q_allow_kN": round(Q_ult / FS, 1) if FS > 0 else None,
+    }
+
 
 if __name__ == "__main__":
     # 1. Tạo bảng
@@ -570,4 +613,11 @@ if __name__ == "__main__":
     for k, v in qc.items():
         print(f"  {k}: {v}")
 
-    # (4. Cross-check đã gỡ — xem ghi chú công thức 1−a×0.85 phía trên)
+    # 4. Cross-check
+    xc = crosscheck_settlement_calc(Cu_kPa=16.0, cdm_area_ratio=0.25)
+    print("\n--- Cross-check CDM settlement ---")
+    a_res = xc['method_A_TCVN9403_elastic']
+    b_res = xc['method_B_settlement_calc_approx']
+    print(f"  TCVN9403 S1={a_res['S1_cm']:.1f} cm, beta={a_res['beta']:.3f}")
+    print(f"  settlement_calc S1={b_res['S1_elastic_cm']:.1f} cm, beta={b_res['beta']:.3f}")
+    print(f"  Warning: {xc['warning']}")

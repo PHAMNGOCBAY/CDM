@@ -1,0 +1,237 @@
+{
+  "_meta": {
+    "source_dxf": "G:\\My Drive\\202605-TRUNG TAM HCM\\DIA CHAT\\7. QUANG TRUONG TRUNG TAM\\QTT-HO KHOAN ND03.dxf",
+    "extracted_at": "2026-06-01 20:41:30",
+    "tool": "ezdxf 1.4.4"
+  },
+  "borehole": {
+    "name": "ND-03",
+    "northing_m": 1191670.883,
+    "easting_m": 605340.447,
+    "elevation_m": 1.89,
+    "total_depth_m": 36.0,
+    "H_soft_m": 28.0,
+    "n_layers": 4,
+    "n_spt_samples": 18
+  },
+  "layers": [
+    {
+      "order": 1,
+      "depth_top_m": 0.0,
+      "depth_bot_m": 3.0,
+      "thickness_m": 3.0,
+      "elev_bot_m": -1.11,
+      "symbol": "F",
+      "description": "Đá san lấp, đá đổ lẫn sét"
+    },
+    {
+      "order": 2,
+      "depth_top_m": 3.0,
+      "depth_bot_m": 22.8,
+      "thickness_m": 19.8,
+      "elev_bot_m": -20.91,
+      "symbol": "1",
+      "description": "Bùn sét màu xám xanh, trạng thái chảy"
+    },
+    {
+      "order": 3,
+      "depth_top_m": 22.8,
+      "depth_bot_m": 31.0,
+      "thickness_m": 8.2,
+      "elev_bot_m": -29.11,
+      "symbol": "1b",
+      "description": "Sét pha màu xám xanh, trạng thái dẻo mềm"
+    },
+    {
+      "order": 4,
+      "depth_top_m": 31.0,
+      "depth_bot_m": 36.0,
+      "thickness_m": 5.0,
+      "elev_bot_m": -34.11,
+      "symbol": "3",
+      "description": "Sét pha màu nâu đỏ, trạng thái cứng"
+    }
+  ],
+  "spt_samples": [
+    {
+      "depth_m": 1.99,
+      "depth_from_m": 1.39,
+      "depth_to_m": 1.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 3.99,
+      "depth_from_m": 3.39,
+      "depth_to_m": 3.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 5.99,
+      "depth_from_m": 5.39,
+      "depth_to_m": 5.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 7.99,
+      "depth_from_m": 7.39,
+      "depth_to_m": 7.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 9.99,
+      "depth_from_m": 9.39,
+      "depth_to_m": 9.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 11.99,
+      "depth_from_m": 11.39,
+      "depth_to_m": 11.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 13.99,
+      "depth_from_m": 13.39,
+      "depth_to_m": 13.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 15.99,
+      "depth_from_m": 15.39,
+      "depth_to_m": 15.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 17.99,
+      "depth_from_m": 17.39,
+      "depth_to_m": 17.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 21.99,
+      "depth_from_m": 21.39,
+      "depth_to_m": 21.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 23.99,
+      "depth_from_m": 23.39,
+      "depth_to_m": 23.99,
+      "N1": 0,
+      "N2": 0,
+      "N3": 0,
+      "N_astm": 0,
+      "N_total_dxf": 0
+    },
+    {
+      "depth_m": 25.99,
+      "depth_from_m": 25.39,
+      "depth_to_m": 25.99,
+      "N1": 1,
+      "N2": 2,
+      "N3": 2,
+      "N_astm": 4,
+      "N_total_dxf": 4
+    },
+    {
+      "depth_m": 27.99,
+      "depth_from_m": 27.39,
+      "depth_to_m": 27.99,
+      "N1": 2,
+      "N2": 2,
+      "N3": 2,
+      "N_astm": 4,
+      "N_total_dxf": 4
+    },
+    {
+      "depth_m": 29.99,
+      "depth_from_m": 29.39,
+      "depth_to_m": 29.99,
+      "N1": 2,
+      "N2": 2,
+      "N3": 4,
+      "N_astm": 6,
+      "N_total_dxf": 6
+    },
+    {
+      "depth_m": 31.99,
+      "depth_from_m": 31.39,
+      "depth_to_m": 31.99,
+      "N1": 2,
+      "N2": 3,
+      "N3": 3,
+      "N_astm": 6,
+      "N_total_dxf": 6
+    },
+    {
+      "depth_m": 33.99,
+      "depth_from_m": 33.39,
+      "depth_to_m": 33.99,
+      "N1": 4,
+      "N2": 5,
+      "N3": 9,
+      "N_astm": 14,
+      "N_total_dxf": 14
+    },
+    {
+      "depth_m": 35.99,
+      "depth_from_m": 35.39,
+      "depth_to_m": 35.99,
+      "N1": 8,
+      "N2": 10,
+      "N3": 14,
+      "N_astm": 24,
+      "N_total_dxf": 24
+    },
+    {
+      "depth_m": 37.99,
+      "depth_from_m": 37.39,
+      "depth_to_m": 37.99,
+      "N1": 10,
+      "N2": 15,
+      "N3": 17,
+      "N_astm": 32,
+      "N_total_dxf": 32
+    }
+  ]
+}

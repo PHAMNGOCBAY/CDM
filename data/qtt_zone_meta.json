@@ -1,0 +1,170 @@
+{
+  "zone_code": "QTT",
+  "zone_name_vi": "Quảng Trường Trung Tâm",
+  "location_vi": "Phường An Khánh, Thành phố Thủ Đức, TP. Hồ Chí Minh",
+  "crs": "VN-2000 / TM-3 106° (EPSG:9210)",
+  "n_boreholes": 6,
+  "n_boreholes_selected": 6,
+  "boreholes_summary": [
+    {
+      "name": "ND-02",
+      "elevation_m": 1.7,
+      "N": 1191680.407,
+      "E": 605239.025,
+      "depth_m": 31.0,
+      "H_soft_m": 24.4,
+      "selected": 1
+    },
+    {
+      "name": "ND-03",
+      "elevation_m": 1.89,
+      "N": 1191670.883,
+      "E": 605340.447,
+      "depth_m": 36.0,
+      "H_soft_m": 28.0,
+      "selected": 1
+    },
+    {
+      "name": "ND-04",
+      "elevation_m": 1.095,
+      "N": 1191661.331,
+      "E": 605441.004,
+      "depth_m": 33.0,
+      "H_soft_m": 29.5,
+      "selected": 1
+    },
+    {
+      "name": "ND-05",
+      "elevation_m": 3.2,
+      "N": 1191736.974,
+      "E": 605445.999,
+      "depth_m": 36.0,
+      "H_soft_m": 30.1,
+      "selected": 1
+    },
+    {
+      "name": "ND-06",
+      "elevation_m": 4.24,
+      "N": 1191761.037,
+      "E": 605349.439,
+      "depth_m": 36.0,
+      "H_soft_m": 28.9,
+      "selected": 1
+    },
+    {
+      "name": "ND-07",
+      "elevation_m": 3.47,
+      "N": 1191785.152,
+      "E": 605252.887,
+      "depth_m": 36.0,
+      "H_soft_m": 30.2,
+      "selected": 1
+    }
+  ],
+  "boundary_n_vertices": 15,
+  "boundary": [
+    {
+      "vertex_order": 0,
+      "easting_m": 605512.295,
+      "northing_m": 1191748.549
+    },
+    {
+      "vertex_order": 1,
+      "easting_m": 605505.591,
+      "northing_m": 1191753.522
+    },
+    {
+      "vertex_order": 2,
+      "easting_m": 605356.054,
+      "northing_m": 1191809.212
+    },
+    {
+      "vertex_order": 3,
+      "easting_m": 605355.677,
+      "northing_m": 1191809.353
+    },
+    {
+      "vertex_order": 4,
+      "easting_m": 605225.216,
+      "northing_m": 1191857.939
+    },
+    {
+      "vertex_order": 5,
+      "easting_m": 605216.828,
+      "northing_m": 1191858.438
+    },
+    {
+      "vertex_order": 6,
+      "easting_m": 605215.005,
+      "northing_m": 1191854.27
+    },
+    {
+      "vertex_order": 7,
+      "easting_m": 605189.473,
+      "northing_m": 1191759.644
+    },
+    {
+      "vertex_order": 8,
+      "easting_m": 605184.825,
+      "northing_m": 1191734.83
+    },
+    {
+      "vertex_order": 9,
+      "easting_m": 605173.68,
+      "northing_m": 1191613.184
+    },
+    {
+      "vertex_order": 10,
+      "easting_m": 605314.747,
+      "northing_m": 1191607.797
+    },
+    {
+      "vertex_order": 11,
+      "easting_m": 605475.563,
+      "northing_m": 1191601.655
+    },
+    {
+      "vertex_order": 12,
+      "easting_m": 605483.004,
+      "northing_m": 1191603.59
+    },
+    {
+      "vertex_order": 13,
+      "easting_m": 605483.112,
+      "northing_m": 1191603.653
+    },
+    {
+      "vertex_order": 14,
+      "easting_m": 605512.295,
+      "northing_m": 1191748.549
+    }
+  ],
+  "grid": {
+    "n": 162,
+    "des_min": 2.7,
+    "des_max": 4.02,
+    "des_avg": 2.9659876543209878,
+    "nat_min": 0.79,
+    "nat_max": 5.15,
+    "nat_avg": 2.5977777777777775,
+    "e_min": 605188.925,
+    "e_max": 605488.925,
+    "n_min": 1191613.041,
+    "n_max": 1191853.041
+  },
+  "H_soft_stats": {
+    "min": 24.4,
+    "max": 30.2,
+    "avg": 28.516666666666666,
+    "values": {
+      "ND-02": 24.4,
+      "ND-03": 28.0,
+      "ND-04": 29.5,
+      "ND-05": 30.1,
+      "ND-06": 28.9,
+      "ND-07": 30.2
+    }
+  },
+  "loaded_at": "2026-06-01 22:09:42",
+  "source_db": "C:\\Users\\bayng\\TTHC_local\\TTHC.sqlite"
+}

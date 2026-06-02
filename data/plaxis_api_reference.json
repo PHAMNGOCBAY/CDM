@@ -1,0 +1,156 @@
+{
+  "_meta": {
+    "description": "PLAXIS 2D Remote Scripting API reference — verify thực tế qua probe API",
+    "plaxis_version": "PLAXIS 2D 2024 (plxscripting 1.0.4)",
+    "updated": "2026-05-29",
+    "source": "Empirical probe + §65 docs/claude/65-plaxis-remote-scripting.md"
+  },
+  "connection": {
+    "host": "localhost",
+    "port_input": 10000,
+    "port_output": 10001,
+    "env_var_password": "PLAXIS_PASSWORD",
+    "setup_steps": [
+      "PLAXIS GUI: Expert → Configure remote scripting server",
+      "Set password (strong) + Port 10000",
+      "Click Start server"
+    ]
+  },
+  "soil_model_values": [
+    "Mohr-Coulomb",
+    "Soft Soil",
+    "Hardening Soil",
+    "HS small",
+    "Soft Soil Creep",
+    "Linear Elastic",
+    "Mohr-Coulomb (advanced)"
+  ],
+  "drainage_type_values": {
+    "Mohr-Coulomb": ["drained", "undraineda", "undrainedb", "undrainedc", "nonporous"],
+    "Soft Soil": ["drained", "undraineda"],
+    "_note": "Soft Soil KHÔNG hỗ trợ undrainedb / undrainedc"
+  },
+  "attribute_names": {
+    "_note": "Tên CHÍNH XÁC PascalCase / mixedCase. Snake_case = 'attribute not present'",
+    "common": {
+      "Identification": {"writable": true, "type": "string", "notes": "Tên material hiển thị"},
+      "SoilModel": {"writable": true, "type": "enum", "values": "see soil_model_values"},
+      "DrainageType": {"writable": true, "type": "enum", "values": "see drainage_type_values"},
+      "gammaUnsat": {"writable": true, "type": "float", "unit": "kN/m³"},
+      "gammaSat": {"writable": true, "type": "float", "unit": "kN/m³"},
+      "cRef": {"writable": true, "type": "float", "unit": "kN/m²", "notes": "Lực dính. PLAXIS yêu cầu > 0"},
+      "phi": {"writable": true, "type": "float", "unit": "deg", "notes": "Góc ma sát (0 cho undrained)"},
+      "K0Determination": {"writable": true, "type": "enum"},
+      "K0Primary": {"writable": true, "type": "float"},
+      "K0Secondary": {"writable": true, "type": "float"}
+    },
+    "Mohr-Coulomb": {
+      "ERef": {"writable": true, "type": "float", "unit": "kN/m²", "notes": "Mô đun đàn hồi tham chiếu. KHÔNG phải Eref"},
+      "EOed": {"writable": true, "type": "float", "unit": "kN/m²", "notes": "Mô đun oedometer"},
+      "nu": {"writable": true, "type": "float", "notes": "Poisson"},
+      "psi": {
+        "writable_when_drained": true,
+        "writable_when_undrained": false,
+        "type": "float",
+        "unit": "deg",
+        "notes": "Góc giãn nở. Read-only khi DrainageType ≠ drained"
+      }
+    },
+    "Soft Soil": {
+      "lambdaModified": {"writable": true, "type": "float", "notes": "λ* = Cc / [2.303(1+e₀)]. KHÔNG phải lambda_star"},
+      "kappaModified": {"writable": true, "type": "float", "notes": "κ* = Cs / [2.303(1+e₀)]. KHÔNG phải kappa_star"},
+      "nuUR": {"writable": true, "type": "float", "default": 0.15, "notes": "Poisson unloading-reloading"},
+      "M": {"writable": false, "type": "float", "notes": "READ-ONLY. Auto = 6sinφ/(3-sinφ)"},
+      "OCR": {"writable": true, "type": "float", "default": 1.0},
+      "POP": {"writable": true, "type": "float", "default": 0.0, "notes": "Pre-overburden pressure"}
+    }
+  },
+  "readonly_attributes": {
+    "SoftSoil.M": "Auto-computed from phi",
+    "SoftSoil.EOed_at_pref": "Auto from lambda*",
+    "MC.psi_when_undrained": "Set to 0 by PLAXIS when DrainageType != drained",
+    "SoilLayer.Zones[bh_idx].Top": "Auto = Bottom of layer above (or Head for layer 0)"
+  },
+  "borehole_api": {
+    "create": "g_i.borehole(x_in_plot)",
+    "head_attribute": "bh.Head — Y elevation of top",
+    "add_layer": "g_i.soillayer(thickness) — adds GLOBAL layer (shared across all BHs)",
+    "set_per_bh_bottom": "list(g_i.SoilLayers[i].Zones)[bh_idx].Bottom = y_value",
+    "assign_material": "g_i.setmaterial(g_i.SoilLayers[i], material_obj)",
+    "_note_critical": "Layer Top is read-only — only set Bottom; Top auto-derived"
+  },
+  "project_lifecycle": {
+    "new": "s_i.new() — create empty project",
+    "open": "s_i.open(path) — open .p2dx",
+    "save": "g_i.save(path) — save .p2dx (NOT s_i.save which does not exist)",
+    "close": "s_i.close() — disconnect (project stays open in GUI)",
+    "probe_active": "try: len(g_i.Boreholes) except: 'No active project'"
+  },
+  "mode_commands": {
+    "gotosoil": "Soil/Stratigraphy mode (for boreholes + materials)",
+    "gotostructures": "Structures mode (for geometry, loads, supports)",
+    "gotomesh": "Mesh mode",
+    "gotostages": "Staged Construction (phases)",
+    "gotoflow": "Flow mode",
+    "gotoresults": "Results (Output Viewer)"
+  },
+  "parameter_mapping_from_lab": {
+    "_note": "Công thức chuyển đổi từ lab_tests SQLite → PLAXIS material parameters",
+    "softsoil_clay_1_1b_XMD": {
+      "lambdaModified": "Cc / (2.303 * (1 + e0))",
+      "kappaModified": "Cs / (2.303 * (1 + e0)), default lambda*/10 if Cs missing",
+      "cRef": "max(Cu_UU_kPa, c_kPa, 1.0)",
+      "phi": "phi_deg or 22.0 default",
+      "OCR": 1.0,
+      "DrainageType": "undraineda"
+    },
+    "mc_clay": {
+      "ERef": "250 * Cu_UU_kPa (Mesri)",
+      "cRef": "Cu_UU_kPa",
+      "phi": 0,
+      "nu": 0.35,
+      "DrainageType": "undraineda"
+    },
+    "mc_sand": {
+      "ERef": "2000 * N_SPT (alpha_sand = 2000 kPa TCVN)",
+      "cRef": "max(c_lab, 0.1)",
+      "phi": "27 + 0.3 * N_SPT (clamp 28-40)",
+      "psi": "max(0, phi - 30)",
+      "nu": 0.30,
+      "DrainageType": "drained"
+    },
+    "fill_embankment": {
+      "Identification": "FILL_dap_2.7m",
+      "ERef": 25000,
+      "cRef": 1.0,
+      "phi": 32,
+      "psi": 2,
+      "gammaUnsat": 18.0,
+      "gammaSat": 20.0,
+      "nu": 0.30,
+      "DrainageType": "drained"
+    }
+  },
+  "soil_type_classification": {
+    "SOFTSOIL_SYMBOLS": ["1", "1b", "XMD"],
+    "SAND_SYMBOLS": ["F", "2a", "2b", "2c", "3a", "3b", "3c",
+                      "4", "5", "5a", "5b", "6", "7", "8"],
+    "default_else": "clay_MC_undraineda"
+  },
+  "common_pitfalls": [
+    "Snake_case attr → use PascalCase",
+    "Set Top of Zone → use Bottom only",
+    "Set M of SoftSoil → auto-computed, skip",
+    "Set psi of undrained MC → skip if drainage != drained",
+    "undrainedb for SoftSoil → use undraineda",
+    "Per-BH soillayer() call → adds global layers, use Zones[bh_idx].Bottom instead",
+    "s_i.save() → use g_i.save()",
+    "gotostructures() without project → s_i.new() first"
+  ],
+  "files_relate": {
+    "plaxis_connect.py": "connect_input(), connect_output()",
+    "plaxis_push_borehole.py": "push 1 HK đơn + log",
+    "plaxis_push_zone_v2.py": "PUSH cả zone với GLOBAL layers + FILL + SoftSoil",
+    "plaxis_push_zone.py": "DEPRECATED — không xử lý global layers"
+  }
+}
