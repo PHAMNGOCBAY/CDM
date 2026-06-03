@@ -2,7 +2,9 @@
   "_meta": {
     "source_dxf": "G:\\My Drive\\202605-TRUNG TAM HCM\\DIA CHAT\\7. QUANG TRUONG TRUNG TAM\\QTT-HO KHOAN ND05.dxf",
     "extracted_at": "2026-06-01 20:41:31",
-    "tool": "ezdxf 1.4.4"
+    "tool": "ezdxf 1.4.4",
+    "symbol_source": "QTT-HO KHOAN ND05.dxf (ký hiệu lớp 1-5)",
+    "updated": "2026-06-03"
   },
   "borehole": {
     "name": "ND-05",
@@ -21,7 +23,7 @@
       "depth_bot_m": 2.9,
       "thickness_m": 2.9,
       "elev_bot_m": 0.3,
-      "symbol": "F",
+      "symbol": "1",
       "description": "Đá san lấp, đá đổ lẫn sét"
     },
     {
@@ -30,7 +32,7 @@
       "depth_bot_m": 31.0,
       "thickness_m": 28.1,
       "elev_bot_m": -27.8,
-      "symbol": "1",
+      "symbol": "2",
       "description": "Bùn sét màu xám xanh, trạng thái chảy"
     },
     {
@@ -39,7 +41,7 @@
       "depth_bot_m": 33.0,
       "thickness_m": 2.0,
       "elev_bot_m": -29.8,
-      "symbol": "1b",
+      "symbol": "3",
       "description": "Sét pha màu xám đen, xám xanh, trạng thái dẻo mềm"
     },
     {
@@ -48,7 +50,7 @@
       "depth_bot_m": 34.8,
       "thickness_m": 1.8,
       "elev_bot_m": -31.6,
-      "symbol": "2a",
+      "symbol": "4",
       "description": "Cát pha màu xám đen, xám xanh, trạng thái dẻo"
     },
     {
@@ -57,7 +59,7 @@
       "depth_bot_m": 36.0,
       "thickness_m": 1.2,
       "elev_bot_m": -32.8,
-      "symbol": "3",
+      "symbol": "5",
       "description": "Sét pha màu xám đen, trạng thái dẻo cứng"
     }
   ],
