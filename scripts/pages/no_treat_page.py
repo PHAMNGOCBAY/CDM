@@ -422,7 +422,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         from cdm_layer_avg_settlement import time_history
         st.divider()
         st.markdown("#### Lún cố kết theo thời gian")
-        YEARS = [0.5, 1, 2, 5, 6, 10, 15, 20, 25, 30]
+        YEARS = [0.5, 1, 2, 5, 10, 15, 20, 30, 40, 50, 70, 100]
         th = time_history(rr, YEARS, double_drainage=drain2)
         st.markdown("**Công thức (cố kết Terzaghi 1D):**")
         st.latex(r"T_v = \frac{C_v \cdot t}{H_{tn}^2}; \qquad "
@@ -462,30 +462,39 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         except Exception:
             pass
 
-        # ── Biểu đồ lún cố kết trong 15 năm (mịn) ───────────────────────
-        st.markdown("#### Đường cong lún cố kết trong 15 năm")
-        years15 = [round(0.5 * k, 1) for k in range(1, 31)]   # 0,5 → 15 năm
-        th15 = time_history(rr, years15, double_drainage=drain2)
+        # ── Biểu đồ lún cố kết đến 100 năm (mịn) ────────────────────────
+        st.markdown("#### Đường cong lún cố kết đến 100 năm")
+        # mịn: 0,5→15 mỗi 0,5 năm; 16→30 mỗi 1; 35→100 mỗi 5
+        years100 = sorted(set([round(0.5 * k, 1) for k in range(1, 31)]
+                              + list(range(16, 31)) + list(range(35, 101, 5))))
+        th100 = time_history(rr, years100, double_drainage=drain2)
         try:
             import plotly.graph_objects as go
-            f15 = go.Figure()
-            # nhãn giá trị thưa (mỗi 2 điểm = mỗi 1 năm) để không chồng chữ
-            _txt15 = [f"{v:.0f}" if (i % 2 == 1) else "" for i, v in enumerate(th15["St_cm"])]
-            f15.add_trace(go.Scatter(x=th15["years"], y=th15["St_cm"], mode="lines+markers+text",
-                          text=_txt15, textposition="top center", textfont=dict(size=16),
-                          name="Lún đạt S(t)", line=dict(color="#1565C0", width=2.5)))
-            f15.add_hline(y=th15["S_inf_cm"], line=dict(color="#777", dash="dash"),
-                          annotation_text=f"S∞ = {th15['S_inf_cm']:.0f} cm")
-            i15 = th15["years"].index(15.0)
-            f15.add_trace(go.Scatter(x=[15.0], y=[th15["St_cm"][i15]], mode="markers+text",
-                          text=[f"15 năm: {th15['St_cm'][i15]:.0f} cm (U={th15['U_pct'][i15]:.0f}%)"],
-                          textposition="bottom right", textfont=dict(size=16),
-                          marker=dict(color="#C62828", size=12), name="Mốc 15 năm"))
-            f15.update_layout(title=f"Lún cố kết trong 15 năm — {bh_sel}",
-                              xaxis_title="Thời gian (năm)", yaxis_title="Độ lún S(t) (cm)",
-                              height=400, font=dict(size=16), legend=dict(font=dict(size=16)),
-                              margin=dict(t=40, b=10), xaxis=dict(range=[0, 15]))
-            st.plotly_chart(f15, use_container_width=True)
+            f100 = go.Figure()
+            # nhãn thưa: chỉ ghi tại các mốc tiêu chuẩn để không chồng chữ
+            _marks = {0.5, 5, 10, 15, 20, 30, 50, 70, 100}
+            _txt = [f"{v:.0f}" if th100["years"][i] in _marks else ""
+                    for i, v in enumerate(th100["St_cm"])]
+            f100.add_trace(go.Scatter(x=th100["years"], y=th100["St_cm"], mode="lines+markers+text",
+                           text=_txt, textposition="top center", textfont=dict(size=16),
+                           name="Lún đạt S(t)", line=dict(color="#1565C0", width=2.5)))
+            f100.add_hline(y=th100["S_inf_cm"], line=dict(color="#777", dash="dash"),
+                           annotation_text=f"S∞ = {th100['S_inf_cm']:.0f} cm")
+            # mốc 15 năm (TCCS 41 mặt đường mềm) + 100 năm (dài hạn)
+            for _yr, _col in [(15.0, "#C62828"), (100.0, "#2E7D32")]:
+                if _yr in th100["years"]:
+                    _i = th100["years"].index(_yr)
+                    f100.add_trace(go.Scatter(
+                        x=[_yr], y=[th100["St_cm"][_i]], mode="markers+text",
+                        text=[f"{_yr:.0f} năm: {th100['St_cm'][_i]:.0f} cm "
+                              f"(U={th100['U_pct'][_i]:.0f}%)"],
+                        textposition="bottom right", textfont=dict(size=16),
+                        marker=dict(color=_col, size=12), name=f"Mốc {_yr:.0f} năm"))
+            f100.update_layout(title=f"Lún cố kết đến 100 năm — {bh_sel}",
+                               xaxis_title="Thời gian (năm)", yaxis_title="Độ lún S(t) (cm)",
+                               height=400, font=dict(size=16), legend=dict(font=dict(size=16)),
+                               margin=dict(t=40, b=10), xaxis=dict(range=[0, 100]))
+            st.plotly_chart(f100, use_container_width=True)
         except Exception:
             pass
 
