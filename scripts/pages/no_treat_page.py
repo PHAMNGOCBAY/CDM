@@ -166,6 +166,7 @@ def _render_qtt(st) -> None:
     """Chế độ: lún nền chưa xử lý cho hố khoan QTT (ND-*) — số liệu từng hố,
     cao độ thiết kế lấy từ lưới cao độ QTT. Trình bày GIỐNG 'Theo bảng 6 vùng'."""
     import sqlite3
+    import pandas as pd
     from pathlib import Path
     from cdm_layer_avg_settlement import settle_avg, time_history
 
@@ -183,9 +184,10 @@ def _render_qtt(st) -> None:
     if disp.startswith("Boussinesq"):
         B_load = st.number_input("Bề rộng diện gia tải B (m)", 2.0, 100.0, 20.0, 1.0, key="qtt_B")
 
-    st.caption("Mỗi hố khoan QTT dùng SỐ LIỆU RIÊNG; cao độ thiết kế lấy từ lưới cao độ QTT "
-               "(điểm gần nhất). Hố thiếu thí nghiệm nén dùng số liệu lớp đại diện. "
-               "Tải gây lún q = γ·H_đắp (CĐTK − CĐTN). Lún tính trong vùng ảnh hưởng (§71). "
+    st.caption("Mỗi hố khoan QTT dùng SỐ LIỆU RIÊNG; cao độ thiết kế mặc định lấy từ lưới cao "
+               "độ QTT (điểm gần nhất) — **sửa CĐTN/CĐTK trong bảng bên dưới, kết quả tự cập "
+               "nhật**. Hố thiếu thí nghiệm nén dùng số liệu lớp đại diện. Tải gây lún "
+               "q = γ·H_đắp (CĐTK − CĐTN). Lún tính trong vùng ảnh hưởng (§71). "
                "**Lún cố kết theo thời gian chỉ phát triển ở lớp sét e₀ > 1; lớp cát và sét "
                "chặt e₀ < 1 lún tức thời.**")
 
@@ -219,10 +221,36 @@ def _render_qtt(st) -> None:
     except Exception:
         bhs = []
 
+    if not bhs:
+        st.info("Không đọc được hố khoan QTT (ND-*).")
+        return
+
+    # ── Bảng nhập cao độ từng hố — sửa CĐTN/CĐTK → kết quả tự tính lại ────
+    st.markdown("**Cao độ từng hố khoan ND (sửa được — kết quả bảng tổng hợp tự cập nhật):**")
+    _ed_default = pd.DataFrame([{
+        "Hố khoan": b,
+        "CĐTN (m)": round(float(_elev.get(b, 0.0)), 2),
+        "CĐTK (m)": round(float(_des.get(b, 2.70)), 2),
+    } for b in bhs])
+    _edited = st.data_editor(
+        _ed_default, key="qtt_elev_editor", hide_index=True, use_container_width=True,
+        column_config={
+            "Hố khoan": st.column_config.TextColumn("Hố khoan", disabled=True),
+            "CĐTN (m)": st.column_config.NumberColumn("CĐTN (m)", format="%.2f", step=0.05,
+                                                      help="Cao độ tự nhiên — sửa để tính lại tải đắp"),
+            "CĐTK (m)": st.column_config.NumberColumn("CĐTK (m)", format="%.2f", step=0.05,
+                                                      help="Cao độ thiết kế — mặc định lấy từ lưới cao độ QTT"),
+        },
+    )
+    # Lưu override để mục chi tiết phân tố dùng cùng giá trị
+    _over = {str(r["Hố khoan"]): (float(r["CĐTN (m)"]), float(r["CĐTK (m)"]))
+             for _, r in _edited.iterrows()}
+    st.session_state["qtt_elev_over"] = _over
+
     rows, full_results = [], {}
-    for b in bhs:
-        cdtk = _des.get(b, 2.70)
-        cdtn = float(_elev.get(b, 0.0))
+    for _, r in _edited.iterrows():
+        b = str(r["Hố khoan"])
+        cdtn = float(r["CĐTN (m)"]); cdtk = float(r["CĐTK (m)"])
         H = max(0.0, cdtk - cdtn)
         try:
             rr = settle_avg(b, H_fill_m=H, gamma_fill=gamma_fill,
@@ -240,7 +268,7 @@ def _render_qtt(st) -> None:
         })
 
     if not rows:
-        st.info("Không đọc được hố khoan QTT (ND-*) hoặc không có tải gây lún.")
+        st.info("Không có tải gây lún (CĐTK ≤ CĐTN ở mọi hố). Tăng CĐTK hoặc giảm CĐTN.")
         return
 
     _render_settlement_results(st, rows, full_results, gamma_fill=gamma_fill,
@@ -344,15 +372,19 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
             # Hố QTT: cho NHẬP LẠI cao độ thiết kế + cao độ tự nhiên → tính lại tải gây lún
             from cdm_layer_avg_settlement import settle_avg
             _bcl_p = locals().get("bcl") if locals().get("use_bcl") else None
+            # Mặc định lấy theo giá trị đã sửa ở bảng tổng hợp QTT (nếu có) → đồng nhất
+            _ov = st.session_state.get("qtt_elev_over", {})
+            _def_cdtn, _def_cdtk = _ov.get(
+                bh_sel, (float(_elev_map.get(bh_sel, 0.0)), float(_qtt_des.get(bh_sel, 2.70))))
             qc1, qc2 = st.columns(2)
             with qc1:
                 _cdtk_q = st.number_input(f"Cao độ thiết kế CĐTK — {bh_sel} (m)", -10.0, 20.0,
-                                          float(_qtt_des.get(bh_sel, 2.70)), 0.05,
+                                          float(_def_cdtk), 0.05,
                                           key=f"qtt_cdtk_{bh_sel}",
-                                          help="Mặc định từ lưới cao độ thiết kế QTT (điểm gần nhất)")
+                                          help="Mặc định theo bảng tổng hợp (hoặc lưới cao độ QTT)")
             with qc2:
                 _cdtn_q = st.number_input(f"Cao độ tự nhiên CĐTN — {bh_sel} (m)", -20.0, 20.0,
-                                          float(_elev_map.get(bh_sel, 0.0)), 0.05,
+                                          float(_def_cdtn), 0.05,
                                           key=f"qtt_cdtn_{bh_sel}")
             _Hq = max(0.0, _cdtk_q - _cdtn_q)
             rr = settle_avg(bh_sel, H_fill_m=_Hq, gamma_fill=gamma_fill,
