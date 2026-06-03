@@ -38,6 +38,9 @@ _JSON = _ROOT / "data" / "lk2_cdm_settlement.json"
 # Ký hiệu lớp hạt rời (cát) — không nén cố kết theo Cc trong engine LK2
 SAND_SYMBOLS_LK2 = {"F", "2a", "2b", "2c", "3a", "3b", "3c", "4", "5", "5a", "5b", "6", "7", "8"}
 
+# Hệ số tương quan mô đun biến dạng cát từ SPT: Es = ALPHA_SAND·N (kN/m²)
+ALPHA_SAND_KPA = 2000.0
+
 # Tiêu chí dừng vùng ảnh hưởng lún: chỉ tính cố kết khi Δσ ≥ 10%·σ'v0 (TCCS 41 / §71)
 INFLUENCE_STOP_RATIO = 0.10
 
@@ -61,6 +64,7 @@ class SubLayer:
     spz: float               # áp lực tiền cố kết σ'pz (kN/m²)
     soil: str = "Sét"
     layer: object = 1
+    cohesionless: bool = False   # True = lớp cát (rời) — Cu/σ'pz không áp dụng, Es=α·N
 
 
 @dataclass
@@ -98,6 +102,7 @@ class SubResult:
     sigma_pz: float             # σ'pz
     branch: str                 # 'block' | 'NC' | 'cross' | 'OC' | '-'
     Sc_m: float                 # lún cố kết phân tố (m)
+    cohesionless: bool = False   # True = lớp cát — Cu/σ'pz không áp dụng
 
 
 @dataclass
@@ -233,6 +238,7 @@ def compute_lk2(inp: LK2Inputs, geology: list[SubLayer],
             idx=i + 1, symbol=ly.layer, Cu=ly.Cu, Esoil=ly.E, h=ly.h, z_bot_elev=z_bot,
             in_block_thickness=g_blk, M_eq=M_eq, sigma_vz=sigma_vz, z_below_tip=z_below,
             dsigma=dsigma, sigma_pz=ly.spz, branch=branch, Sc_m=Sc_i,
+            cohesionless=getattr(ly, "cohesionless", False),
         ))
 
     Eeq = sum_Mg / sum_g if sum_g else 0.0
@@ -492,6 +498,9 @@ def build_geology_from_bh(bh_name: str, sublayer_m: float = 2.0,
         "SELECT (depth_from_m+COALESCE(depth_to_m,depth_from_m+1.0))/2.0, gamma_kNm3, e0, Cc, "
         "Cs, PC_kPa, E_kPa, Cu_UU_kPa, c_kPa, gamma_sub_kNm3 FROM lab_tests WHERE borehole_id=? "
         "ORDER BY depth_from_m", (bh_id,)).fetchall()
+    spt_rows = cur.execute(
+        "SELECT depth_m, N FROM spt_values WHERE borehole_id=? AND N IS NOT NULL ORDER BY depth_m",
+        (bh_id,)).fetchall()
     con.close()
     if not layers:
         raise ValueError(f"Hố khoan {bh_name} chưa có địa tầng")
@@ -507,22 +516,36 @@ def build_geology_from_bh(bh_name: str, sublayer_m: float = 2.0,
 
     FIELD_IDX = {"gamma": 1, "e0": 2, "Cc": 3, "Cs": 4, "PC": 5, "E": 6, "Cu": 7, "c": 8, "gsub": 9}
 
-    def _nearest(mid, idx):
+    def _nearest(mid, idx, lo=None, hi=None):
+        """Mẫu lab gần nhất CÓ giá trị; nếu (lo,hi) → chỉ xét mẫu TRONG cùng lớp."""
         best, bd = None, 1e18
         for s in samples:
             v = s[idx]
             if v is None or v == 0:
+                continue
+            if lo is not None and not (lo <= s[0] <= hi):
                 continue
             d = abs(s[0] - mid)
             if d < bd:
                 bd, best = d, v
         return best
 
-    def _sym_at(depth):
+    def _nearest_spt(mid, lo, hi):
+        """N-SPT gần nhất trong cùng lớp (cho mô đun cát Es=α·N)."""
+        best, bd = None, 1e18
+        for dpt, N in spt_rows:
+            if N is None or N <= 0 or not (lo <= dpt <= hi):
+                continue
+            d = abs(dpt - mid)
+            if d < bd:
+                bd, best = d, N
+        return best
+
+    def _layer_at(depth):
         for sym, t, b in layers:
             if t <= depth <= b:
-                return sym
-        return layers[-1][0]
+                return sym, t, b
+        return layers[-1][0], layers[-1][1], layers[-1][2]
 
     max_depth = max(b for _, _, b in layers)
     n = int(math.ceil(max_depth / sublayer_m))
@@ -534,25 +557,41 @@ def build_geology_from_bh(bh_name: str, sublayer_m: float = 2.0,
         if h <= 0:
             continue
         mid = (d_top + d_bot) / 2.0
-        sym = _sym_at(mid)
+        sym, lay_top, lay_bot = _layer_at(mid)
         rp = rep.get((zone, sym), {}) if rep else {}
-        gamma = _nearest(mid, FIELD_IDX["gamma"]) or rp.get("gamma_kNm3") or 16.0
-        gsub = _nearest(mid, FIELD_IDX["gsub"])
+        is_sand = sym in SAND_SYMBOLS_LK2
+        # Chỉ tiêu lấy từ mẫu TRONG CÙNG LỚP (không mượn lớp khác — tránh Cu/Pc sét lẫn sang cát)
+        gamma = _nearest(mid, FIELD_IDX["gamma"], lay_top, lay_bot) or rp.get("gamma_kNm3") or 16.0
+        gsub = _nearest(mid, FIELD_IDX["gsub"], lay_top, lay_bot)
         gamma_dn = gsub if gsub else (gamma - 9.81)
-        Cu = _nearest(mid, FIELD_IDX["Cu"]) or _nearest(mid, FIELD_IDX["c"]) or rp.get("Cu_UU_kPa") or 10.0
-        e0 = _nearest(mid, FIELD_IDX["e0"]) or rp.get("e0") or 1.5
-        Cc = _nearest(mid, FIELD_IDX["Cc"]) or rp.get("Cc") or 0.5
-        Cr = _nearest(mid, FIELD_IDX["Cs"]) or rp.get("Cs") or (Cc * 0.15)
-        E = 250.0 * Cu   # Es = 250·Cu (tương quan Mesri & Olson 1974)
-        spz = _nearest(mid, FIELD_IDX["PC"]) or rp.get("PC_kPa") or max(Cu * 4.0, 10.0)
-        # Engine LK2 chỉ có nhánh nén cố kết (Cc-log) cho SÉT YẾU.
-        # Lớp CÁT hoặc SÉT CHẶT (e0<1) → KHÔNG cố kết Cc → đặt Cc=Cr=0 (Si=0),
-        # đồng bộ quy tắc "lún cố kết chỉ ở sét e0>1".
-        if (sym in SAND_SYMBOLS_LK2) or (e0 is not None and e0 < 1.0):
-            Cc, Cr = 0.0, 0.0
+        e0 = _nearest(mid, FIELD_IDX["e0"], lay_top, lay_bot) or rp.get("e0") or 1.5
+        if is_sand:
+            # Lớp CÁT (rời): không có Cu / áp lực tiền cố kết (σ'pz).
+            # Lún đàn hồi dùng mô đun từ SPT: Es = α·N (không phải 250·Cu của sét).
+            N = _nearest_spt(mid, lay_top, lay_bot)
+            E = (ALPHA_SAND_KPA * N) if N else (rp.get("E_kPa") or 15000.0)
+            # giữ một Cu danh nghĩa cho sức chịu tải (mục B), KHÔNG hiển thị ở bảng lún
+            Cu = _nearest(mid, FIELD_IDX["c"], lay_top, lay_bot) or rp.get("Cu_UU_kPa") or 10.0
+            spz = 0.0
+            Cc = Cr = 0.0
+            cohesionless = True
+        else:
+            Cu = (_nearest(mid, FIELD_IDX["Cu"], lay_top, lay_bot)
+                  or _nearest(mid, FIELD_IDX["c"], lay_top, lay_bot)
+                  or rp.get("Cu_UU_kPa") or 10.0)
+            E = 250.0 * Cu   # Es = 250·Cu (tương quan Mesri & Olson 1974)
+            spz = (_nearest(mid, FIELD_IDX["PC"], lay_top, lay_bot)
+                   or rp.get("PC_kPa") or max(Cu * 4.0, 10.0))
+            Cc = _nearest(mid, FIELD_IDX["Cc"], lay_top, lay_bot) or rp.get("Cc") or 0.5
+            Cr = _nearest(mid, FIELD_IDX["Cs"], lay_top, lay_bot) or rp.get("Cs") or (Cc * 0.15)
+            cohesionless = False
+            # Sét CHẶT (e0<1) → đàn hồi, không cố kết Cc-log → Cc=Cr=0 (Si đàn hồi)
+            if e0 is not None and e0 < 1.0:
+                Cc, Cr = 0.0, 0.0
         geo.append(SubLayer(
             h=round(h, 3), z_bot_elev=round(elev - d_bot, 3), gamma=gamma, gamma_dn=gamma_dn,
-            Cu=Cu, e0=e0, Cc=Cc, Cr=Cr, E=E, spz=spz, soil=sym, layer=sym))
+            Cu=Cu, e0=e0, Cc=Cc, Cr=Cr, E=E, spz=spz, soil=sym, layer=sym,
+            cohesionless=cohesionless))
     return geo, elev
 
 

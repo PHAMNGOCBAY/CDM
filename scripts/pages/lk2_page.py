@@ -32,6 +32,7 @@ def render() -> None:
     import json as _json
     import sqlite3 as _sql
     from cdm_lk2_calc import (
+        SAND_SYMBOLS_LK2 as _SAND_SYMS,
         SETTLEMENT_LIMITS, build_geology_from_bh, compute_concrete_check, compute_lk2,
         compute_sct, compute_time_history, load_lk2_dataset,
     )
@@ -146,12 +147,16 @@ def render() -> None:
     # Chỉ thể hiện đến đáy vùng ảnh hưởng (Δσ=10%·σ'v0), không cần hết chiều sâu
     _tbl_subs = [s for s in res.sublayers
                  if _infl_elev is None or s.z_bot_elev >= _infl_elev - 0.01]
+    def _cohless(s):
+        return getattr(s, "cohesionless", False) or s.symbol in _SAND_SYMS
     rows = [{
         "Phân tố": s.idx, "Lớp": s.symbol, "Bề dày (m)": round(s.h, 2),
         "Cao độ đáy (m)": round(s.z_bot_elev, 2),
-        "Cu (kPa)": round(s.Cu, 1), "Es=250·Cu (kPa)": round(s.Esoil, 0),
+        "Cu (kPa)": ("—" if _cohless(s) else round(s.Cu, 1)),
+        "Es (kPa)": round(s.Esoil, 0),
         "Trong khối (m)": round(s.in_block_thickness, 2), "σ'vz (kPa)": round(s.sigma_vz, 2),
-        "Δσ (kPa)": round(s.dsigma, 2), "σ'pz (kPa)": round(s.sigma_pz, 2),
+        "Δσ (kPa)": round(s.dsigma, 2),
+        "σ'pz (kPa)": ("—" if _cohless(s) else round(s.sigma_pz, 2)),
         "Trạng thái": {"NC": "Cố kết thường", "OC": "Quá cố kết", "cross": "Vượt P_c",
                        "block": "Trong khối gia cố", "-": "—",
                        "đàn hồi (cát/sét chặt)": "Đàn hồi (cát/sét chặt)",
