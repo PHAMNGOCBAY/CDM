@@ -78,7 +78,7 @@ def render() -> None:
         disp = st.selectbox("Phân bố Δσ", ["1D (không đổi)", "Boussinesq dải"], index=0, key="nt_disp")
     B_load = None
     if disp.startswith("Boussinesq"):
-        B_load = st.number_input("Bề rộng diện gia tải B (m)", 2.0, 100.0, 20.0, 1.0, key="nt_B")
+        B_load = st.number_input("Bề rộng diện gia tải B (m)", min_value=1.0, value=20.0, step=1.0, key="nt_B")
 
     st.caption(
         "Lún tính theo nguyên tắc vùng ảnh hưởng (§71): chia phân tố 2 m, tích phân tới "
@@ -182,7 +182,7 @@ def _render_qtt(st) -> None:
         drain2 = st.checkbox("Cố kết thoát nước 2 mặt (H = H_sét/2)", value=True, key="qtt_drain2")
     B_load = None
     if disp.startswith("Boussinesq"):
-        B_load = st.number_input("Bề rộng diện gia tải B (m)", 2.0, 100.0, 20.0, 1.0, key="qtt_B")
+        B_load = st.number_input("Bề rộng diện gia tải B (m)", min_value=1.0, value=20.0, step=1.0, key="qtt_B")
 
     st.caption("Mỗi hố khoan QTT dùng SỐ LIỆU RIÊNG; cao độ thiết kế mặc định lấy từ lưới cao "
                "độ QTT (điểm gần nhất) — **sửa CĐTN/CĐTK trong bảng bên dưới, kết quả tự cập "
@@ -566,7 +566,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
         disp = st.selectbox("Phân bố Δσ", ["1D (không đổi)", "Boussinesq dải"], index=0, key="zf_disp")
     B_load = None
     if disp.startswith("Boussinesq"):
-        B_load = st.number_input("Bề rộng diện gia tải B (m)", 2.0, 100.0, 20.0, 1.0, key="zf_B")
+        B_load = st.number_input("Bề rộng diện gia tải B (m)", min_value=1.0, value=20.0, step=1.0, key="zf_B")
 
     which = 2 if pa.startswith("PA2") else 1
     method = st.radio(
@@ -657,7 +657,7 @@ def _render_6zones(st, compute_no_treat_6zones) -> None:
         disp = st.selectbox("Phân bố Δσ", ["1D (không đổi)", "Boussinesq dải"], index=0, key="nt6_disp")
     B_load = None
     if disp.startswith("Boussinesq"):
-        B_load = st.number_input("Bề rộng diện gia tải B (m)", 2.0, 100.0, 20.0, 1.0, key="nt6_B")
+        B_load = st.number_input("Bề rộng diện gia tải B (m)", min_value=1.0, value=20.0, step=1.0, key="nt6_B")
 
     st.caption(
         "Lún tính theo vùng ảnh hưởng (§71): phân tố 2 m, tích phân tới đáy vùng ảnh hưởng "
