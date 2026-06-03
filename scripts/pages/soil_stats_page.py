@@ -33,28 +33,41 @@ def render() -> None:
     # Định dạng bảng chuẩn dự án (header đậm navy, thân 12pt, zebra, lưới) — đồng bộ Word
     st.markdown(html_css_block(), unsafe_allow_html=True)
 
-    c1, c2 = st.columns([1, 3])
+    c1, c2 = st.columns([1, 2])
     with c1:
         zopts = {LEVEE_KEY: "_LEVEE_", "Tất cả vùng": None}
         zopts.update({z: pfx for z, pfx in ZONES})
         zsel = st.selectbox("Vùng", list(zopts.keys()), index=0, key="ss_zone")
+    _is_qtt = (zopts[zsel] == "ND-%")
+    with c2:
+        _gm_lbl = st.radio(
+            "Gom nhóm theo", ["Ký hiệu lớp", "Loại đất (theo mô tả)"],
+            index=1 if _is_qtt else 0, horizontal=True, key="ss_group",
+            help="QTT đánh số lớp tuần tự theo từng hố (không đồng nhất) → nên gom theo "
+                 "LOẠI ĐẤT để tránh trộn lẫn (vd đá đắp với sét).")
+    _gm = "soil" if _gm_lbl.startswith("Loại đất") else "symbol"
+    _g1 = "Loại đất" if _gm == "soil" else "Lớp"
     if zopts[zsel] == "_LEVEE_":
         bhs = levee_boreholes()
-        rows = stats_by_layer(bh_names=bhs)
+        rows = stats_by_layer(bh_names=bhs, group_mode=_gm)
         st.caption("Chỉ các hố khoan trên tuyến cừ bờ kè (on_sw_alignment=1), "
                    "KHÔNG đưa KE-HK8 vào tính toán: " + ", ".join(bhs))
     else:
-        rows = stats_by_layer(zone_prefix=zopts[zsel])
+        rows = stats_by_layer(zone_prefix=zopts[zsel], group_mode=_gm)
     if not rows:
         st.warning("Không có dữ liệu.")
         return
+    if _is_qtt:
+        st.caption("Khu QTT: ký hiệu lớp đánh tuần tự riêng từng hố (ND-04 không có lớp đắp "
+                   "nên lệch số) → bảng gom theo **loại đất** để thống kê đúng.")
 
     # ── Bảng nén cố kết (trọng tâm) ──────────────────────────────────────
     st.markdown("### Chỉ tiêu nén cố kết theo lớp")
     consol = ["e0", "Cc", "Cs", "PC_kPa", "Cv_cm2s", "a12_cm2kgf", "qu_kPa"]
     label = {f: lb for f, lb, _ in FIELDS}
     dfc = pd.DataFrame([{
-        "Vùng": r["zone"], "Lớp": r["symbol"], "n HK": r["n_bh"], "n mẫu": r["n_samples"],
+        "Vùng": r["zone"], _g1: r["symbol"], "Mô tả": (r.get("soil_desc") or "—"),
+        "n HK": r["n_bh"], "n mẫu": r["n_samples"],
         **{label[f]: (r[f] if r[f] is not None else "—") for f in consol},
     } for r in rows])
     st.markdown(df_to_report_html(dfc), unsafe_allow_html=True)
@@ -64,7 +77,8 @@ def render() -> None:
     phys = ["w_pct", "gamma_kNm3", "gamma_dry_kNm3", "Sr_pct", "wL_pct", "wP_pct", "Ip",
             "c_kPa", "phi_deg", "Cu_UU_kPa"]
     dfp = pd.DataFrame([{
-        "Vùng": r["zone"], "Lớp": r["symbol"], "n mẫu": r["n_samples"],
+        "Vùng": r["zone"], _g1: r["symbol"], "Mô tả": (r.get("soil_desc") or "—"),
+        "n mẫu": r["n_samples"],
         **{label[f]: (r[f] if r[f] is not None else "—") for f in phys},
     } for r in rows])
     st.markdown(df_to_report_html(dfp), unsafe_allow_html=True)

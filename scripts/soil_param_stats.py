@@ -56,11 +56,41 @@ def _zone_of(bh: str) -> str:
 # (KE-HK8 6.7–22.4m là vị trí cọc thử CDM — số liệu thí nghiệm lấy theo lớp bùn 1 lân cận.)
 SYMBOL_OVERRIDE = {("KE-HK8", "XMD"): "1"}
 
+# Thứ tự hiển thị loại đất (gom theo địa chất, dùng khi ký hiệu lớp không đồng nhất giữa hố)
+_SOIL_ORDER = ["Đất đắp / san lấp", "Bùn sét (chảy)", "Sét dẻo cao (CH)",
+               "Sét pha (dẻo mềm)", "Sét pha (dẻo cứng)", "Sét", "Cát pha", "Cát", "Khác"]
+
+
+def soil_type_of(desc: str) -> str:
+    """Chuẩn hoá MÔ TẢ lớp đất → loại đất địa chất (gom thống kê đúng dù số lớp khác nhau)."""
+    d = (desc or "").lower()
+    if "san lấp" in d or "đá đổ" in d:
+        return "Đất đắp / san lấp"
+    if "bùn" in d:
+        return "Bùn sét (chảy)"
+    if "(ch)" in d or "rất dẻo" in d:
+        return "Sét dẻo cao (CH)"
+    if "cát pha" in d:
+        return "Cát pha"
+    if "sét pha" in d:
+        return "Sét pha (dẻo cứng)" if ("cứng" in d or "nâu đỏ" in d) else "Sét pha (dẻo mềm)"
+    if "cát" in d or "(sm)" in d or "(sp" in d or "(sc" in d:
+        return "Cát"
+    if "sét" in d:
+        return "Sét"
+    return (desc or "Khác").strip() or "Khác"
+
 
 def stats_by_layer(zone_prefix: Optional[str] = None,
                    bh_names: Optional[list] = None,
-                   db_path: Optional[Path] = None) -> list[dict]:
+                   db_path: Optional[Path] = None,
+                   group_mode: str = "symbol") -> list[dict]:
     """Thống kê theo (vùng, lớp). zone_prefix None = tất cả; bh_names = giới hạn danh sách HK.
+
+    group_mode="symbol" (mặc định): gom theo ký hiệu lớp — dùng khi ký hiệu địa chất
+        thống nhất giữa các hố (KE/BXN/NHC) + cho representative_params.
+    group_mode="soil": gom theo LOẠI ĐẤT (chuẩn hoá từ mô tả) — dùng khi số lớp đánh
+        tuần tự không đồng nhất giữa các hố (QTT) → tránh trộn lẫn loại đất.
 
     Áp dụng SYMBOL_OVERRIDE: lớp xi măng đất (XMD) của HK8 được tính như lớp bùn 1.
     """
@@ -83,7 +113,7 @@ def stats_by_layer(zone_prefix: Optional[str] = None,
         args = ()
 
     layers = cur.execute(
-        f"SELECT b.name, l.symbol, l.depth_top_m, l.depth_bot_m "
+        f"SELECT b.name, l.symbol, l.depth_top_m, l.depth_bot_m, l.description "
         f"FROM layers l JOIN boreholes b ON l.borehole_id=b.id {where_lay}", args,
     ).fetchall()
 
@@ -97,28 +127,33 @@ def stats_by_layer(zone_prefix: Optional[str] = None,
     # index layers per bh (sorted) — áp override ký hiệu
     from collections import defaultdict
     bh_layers = defaultdict(list)
-    for name, sym, dt, db_ in layers:
+    for name, sym, dt, db_, desc in layers:
         sym = SYMBOL_OVERRIDE.get((name, sym), sym)
-        bh_layers[name].append((dt, db_, sym))
+        bh_layers[name].append((dt, db_, sym, desc))
     for k in bh_layers:
-        bh_layers[k].sort()
+        bh_layers[k].sort(key=lambda t: (t[0] if t[0] is not None else 0))
 
-    def _sym_at(bh, depth):
-        for dt, db_, sym in bh_layers.get(bh, []):
+    def _unit_at(bh, depth):
+        """Trả (key_gom, mô_tả) tại độ sâu — key theo symbol hoặc loại đất."""
+        for dt, db_, sym, desc in bh_layers.get(bh, []):
             if dt is not None and db_ is not None and dt <= depth <= db_:
-                return sym
-        return None
+                key = soil_type_of(desc) if group_mode == "soil" else sym
+                return key, desc
+        return None, None
 
-    # accumulate: (zone, sym) -> {field: [values]}, bh set
+    # accumulate: (zone, sym) -> {field: [values]}, bh set, mô tả
     acc = defaultdict(lambda: defaultdict(list))
     bhset = defaultdict(set)
+    descset = defaultdict(lambda: defaultdict(int))
     for row in lab_rows:
         bh = row[0]; depth = row[1]
-        sym = _sym_at(bh, depth)
+        sym, desc = _unit_at(bh, depth)
         if sym is None:
             continue
         key = (_zone_of(bh), sym)
         bhset[key].add(bh)
+        if desc:
+            descset[key][desc.strip()] += 1
         for i, (f, _, _) in enumerate(FIELDS):
             v = row[2 + i]
             if v is None or v == 0:
@@ -130,9 +165,17 @@ def stats_by_layer(zone_prefix: Optional[str] = None,
             if fv != 0:
                 acc[key][f].append(fv)
 
+    def _order(sym):
+        return (_SOIL_ORDER.index(sym) if sym in _SOIL_ORDER else 98, sym) \
+            if group_mode == "soil" else _sym_key(sym)
+
     out = []
-    for (zone, sym), fields in sorted(acc.items(), key=lambda x: (x[0][0], _sym_key(x[0][1]))):
-        rec = {"zone": zone, "symbol": sym, "n_bh": len(bhset[(zone, sym)])}
+    for (zone, sym), fields in sorted(acc.items(), key=lambda x: (x[0][0], _order(x[0][1]))):
+        descs = descset[(zone, sym)]
+        soil_desc = (max(descs.items(), key=lambda kv: kv[1])[0]
+                     if descs else (sym if group_mode == "soil" else ""))
+        rec = {"zone": zone, "symbol": sym, "soil_desc": soil_desc,
+               "n_bh": len(bhset[(zone, sym)])}
         nmax = 0
         for f, _, nd in FIELDS:
             vals = fields.get(f, [])
