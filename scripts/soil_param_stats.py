@@ -57,7 +57,7 @@ def _zone_of(bh: str) -> str:
 SYMBOL_OVERRIDE = {("KE-HK8", "XMD"): "1"}
 
 # Thứ tự hiển thị loại đất (gom theo địa chất, dùng khi ký hiệu lớp không đồng nhất giữa hố)
-_SOIL_ORDER = ["Đất đắp / san lấp", "Bùn sét (chảy)", "Sét dẻo cao (CH)",
+_SOIL_ORDER = ["Đá san lấp", "Bùn sét (chảy)", "Sét dẻo cao (CH)",
                "Sét pha (dẻo mềm)", "Sét pha (dẻo cứng)", "Sét", "Cát pha", "Cát", "Khác"]
 
 
@@ -65,7 +65,7 @@ def soil_type_of(desc: str) -> str:
     """Chuẩn hoá MÔ TẢ lớp đất → loại đất địa chất (gom thống kê đúng dù số lớp khác nhau)."""
     d = (desc or "").lower()
     if "san lấp" in d or "đá đổ" in d:
-        return "Đất đắp / san lấp"
+        return "Đá san lấp"
     if "bùn" in d:
         return "Bùn sét (chảy)"
     if "(ch)" in d or "rất dẻo" in d:
