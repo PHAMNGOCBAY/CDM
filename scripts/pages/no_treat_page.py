@@ -337,6 +337,14 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                     y=[r["S_15yr_cm"] for r in rows],
                     text=[f"{r['S_15yr_cm']:.0f}" for r in rows], textposition="outside",
                     textfont=dict(size=16), marker_color="#F9A825", name="Lún 15 năm")
+        fig.add_bar(x=[f"{r['zone']}\n{r['bh']}" for r in rows],
+                    y=[r.get("S_30yr_cm", 0) for r in rows],
+                    text=[f"{r.get('S_30yr_cm', 0):.0f}" for r in rows], textposition="outside",
+                    textfont=dict(size=16), marker_color="#EF6C00", name="Lún 30 năm")
+        fig.add_bar(x=[f"{r['zone']}\n{r['bh']}" for r in rows],
+                    y=[r.get("S_50yr_cm", 0) for r in rows],
+                    text=[f"{r.get('S_50yr_cm', 0):.0f}" for r in rows], textposition="outside",
+                    textfont=dict(size=16), marker_color="#8D6E63", name="Lún 50 năm")
         fig.update_layout(title=chart_title,
                           barmode="group", yaxis_title="Lún (cm)", height=420,
                           font=dict(size=16), legend=dict(font=dict(size=16)), margin=dict(t=40, b=10))
