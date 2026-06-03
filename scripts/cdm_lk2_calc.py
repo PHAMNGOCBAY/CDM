@@ -472,7 +472,12 @@ def build_geology_from_bh(bh_name: str, sublayer_m: float = 2.0,
     import math
     import sqlite3
 
-    db = str(db_path) if db_path else str(_ROOT / "data" / "TTHC.sqlite")
+    # Ưu tiên DB cục bộ (ngoài Drive, tránh sync corrupt) — đồng nhất với module khác
+    if db_path:
+        db = str(db_path)
+    else:
+        _local = Path(r"C:\Users\bayng\TTHC_local\TTHC.sqlite")
+        db = str(_local if _local.exists() else (_ROOT / "data" / "TTHC.sqlite"))
     con = sqlite3.connect(db)
     cur = con.cursor()
     row = cur.execute("SELECT id, elevation_m FROM boreholes WHERE name=?", (bh_name,)).fetchone()
