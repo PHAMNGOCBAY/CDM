@@ -190,7 +190,9 @@ def _render_qtt(st) -> None:
                "chặt e₀ < 1 lún tức thời.**")
 
     # CĐTK mặc định mỗi hố QTT từ lưới qtt_elevation_points (điểm gần nhất)
-    _db = str(Path(__file__).resolve().parent.parent.parent / "data" / "TTHC.sqlite")
+    # Đọc CÙNG DB cục bộ mà settle_avg dùng → CĐTK/CĐTN và tham số lún cùng 1 nguồn
+    _local = Path(r"C:\Users\bayng\TTHC_local\TTHC.sqlite")
+    _db = str(_local if _local.exists() else (Path(__file__).resolve().parent.parent.parent / "data" / "TTHC.sqlite"))
     _des, _elev, bhs = {}, {}, []
     try:
         con = sqlite3.connect(_db)
@@ -310,7 +312,8 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         # Thêm hố khoan QTT (ND-*) để xem chi tiết, dùng chung định dạng
         import sqlite3 as _sql2
         from pathlib import Path as _P2
-        _db2 = str(_P2(__file__).resolve().parent.parent.parent / "data" / "TTHC.sqlite")
+        _local2 = _P2(r"C:\Users\bayng\TTHC_local\TTHC.sqlite")
+        _db2 = str(_local2 if _local2.exists() else (_P2(__file__).resolve().parent.parent.parent / "data" / "TTHC.sqlite"))
         _qtt_des = {}     # CĐTK mặc định mỗi hố QTT (từ qtt_elevation_points điểm lưới gần nhất)
         try:
             _con2 = _sql2.connect(_db2)
@@ -379,10 +382,6 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
             "Lún Si (cm)": L["Si_cm"],
         } for i, L in enumerate(rr["layers"])]).set_index("STT")
         # cỡ chữ 12pt + hiện toàn bộ phân tố (không cuộn)
-        st.markdown(
-            "<style>[data-testid='stTable'] table{font-size:12pt}"
-            "[data-testid='stTable'] th,[data-testid='stTable'] td{font-size:12pt;padding:4px 8px}</style>",
-            unsafe_allow_html=True)
         _report_table(st, ddf)
         if rr.get("warnings"):
             st.warning(" · ".join(rr["warnings"][:5]))
@@ -594,10 +593,6 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                 "P_c (kPa)": (d["PC_kPa"] if d["PC_kPa"] is not None else "—"),
                 "Nguồn P_c": d.get("PC_source", "—"),
             } for s, d in (bcl or {}).items()])
-            st.markdown(
-                "<style>[data-testid='stTable'] table{font-size:12pt}"
-                "[data-testid='stTable'] th,[data-testid='stTable'] td{font-size:12pt;padding:4px 8px}</style>",
-                unsafe_allow_html=True)
             _report_table(st, _bdf.set_index("Lớp"))
             st.caption("Nguồn: BCL (Ban chiến lược) — TTHC Thủ Thiêm. Cv quy đổi từ ×10⁻⁴ cm²/s; "
                        "E = α·N (α=2000 kPa) cho cát/lớp chặt; P_c lấy từ thí nghiệm (lab) vì BCL thiếu; "
