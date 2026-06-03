@@ -98,16 +98,14 @@ def render() -> None:
         inp.q_total = st.number_input("Tải tổng q (kN/m²)", 0.0, 500.0, float(inp.q_total), 0.5, key="lk2_q",
                                       help="Tải tính SỨC CHỊU TẢI — gồm hoạt tải")
 
-    c5, c6, c7, c8 = st.columns(4)
+    c5, c6, c7 = st.columns(3)
     with c5:
         inp.W_group = st.number_input("Bề rộng nhóm trụ W (m)", 1.0, 100.0, float(inp.W_group), 1.0, key="lk2_W")
     with c6:
         inp.theta_deg = st.number_input("Góc phân tán θ (độ)", 0.0, 60.0, float(inp.theta_deg), 1.0, key="lk2_theta")
     with c7:
         inp.water_elev = st.number_input("Cao độ MNN (m)", -50.0, 50.0, float(inp.water_elev), 0.1, key="lk2_wl")
-    with c8:
-        _dv = st.number_input("Lớp bê tông C10 dày (m)", 0.0, 1.0,
-                              _dv_default, 0.05, key="lk2_dv")
+    # Tham số lớp bê tông (d_v, f'c, b) nhập ở mục D bên dưới.
 
     # ─── Auto-compute ─────────────────────────────────────────────────────
     # Dùng địa tầng hố khoan → bật đầy đủ §71 (mở rộng dưới HK + nhánh cát/sét chặt);
@@ -118,7 +116,6 @@ def render() -> None:
     cvt, tvu, gt = full["cv_table"], full["tvu_table"], full["golden_time"]
     th = compute_time_history(res, cvt["pressure_kPa"], cvt["Cv"], tvu["Tv"], tvu["U_pct"],
                               gt["years"], allowable_cm=gt["allowable_cm"], design_time_idx=1)
-    cc = compute_concrete_check(inp.D_m, inp.S_m, inp.q_total, _dv)
 
     # Đáy vùng ảnh hưởng lún = cao độ phân tố sâu nhất còn có Δσ ≥ 10%·σ'v0
     _infl_elev = None
@@ -382,14 +379,28 @@ def render() -> None:
     st.markdown("### D. Kiểm toán lớp bê tông + Giới hạn lún cho phép")
     st.caption(f"Tải kiểm toán lớp bê tông = **tải TỔNG q = {inp.q_total:.1f} kN/m²** "
                "(M_tt = q(S−d)²/8 ; V_tt = q(S−d)/2).")
-    _fc, _bv = 8.0, 1000.0   # f'c (MPa) lớp C10, bề rộng tính toán bv (mm) — mặc định engine
+    # Tham số lớp bê tông — cho phép kỹ sư sửa (d_v, f'c, b); auto tính lại ngay
+    cD1, cD2, cD3 = st.columns(3)
+    with cD1:
+        _dv = st.number_input("Lớp bê tông dày d_v (m)", 0.0, 2.0, _dv_default, 0.05, key="lk2_dv",
+                              help="Chiều dày lớp bê tông lót/đệm. =0 → chỉ tính nội lực yêu cầu, bỏ kiểm toán sức kháng.")
+    with cD2:
+        _fc = st.number_input("Cường độ bê tông f'c (MPa)", 1.0, 50.0, 8.0, 0.5, key="lk2_fc",
+                              help="Cường độ chịu nén bê tông (mặc định C10 = 8 MPa).")
+    with cD3:
+        _bv_m = st.number_input("Bề rộng tính toán b (m)", 0.1, 5.0, 1.0, 0.1, key="lk2_bv",
+                                help="Bề rộng dải tính toán (mặc định 1,0 m).")
+    _bv = _bv_m * 1000.0
+    cc = compute_concrete_check(inp.D_m, inp.S_m, inp.q_total, _dv, fc_MPa=_fc, bv_mm=_bv)
+    _fc_txt = f"{_fc:g}".replace(".", "{,}")    # 8 → "8" ; 8.5 → "8{,}5"  (LaTeX dấu phẩy)
+    _bv_txt = f"{_bv_m:g}".replace(".", "{,}")
     _Smd = inp.S_m - inp.D_m
     # Nội lực yêu cầu (luôn hiển thị)
     st.markdown("**Nội lực yêu cầu (dầm nhịp thông thuỷ giữa 2 trụ):**")
     st.latex(rf"M_{{tt}} = \dfrac{{q\,(S-d)^2}}{{8}} = \dfrac{{{inp.q_total:.1f}\,({inp.S_m:.1f}-{inp.D_m:.1f})^2}}{{8}} "
              rf"= {cc.Mtt:.2f}\ \text{{kNm}}")
     st.latex(rf"V_{{tt}} = \dfrac{{q\,(S-d)}}{{2}} = \dfrac{{{inp.q_total:.1f}\,({_Smd:.1f})}}{{2}} = {cc.Vtt:.2f}\ \text{{kN}}")
-    st.latex(rf"[\sigma] = 0{{,}}63\sqrt{{f'_c}} = 0{{,}}63\sqrt{{{_fc:.0f}}} = {cc.sigma_flex_MPa:.3f}\ \text{{MPa}}"
+    st.latex(rf"[\sigma] = 0{{,}}63\sqrt{{f'_c}} = 0{{,}}63\sqrt{{{_fc_txt}}} = {cc.sigma_flex_MPa:.3f}\ \text{{MPa}}"
              r"\quad(\text{TCVN 11823-5, Điều 4.2.6})")
     if cc.dv_m > 0:
         _zse = (_bv / 1e3) * (cc.dv_m) ** 2 / 6.0   # Zse = b·h²/6 (m³), b=bv/1000 m
@@ -398,8 +409,8 @@ def render() -> None:
         d2.metric("Sức kháng uốn M_r", f"{cc.Mr:.2f} kNm")
         d3.metric("Lực cắt yêu cầu V_tt", f"{cc.Vtt:.2f} kN")
         d4.metric("Sức kháng cắt V_r", f"{cc.Vr:.2f} kN")
-        st.markdown("**Sức kháng (lớp bê tông dày d_v = %.2f m, f'c = %.0f MPa, b = 1,0 m):**" % (cc.dv_m, _fc))
-        st.latex(rf"Z_{{se}} = \dfrac{{b\,d_v^2}}{{6}} = \dfrac{{1{{,}}0\cdot{cc.dv_m:.2f}^2}}{{6}} = {_zse:.4f}\ \text{{m}}^3")
+        st.markdown("**Sức kháng (lớp bê tông dày d_v = %.2f m, f'c = %g MPa, b = %g m):**" % (cc.dv_m, _fc, _bv_m))
+        st.latex(rf"Z_{{se}} = \dfrac{{b\,d_v^2}}{{6}} = \dfrac{{{_bv_txt}\cdot{cc.dv_m:.2f}^2}}{{6}} = {_zse:.4f}\ \text{{m}}^3")
         st.latex(rf"M_r = \min(\alpha R_{{bt}} W_{{pl}};\ [\sigma]\,Z_{{se}}) "
                  rf"= {cc.Mr:.2f}\ \text{{kNm}}\quad(\text{{TCVN 5574 / 11823-5}})")
         st.latex(rf"V_r = \varphi\cdot\min(V_{{n1..4}}) "
