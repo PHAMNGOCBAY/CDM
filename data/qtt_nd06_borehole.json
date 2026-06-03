@@ -2,7 +2,9 @@
   "_meta": {
     "source_dxf": "G:\\My Drive\\202605-TRUNG TAM HCM\\DIA CHAT\\7. QUANG TRUONG TRUNG TAM\\QTT-HO KHOAN ND06.dxf",
     "extracted_at": "2026-06-01 20:41:31",
-    "tool": "ezdxf 1.4.4"
+    "tool": "ezdxf 1.4.4",
+    "symbol_source": "QTT-HO KHOAN ND06.dxf (ký hiệu lớp 1-2-3)",
+    "updated": "2026-06-03"
   },
   "borehole": {
     "name": "ND-06",
@@ -21,7 +23,7 @@
       "depth_bot_m": 2.6,
       "thickness_m": 2.6,
       "elev_bot_m": 1.64,
-      "symbol": "F",
+      "symbol": "1",
       "description": "Đá san lấp, đá đổ lẫn sét"
     },
     {
@@ -30,7 +32,7 @@
       "depth_bot_m": 31.5,
       "thickness_m": 28.9,
       "elev_bot_m": -27.26,
-      "symbol": "1",
+      "symbol": "2",
       "description": "Bùn sét màu xám xanh, trạng thái chảy"
     },
     {
