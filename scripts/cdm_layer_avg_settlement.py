@@ -26,6 +26,15 @@ _ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_DB = _ROOT / "data" / "TTHC.sqlite"
 _DBS = [Path(r"C:\Users\bayng\TTHC_local\TTHC.sqlite"), _DEFAULT_DB]
 
+
+def _primary_db() -> Path:
+    """DB cục bộ (ngoài Google Drive) nếu có — tránh đọc file đang đồng bộ (kết quả
+    nhảy giữa các lần tính). Fallback DB dự án."""
+    for d in _DBS:
+        if d.exists():
+            return d
+    return _DEFAULT_DB
+
 GAMMA_W = 9.81
 SAND_SYMBOLS = {"F", "2a", "2b", "2c", "3a", "3b", "3c", "4", "5", "5a", "5b", "6", "7", "8"}
 ES_SAND_DEFAULT = 8000.0    # kPa khi lớp cát không có E trung bình
@@ -71,7 +80,7 @@ def settle_avg(
     """
     from soil_param_stats import representative_params
 
-    db = Path(db_path) if db_path else _DEFAULT_DB
+    db = Path(db_path) if db_path else _primary_db()
     rep = rep if rep is not None else (representative_params(db) if bcl_params is None else {})
     zone = _zone_of(bh_name)
 

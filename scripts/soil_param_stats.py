@@ -94,7 +94,8 @@ def stats_by_layer(zone_prefix: Optional[str] = None,
 
     Áp dụng SYMBOL_OVERRIDE: lớp xi măng đất (XMD) của HK8 được tính như lớp bùn 1.
     """
-    db = Path(db_path) if db_path else _DEFAULT_DB
+    # Ưu tiên DB cục bộ (ngoài Drive) → tránh đọc file đang đồng bộ (kết quả không ổn định)
+    db = Path(db_path) if db_path else next((d for d in _DBS if d.exists()), _DEFAULT_DB)
     con = sqlite3.connect(str(db))
     cur = con.cursor()
 
