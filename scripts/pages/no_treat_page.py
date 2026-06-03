@@ -17,6 +17,18 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 
+def _nc_radio(st, key: str) -> bool:
+    """Lựa chọn giả thiết cố kết lớp sét yếu (e₀≥1). Trả True nếu coi là NC (bùn chảy).
+    Chỉ THÊM lựa chọn — không bỏ phương án nào (NC mặc định + xét quá cố kết)."""
+    _c = st.radio(
+        "Giả thiết cố kết lớp sét yếu (e₀≥1)",
+        ["Cố kết thường NC — bùn chảy (Pc=σ'v0)", "Xét quá cố kết — theo Pc thí nghiệm"],
+        index=0, horizontal=True, key=key,
+        help="NC (TCCS 41 CT 26): bùn trạng thái chảy, dùng Cc toàn bộ → lún lớn (an toàn). "
+             "Quá cố kết (CT 25/27): dùng Pc thí nghiệm, có nhánh nở Cr → lún nhỏ hơn.")
+    return _c.startswith("Cố kết thường")
+
+
 def _report_table(st, df) -> None:
     """Render bảng theo chuẩn dự án (header đậm navy, thân 12pt, zebra, lưới) — đồng bộ Word.
     Nếu df có index không mặc định (đã set_index) → đưa index thành cột đầu để hiển thị."""
@@ -183,6 +195,7 @@ def _render_qtt(st) -> None:
     B_load = None
     if disp.startswith("Boussinesq"):
         B_load = st.number_input("Bề rộng diện gia tải B (m)", min_value=1.0, value=20.0, step=1.0, key="qtt_B")
+    _nc_qtt = _nc_radio(st, "qtt_nc")
 
     st.caption("Mỗi hố khoan QTT dùng SỐ LIỆU RIÊNG; cao độ thiết kế mặc định lấy từ lưới cao "
                "độ QTT (điểm gần nhất) — **sửa CĐTN/CĐTK trong bảng bên dưới, kết quả tự cập "
@@ -254,7 +267,8 @@ def _render_qtt(st) -> None:
         H = max(0.0, cdtk - cdtn)
         try:
             rr = settle_avg(b, H_fill_m=H, gamma_fill=gamma_fill,
-                            gwt_depth_m=max(0.0, cdtn - gwt_elev), B_load_m=B_load)
+                            gwt_depth_m=max(0.0, cdtn - gwt_elev), B_load_m=B_load,
+                            nc_soft_clay=_nc_qtt)
         except Exception:
             continue
         th = time_history(rr, [15.0, 30.0, 50.0], double_drainage=drain2)
@@ -277,12 +291,13 @@ def _render_qtt(st) -> None:
                                gwt_elev=gwt_elev, B_load=B_load, drain2=drain2,
                                bcl=None, use_bcl=False,
                                chart_title="Lún nền chưa xử lý — hố khoan QTT",
-                               assume0=False)
+                               assume0=False, nc_soft_clay=_nc_qtt)
 
 
 def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                                B_load, drain2, bcl=None, use_bcl=False,
-                               chart_title='Lún nền chưa xử lý', assume0=False):
+                               chart_title='Lún nền chưa xử lý', assume0=False,
+                               nc_soft_clay=True):
     """Render chung: bảng tổng hợp + biểu đồ + công thức + chi tiết phân tố + lún-thời gian.
     Dùng cho cả "Theo bảng 6 vùng" và "Hố khoan QTT"."""
     import pandas as pd
@@ -332,18 +347,31 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
     # ── Công thức + chi tiết từng phân tố (chỉ phương pháp trung bình theo lớp) ──
     if full_results:
         st.divider()
-        st.markdown("#### Công thức tính lún mỗi phân tố (phân nhánh theo loại đất + e₀)")
+        st.markdown("#### Công thức tính lún cố kết — TCCS 41:2022 Điều 9.1 (phân nhánh theo loại đất + e₀)")
+        _gt = ("**đang dùng: Cố kết thường NC — bùn chảy (Pc = σ'v0)**"
+               if nc_soft_clay else "**đang dùng: xét quá cố kết theo Pc thí nghiệm**")
+        st.caption("Giả thiết lớp sét yếu: " + _gt)
         st.markdown("**Lớp cát (hạt rời) → lún đàn hồi tức thời:**")
         st.latex(r"S_i = \frac{\Delta\sigma \cdot h_i}{E_s}")
-        st.markdown("**Lớp sét yếu ($e_0 \\ge 1$) → nén cố kết Terzaghi 1D (e-logp), nhánh OC/NC/cross-PC:**")
-        st.latex(r"S_i = \frac{h_i}{1+e_0}\left[\,C_s\,\log_{10}\frac{P_c}{\sigma'_{v0}}"
-                 r" + C_c\,\log_{10}\frac{\sigma'_{vf}}{P_c}\,\right]")
-        st.markdown("**Lớp sét chặt ($e_0 < 1$) → mô đun biến dạng oedometer:**")
-        st.latex(r"S_i = \frac{\Delta\sigma \cdot h_i}{E_{oed}}, \qquad "
+        st.markdown(r"**Lớp sét yếu ($e_0 \ge 1$) → nén cố kết Terzaghi 1D (e–lg p), "
+                    r"3 trường hợp theo $\sigma'_{vz}$ và $\sigma'_{pz}$:**")
+        st.markdown(r"• Cố kết thường NC ($\sigma'_{vz}=\sigma'_{pz}$) — **CT (26)**:")
+        st.latex(r"S_c=\sum_{i=1}^{n}\frac{H_i}{1+e_0^i}\,C_c^i\,\lg\frac{\sigma'_z+\sigma'_{vz}}{\sigma'_{vz}}"
+                 r"\qquad\text{(26)}")
+        st.markdown(r"• Quá cố kết, tải vượt $P_c$ ($\sigma'_z \ge \sigma'_{pz}-\sigma'_{vz}$) — **CT (25)**:")
+        st.latex(r"S_c=\sum\frac{H_i}{1+e_0^i}\!\left[C_r^i\,\lg\frac{\sigma'_{pz}}{\sigma'_{vz}}"
+                 r"+C_c^i\,\lg\frac{\sigma'_z+\sigma'_{vz}}{\sigma'_{pz}}\right]\qquad\text{(25)}")
+        st.markdown(r"• Quá cố kết, tải chưa vượt $P_c$ ($\sigma'_z < \sigma'_{pz}-\sigma'_{vz}$) — **CT (27)**:")
+        st.latex(r"S_c=\sum\frac{H_i}{1+e_0^i}\,C_r^i\,\lg\frac{\sigma'_z+\sigma'_{vz}}{\sigma'_{vz}}"
+                 r"\qquad\text{(27)}")
+        st.markdown(r"**Lớp sét chặt ($e_0 < 1$) → mô đun tổng biến dạng — CT (28):**")
+        st.latex(r"S_c=\sum_{i=1}^{n}\frac{\sigma'_z}{E_{oed}^i}\,H_i\qquad\text{(28)};\qquad "
                  r"E_{oed} = \frac{1+e_0}{a_{1-2}}\times 98{,}0665 \ \text{kPa}")
-        st.latex(r"\sigma'_{v0}(z) = \sum \gamma'\,h \ \ (\gamma'=\gamma-9{,}81\ \text{dưới MNN}); \quad"
-                 r"\sigma'_{vf} = \sigma'_{v0} + \Delta\sigma; \quad"
-                 r"\text{dừng khi } \frac{\Delta\sigma}{\sigma'_{v0}} < 10\%")
+        st.caption(r"Ký hiệu (TCCS 41): σ'vz = ứng suất bản thân (= σ'v0) · σ'z = ứng suất "
+                   r"do tải đắp (= Δσ) · σ'pz = áp lực tiền cố kết (Pc) · Cc = chỉ số nén · "
+                   r"Cr = chỉ số nén hồi phục (≈ Cs) · Hi ≤ 2,0 m.")
+        st.latex(r"\sigma'_{vz}(z) = \sum \gamma'\,h \ \ (\gamma'=\gamma-9{,}81\ \text{dưới MNN}); \quad"
+                 r"\text{vùng ảnh hưởng: dừng khi } \frac{\sigma'_z}{\sigma'_{vz}} < 10\%\ (\S 71)")
 
         st.markdown("#### Bảng chi tiết từng phân tố")
         # Thêm hố khoan QTT (ND-*) để xem chi tiết, dùng chung định dạng
@@ -397,7 +425,8 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                                           key=f"qtt_cdtn_{bh_sel}")
             _Hq = max(0.0, _cdtk_q - _cdtn_q)
             rr = settle_avg(bh_sel, H_fill_m=_Hq, gamma_fill=gamma_fill,
-                            gwt_depth_m=max(0.0, _cdtn_q - gwt_elev), B_load_m=B_load, bcl_params=_bcl_p)
+                            gwt_depth_m=max(0.0, _cdtn_q - gwt_elev), B_load_m=B_load,
+                            bcl_params=_bcl_p, nc_soft_clay=nc_soft_clay)
             st.caption(f"Hố QTT {bh_sel}: CĐTK {_cdtk_q:.2f} − CĐTN {_cdtn_q:.2f} → "
                        f"H_đắp = {_Hq:.2f} m, q = γ·H = {rr['q_kPa']:.1f} kN/m².")
         else:
@@ -595,6 +624,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
     drain2 = st.checkbox("Cố kết thoát nước 2 mặt (H = H_sét/2)", value=True, key="zf_drain2")
     assume0 = st.checkbox("Giả định CĐTN = 0,0 m cho hố có CĐTN > 0 (khu vực mới san lấp)",
                           value=False, key="zf_assume0")
+    _nc_zf = _nc_radio(st, "zf_nc")
     st.caption("Chiều dày đắp và cao độ tự nhiên lấy theo số liệu **BCL (Ban chiến lược)**. "
                "Tải gây lún q = γ·H_đắp. Lún tính trong vùng ảnh hưởng (§71). "
                "KE-HK8 không nằm trong nhóm này. **Lún cố kết theo thời gian chỉ phát triển ở "
@@ -620,7 +650,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                 cdtn = 0.0
             r = settle_avg(c["bh"], H_fill_m=H, gamma_fill=gamma_fill,
                            gwt_depth_m=max(0.0, cdtn - gwt_elev), B_load_m=B_load,
-                           bcl_params=bcl)
+                           bcl_params=bcl, nc_soft_clay=_nc_zf)
             full_results[c["bh"]] = r
             _th = time_history(r, [15.0, 30.0, 50.0], double_drainage=drain2)
             rows.append({"zone": c["zone"], "bh": c["bh"], "CDTN_m": cdtn,
@@ -661,7 +691,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                               bcl=(bcl if 'bcl' in dir() else None),
                               use_bcl=(use_bcl if 'use_bcl' in dir() else False),
                               chart_title='Lún nền chưa xử lý 6 vùng (hố khoan đại diện)',
-                              assume0=assume0)
+                              assume0=assume0, nc_soft_clay=_nc_zf)
 
 def _render_6zones(st, compute_no_treat_6zones) -> None:
     """Chế độ xem: lún nền chưa xử lý gom theo 6 vùng CDM (Bờ kè KE)."""

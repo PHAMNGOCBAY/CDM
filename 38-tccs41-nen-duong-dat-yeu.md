@@ -224,21 +224,33 @@ $$c_u^i = \mu \cdot S_u^i \qquad \text{(C.5)}$$
 
 ## 4. Công thức tính lún cố kết (Điều 9 + Phụ lục A)
 
-### 4.1 Tổng lún cố kết sơ cấp
+### 4.1 Tổng lún cố kết sơ cấp — TCCS 41:2022 Điều 9.1 (công thức 24–28)
 
-Mỗi lớp đất thí nghiệm nén cố kết:
+Phương pháp phân tầng lấy tổng; mỗi phân tố $H_i \le 2{,}0$ m. Ký hiệu tiêu chuẩn:
+$\sigma'_{vz}$ = ứng suất bản thân (= $\sigma_{v0}$); $\sigma'_z$ = ứng suất do tải đắp (= $\Delta\sigma$);
+$\sigma'_{pz}$ = áp lực tiền cố kết (= $P_C$); $C_c$ = chỉ số nén; $C_r$ = chỉ số nén hồi phục (≈ $C_s$).
 
-**Trường hợp quá cố kết ($\sigma_{vf} \leq P_C$):**
+**Dạng tổng quát theo hệ số rỗng — CT (24):**
 
-$$S_i = \frac{C_s}{1 + e_0} \cdot H_i \cdot \log_{10}\frac{\sigma_{vf}}{\sigma_{v0}}$$
+$$S_c = \sum_{i=1}^{n} \frac{e_0^i - e_1^i}{1 + e_0^i} H_i \qquad (24)$$
 
-**Trường hợp cắt qua PC ($\sigma_{v0} < P_C < \sigma_{vf}$):**
+**Cố kết thường NC ($\sigma'_{vz} = \sigma'_{pz}$) — CT (26):**
 
-$$S_i = H_i \left[ \frac{C_s}{1+e_0} \log_{10}\frac{P_C}{\sigma_{v0}} + \frac{C_c}{1+e_0} \log_{10}\frac{\sigma_{vf}}{P_C} \right]$$
+$$S_c = \sum \frac{H_i}{1 + e_0^i} C_c^i \log_{10}\frac{\sigma'_z + \sigma'_{vz}}{\sigma'_{vz}} \qquad (26)$$
 
-**Trường hợp bình thường cố kết ($\sigma_{v0} \geq P_C$):**
+**Quá cố kết, tải vượt $P_C$ ($\sigma'_z \ge \sigma'_{pz} - \sigma'_{vz}$) — CT (25):**
 
-$$S_i = \frac{C_c}{1 + e_0} \cdot H_i \cdot \log_{10}\frac{\sigma_{vf}}{\sigma_{v0}}$$
+$$S_c = \sum \frac{H_i}{1+e_0^i} \left[ C_r^i \log_{10}\frac{\sigma'_{pz}}{\sigma'_{vz}} + C_c^i \log_{10}\frac{\sigma'_z + \sigma'_{vz}}{\sigma'_{pz}} \right] \qquad (25)$$
+
+**Quá cố kết, tải chưa vượt $P_C$ ($\sigma'_z < \sigma'_{pz} - \sigma'_{vz}$) — CT (27):**
+
+$$S_c = \sum \frac{H_i}{1+e_0^i} C_r^i \log_{10}\frac{\sigma'_z + \sigma'_{vz}}{\sigma'_{vz}} \qquad (27)$$
+
+**Phương án mô đun tổng biến dạng (sét chặt $e_0<1$) — CT (28):**
+
+$$S_c = \sum_{i=1}^{n} \frac{\sigma'_z}{E_{oed}^i} H_i \qquad (28); \quad E_{oed} = \frac{1+e_0}{a_{1-2}} \times 98{,}0665 \ \text{kPa}$$
+
+> **Giả thiết bùn sét "trạng thái chảy" (quyết định dự án):** đất bùn chảy ($e_0 \ge 1$) coi là **cố kết thường NC** ($P_C = \sigma'_{vz}$) → dùng CT (26), $C_c$ toàn bộ. Lý do: $P_C$ thí nghiệm thường là một giá trị áp cho cả lớp bùn dày → lớp nông bị quá cố kết giả tạo (OCR cao phi lý) → lún thiếu. App có **lựa chọn** "NC (bùn chảy)" (mặc định) ↔ "Xét quá cố kết theo $P_C$ thí nghiệm" (CT 25/27) — `settle_avg(nc_soft_clay=…)`.
 
 **Ký hiệu:**
 
