@@ -21,6 +21,7 @@ def render() -> None:
 
     from cdm_no_treat_settlement import LEVEE_KEY, levee_boreholes
     from soil_param_stats import FIELDS, ZONES, save_stats, stats_by_layer
+    from core.report_style import df_to_report_html, html_css_block
 
     st.title("Thống kê chỉ tiêu cơ lý các lớp đất")
     st.caption(
@@ -29,6 +30,8 @@ def render() -> None:
         "tổng hợp từ thí nghiệm phòng. Mẫu ánh xạ vào lớp theo độ sâu; lớp xi măng đất (KE-HK8) "
         "tính như lớp bùn 1."
     )
+    # Định dạng bảng chuẩn dự án (header đậm navy, thân 12pt, zebra, lưới) — đồng bộ Word
+    st.markdown(html_css_block(), unsafe_allow_html=True)
 
     c1, c2 = st.columns([1, 3])
     with c1:
@@ -54,7 +57,7 @@ def render() -> None:
         "Vùng": r["zone"], "Lớp": r["symbol"], "n HK": r["n_bh"], "n mẫu": r["n_samples"],
         **{label[f]: (r[f] if r[f] is not None else "—") for f in consol},
     } for r in rows])
-    st.table(dfc)
+    st.markdown(df_to_report_html(dfc), unsafe_allow_html=True)
 
     # ── Bảng vật lý + sức kháng cắt ──────────────────────────────────────
     st.markdown("### Chỉ tiêu vật lý và sức kháng cắt theo lớp")
@@ -64,7 +67,7 @@ def render() -> None:
         "Vùng": r["zone"], "Lớp": r["symbol"], "n mẫu": r["n_samples"],
         **{label[f]: (r[f] if r[f] is not None else "—") for f in phys},
     } for r in rows])
-    st.table(dfp)
+    st.markdown(df_to_report_html(dfp), unsafe_allow_html=True)
 
     # ── Biểu đồ so sánh e0 / Cc theo lớp ─────────────────────────────────
     try:
