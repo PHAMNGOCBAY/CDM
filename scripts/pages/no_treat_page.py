@@ -257,14 +257,16 @@ def _render_qtt(st) -> None:
                             gwt_depth_m=max(0.0, cdtn - gwt_elev), B_load_m=B_load)
         except Exception:
             continue
-        th = time_history(rr, [15.0], double_drainage=drain2)
+        th = time_history(rr, [15.0, 30.0, 50.0], double_drainage=drain2)
         full_results[b] = rr
         rows.append({
             "zone": "QTT", "bh": b, "CDTN_m": round(cdtn, 2), "H_fill_m": round(H, 2),
             "q_kPa": rr["q_kPa"], "d_influence_m": rr["stop_depth_m"],
             "S_imm_cm": th["S_immediate_cm"], "S_consol_cm": th["S_consol_cm"],
-            "S_total_cm": rr["S_total_cm"], "U15_pct": th["U_pct"][0],
-            "S_15yr_cm": th["St_cm"][0], "residual15_cm": th["residual_cm"][0],
+            "S_total_cm": rr["S_total_cm"],
+            "U15_pct": th["U_pct"][0], "S_15yr_cm": th["St_cm"][0], "residual15_cm": th["residual_cm"][0],
+            "U30_pct": th["U_pct"][1], "S_30yr_cm": th["St_cm"][1], "residual30_cm": th["residual_cm"][1],
+            "U50_pct": th["U_pct"][2], "S_50yr_cm": th["St_cm"][2], "residual50_cm": th["residual_cm"][2],
         })
 
     if not rows:
@@ -294,10 +296,17 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         "U 15 năm (%)": r.get("U15_pct", "—"),
         "Lún 15 năm (cm)": r["S_15yr_cm"],
         "Lún còn lại 15 năm (cm)": r.get("residual15_cm", "—"),
+        "U 30 năm (%)": r.get("U30_pct", "—"),
+        "Lún 30 năm (cm)": r.get("S_30yr_cm", "—"),
+        "Lún còn lại 30 năm (cm)": r.get("residual30_cm", "—"),
+        "U 50 năm (%)": r.get("U50_pct", "—"),
+        "Lún 50 năm (cm)": r.get("S_50yr_cm", "—"),
+        "Lún còn lại 50 năm (cm)": r.get("residual50_cm", "—"),
     } for r in rows])
     _report_table(st, df)
-    st.caption("Lún 15 năm = lún tức thời (lớp cát + sét chặt e₀<1, xảy ra ngay) "
-               "+ U(15 năm)·lún cố kết (chỉ lớp sét e₀>1). Vì vậy Lún 15 năm < S∞.")
+    st.caption("Lún t năm = lún tức thời (lớp cát + sét chặt e₀<1, xảy ra ngay) "
+               "+ U(t năm)·lún cố kết (chỉ lớp sét e₀>1). Mốc 15/30/50 năm: 15 năm = "
+               "TCCS 41 mặt đường mềm, 30 năm = mặt đường cứng, 50 năm = dài hạn.")
     if assume0:
         st.caption("Đã giả định CĐTN = 0,0 m cho các hố có CĐTN > 0 (KE-HK11, HK5, HK2): "
                    "phần san lấp gần đây trở thành tải đắp bổ sung → tải gây lún và độ lún tăng.")
@@ -613,13 +622,17 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                            gwt_depth_m=max(0.0, cdtn - gwt_elev), B_load_m=B_load,
                            bcl_params=bcl)
             full_results[c["bh"]] = r
-            _th = time_history(r, [15.0], double_drainage=drain2)   # S thực sau 15 năm
+            _th = time_history(r, [15.0, 30.0, 50.0], double_drainage=drain2)
             rows.append({"zone": c["zone"], "bh": c["bh"], "CDTN_m": cdtn,
                          "H_fill_m": round(H, 2), "q_kPa": r["q_kPa"],
                          "d_influence_m": r["stop_depth_m"], "S_total_cm": r["S_total_cm"],
                          "S_consol_cm": _th["S_consol_cm"], "S_imm_cm": _th["S_immediate_cm"],
                          "U15_pct": _th["U_pct"][0], "S_15yr_cm": _th["St_cm"][0],
-                         "residual15_cm": _th["residual_cm"][0]})
+                         "residual15_cm": _th["residual_cm"][0],
+                         "U30_pct": _th["U_pct"][1], "S_30yr_cm": _th["St_cm"][1],
+                         "residual30_cm": _th["residual_cm"][1],
+                         "U50_pct": _th["U_pct"][2], "S_50yr_cm": _th["St_cm"][2],
+                         "residual50_cm": _th["residual_cm"][2]})
         if use_bcl:
             st.caption("Phương pháp: dùng bộ **chỉ tiêu cơ lý BCL (Ban chiến lược)** theo lớp "
                        "(γ, e₀, Cc, Cs, Cv, E từ N) — single source thống nhất.")
