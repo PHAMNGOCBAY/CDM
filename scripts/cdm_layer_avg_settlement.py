@@ -62,6 +62,7 @@ def settle_avg(
     rep: Optional[dict] = None,
     bcl_params: Optional[dict] = None,
     db_path: Optional[Path] = None,
+    nc_soft_clay: bool = True,
 ) -> dict:
     """Lún nền chưa xử lý của 1 hố khoan dùng chỉ tiêu trung bình theo lớp.
 
@@ -135,12 +136,15 @@ def settle_avg(
         method = "-"
 
         if (e0 is not None) and (e0 >= 1.0) and Cc:
-            # SÉT YẾU (e0 ≥ 1) → nén cố kết Terzaghi 1D, nhánh OC/NC/cross-PC
-            PC_use = PC or sigma_v0
+            # SÉT YẾU (e0 ≥ 1 = bùn trạng thái chảy) → nén cố kết Terzaghi 1D.
+            # nc_soft_clay=True: coi là CỐ KẾT THƯỜNG (Pc=σ'v0) → dùng Cc toàn bộ, tránh
+            # OC giả tạo ở lớp nông do Pc thí nghiệm (một giá trị) áp cho cả lớp bùn dày.
+            PC_use = sigma_v0 if nc_soft_clay else (PC or sigma_v0)
             sig_f = sigma_v0 + dsig
             fac = sublayer_m / (1.0 + e0)
             if sigma_v0 >= PC_use:        # NC
-                Si = fac * Cc * math.log10(sig_f / sigma_v0); method = "sét cố kết-NC (e≥1)"
+                Si = fac * Cc * math.log10(sig_f / sigma_v0)
+                method = "sét cố kết-NC bùn chảy (e≥1)" if nc_soft_clay else "sét cố kết-NC (e≥1)"
             elif sig_f > PC_use:          # cross-PC
                 Si = fac * (Cs or 0) * math.log10(PC_use / sigma_v0) + fac * Cc * math.log10(sig_f / PC_use)
                 method = "sét cố kết-cross (e≥1)"
