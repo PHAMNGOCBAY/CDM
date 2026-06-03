@@ -144,7 +144,7 @@ def render() -> None:
             fig = go.Figure()
             fig.add_bar(
                 x=[r.bh_name for r in rows], y=[r.S_total_cm for r in rows],
-                text=[f"{r.S_total_cm:.0f}" for r in rows], textposition="outside",
+                text=[f"{r.S_total_cm:.2f}" for r in rows], textposition="outside",
                 textfont=dict(size=16), marker_color="#C62828", name="Lún chưa xử lý",
             )
             fig.update_layout(
@@ -331,19 +331,19 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         fig = go.Figure()
         fig.add_bar(x=[f"{r['zone']}\n{r['bh']}" for r in rows],
                     y=[r["S_total_cm"] for r in rows],
-                    text=[f"{r['S_total_cm']:.0f}" for r in rows], textposition="outside",
+                    text=[f"{r['S_total_cm']:.2f}" for r in rows], textposition="outside",
                     textfont=dict(size=16), marker_color="#C62828", name="Lún S∞")
         fig.add_bar(x=[f"{r['zone']}\n{r['bh']}" for r in rows],
                     y=[r["S_15yr_cm"] for r in rows],
-                    text=[f"{r['S_15yr_cm']:.0f}" for r in rows], textposition="outside",
+                    text=[f"{r['S_15yr_cm']:.2f}" for r in rows], textposition="outside",
                     textfont=dict(size=16), marker_color="#F9A825", name="Lún 15 năm")
         fig.add_bar(x=[f"{r['zone']}\n{r['bh']}" for r in rows],
                     y=[r.get("S_30yr_cm", 0) for r in rows],
-                    text=[f"{r.get('S_30yr_cm', 0):.0f}" for r in rows], textposition="outside",
+                    text=[f"{r.get('S_30yr_cm', 0):.2f}" for r in rows], textposition="outside",
                     textfont=dict(size=16), marker_color="#EF6C00", name="Lún 30 năm")
         fig.add_bar(x=[f"{r['zone']}\n{r['bh']}" for r in rows],
                     y=[r.get("S_50yr_cm", 0) for r in rows],
-                    text=[f"{r.get('S_50yr_cm', 0):.0f}" for r in rows], textposition="outside",
+                    text=[f"{r.get('S_50yr_cm', 0):.2f}" for r in rows], textposition="outside",
                     textfont=dict(size=16), marker_color="#8D6E63", name="Lún 50 năm")
         fig.update_layout(title=chart_title,
                           barmode="group", yaxis_title="Lún (cm)", height=420,
@@ -492,11 +492,11 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
             import plotly.graph_objects as go
             fig = go.Figure()
             fig.add_trace(go.Scatter(x=th["years"], y=th["St_cm"], mode="lines+markers+text",
-                          text=[f"{v:.0f}" for v in th["St_cm"]], textposition="top center",
+                          text=[f"{v:.2f}" for v in th["St_cm"]], textposition="top center",
                           textfont=dict(size=16),
                           name="Lún đạt S(t)", line=dict(color="#1565C0", width=2)))
             fig.add_trace(go.Scatter(x=th["years"], y=th["residual_cm"], mode="lines+markers+text",
-                          text=[f"{v:.0f}" for v in th["residual_cm"]], textposition="bottom center",
+                          text=[f"{v:.2f}" for v in th["residual_cm"]], textposition="bottom center",
                           textfont=dict(size=16),
                           name="Lún còn lại", line=dict(color="#C62828", width=2, dash="dot")))
             fig.add_hline(y=th["S_inf_cm"], line=dict(color="#777", dash="dash"),
@@ -519,7 +519,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
             f100 = go.Figure()
             # nhãn thưa: chỉ ghi tại các mốc tiêu chuẩn để không chồng chữ
             _marks = {0.5, 5, 10, 15, 20, 30, 50, 70, 100}
-            _txt = [f"{v:.0f}" if th100["years"][i] in _marks else ""
+            _txt = [f"{v:.2f}" if th100["years"][i] in _marks else ""
                     for i, v in enumerate(th100["St_cm"])]
             f100.add_trace(go.Scatter(x=th100["years"], y=th100["St_cm"], mode="lines+markers+text",
                            text=_txt, textposition="top center", textfont=dict(size=16),
@@ -532,7 +532,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                     _i = th100["years"].index(_yr)
                     f100.add_trace(go.Scatter(
                         x=[_yr], y=[th100["St_cm"][_i]], mode="markers+text",
-                        text=[f"{_yr:.0f} năm: {th100['St_cm'][_i]:.0f} cm "
+                        text=[f"{_yr:.0f} năm: {th100['St_cm'][_i]:.2f} cm "
                               f"(U={th100['U_pct'][_i]:.0f}%)"],
                         textposition="bottom right", textfont=dict(size=16),
                         marker=dict(color=_col, size=12), name=f"Mốc {_yr:.0f} năm"))
@@ -555,7 +555,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
             sv0_10 = [0.1 * v for v in sv0]
             # nhãn giá trị thưa (mỗi ~6m) tránh chồng chữ
             def _lbl(vals):
-                return [f"{v:.0f}" if (i % 3 == 0) else "" for i, v in enumerate(vals)]
+                return [f"{v:.2f}" if (i % 3 == 0) else "" for i, v in enumerate(vals)]
             fs = go.Figure()
             fs.add_trace(go.Scatter(x=sv0, y=zs, mode="lines+markers+text", name="σ'v0 (hữu hiệu)",
                          text=_lbl(sv0), textposition="middle right", textfont=dict(size=16),
@@ -745,12 +745,12 @@ def _render_6zones(st, compute_no_treat_6zones) -> None:
         fig.add_bar(
             x=[f"Vùng {z['zone_no']}" for z in zones],
             y=[z["S_max_cm"] for z in zones],
-            text=[f"{z['S_max_cm']:.0f}" for z in zones], textposition="outside",
+            text=[f"{z['S_max_cm']:.2f}" for z in zones], textposition="outside",
             textfont=dict(size=16), marker_color="#C62828", name="Lún đại diện (max)")
         fig.add_bar(
             x=[f"Vùng {z['zone_no']}" for z in zones],
             y=[z["S_avg_cm"] for z in zones],
-            text=[f"{z['S_avg_cm']:.0f}" for z in zones], textposition="outside",
+            text=[f"{z['S_avg_cm']:.2f}" for z in zones], textposition="outside",
             textfont=dict(size=16), marker_color="#F9A825", name="Lún trung bình")
         fig.update_layout(title="Lún nền chưa xử lý theo 6 vùng CDM (cm)",
                           barmode="group", yaxis_title="Lún S∞ (cm)",
@@ -763,7 +763,7 @@ def _render_6zones(st, compute_no_treat_6zones) -> None:
     st.markdown("#### Chi tiết từng vùng")
     for z in zones:
         st.markdown(f"**Vùng {z['zone_no']} — tổng dài {z['total_length_m']} m "
-                    f"(lún đại diện {z['S_max_cm']:.0f} cm tại {z['controlling_bh']})**")
+                    f"(lún đại diện {z['S_max_cm']:.2f} cm tại {z['controlling_bh']})**")
         df = pd.DataFrame([{
             "Hố khoan": r.bh_name,
             "CĐTN (m)": round(r.CDTN_m, 2),
