@@ -2,7 +2,9 @@
   "_meta": {
     "source_dxf": "G:\\My Drive\\202605-TRUNG TAM HCM\\DIA CHAT\\7. QUANG TRUONG TRUNG TAM\\QTT-HO KHOAN ND04.dxf",
     "extracted_at": "2026-06-01 21:47:11",
-    "tool": "ezdxf 1.4.4"
+    "tool": "ezdxf 1.4.4",
+    "symbol_source": "QTT-HO KHOAN ND04.dxf (ký hiệu lớp 1-3-4)",
+    "updated": "2026-06-03"
   },
   "borehole": {
     "name": "ND-04",
@@ -30,7 +32,7 @@
       "depth_bot_m": 32.6,
       "thickness_m": 3.1,
       "elev_bot_m": -31.51,
-      "symbol": "2a",
+      "symbol": "3",
       "description": "(SM) - Cát lẫn bụi màu xám xanh, xám trắng, kết cấu chặt vừa"
     },
     {
@@ -39,8 +41,8 @@
       "depth_bot_m": 33.0,
       "thickness_m": 0.4,
       "elev_bot_m": -31.91,
-      "symbol": "?",
-      "description": ""
+      "symbol": "4",
+      "description": "(SM) - Cát lẫn bụi màu xám xanh, xám trắng, kết cấu chặt vừa"
     }
   ],
   "spt_samples": [
