@@ -210,18 +210,25 @@ def _U_terzaghi(Tv: float) -> float:
     return min(U, 0.999)
 
 
-def time_history(res: dict, t_years: list[float], double_drainage: bool = True) -> dict:
+def time_history(res: dict, t_years: list[float], double_drainage: bool = True,
+                 m_coef: float = 1.0) -> dict:
     """Lún theo thời gian từ kết quả settle_avg.
 
     Tách: S_tức thời (cát + sét chặt) + S_cố kết (sét yếu phát triển theo U(t)).
     Cv tương đương: Ctbv = (H·100)² / (Σ h·100/√Cv)²  (chỉ phân tố sét cố kết).
     H thoát nước = H_sét cố kết /2 (thoát 2 mặt) hoặc /1 (thoát 1 mặt).
+
+    m_coef (TCCS 41:2022 Điều 9.2.1 SĐ1): hệ số kinh nghiệm 1,1–1,4.
+      Tổng lún S = m·Sc (CT 30a); lún tức thời lớp bùn S_i = (m−1)·Sc (CT 30b),
+      do đất yếu đẩy trồi ngang dưới tải đắp. m=1,0 → bỏ qua (mặc định, tương thích cũ).
     St(t) = S_tức thời + U(Tv)·S_cố kết ;  Tv = Ctbv·t/(H·100)².
     """
     consol = [L for L in res["layers"] if L.get("is_consol") and L.get("Cv_cm2s")]
-    S_inf = res["S_total_cm"]
     S_consol = round(sum(L["Si_cm"] for L in consol), 2)
-    S_imm = round(S_inf - S_consol, 2)
+    S_imm_elastic = round(res["S_total_cm"] - S_consol, 2)   # tức thời cát + sét chặt
+    Si_mud = round((m_coef - 1.0) * S_consol, 2)             # tức thời lớp bùn (CT 30b)
+    S_imm = round(S_imm_elastic + Si_mud, 2)                 # tổng lún tức thời
+    S_inf = round(S_imm + S_consol, 2)                       # = S_imm_elastic + m·Sc
 
     H_clay = round(len(consol) * 2.0, 2)   # bề dày sét cố kết (phân tố 2m)
     sum_term = sum(2.0 * 100.0 / math.sqrt(L["Cv_cm2s"]) for L in consol) if consol else 0.0
@@ -240,6 +247,7 @@ def time_history(res: dict, t_years: list[float], double_drainage: bool = True) 
         out_St.append(St); out_res.append(round(S_inf - St, 2))
     return {
         "S_inf_cm": S_inf, "S_immediate_cm": S_imm, "S_consol_cm": S_consol,
+        "S_imm_elastic_cm": S_imm_elastic, "Si_mud_cm": Si_mud, "m_coef": m_coef,
         "Ctbv_cm2s": Ctbv, "H_clay_m": H_clay, "H_drain_m": round(H_drain, 2),
         "double_drainage": double_drainage,
         "years": out_t, "Tv": out_Tv, "U_pct": out_U, "St_cm": out_St, "residual_cm": out_res,

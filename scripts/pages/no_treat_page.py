@@ -29,6 +29,16 @@ def _nc_radio(st, key: str) -> bool:
     return _c.startswith("Cố kết thường")
 
 
+def _m_input(st, key: str) -> float:
+    """Hệ số lún tức thời m (TCCS 41:2022 Điều 9.2.1 SĐ1, CT 30a/30b).
+    S = m·Sc; lún tức thời lớp bùn Si = (m−1)·Sc. m=1,0 → bỏ qua lún tức thời bùn."""
+    return st.number_input(
+        "Hệ số lún tức thời m (TCCS 41 CT 30a/30b)", 1.0, 1.4, 1.1, 0.05, key=key,
+        help="S = m·Sc (30a); lún tức thời lớp bùn do đẩy trồi ngang Si=(m−1)·Sc (30b). "
+             "m=1,1 khi có biện pháp hạn chế đẩy trồi ngang; đắp càng cao, đất càng yếu → m "
+             "càng lớn (đến 1,4). m=1,0 = không xét lún tức thời của bùn.")
+
+
 def _report_table(st, df) -> None:
     """Render bảng theo chuẩn dự án (header đậm navy, thân 12pt, zebra, lưới) — đồng bộ Word.
     Nếu df có index không mặc định (đã set_index) → đưa index thành cột đầu để hiển thị."""
@@ -196,6 +206,7 @@ def _render_qtt(st) -> None:
     if disp.startswith("Boussinesq"):
         B_load = st.number_input("Bề rộng diện gia tải B (m)", min_value=1.0, value=20.0, step=1.0, key="qtt_B")
     _nc_qtt = _nc_radio(st, "qtt_nc")
+    _m_qtt = _m_input(st, "qtt_m")
 
     st.caption("Mỗi hố khoan QTT dùng SỐ LIỆU RIÊNG; cao độ thiết kế mặc định lấy từ lưới cao "
                "độ QTT (điểm gần nhất) — **sửa CĐTN/CĐTK trong bảng bên dưới, kết quả tự cập "
@@ -271,13 +282,13 @@ def _render_qtt(st) -> None:
                             nc_soft_clay=_nc_qtt)
         except Exception:
             continue
-        th = time_history(rr, [15.0, 30.0, 50.0], double_drainage=drain2)
+        th = time_history(rr, [15.0, 30.0, 50.0], double_drainage=drain2, m_coef=_m_qtt)
         full_results[b] = rr
         rows.append({
             "zone": "QTT", "bh": b, "CDTN_m": round(cdtn, 2), "H_fill_m": round(H, 2),
             "q_kPa": rr["q_kPa"], "d_influence_m": rr["stop_depth_m"],
             "S_imm_cm": th["S_immediate_cm"], "S_consol_cm": th["S_consol_cm"],
-            "S_total_cm": rr["S_total_cm"],
+            "Si_mud_cm": th["Si_mud_cm"], "S_total_cm": th["S_inf_cm"],
             "U15_pct": th["U_pct"][0], "S_15yr_cm": th["St_cm"][0], "residual15_cm": th["residual_cm"][0],
             "U30_pct": th["U_pct"][1], "S_30yr_cm": th["St_cm"][1], "residual30_cm": th["residual_cm"][1],
             "U50_pct": th["U_pct"][2], "S_50yr_cm": th["St_cm"][2], "residual50_cm": th["residual_cm"][2],
@@ -291,13 +302,13 @@ def _render_qtt(st) -> None:
                                gwt_elev=gwt_elev, B_load=B_load, drain2=drain2,
                                bcl=None, use_bcl=False,
                                chart_title="Lún nền chưa xử lý — hố khoan QTT",
-                               assume0=False, nc_soft_clay=_nc_qtt)
+                               assume0=False, nc_soft_clay=_nc_qtt, m_coef=_m_qtt)
 
 
 def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                                B_load, drain2, bcl=None, use_bcl=False,
                                chart_title='Lún nền chưa xử lý', assume0=False,
-                               nc_soft_clay=True):
+                               nc_soft_clay=True, m_coef=1.0):
     """Render chung: bảng tổng hợp + biểu đồ + công thức + chi tiết phân tố + lún-thời gian.
     Dùng cho cả "Theo bảng 6 vùng" và "Hố khoan QTT"."""
     import pandas as pd
@@ -305,8 +316,9 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         "Vùng": r["zone"], "Hố khoan": r["bh"], "Cao độ TN (m)": r["CDTN_m"],
         "Chiều dày đắp (m)": r["H_fill_m"], "Tải q (kN/m²)": r["q_kPa"],
         "Đáy vùng ảnh hưởng (m)": r["d_influence_m"],
-        "Lún tức thời (cm)": r.get("S_imm_cm", "—"),
-        "Lún cố kết (cm)": r.get("S_consol_cm", "—"),
+        "Lún tức thời bùn Si=(m−1)Sc (cm)": r.get("Si_mud_cm", "—"),
+        "Lún tức thời (tổng, cm)": r.get("S_imm_cm", "—"),
+        "Lún cố kết Sc (cm)": r.get("S_consol_cm", "—"),
         "Lún tổng S∞ (cm)": r["S_total_cm"],
         "U 15 năm (%)": r.get("U15_pct", "—"),
         "Lún 15 năm (cm)": r["S_15yr_cm"],
@@ -319,9 +331,9 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         "Lún còn lại 50 năm (cm)": r.get("residual50_cm", "—"),
     } for r in rows])
     _report_table(st, df)
-    st.caption("Lún t năm = lún tức thời (lớp cát + sét chặt e₀<1, xảy ra ngay) "
-               "+ U(t năm)·lún cố kết (chỉ lớp sét e₀>1). Mốc 15/30/50 năm: 15 năm = "
-               "TCCS 41 mặt đường mềm, 30 năm = mặt đường cứng, 50 năm = dài hạn.")
+    st.caption("Lún tổng S = m·Sc (TCCS 41 CT 30a); lún tức thời lớp bùn Si=(m−1)·Sc do "
+               "đẩy trồi ngang (CT 30b). Lún t năm = lún tức thời + U(t)·Sc (chỉ lớp sét e₀>1). "
+               "Mốc: 15 năm = mặt đường mềm, 30 năm = mặt đường cứng, 50 năm = dài hạn.")
     if assume0:
         st.caption("Đã giả định CĐTN = 0,0 m cho các hố có CĐTN > 0 (KE-HK11, HK5, HK2): "
                    "phần san lấp gần đây trở thành tải đắp bổ sung → tải gây lún và độ lún tăng.")
@@ -359,6 +371,11 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         _gt = ("**đang dùng: Cố kết thường NC — bùn chảy (Pc = σ'v0)**"
                if nc_soft_clay else "**đang dùng: xét quá cố kết theo Pc thí nghiệm**")
         st.caption("Giả thiết lớp sét yếu: " + _gt)
+        st.markdown(r"**Lún tổng & lún tức thời lớp bùn — TCCS 41:2022 Điều 9.2.1 (Sửa đổi 1), "
+                    rf"hệ số m = {m_coef:g}:**")
+        st.latex(r"S = m\cdot S_c\ \ (30a); \qquad S_i = (m-1)\,S_c\ \ (30b)")
+        st.caption("S = tổng lún · Sc = lún cố kết (Điều 9.1) · Si = lún tức thời lớp bùn "
+                   "(đẩy trồi ngang dưới tải đắp) · m = 1,1–1,4 (hệ số kinh nghiệm).")
         st.markdown("**Lớp cát (hạt rời) → lún đàn hồi tức thời:**")
         st.latex(r"S_i = \frac{\Delta\sigma \cdot h_i}{E_s}")
         st.markdown(r"**Lớp sét yếu ($e_0 \ge 1$) → nén cố kết Terzaghi 1D (e–lg p), "
@@ -469,7 +486,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         st.divider()
         st.markdown("#### Lún cố kết theo thời gian")
         YEARS = [0.5, 1, 2, 5, 10, 15, 20, 30, 40, 50, 70, 100]
-        th = time_history(rr, YEARS, double_drainage=drain2)
+        th = time_history(rr, YEARS, double_drainage=drain2, m_coef=m_coef)
         st.markdown("**Công thức (cố kết Terzaghi 1D):**")
         st.latex(r"T_v = \frac{C_v \cdot t}{H_{tn}^2}; \qquad "
                  r"U = \sqrt{\tfrac{4 T_v}{\pi}}\ (U\!<\!0{,}6),\ \ "
@@ -513,7 +530,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         # mịn: 0,5→15 mỗi 0,5 năm; 16→30 mỗi 1; 35→100 mỗi 5
         years100 = sorted(set([round(0.5 * k, 1) for k in range(1, 31)]
                               + list(range(16, 31)) + list(range(35, 101, 5))))
-        th100 = time_history(rr, years100, double_drainage=drain2)
+        th100 = time_history(rr, years100, double_drainage=drain2, m_coef=m_coef)
         try:
             import plotly.graph_objects as go
             f100 = go.Figure()
@@ -633,6 +650,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
     assume0 = st.checkbox("Giả định CĐTN = 0,0 m cho hố có CĐTN > 0 (khu vực mới san lấp)",
                           value=False, key="zf_assume0")
     _nc_zf = _nc_radio(st, "zf_nc")
+    _m_zf = _m_input(st, "zf_m")
     st.caption("Chiều dày đắp và cao độ tự nhiên lấy theo số liệu **BCL (Ban chiến lược)**. "
                "Tải gây lún q = γ·H_đắp. Lún tính trong vùng ảnh hưởng (§71). "
                "KE-HK8 không nằm trong nhóm này. **Lún cố kết theo thời gian chỉ phát triển ở "
@@ -660,11 +678,12 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                            gwt_depth_m=max(0.0, cdtn - gwt_elev), B_load_m=B_load,
                            bcl_params=bcl, nc_soft_clay=_nc_zf)
             full_results[c["bh"]] = r
-            _th = time_history(r, [15.0, 30.0, 50.0], double_drainage=drain2)
+            _th = time_history(r, [15.0, 30.0, 50.0], double_drainage=drain2, m_coef=_m_zf)
             rows.append({"zone": c["zone"], "bh": c["bh"], "CDTN_m": cdtn,
                          "H_fill_m": round(H, 2), "q_kPa": r["q_kPa"],
-                         "d_influence_m": r["stop_depth_m"], "S_total_cm": r["S_total_cm"],
+                         "d_influence_m": r["stop_depth_m"], "S_total_cm": _th["S_inf_cm"],
                          "S_consol_cm": _th["S_consol_cm"], "S_imm_cm": _th["S_immediate_cm"],
+                         "Si_mud_cm": _th["Si_mud_cm"],
                          "U15_pct": _th["U_pct"][0], "S_15yr_cm": _th["St_cm"][0],
                          "residual15_cm": _th["residual_cm"][0],
                          "U30_pct": _th["U_pct"][1], "S_30yr_cm": _th["St_cm"][1],
@@ -699,7 +718,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                               bcl=(bcl if 'bcl' in dir() else None),
                               use_bcl=(use_bcl if 'use_bcl' in dir() else False),
                               chart_title='Lún nền chưa xử lý 6 vùng (hố khoan đại diện)',
-                              assume0=assume0, nc_soft_clay=_nc_zf)
+                              assume0=assume0, nc_soft_clay=_nc_zf, m_coef=_m_zf)
 
 def _render_6zones(st, compute_no_treat_6zones) -> None:
     """Chế độ xem: lún nền chưa xử lý gom theo 6 vùng CDM (Bờ kè KE)."""

@@ -250,6 +250,14 @@ $$S_c = \sum \frac{H_i}{1+e_0^i} C_r^i \log_{10}\frac{\sigma'_z + \sigma'_{vz}}{
 
 $$S_c = \sum_{i=1}^{n} \frac{\sigma'_z}{E_{oed}^i} H_i \qquad (28); \quad E_{oed} = \frac{1+e_0}{a_{1-2}} \times 98{,}0665 \ \text{kPa}$$
 
+### 4.1b Lún tổng & lún tức thời lớp bùn — Điều 9.2.1 (Sửa đổi 1:2022)
+
+$$S = m \cdot S_c \qquad (30a); \qquad S_i = (m-1)\,S_c \qquad (30b)$$
+
+- $S$ = độ lún tổng cộng; $S_c$ = lún cố kết (Điều 9.1); $S_i$ = **lún tức thời lớp bùn** do đất yếu đẩy trồi ngang dưới tải đắp.
+- $m$ = hệ số kinh nghiệm $= 1{,}1 \div 1{,}4$. $m=1{,}1$ khi có biện pháp hạn chế đẩy trồi ngang (đắp phản áp, vải địa kỹ thuật, cọc cát, trụ đá dăm, trụ gia cố…); đắp càng cao + đất càng yếu → $m$ càng lớn.
+- App: `time_history(..., m_coef=m)` — lún tức thời tổng = lún đàn hồi (cát + sét chặt) $+ (m-1)S_c$; $S_\infty = S_{đh} + m\,S_c$. Lựa chọn m trên trang "Lún nền chưa xử lý" (mặc định 1,1; m=1,0 = bỏ qua lún tức thời bùn).
+
 > **Giả thiết bùn sét "trạng thái chảy" (quyết định dự án):** đất bùn chảy ($e_0 \ge 1$) coi là **cố kết thường NC** ($P_C = \sigma'_{vz}$) → dùng CT (26), $C_c$ toàn bộ. Lý do: $P_C$ thí nghiệm thường là một giá trị áp cho cả lớp bùn dày → lớp nông bị quá cố kết giả tạo (OCR cao phi lý) → lún thiếu. App có **lựa chọn** "NC (bùn chảy)" (mặc định) ↔ "Xét quá cố kết theo $P_C$ thí nghiệm" (CT 25/27) — `settle_avg(nc_soft_clay=…)`.
 
 **Ký hiệu:**
