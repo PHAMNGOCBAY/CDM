@@ -7,7 +7,8 @@
       "ND-06",
       "ND-07"
     ],
-    "updated": "2026-05-26"
+    "updated": "2026-06-03",
+    "borrow_rule": "ND-03, ND-04, ND-05 không có KQTN riêng → dùng lab hố gần nhất ND-06"
   },
   "records": [
     {
