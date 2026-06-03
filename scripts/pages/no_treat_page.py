@@ -17,14 +17,28 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 
+def _report_table(st, df) -> None:
+    """Render bảng theo chuẩn dự án (header đậm navy, thân 12pt, zebra, lưới) — đồng bộ Word.
+    Nếu df có index không mặc định (đã set_index) → đưa index thành cột đầu để hiển thị."""
+    import pandas as _pd
+    from core.report_style import df_to_report_html
+    if not isinstance(df.index, _pd.RangeIndex):
+        df = df.reset_index()
+    st.markdown(df_to_report_html(df), unsafe_allow_html=True)
+
+
 def render() -> None:
     import pandas as pd
     import streamlit as st
+    from core.report_style import html_css_block
 
     from cdm_no_treat_settlement import (
         LEVEE_KEY, ZONE_PREFIX, compute_no_treat, compute_no_treat_6zones,
         compute_zone_fill_settlement, resolve_boreholes, save_results,
     )
+
+    # Nhúng CSS bảng chuẩn 1 lần cho toàn trang (mọi chế độ xem)
+    st.markdown(html_css_block(), unsafe_allow_html=True)
 
     st.title("Lún nền chưa xử lý — vùng CDM")
     st.caption(
@@ -99,7 +113,7 @@ def render() -> None:
         "Lún 15 năm (cm)": round(r.S_15yr_cm, 1),
         "Ghi chú": (r.warning or "")[:30],
     } for r in rows])
-    st.table(df)
+    _report_table(st, df)
 
     valid = [r for r in rows if r.S_total_cm > 0]
     if valid:
@@ -251,7 +265,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         "Lún 15 năm (cm)": r["S_15yr_cm"],
         "Lún còn lại 15 năm (cm)": r.get("residual15_cm", "—"),
     } for r in rows])
-    st.table(df)
+    _report_table(st, df)
     st.caption("Lún 15 năm = lún tức thời (lớp cát + sét chặt e₀<1, xảy ra ngay) "
                "+ U(15 năm)·lún cố kết (chỉ lớp sét e₀>1). Vì vậy Lún 15 năm < S∞.")
     if assume0:
@@ -369,7 +383,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
             "<style>[data-testid='stTable'] table{font-size:12pt}"
             "[data-testid='stTable'] th,[data-testid='stTable'] td{font-size:12pt;padding:4px 8px}</style>",
             unsafe_allow_html=True)
-        st.table(ddf)
+        _report_table(st, ddf)
         if rr.get("warnings"):
             st.warning(" · ".join(rr["warnings"][:5]))
 
@@ -396,7 +410,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
             "Lún đạt S(t) (cm)": th["St_cm"],
             "Lún còn lại (cm)": th["residual_cm"],
         }).set_index("Thời gian (năm)")
-        st.table(tdf)
+        _report_table(st, tdf)
         try:
             import plotly.graph_objects as go
             fig = go.Figure()
@@ -584,7 +598,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                 "<style>[data-testid='stTable'] table{font-size:12pt}"
                 "[data-testid='stTable'] th,[data-testid='stTable'] td{font-size:12pt;padding:4px 8px}</style>",
                 unsafe_allow_html=True)
-            st.table(_bdf.set_index("Lớp"))
+            _report_table(st, _bdf.set_index("Lớp"))
             st.caption("Nguồn: BCL (Ban chiến lược) — TTHC Thủ Thiêm. Cv quy đổi từ ×10⁻⁴ cm²/s; "
                        "E = α·N (α=2000 kPa) cho cát/lớp chặt; P_c lấy từ thí nghiệm (lab) vì BCL thiếu; "
                        "Su(VST) sét = 5 + 0,7·Z.")
@@ -636,7 +650,7 @@ def _render_6zones(st, compute_no_treat_6zones) -> None:
         "Lún TB (cm)": z["S_avg_cm"],
         "HK kiểm soát": z["controlling_bh"],
     } for z in zones])
-    st.table(summ)
+    _report_table(st, summ)
 
     try:
         import plotly.graph_objects as go
@@ -672,7 +686,7 @@ def _render_6zones(st, compute_no_treat_6zones) -> None:
             "Lún S∞ (cm)": round(r.S_total_cm, 1),
             "Lún 15 năm (cm)": round(r.S_15yr_cm, 1),
         } for r in z["boreholes"]])
-        st.table(df)
+        _report_table(st, df)
 
     st.caption("Lún này là của nền CHƯA xử lý — dùng so sánh trực tiếp với cọc CDM "
                "(xem trang thiết kế 6 vùng CDM, mục Lc/S₁/S₂ theo từng vùng).")
