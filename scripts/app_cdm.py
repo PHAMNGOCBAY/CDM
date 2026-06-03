@@ -4552,28 +4552,23 @@ if _page == "geology":
                                   "e₀", "Cc", "Cs", "PC (kPa)", "Cv (cm²/s)"]
                 _desc_col = "Description"
 
-            # Format Cv scientific notation
+            # Định dạng bảng chuẩn dự án (header đậm navy, 12pt, zebra, lưới) — đồng bộ Word
+            from core.report_style import df_to_report_html, html_css_block
             _cv_col = "Cv (cm²/s)"
-            df_lay[_cv_col] = df_lay[_cv_col].apply(
-                lambda x: f"{x:.2e}" if pd.notna(x) and x is not None else "–"
-            )
-
-            st.dataframe(
-                df_lay,
-                use_container_width=True,
-                height=310,
-                column_config={
-                    _desc_col:    st.column_config.TextColumn(width="medium"),
-                    "γ (kN/m³)":  st.column_config.NumberColumn(format="%.2f"),
-                    "c (kPa)":    st.column_config.NumberColumn(format="%.1f"),
-                    "φ (°)":      st.column_config.NumberColumn(format="%.1f"),
-                    "e₀":         st.column_config.NumberColumn(format="%.3f"),
-                    "Cc":         st.column_config.NumberColumn(format="%.4f"),
-                    "Cs":         st.column_config.NumberColumn(format="%.4f"),
-                    "PC (kPa)":   st.column_config.NumberColumn(format="%.1f"),
-                    _cv_col:      st.column_config.TextColumn(width="small"),
-                },
-            )
+            _disp = df_lay.copy()
+            _fmt = {"γ (kN/m³)": "{:.2f}", "c (kPa)": "{:.1f}", "φ (°)": "{:.1f}",
+                    "e₀": "{:.3f}", "Cc": "{:.4f}", "Cs": "{:.4f}", "PC (kPa)": "{:.1f}"}
+            for _c, _f in _fmt.items():
+                if _c in _disp.columns:
+                    _disp[_c] = _disp[_c].apply(
+                        lambda v, ff=_f: ff.format(v) if pd.notna(v) and v is not None else "—")
+            for _c in _disp.columns[2:5]:   # Đỉnh / Đáy / Dày (m)
+                _disp[_c] = _disp[_c].apply(
+                    lambda v: f"{v:.1f}" if pd.notna(v) and v is not None else "—")
+            _disp[_cv_col] = df_lay[_cv_col].apply(
+                lambda x: f"{x:.2e}" if pd.notna(x) and x is not None else "—")
+            st.markdown(html_css_block(), unsafe_allow_html=True)
+            st.markdown(df_to_report_html(_disp), unsafe_allow_html=True)
         else:
             st.info(_t("no_strat"))
 
