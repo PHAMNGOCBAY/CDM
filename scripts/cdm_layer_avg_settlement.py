@@ -224,8 +224,12 @@ def time_history(res: dict, t_years: list[float], double_drainage: bool = True,
     St(t) = S_tức thời + U(Tv)·S_cố kết ;  Tv = Ctbv·t/(H·100)².
     """
     consol = [L for L in res["layers"] if L.get("is_consol") and L.get("Cv_cm2s")]
+    _consol_ids = {id(L) for L in consol}
     S_consol = round(sum(L["Si_cm"] for L in consol), 2)
-    S_imm_elastic = round(res["S_total_cm"] - S_consol, 2)   # tức thời cát + sét chặt
+    # tức thời = tổng phân tố KHÔNG cố kết theo thời gian (cát + sét chặt e0<1 + lớp
+    # cố kết thiếu Cv). Cộng trực tiếp (mỗi Si_cm ≥ 0) → không bao giờ âm do làm tròn.
+    S_imm_elastic = round(sum(L["Si_cm"] for L in res["layers"]
+                             if id(L) not in _consol_ids), 2)
     Si_mud = round((m_coef - 1.0) * S_consol, 2)             # tức thời lớp bùn (CT 30b)
     S_imm = round(S_imm_elastic + Si_mud, 2)                 # tổng lún tức thời
     S_inf = round(S_imm + S_consol, 2)                       # = S_imm_elastic + m·Sc
