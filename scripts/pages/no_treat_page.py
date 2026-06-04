@@ -39,6 +39,18 @@ def _m_input(st, key: str) -> float:
              "càng lớn (đến 1,4). m=1,0 = không xét lún tức thời của bùn.")
 
 
+def _drain_select(st, key: str) -> str:
+    """Chọn điều kiện thoát nước cố kết. Trả 'auto' | 'double' | 'single'."""
+    _opt = {"Tự động (theo địa tầng)": "auto",
+            "Ép 2 mặt (H = H_sét/2)": "double", "Ép 1 mặt (H = H_sét)": "single"}
+    _c = st.selectbox(
+        "Điều kiện thoát nước cố kết", list(_opt.keys()), index=0, key=key,
+        help="Tự động: tách CỤM sét (ngăn bởi lớp cát) cố kết độc lập; cụm có cát/đắp 2 phía "
+             "→ 2 mặt (Htn=H/2); cụm bị cắt ở đáy vùng ảnh hưởng hoặc đáy khảo sát (sét tiếp "
+             "diễn) → 1 mặt (Htn=H).")
+    return _opt[_c]
+
+
 def _report_table(st, df) -> None:
     """Render bảng theo chuẩn dự án (header đậm navy, thân 12pt, zebra, lưới) — đồng bộ Word.
     Nếu df có index không mặc định (đã set_index) → đưa index thành cột đầu để hiển thị."""
@@ -201,7 +213,7 @@ def _render_qtt(st) -> None:
     with c3:
         disp = st.selectbox("Phân bố Δσ", ["1D (không đổi)", "Boussinesq dải"], index=0, key="qtt_disp")
     with c4:
-        drain2 = st.checkbox("Cố kết thoát nước 2 mặt (H = H_sét/2)", value=True, key="qtt_drain2")
+        _drain_q = _drain_select(st, "qtt_drain")
     B_load = None
     if disp.startswith("Boussinesq"):
         B_load = st.number_input("Bề rộng diện gia tải B (m)", min_value=1.0, value=20.0, step=1.0, key="qtt_B")
@@ -282,7 +294,7 @@ def _render_qtt(st) -> None:
                             nc_soft_clay=_nc_qtt)
         except Exception:
             continue
-        th = time_history(rr, [15.0, 30.0, 50.0], double_drainage=drain2, m_coef=_m_qtt)
+        th = time_history(rr, [15.0, 30.0, 50.0], drainage=_drain_q, m_coef=_m_qtt)
         full_results[b] = rr
         rows.append({
             "zone": "QTT", "bh": b, "CDTN_m": round(cdtn, 2), "H_fill_m": round(H, 2),
@@ -300,14 +312,14 @@ def _render_qtt(st) -> None:
         return
 
     _render_settlement_results(st, rows, full_results, gamma_fill=gamma_fill,
-                               gwt_elev=gwt_elev, B_load=B_load, drain2=drain2,
+                               gwt_elev=gwt_elev, B_load=B_load, drain_mode=_drain_q,
                                bcl=None, use_bcl=False,
                                chart_title="Lún nền chưa xử lý — hố khoan QTT",
                                assume0=False, nc_soft_clay=_nc_qtt, m_coef=_m_qtt)
 
 
 def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
-                               B_load, drain2, bcl=None, use_bcl=False,
+                               B_load, drain_mode, bcl=None, use_bcl=False,
                                chart_title='Lún nền chưa xử lý', assume0=False,
                                nc_soft_clay=True, m_coef=1.0):
     """Render chung: bảng tổng hợp + biểu đồ + công thức + chi tiết phân tố + lún-thời gian.
@@ -489,7 +501,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         st.divider()
         st.markdown("#### Lún cố kết theo thời gian")
         YEARS = [0.5, 1, 2, 5, 10, 15, 20, 30, 40, 50, 70, 100]
-        th = time_history(rr, YEARS, double_drainage=drain2, m_coef=m_coef)
+        th = time_history(rr, YEARS, drainage=drain_mode, m_coef=m_coef)
         st.markdown("**Công thức (cố kết Terzaghi 1D):**")
         st.latex(r"T_v = \frac{C_v \cdot t}{H_{tn}^2}; \qquad "
                  r"U = \sqrt{\tfrac{4 T_v}{\pi}}\ (U\!<\!0{,}6),\ \ "
@@ -498,8 +510,19 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                  r"C_{v,tb} = \frac{(H\cdot100)^2}{\left(\sum h_i\cdot100/\sqrt{C_{v,i}}\right)^2}")
         st.caption(
             f"{bh_sel}: S∞ = {th['S_inf_cm']} cm (tức thời {th['S_immediate_cm']} + cố kết "
-            f"{th['S_consol_cm']}) · bề dày sét cố kết {th['H_clay_m']} m · H thoát nước "
-            f"{th['H_drain_m']} m · C_v,tb = {th['Ctbv_cm2s']:.2e} cm²/s (Cv từ BCL)")
+            f"{th['S_consol_cm']}) · bề dày sét cố kết {th['H_clay_m']} m · {th['n_clusters']} "
+            f"cụm sét (thoát nước {th.get('drainage','auto')}).")
+        # Chi tiết từng cụm sét: bề dày, đường thoát Htn, điều kiện thoát, Cv, Sc
+        if th.get("clusters"):
+            _cdf = pd.DataFrame([{
+                "Cụm": i + 1, "Phạm vi (m)": f"{c['z_top_m']:.0f}–{c['z_bot_m']:.0f}",
+                "Bề dày H (m)": c["H_m"],
+                "Thoát nước": ("2 mặt" if c["two_face"] else "1 mặt")
+                              + (" (cắt VAH)" if c["cut_off"] and not c["two_face"] else ""),
+                "Htn (m)": c["Htn_m"], "Cv (cm²/s)": round(c["Cv_cm2s"], 6),
+                "Sc cụm (cm)": c["Sc_cm"],
+            } for i, c in enumerate(th["clusters"])])
+            _report_table(st, _cdf)
         tdf = pd.DataFrame({
             "Thời gian (năm)": th["years"],
             "T_v": th["Tv"],
@@ -533,7 +556,7 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         # mịn: 0,5→15 mỗi 0,5 năm; 16→30 mỗi 1; 35→100 mỗi 5
         years100 = sorted(set([round(0.5 * k, 1) for k in range(1, 31)]
                               + list(range(16, 31)) + list(range(35, 101, 5))))
-        th100 = time_history(rr, years100, double_drainage=drain2, m_coef=m_coef)
+        th100 = time_history(rr, years100, drainage=drain_mode, m_coef=m_coef)
         try:
             import plotly.graph_objects as go
             f100 = go.Figure()
@@ -649,7 +672,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
         ["Chỉ tiêu BCL (Ban chiến lược)", "Trung bình theo lớp (lab)", "Số liệu từng hố khoan"],
         horizontal=True, key="zf_method",
     )
-    drain2 = st.checkbox("Cố kết thoát nước 2 mặt (H = H_sét/2)", value=True, key="zf_drain2")
+    _drain_z = _drain_select(st, "zf_drain")
     assume0 = st.checkbox("Giả định CĐTN = 0,0 m cho hố có CĐTN > 0 (khu vực mới san lấp)",
                           value=False, key="zf_assume0")
     _nc_zf = _nc_radio(st, "zf_nc")
@@ -681,7 +704,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                            gwt_depth_m=max(0.0, cdtn - gwt_elev), B_load_m=B_load,
                            bcl_params=bcl, nc_soft_clay=_nc_zf)
             full_results[c["bh"]] = r
-            _th = time_history(r, [15.0, 30.0, 50.0], double_drainage=drain2, m_coef=_m_zf)
+            _th = time_history(r, [15.0, 30.0, 50.0], drainage=_drain_z, m_coef=_m_zf)
             rows.append({"zone": c["zone"], "bh": c["bh"], "CDTN_m": cdtn,
                          "H_fill_m": round(H, 2), "q_kPa": r["q_kPa"],
                          "d_influence_m": r["stop_depth_m"], "S_total_cm": _th["S_inf_cm"],
@@ -717,7 +740,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
         rows = compute_zone_fill_settlement(which_fill=which, gamma_fill=gamma_fill,
                                             gwt_elev_m=gwt_elev, B_load_m=B_load)
     _render_settlement_results(st, rows, full_results, gamma_fill=gamma_fill,
-                              gwt_elev=gwt_elev, B_load=B_load, drain2=drain2,
+                              gwt_elev=gwt_elev, B_load=B_load, drain_mode=_drain_z,
                               bcl=(bcl if 'bcl' in dir() else None),
                               use_bcl=(use_bcl if 'use_bcl' in dir() else False),
                               chart_title='Lún nền chưa xử lý 6 vùng (hố khoan đại diện)',

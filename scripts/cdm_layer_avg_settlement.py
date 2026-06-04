@@ -211,7 +211,7 @@ def _U_terzaghi(Tv: float) -> float:
 
 
 def time_history(res: dict, t_years: list[float], double_drainage: bool = True,
-                 m_coef: float = 1.0) -> dict:
+                 m_coef: float = 1.0, drainage: str = "auto") -> dict:
     """Lún theo thời gian từ kết quả settle_avg.
 
     Tách: S_tức thời (cát + sét chặt) + S_cố kết (sét yếu phát triển theo U(t)).
@@ -234,25 +234,81 @@ def time_history(res: dict, t_years: list[float], double_drainage: bool = True,
     S_imm = round(S_imm_elastic + Si_mud, 2)                 # tổng lún tức thời
     S_inf = round(S_imm + S_consol, 2)                       # = S_imm_elastic + m·Sc
 
-    H_clay = round(len(consol) * 2.0, 2)   # bề dày sét cố kết (phân tố 2m)
-    sum_term = sum(2.0 * 100.0 / math.sqrt(L["Cv_cm2s"]) for L in consol) if consol else 0.0
-    Ctbv = (((H_clay * 100.0) ** 2) / sum_term ** 2) if sum_term else 0.0
-    H_drain = (H_clay / 2.0 if double_drainage else H_clay)
+    # ── Tách CỤM sét cố kết (ngăn cách bởi lớp thấm) + đường thoát nước Htn từng cụm ──
+    # drainage: "auto" = tự nhận diện 1/2 mặt theo địa tầng; "double"=ép 2 mặt; "single"=ép 1 mặt.
+    if double_drainage is False and drainage == "auto":
+        drainage = "single"        # tương thích lời gọi cũ truyền double_drainage=False
+    layers = res["layers"]
+    n = len(layers)
+
+    def _is_consol(L):
+        return bool(L.get("is_consol") and L.get("Cv_cm2s"))
+
+    def _is_perm(L):
+        return bool(L.get("is_sand"))     # cát/đắp = lớp thấm → biên thoát nước
+
+    clusters, cur = [], []                # cụm = các phân tố sét cố kết LIÊN TIẾP
+    for i, L in enumerate(layers):
+        if _is_consol(L):
+            cur.append(i)
+        elif cur:
+            clusters.append(cur); cur = []
+    if cur:
+        clusters.append(cur)
+
+    cl_info = []
+    for cl in clusters:
+        top_i, bot_i = cl[0], cl[-1]
+        H_c = len(cl) * 2.0
+        st = sum(2.0 * 100.0 / math.sqrt(layers[k]["Cv_cm2s"]) for k in cl)
+        Cv_c = (((H_c * 100.0) ** 2) / st ** 2) if st else 0.0
+        Sc_c = round(sum(layers[k]["Si_cm"] for k in cl), 2)
+        # biên thoát: TRÊN = mặt đất (top_i==0) hoặc lớp trên là cát; DƯỚI = có lớp cát phía dưới.
+        # Cụm đáy mà bên dưới KHÔNG còn lớp nào (vùng ảnh hưởng cắt giữa lớp sét, hoặc tới đáy
+        # khảo sát) → bottom_drain=False → thoát 1 mặt → Htn = bề dày cụm (theo yêu cầu).
+        top_drain = (top_i == 0) or _is_perm(layers[top_i - 1])
+        bottom_drain = (bot_i + 1 < n) and _is_perm(layers[bot_i + 1])
+        if drainage == "double":
+            two = True
+        elif drainage == "single":
+            two = False
+        else:
+            two = top_drain and bottom_drain
+        Htn_c = (H_c / 2.0) if two else H_c
+        cl_info.append({
+            "z_top_m": round(layers[top_i]["z_mid_m"] - 1.0, 1),
+            "z_bot_m": round(layers[bot_i]["z_mid_m"] + 1.0, 1),
+            "H_m": round(H_c, 2), "Htn_m": round(Htn_c, 2), "Cv_cm2s": Cv_c,
+            "Sc_cm": Sc_c, "two_face": two,
+            "top_drain": top_drain, "bottom_drain": bottom_drain,
+            "cut_off": (bot_i == n - 1),   # cụm bị cắt ở đáy vùng ảnh hưởng / đáy khảo sát
+        })
+
+    H_clay = round(sum(c["H_m"] for c in cl_info), 2)
+    gov = max(cl_info, key=lambda c: c["Sc_cm"]) if cl_info else None   # cụm chi phối (Sc lớn nhất)
+    Ctbv = gov["Cv_cm2s"] if gov else 0.0
+    H_drain = gov["Htn_m"] if gov else 0.0
 
     out_t, out_Tv, out_U, out_St, out_res = [], [], [], [], []
     for t in t_years:
-        if H_drain > 0 and Ctbv > 0:
-            Tv = Ctbv * t * _YEAR_SEC / ((H_drain * 100.0) ** 2)
-        else:
-            Tv = 99.0
-        U = _U_terzaghi(Tv)
-        St = round(S_imm + U * S_consol, 2)
-        out_t.append(t); out_Tv.append(round(Tv, 4)); out_U.append(round(U * 100, 1))
+        Sc_t, Tv_gov = 0.0, 99.0
+        for c in cl_info:
+            if c["Htn_m"] > 0 and c["Cv_cm2s"] > 0:
+                Tv = c["Cv_cm2s"] * t * _YEAR_SEC / ((c["Htn_m"] * 100.0) ** 2)
+            else:
+                Tv = 99.0
+            Sc_t += _U_terzaghi(Tv) * c["Sc_cm"]   # mỗi cụm cố kết độc lập theo Htn riêng
+            if c is gov:
+                Tv_gov = Tv
+        U_overall = (Sc_t / S_consol) if S_consol else 0.0
+        St = round(S_imm + Sc_t, 2)
+        out_t.append(t); out_Tv.append(round(Tv_gov, 4)); out_U.append(round(U_overall * 100, 1))
         out_St.append(St); out_res.append(round(S_inf - St, 2))
     return {
         "S_inf_cm": S_inf, "S_immediate_cm": S_imm, "S_consol_cm": S_consol,
         "S_imm_elastic_cm": S_imm_elastic, "Si_mud_cm": Si_mud, "m_coef": m_coef,
         "Ctbv_cm2s": Ctbv, "H_clay_m": H_clay, "H_drain_m": round(H_drain, 2),
+        "drainage": drainage, "n_clusters": len(cl_info), "clusters": cl_info,
         "double_drainage": double_drainage,
         "years": out_t, "Tv": out_Tv, "U_pct": out_U, "St_cm": out_St, "residual_cm": out_res,
     }

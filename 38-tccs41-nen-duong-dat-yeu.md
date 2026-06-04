@@ -325,6 +325,15 @@ def calc_settlement_iterative_9_2_3(bh_name, zone_code,
 
 ---
 
+### 4c. Đường thoát nước Htn — nguyên tắc (cập nhật 2026-06)
+
+$T_v = \dfrac{C_v \cdot t}{H_{tn}^2}$ — $H_{tn}$ là quãng đường thoát nước dài nhất. App `time_history(drainage=…)`:
+
+- **Tách CỤM sét cố kết**: các phân tố sét (e₀≥1, có Cv) liên tiếp = 1 cụm; lớp cát/đắp xen giữa ngăn cụm → **mỗi cụm cố kết ĐỘC LẬP** với Htn và Cv riêng; $S_c(t)=\sum_{\text{cụm}} U_{\text{cụm}}(t)\cdot S_{c,\text{cụm}}$.
+- **Tự nhận diện 1/2 mặt** (`drainage="auto"`, mặc định): cụm có lớp **cát/đắp cả trên và dưới** → thoát **2 mặt**, $H_{tn}=H_{cụm}/2$; nếu chỉ 1 phía thấm → **1 mặt**, $H_{tn}=H_{cụm}$.
+- **Vùng ảnh hưởng cắt giữa lớp sét**: nếu phân tố sâu nhất (đáy vùng ảnh hưởng Δσ<10%·σ′v0, hoặc đáy khảo sát) vẫn là sét (sét tiếp diễn bên dưới, không có biên thấm) → cụm đó **thoát 1 mặt**, $H_{tn}$ = bề dày cụm sét trong vùng ảnh hưởng.
+- Ép thủ công: `drainage="double"` (2 mặt) / `"single"` (1 mặt). $C_{v,tb}$ mỗi cụm: trung bình điều hòa $(H\cdot100)^2/(\sum h_i\cdot100/\sqrt{C_{v,i}})^2$.
+
 ## 5. Độ cố kết theo thời gian (Điều 9.3 + Phụ lục D)
 
 ### 5.1 Cố kết theo phương đứng
