@@ -262,14 +262,22 @@ def _render_qtt(st) -> None:
         return
 
     # ── Bảng nhập cao độ từng hố — sửa CĐTN/CĐTK → kết quả tự tính lại ────
+    _cap1 = st.checkbox(
+        "Hố có cao độ tự nhiên > 1 m → lấy CĐTN = 1 m (san/đào về mốc +1 m)",
+        value=True, key="qtt_cap1",
+        help="Khu QTT mặt đất tự nhiên cao (tới +4,24 m) sẽ được san/đào về mốc +1 m trước "
+             "khi đắp lên CĐTK theo hình → tải đắp q = γ·(CĐTK − 1). Cao độ thiết kế (CĐTK) "
+             "lấy theo lưới cao độ thiết kế (hình): 3,4 / 3,05 / 2,7 m tùy vị trí.")
     st.markdown("**Cao độ từng hố khoan ND (sửa được — kết quả bảng tổng hợp tự cập nhật):**")
+    def _cdtn_eff(v):
+        return 1.0 if (_cap1 and v > 1.0) else round(v, 2)
     _ed_default = pd.DataFrame([{
         "Hố khoan": b,
-        "CĐTN (m)": round(float(_elev.get(b, 0.0)), 2),
+        "CĐTN (m)": _cdtn_eff(float(_elev.get(b, 0.0))),
         "CĐTK (m)": round(float(_des.get(b, 2.70)), 2),
     } for b in bhs])
     _edited = st.data_editor(
-        _ed_default, key="qtt_elev_editor", hide_index=True, use_container_width=True,
+        _ed_default, key=f"qtt_elev_editor_{int(_cap1)}", hide_index=True, use_container_width=True,
         column_config={
             "Hố khoan": st.column_config.TextColumn("Hố khoan", disabled=True),
             "CĐTN (m)": st.column_config.NumberColumn("CĐTN (m)", format="%.2f", step=0.05,

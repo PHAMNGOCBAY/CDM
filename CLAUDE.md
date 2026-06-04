@@ -2344,3 +2344,5 @@ với chú thích: "**Cu tính toán** = μ·Su_VST theo TCCS 41 Phụ lục C.3
 7. **Bảng**: dùng `core/report_style` (header navy đậm, 12pt, zebra) qua `_report_table()`. **Biểu đồ**: nhãn 2 chữ số thập phân, 12pt. Mốc thời gian 15/30/50/…/100 năm.
 
 **Khu QTT (6 hố ND-02..07):** ký hiệu lớp theo DXF gốc (tuần tự); lab ND-02/06/07 từ `260524 QTTT TP. KQTN.xls`; ND-03/04/05 mượn lab ND-06 (gần nhất); CĐTK từ `qtt_elevation_points`. Thống kê cơ lý QTT **gom theo loại đất** (không theo ký hiệu lớp tuần tự).
+
+**Quy tắc cao độ QTT (toggle, mặc định bật):** hố có **CĐTN > 1 m → lấy CĐTN = 1 m** (san/đào về mốc +1 m) → tải đắp q = γ·(CĐTK − 1); **CĐTK theo hình** = lưới cao độ thiết kế DXF (3,4 / 3,05 / 2,7 m tùy vị trí), sửa được trong bảng data_editor. Nhờ vậy ND-05/06/07 (CĐTN cao +3,2..+4,24) có tải đắp thay vì H=0.
