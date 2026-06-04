@@ -288,7 +288,8 @@ def _render_qtt(st) -> None:
             "zone": "QTT", "bh": b, "CDTN_m": round(cdtn, 2), "H_fill_m": round(H, 2),
             "q_kPa": rr["q_kPa"], "d_influence_m": rr["stop_depth_m"],
             "S_imm_cm": th["S_immediate_cm"], "S_consol_cm": th["S_consol_cm"],
-            "Si_mud_cm": th["Si_mud_cm"], "S_total_cm": th["S_inf_cm"],
+            "S_imm_elastic_cm": th["S_imm_elastic_cm"], "Si_mud_cm": th["Si_mud_cm"],
+            "S_total_cm": th["S_inf_cm"],
             "U15_pct": th["U_pct"][0], "S_15yr_cm": th["St_cm"][0], "residual15_cm": th["residual_cm"][0],
             "U30_pct": th["U_pct"][1], "S_30yr_cm": th["St_cm"][1], "residual30_cm": th["residual_cm"][1],
             "U50_pct": th["U_pct"][2], "S_50yr_cm": th["St_cm"][2], "residual50_cm": th["residual_cm"][2],
@@ -316,8 +317,9 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         "Vùng": r["zone"], "Hố khoan": r["bh"], "Cao độ TN (m)": r["CDTN_m"],
         "Chiều dày đắp (m)": r["H_fill_m"], "Tải q (kN/m²)": r["q_kPa"],
         "Đáy vùng ảnh hưởng (m)": r["d_influence_m"],
-        "Lún tức thời bùn Si=(m−1)Sc (cm)": r.get("Si_mud_cm", "—"),
-        "Lún tức thời (tổng, cm)": r.get("S_imm_cm", "—"),
+        "Si đất không cố kết (cm)": r.get("S_imm_elastic_cm", "—"),
+        "Si lớp bùn (m−1)Sc (cm)": r.get("Si_mud_cm", "—"),
+        "Lún tức thời Si (cm)": r.get("S_imm_cm", "—"),
         "Lún cố kết Sc (cm)": r.get("S_consol_cm", "—"),
         "Lún tổng S∞ (cm)": r["S_total_cm"],
         "U 15 năm (%)": r.get("U15_pct", "—"),
@@ -331,8 +333,9 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
         "Lún còn lại 50 năm (cm)": r.get("residual50_cm", "—"),
     } for r in rows])
     _report_table(st, df)
-    st.caption("Lún tổng S = m·Sc (TCCS 41 CT 30a); lún tức thời lớp bùn Si=(m−1)·Sc do "
-               "đẩy trồi ngang (CT 30b). Lún t năm = lún tức thời + U(t)·Sc (chỉ lớp sét e₀>1). "
+    st.caption("Lún tức thời Si = Si(đất không cố kết: cát + sét chặt) + Si(lớp bùn cố kết "
+               "= (m−1)·Sc, CT 30b). Lún tổng S∞ = Si + Sc = m·Sc + Si(không cố kết) (CT 30a). "
+               "Lún t năm = Si + U(t)·Sc. Hệ số m chỉnh ở ô trên (1,1–1,4). "
                "Mốc: 15 năm = mặt đường mềm, 30 năm = mặt đường cứng, 50 năm = dài hạn.")
     if assume0:
         st.caption("Đã giả định CĐTN = 0,0 m cho các hố có CĐTN > 0 (KE-HK11, HK5, HK2): "
@@ -683,7 +686,7 @@ def _render_zone_fill(st, compute_zone_fill_settlement) -> None:
                          "H_fill_m": round(H, 2), "q_kPa": r["q_kPa"],
                          "d_influence_m": r["stop_depth_m"], "S_total_cm": _th["S_inf_cm"],
                          "S_consol_cm": _th["S_consol_cm"], "S_imm_cm": _th["S_immediate_cm"],
-                         "Si_mud_cm": _th["Si_mud_cm"],
+                         "S_imm_elastic_cm": _th["S_imm_elastic_cm"], "Si_mud_cm": _th["Si_mud_cm"],
                          "U15_pct": _th["U_pct"][0], "S_15yr_cm": _th["St_cm"][0],
                          "residual15_cm": _th["residual_cm"][0],
                          "U30_pct": _th["U_pct"][1], "S_30yr_cm": _th["St_cm"][1],
