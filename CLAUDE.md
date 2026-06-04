@@ -2323,3 +2323,24 @@ với chú thích: "**Cu tính toán** = μ·Su_VST theo TCCS 41 Phụ lục C.3
 - Su VST lớp 1 = 12,9 → **Cu = 11,45 kPa**
 - $N_p = 5,18$, $D = 0,84$ m, $\varepsilon_{50} = 0,02$
 - **$k_h$ = 1186 kN/m³** (vs 1338 kN/m³ nếu dùng Su nguyên — **chênh +12,8%**)
+
+---
+
+### 44. Module Lún Nền Chưa Xử Lý — trang `no_treat` (TCCS 41:2022, cập nhật 2026-06)
+
+**File:** `scripts/pages/no_treat_page.py` (UI) + engine `scripts/cdm_layer_avg_settlement.py` (`settle_avg`, `time_history`).
+**Doc chi tiết:** [docs/claude/76-lk2-notreat-roadmap.md](docs/claude/76-lk2-notreat-roadmap.md) + [38-tccs41-nen-duong-dat-yeu.md](38-tccs41-nen-duong-dat-yeu.md) §4.
+
+**4 chế độ xem** (radio): Theo hố khoan · Theo 6 vùng CDM · Theo bảng 6 vùng (HK đại diện) · **Hố khoan QTT** (mượn hố gần nhất). Mode "bảng 6 vùng" + "QTT" dùng chung helper `_render_settlement_results()`.
+
+**Quy tắc engine BẮT BUỘC (đã chốt với user):**
+
+1. **Phân nhánh lún theo e₀** (§ memory feedback-settlement-eo-branches): cát→Es=α·N; sét e₀≥1→cố kết Terzaghi; sét e₀<1→Eoed.
+2. **Bùn chảy = NC** (`nc_soft_clay=True` mặc định): sét e₀≥1 dùng Pc=σ'v0 (Cc toàn bộ), KHÔNG dùng Pc thí nghiệm (1 giá trị áp cho lớp dày → OCR giả tạo lớp nông → lún thiếu). UI có lựa chọn NC↔quá cố kết.
+3. **Lún tức thời** (TCCS 41 Điều 9.2.1 SĐ1, CT 30a/30b): `time_history(m_coef=m)`, m=1,1–1,4 (ô nhập). **Si = Si(đất không cố kết) + Si(bùn=(m−1)·Sc)**. Tính TRỰC TIẾP tổng Si phân tố không cố kết (tránh âm do làm tròn). S∞=Si+Sc.
+4. **Htn theo CỤM** (`drainage="auto"`): tách cụm sét ngăn bởi cát → cố kết độc lập; auto 1/2 mặt theo biên thấm; cụm cắt ở đáy vùng ảnh hưởng → 1 mặt (Htn=bề dày cụm).
+5. **Công thức = TCCS 41 Điều 9.1 CT (25)/(26)/(27)/(28)** (NC/cross/OC/Eoed) — đã verify khớp; hiển thị số hiệu CT trên app.
+6. **Đọc DB cục bộ** (`_primary_db()` → `C:\Users\bayng\TTHC_local`) tránh đọc file Drive đang sync (kết quả nhảy mỗi lần tính).
+7. **Bảng**: dùng `core/report_style` (header navy đậm, 12pt, zebra) qua `_report_table()`. **Biểu đồ**: nhãn 2 chữ số thập phân, 12pt. Mốc thời gian 15/30/50/…/100 năm.
+
+**Khu QTT (6 hố ND-02..07):** ký hiệu lớp theo DXF gốc (tuần tự); lab ND-02/06/07 từ `260524 QTTT TP. KQTN.xls`; ND-03/04/05 mượn lab ND-06 (gần nhất); CĐTK từ `qtt_elevation_points`. Thống kê cơ lý QTT **gom theo loại đất** (không theo ký hiệu lớp tuần tự).
