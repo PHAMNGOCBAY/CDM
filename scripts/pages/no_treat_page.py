@@ -17,6 +17,20 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 
+def _qtt_cdtk_map() -> dict:
+    """Bản đồ cao độ thiết kế CĐTK (m) mỗi hố QTT theo hình phân vùng (3,4/3,05/2,8).
+    Ưu tiên hơn điểm lưới gần nhất. Trả {} nếu thiếu file."""
+    import json
+    f = _HERE.parent / "data" / "qtt_cdtk_design.json"
+    if f.exists():
+        try:
+            return {k: float(v) for k, v in json.loads(
+                f.read_text(encoding="utf-8")).get("cdtk", {}).items()}
+        except Exception:
+            return {}
+    return {}
+
+
 def _nc_radio(st, key: str) -> bool:
     """Lựa chọn giả thiết cố kết lớp sét yếu (e₀≥1). Trả True nếu coi là NC (bùn chảy).
     Chỉ THÊM lựa chọn — không bỏ phương án nào (NC mặc định + xét quá cố kết)."""
@@ -278,6 +292,9 @@ def _render_qtt(st) -> None:
                     _bd, _best = _d, _ed
             if _best is not None:
                 _des[_b] = float(_best)
+        # Ưu tiên CĐTK theo bản đồ phân vùng thiết kế (nếu có) hơn điểm lưới gần nhất
+        for _k, _v in _qtt_cdtk_map().items():
+            _des[_k] = _v
     except Exception:
         bhs = []
 
@@ -473,6 +490,8 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                         _bd, _best = _d, _ed
                 if _best is not None:
                     _qtt_des[_b] = float(_best)
+            for _k, _v in _qtt_cdtk_map().items():   # ưu tiên CĐTK theo bản đồ thiết kế
+                _qtt_des[_k] = _v
         except Exception:
             _qtt, _elev_map = [], {}
         _opts = list(full_results.keys()) + [b for b in _qtt if b not in full_results]

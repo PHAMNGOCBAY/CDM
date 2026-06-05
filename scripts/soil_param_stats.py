@@ -241,6 +241,19 @@ def representative_params(db_path: Optional[Path] = None) -> dict:
     return out
 
 
+def representative_params_by_soil(zone_prefix: str, db_path: Optional[Path] = None) -> dict:
+    """Trả về dict {soil_type: {field: avg}} — chỉ tiêu TRUNG BÌNH gom theo LOẠI ĐẤT
+    (chuẩn hoá từ mô tả) cho 1 vùng.
+
+    Dùng cho vùng có ký hiệu lớp đánh số tuần tự không đồng nhất giữa các hố (vd QTT) —
+    lấy theo loại đất tránh trộn cát/bùn cùng một số hiệu lớp.
+    """
+    # zone_prefix là mã vùng ("QTT") → đổi sang pattern LIKE tên hố ("ND-%")
+    like = dict(ZONES).get(zone_prefix, zone_prefix)
+    rows = stats_by_layer(like, None, db_path, group_mode="soil")
+    return {r["symbol"]: {f: r.get(f) for f, _, _ in FIELDS} for r in rows}
+
+
 def export_json(json_path: Optional[Path] = None, db_path: Optional[Path] = None) -> Path:
     """Xuất bộ chỉ tiêu trung bình theo lớp ra JSON (single source cho tính toán)."""
     import json

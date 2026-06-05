@@ -78,15 +78,22 @@ def settle_avg(
     bcl_params: dict {symbol: {gamma_kNm3,e0,Cc,Cs,PC_kPa,E_kPa,soil_type,...}} —
     nếu cung cấp (bộ BCL) sẽ ưu tiên dùng thay cho trung bình lab.
     """
-    from soil_param_stats import representative_params
+    from soil_param_stats import representative_params, soil_type_of
 
     db = Path(db_path) if db_path else _primary_db()
     rep = rep if rep is not None else (representative_params(db) if bcl_params is None else {})
     zone = _zone_of(bh_name)
 
+    # QTT: ký hiệu lớp đánh số tuần tự KHÔNG đồng nhất giữa các hố (cát hố này = bùn hố
+    # khác) → lấy chỉ tiêu theo LOẠI ĐẤT (chuẩn hoá từ mô tả) tránh trộn cát/bùn cùng số.
+    rep_soil = {}
+    if zone == "QTT" and bcl_params is None:
+        from soil_param_stats import representative_params_by_soil
+        rep_soil = representative_params_by_soil("QTT", db)
+
     con = sqlite3.connect(str(db))
     layers = con.execute(
-        "SELECT l.symbol, l.depth_top_m, l.depth_bot_m FROM layers l "
+        "SELECT l.symbol, l.depth_top_m, l.depth_bot_m, COALESCE(l.description,'') FROM layers l "
         "JOIN boreholes b ON l.borehole_id=b.id WHERE b.name=? AND l.symbol IS NOT NULL "
         "ORDER BY l.depth_top_m", (bh_name,)).fetchall()
     con.close()
@@ -95,19 +102,27 @@ def settle_avg(
                 "warning": "Không có địa tầng"}
 
     # override XMD -> bùn 1 (KE-HK8)
-    layers = [("1" if (bh_name == "KE-HK8" and s == "XMD") else s, t, b) for s, t, b in layers]
-    max_depth = max(b for _, b, _ in [(s, b2, t) for s, t, b2 in layers])  # đáy HK
-    last_sym = layers[-1][0]
+    layers = [("1" if (bh_name == "KE-HK8" and s == "XMD") else s, t, b, d) for s, t, b, d in layers]
+    max_depth = max(b for _, _, b, _ in layers)  # đáy HK
+    last_sym, last_desc = layers[-1][0], layers[-1][3]
+
+    # loại đất "không cố kết" (đàn hồi, là biên thoát nước) khi gom theo loại đất
+    _SAND_SOIL = {"Đá san lấp", "Cát", "Cát pha"}
 
     def _sym_at(z):
-        for s, t, b in layers:
+        for s, t, b, d in layers:
             if t <= z <= b:
-                return s
-        return last_sym   # mở rộng dưới đáy HK bằng lớp cuối
+                return s, d
+        return last_sym, last_desc   # mở rộng dưới đáy HK bằng lớp cuối
 
-    def _params(sym):
+    def _params(sym, desc=""):
         if bcl_params and sym in bcl_params:
             return bcl_params[sym]
+        if rep_soil:   # QTT — theo loại đất
+            st = soil_type_of(desc)
+            p = rep_soil.get(st)
+            if p:
+                return p
         return rep.get((zone, sym)) or rep.get(("KE", sym)) or {}
 
     q = gamma_fill * H_fill_m
@@ -121,8 +136,8 @@ def settle_avg(
     stop_reason = "max_extend"
     while z < max_depth + EXTEND:
         z_mid = z + sublayer_m / 2.0
-        sym = _sym_at(z_mid)
-        p = _params(sym)
+        sym, desc = _sym_at(z_mid)
+        p = _params(sym, desc)
         gamma = p.get("gamma_kNm3") or GAMMA_DEFAULT
         g_eff = gamma - GAMMA_W if z_mid > gwt_depth_m else gamma
         sigma_v0 = cum_sigma + g_eff * sublayer_m / 2.0
@@ -137,7 +152,7 @@ def settle_avg(
         #   - Lớp CÁT (hạt rời, không có e0/Cc)         → đàn hồi: Si = Δσ·h/Es
         #   - Lớp SÉT YẾU  e0 ≥ 1, có Cc                 → nén cố kết Terzaghi (e-logp): OC/NC/cross-PC
         #   - Lớp SÉT CHẶT e0 < 1 (hoặc thiếu Cc)        → mô đun biến dạng Eoed: Si = Δσ·h/Eoed
-        is_sand = sym in SAND_SYMBOLS
+        is_sand = (soil_type_of(desc) in _SAND_SOIL) if rep_soil else (sym in SAND_SYMBOLS)
         Cc = p.get("Cc"); e0 = p.get("e0"); PC = p.get("PC_kPa")
         Cs = p.get("Cs") or (Cc * 0.15 if Cc else None)
         a12 = p.get("a12_cm2kgf"); E_lab = p.get("E_kPa")
@@ -188,11 +203,19 @@ def settle_avg(
         z_below += sublayer_m
         z += sublayer_m
 
+    # Lớp THẤM thực (cát/cát pha/đắp) từ địa tầng gốc — biên thoát nước cho cố kết.
+    # Dùng lớp thực (không qua chia phân tố) để KHÔNG bỏ sót lớp cát mỏng (< bề dày phân tố).
+    def _is_perm_raw(sym, desc):
+        if rep_soil:
+            return soil_type_of(desc) in _SAND_SOIL
+        return sym in SAND_SYMBOLS
+    perm_layers = [(round(t, 2), round(b, 2)) for s, t, b, d in layers if _is_perm_raw(s, d)]
+
     return {
         "bh": bh_name, "zone": zone, "q_kPa": round(q, 1),
         "S_total_cm": round(S_total * 100, 1), "stop_depth_m": round(z, 1),
         "stop_reason": stop_reason, "n_layers": len(out_layers),
-        "layers": out_layers, "warnings": warnings,
+        "layers": out_layers, "warnings": warnings, "perm_layers": perm_layers,
     }
 
 
@@ -247,6 +270,15 @@ def time_history(res: dict, t_years: list[float], double_drainage: bool = True,
     def _is_perm(L):
         return bool(L.get("is_sand"))     # cát/đắp = lớp thấm → biên thoát nước
 
+    # Lớp thấm thực (raw) — bắt cả lớp cát/cát pha MỎNG (< bề dày phân tố) bị chia phân tố bỏ sót.
+    _perm_raw = res.get("perm_layers", [])
+
+    def _perm_below(z):    # có lớp thấm bắt đầu ngay/dưới đáy cụm (trong [z-1, z+3] m)
+        return any((z - 1.0) <= pt <= (z + 3.0) for pt, _pb in _perm_raw)
+
+    def _perm_above(z):    # có lớp thấm kết thúc ngay/trên đỉnh cụm (trong [z-3, z+1] m)
+        return any((z - 3.0) <= pb <= (z + 1.0) for _pt, pb in _perm_raw)
+
     clusters, cur = [], []                # cụm = các phân tố sét cố kết LIÊN TIẾP
     for i, L in enumerate(layers):
         if _is_consol(L):
@@ -266,8 +298,10 @@ def time_history(res: dict, t_years: list[float], double_drainage: bool = True,
         # biên thoát: TRÊN = mặt đất (top_i==0) hoặc lớp trên là cát; DƯỚI = có lớp cát phía dưới.
         # Cụm đáy mà bên dưới KHÔNG còn lớp nào (vùng ảnh hưởng cắt giữa lớp sét, hoặc tới đáy
         # khảo sát) → bottom_drain=False → thoát 1 mặt → Htn = bề dày cụm (theo yêu cầu).
-        top_drain = (top_i == 0) or _is_perm(layers[top_i - 1])
-        bottom_drain = (bot_i + 1 < n) and _is_perm(layers[bot_i + 1])
+        z_top_m = layers[top_i]["z_mid_m"] - 1.0
+        z_bot_m = layers[bot_i]["z_mid_m"] + 1.0
+        top_drain = (top_i == 0) or _is_perm(layers[top_i - 1]) or _perm_above(z_top_m)
+        bottom_drain = ((bot_i + 1 < n) and _is_perm(layers[bot_i + 1])) or _perm_below(z_bot_m)
         if drainage == "double":
             two = True
         elif drainage == "single":

@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "desc": "Cao độ thiết kế CĐTK (m) mỗi hố khoan QTT theo bản đồ phân vùng cao độ thiết kế (3,4 / 3,05 / 2,8 m). Dùng làm mặc định cho bảng nhập trong tab 'Lún nền chưa xử lý' mode 'Hố khoan QTT' (ưu tiên hơn điểm lưới gần nhất qtt_elevation_points).",
+    "source": "Bản đồ cao độ thiết kế QTT (kỹ sư cung cấp 2026-06)",
+    "updated": "2026-06-05"
+  },
+  "cdtk": {
+    "ND-02": 3.30,
+    "ND-03": 3.05,
+    "ND-04": 2.80,
+    "ND-05": 2.80,
+    "ND-06": 3.05,
+    "ND-07": 3.30
+  }
+}
