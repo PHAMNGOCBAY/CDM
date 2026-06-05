@@ -51,6 +51,30 @@ def _drain_select(st, key: str) -> str:
     return _opt[_c]
 
 
+_SOFT_TYPES = {"Bùn sét (chảy)", "Sét dẻo cao (CH)", "Sét pha (dẻo mềm)"}
+
+
+def _soft_thickness(bh_name: str) -> dict:
+    """Chiều dày đất yếu của 1 hố = Σ bề dày lớp (bùn chảy + sét CH + sét pha dẻo mềm).
+    Trả {'H': tổng_m, 'desc': mô tả thành phần}."""
+    import sqlite3
+    from soil_param_stats import soil_type_of
+    from cdm_layer_avg_settlement import _primary_db
+    con = sqlite3.connect(str(_primary_db()))
+    rows = con.execute(
+        "SELECT l.depth_top_m, l.depth_bot_m, l.description FROM layers l "
+        "JOIN boreholes b ON l.borehole_id=b.id WHERE b.name=? ORDER BY l.depth_top_m",
+        (bh_name,)).fetchall()
+    con.close()
+    H, parts = 0.0, []
+    for t, bot, desc in rows:
+        if soil_type_of(desc) in _SOFT_TYPES:
+            th = (bot or 0) - (t or 0)
+            H += th
+            parts.append(f"{soil_type_of(desc).split('(')[0].strip()} {th:.1f}m")
+    return {"H": round(H, 2), "desc": " + ".join(parts) if parts else "không có lớp yếu"}
+
+
 def _report_table(st, df) -> None:
     """Render bảng theo chuẩn dự án (header đậm navy, thân 12pt, zebra, lưới) — đồng bộ Word.
     Nếu df có index không mặc định (đã set_index) → đưa index thành cột đầu để hiển thị."""
@@ -479,7 +503,9 @@ def _render_settlement_results(st, rows, full_results, *, gamma_fill, gwt_elev,
                        f"H_đắp = {_Hq:.2f} m, q = γ·H = {rr['q_kPa']:.1f} kN/m².")
         else:
             rr = full_results[bh_sel]
-        st.caption(f"{bh_sel}: q = {rr['q_kPa']} kN/m² · đáy vùng ảnh hưởng {rr['stop_depth_m']} m · "
+        _soft = _soft_thickness(bh_sel)
+        st.caption(f"{bh_sel}: q = {rr['q_kPa']} kN/m² · **chiều dày đất yếu = {_soft['H']:.1f} m** "
+                   f"({_soft['desc']}) · đáy vùng ảnh hưởng {rr['stop_depth_m']} m · "
                    f"{rr['n_layers']} phân tố · {rr['stop_reason']} · S∞ = {rr['S_total_cm']} cm")
         if not rr.get("layers"):
             st.info("Không có tải gây lún (CĐTK ≤ CĐTN) → không có phân tố. "
