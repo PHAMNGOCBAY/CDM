@@ -58,26 +58,35 @@ SYMBOL_OVERRIDE = {("KE-HK8", "XMD"): "1"}
 
 # Thứ tự hiển thị loại đất (gom theo địa chất, dùng khi ký hiệu lớp không đồng nhất giữa hố)
 _SOIL_ORDER = ["Đá san lấp", "Bùn sét (chảy)", "Sét dẻo cao (CH)",
-               "Sét pha (dẻo mềm)", "Sét pha (dẻo cứng)", "Sét", "Cát pha", "Cát", "Khác"]
+               "Sét pha (dẻo mềm)", "Sét pha (dẻo cứng)", "Sét (dẻo cứng)", "Sét",
+               "Cát pha", "Cát", "Khác"]
 
 
 def soil_type_of(desc: str) -> str:
-    """Chuẩn hoá MÔ TẢ lớp đất → loại đất địa chất (gom thống kê đúng dù số lớp khác nhau)."""
+    """Chuẩn hoá MÔ TẢ lớp đất → loại đất địa chất (gom thống kê đúng dù số lớp khác nhau).
+
+    Phân loại theo TRẠNG THÁI (consistency) là chính: sét "dẻo cứng/nửa cứng/cứng" là đất
+    CỨNG (đàn hồi/Eoed) — KHÔNG gọi là "Sét dẻo cao (CH)" mềm dù mô tả có "(CH)"/"rất dẻo".
+    """
     d = (desc or "").lower()
     if "san lấp" in d or "đá đổ" in d:
         return "Đá san lấp"
     if "bùn" in d:
         return "Bùn sét (chảy)"
-    if "(ch)" in d or "rất dẻo" in d:
-        return "Sét dẻo cao (CH)"
+    # trạng thái: mềm (chảy/dẻo mềm/dẻo chảy) ưu tiên; nếu không mềm mà có cứng → cứng
+    soft = ("chảy" in d) or ("dẻo mềm" in d)
+    stiff = (not soft) and (("cứng" in d) or ("nửa cứng" in d) or ("nâu đỏ" in d))
     if "cát pha" in d:
         return "Cát pha"
     if "sét pha" in d:
-        return "Sét pha (dẻo cứng)" if ("cứng" in d or "nâu đỏ" in d) else "Sét pha (dẻo mềm)"
+        return "Sét pha (dẻo cứng)" if stiff else "Sét pha (dẻo mềm)"
+    if "(ch)" in d or "(cl" in d or "rất dẻo" in d:
+        # sét dẻo cao / sét ít dẻo lẫn rất dẻo — tách theo trạng thái mềm/cứng
+        return "Sét (dẻo cứng)" if stiff else "Sét dẻo cao (CH)"
     if "cát" in d or "(sm)" in d or "(sp" in d or "(sc" in d:
         return "Cát"
     if "sét" in d:
-        return "Sét"
+        return "Sét (dẻo cứng)" if stiff else "Sét"
     return (desc or "Khác").strip() or "Khác"
 
 
