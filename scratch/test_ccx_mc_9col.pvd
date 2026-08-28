@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
+	<Collection>
+		<DataSet file="test_ccx_mc_9col.1.vtu" timestep="1.0"/>
+		<DataSet file="test_ccx_mc_9col.2.vtu" timestep="2.0"/>
+		<DataSet file="test_ccx_mc_9col.3.vtu" timestep="3.0"/>
+		<DataSet file="test_ccx_mc_9col.4.vtu" timestep="4.0"/>
+		<DataSet file="test_ccx_mc_9col.5.vtu" timestep="5.0"/>
+		<DataSet file="test_ccx_mc_9col.6.vtu" timestep="6.0"/>
+		<DataSet file="test_ccx_mc_9col.7.vtu" timestep="7.0"/>
+	</Collection>
+</VTKFile>

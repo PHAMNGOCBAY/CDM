@@ -1,0 +1,14 @@
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\bin\Debug\net10.0-windows\Civil3DGeotechPlugin.dll
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\Civil3D_Geotech_Plugin.csproj.AssemblyReference.cache
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\Civil3D_Geotech_Plugin.GeneratedMSBuildEditorConfig.editorconfig
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\Civil3D_Geotech_Plugin.csproj.CoreCompileInputs.cache
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\Civil3D_Geotech_Plugin.sourcelink.json
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\bin\Debug\net10.0-windows\Civil3DGeotechPlugin_v2.dll
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\bin\Debug\net10.0-windows\Civil3DGeotechPlugin_v3.dll
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\bin\Debug\net10.0-windows\Civil3DGeotechPlugin_v4.deps.json
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\bin\Debug\net10.0-windows\Civil3DGeotechPlugin_v4.dll
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\bin\Debug\net10.0-windows\Civil3DGeotechPlugin_v4.pdb
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\Civil3DGeotechPlugin_v4.dll
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\refint\Civil3DGeotechPlugin_v4.dll
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\Civil3DGeotechPlugin_v4.pdb
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net10.0-windows\ref\Civil3DGeotechPlugin_v4.dll

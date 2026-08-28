@@ -1,0 +1,256 @@
+
+************************************************************
+
+CalculiX Version 2.23, Copyright(C) 1998-2025 Guido Dhondt
+CalculiX comes with ABSOLUTELY NO WARRANTY. This is free
+software, and you are welcome to redistribute it under
+certain conditions, see gpl.htm
+
+************************************************************
+
+You are using an executable made on Fri Oct 24 20:12:25     2025
+
+  The numbers below are estimated upper bounds
+
+  number of:
+
+   nodes:        28818
+   elements:       172358
+   one-dimensional elements:            0
+   two-dimensional elements:            0
+   integration points per element:            1
+   degrees of freedom per node:            3
+   layers per element:            1
+
+   distributed facial loads:          531
+   distributed volumetric loads:            0
+   concentrated loads:         2819
+   single point constraints:         1860
+   multiple point constraints:            1
+   terms in all multiple point constraints:            1
+   tie constraints:            0
+   dependent nodes tied by cyclic constraints:            0
+   dependent nodes in pre-tension constraints:            0
+
+   sets:           12
+   terms in all sets:       320791
+
+   materials:            4
+   constants per material and temperature:            4
+   temperature points per material:            1
+   plastic data points per material:            1
+
+   orientations:            0
+   amplitudes:            3
+   data points in all amplitudes:            3
+   print requests:            0
+   transformations:            0
+   property cards:            0
+
+
+ STEP            1
+
+ *WARNING reading *STATIC: a nonlinear analysis is requested
+          but no time increment nor step is specified
+          the defaults (1,1) are used
+
+ Static analysis was selected
+
+ Nonlinear material laws are taken into account
+
+ Newton-Raphson iterative procedure is active
+
+ Decascading the MPC's
+
+ Determining the structure of the matrix:
+ Using up to 4 cpu(s) for setting up the structure of the matrix.
+ number of equations
+ 84622
+ number of nonzero lower triangular matrix elements
+ 1868103
+
+ increment 1 attempt 1 
+ increment size= 1.000000e+00
+ sum of previous increments=0.000000e+00
+ actual step time=1.000000e+00
+ actual total time=1.000000e+00
+
+ iteration 1
+
+ Using up to 4 cpu(s) for the stress calculation.
+
+ Using up to 4 cpu(s) for the symmetric stiffness/mass contributions.
+
+Not reusing csc.
+IPARM_MIXED=1
+globDouble=0
++-------------------------------------------------+
++     PaStiX : Parallel Sparse matriX package     +
++-------------------------------------------------+
+  Version:                                   6.4.0
+  Schedulers:
+    sequential:                            Enabled
+    thread static:                         Started
+    thread dynamic:                       Disabled
+    PaRSEC:                               Disabled
+    StarPU:                               Disabled
+  Number of MPI processes:                       1
+  Number of threads per process:                 4
+  Number of GPUs:                                0
+  MPI communication support:              PastixMpiNone
+  Distribution level:                     2D( 128)
+  Blocking size (min/max):             1024 / 2048
+  Computational models
+    CPU:              AMD Opteron 6180 - Intel MKL
+    GPU:             Nvidia K40 GK1108L - CUDA 8.0
+  Low rank parameters:
+    Strategy                        No compression
+
+  Matrix type:  General
+  Arithmetic:   Double
+  Format:       CSC
+  N:            84622
+  nnz:          3820828
+
++-------------------------------------------------+
+  Ordering subtask :
+    Ordering method is: Scotch
+    Time to compute ordering              2.274239e-01 s
++-------------------------------------------------+
+  Symbolic factorization subtask:
+    Symbol factorization using: Fax Direct
+    Number of nonzeroes in L structure    64830953
+    Fill-in of L                          16.967776
+    Time to compute symbol matrix         2.231503e-02 s
++-------------------------------------------------+
+  Reordering subtask:
+    Split level                                  0
+    Stoping criterion                           -1
+    Time for reordering                   1.076190e-01 s
++-------------------------------------------------+
+  Mapping/Scheduling subtask:
+    Number of non-zeroes in blocked L     129661906
+    Fill-in                               33.935552
+    Number of operations in full-rank: LU       169.74 GFlops
+    Prediction:
+      Model                              AMD 6180  MKL
+      Time to factorize                   1.027976e+01 s
+    Time for mapping/scheduling           3.477097e-03 s
++-------------------------------------------------+
+  Analyze task:
+    Total time for analyze                3.795028e-01 s
++-------------------------------------------------+
+  Factorization task:
+    Factorization used: LU
+    Time to initialize internal csc       2.313969e-01 s
+    Time to initialize coeftab            3.515315e-02 s
+    Time to factorize                     1.289438e+00 s (131.64 GFlop/s)
+    Number of operations                       -49158366020.00  Flops
+    Number of static pivots                      0
+    Memory usage of coeftab                        572 Mo
+    Time to solve                         2.622604e-02 s
+    - iteration 1 :
+         total iteration time                   0.0285 s
+         error                                  1.2465e-08
+    - iteration 2 :
+         total iteration time                   0.0284 s
+         error                                  2.2858e-12
+    - iteration 3 :
+         total iteration time                   0.03 s
+         error                                  2.0245e-16
+    Time for refinement                   9.262514e-02 s
+________________________________________
+
+CSC Conversion Time: 0.014531
+Init Time: 0.383211
+Factorize Time: 1.561134
+Solve Time: 0.121687
+Clean up Time: 0.000000
+---------------------------------
+Sum: 2.080563
+
+Total PaStiX Time: 2.080563
+CCX without PaStiX Time: 6.495153
+Share of PaStiX Time: 0.242611
+Total Time: 8.575716
+Reusability: 0 : 1 
+________________________________________
+
+ Using up to 4 cpu(s) for the stress calculation.
+
+ average force= 2.249420
+ time avg. forc= 2.249420
+ largest residual force= 0.000000 in node 1538 and dof 3
+ largest increment of disp= 1.233302e+01
+ largest correction to disp= 1.233302e+01 in node 24897 and dof 1
+
+ no convergence
+
+ iteration 2
+
+ Using up to 4 cpu(s) for the symmetric stiffness/mass contributions.
+
+Reusing csc.!
+
+  Matrix type:  General
+  Arithmetic:   Double
+  Format:       CSC
+  N:            84622
+  nnz:          3820828
+
++-------------------------------------------------+
+  Factorization task:
+    Factorization used: LU
+    Time to initialize internal csc       2.242398e-01 s
+    Time to initialize coeftab            9.656715e-02 s
+    Time to factorize                     1.392640e+00 s (121.88 GFlop/s)
+    Number of operations                       -49158366020.00  Flops
+    Number of static pivots                      0
+    Memory usage of coeftab                        572 Mo
+    Time to solve                         2.856088e-02 s
+    - iteration 1 :
+         total iteration time                   0.0354 s
+         error                                  1.8351e-09
+    - iteration 2 :
+         total iteration time                   0.0348 s
+         error                                  3.9229e-13
+    Time for refinement                   7.759404e-02 s
+________________________________________
+
+CSC Conversion Time: 0.013388
+Init Time: 0.000028
+Factorize Time: 1.725320
+Solve Time: 0.109478
+Clean up Time: 0.000000
+---------------------------------
+Sum: 1.848214
+
+Total PaStiX Time: 3.928777
+CCX without PaStiX Time: 6.770637
+Share of PaStiX Time: 0.367196
+Total Time: 10.699414
+Reusability: 1 : 2 
+________________________________________
+
+ Using up to 4 cpu(s) for the stress calculation.
+
+ average force= 2.249420
+ time avg. forc= 2.249420
+ largest residual force= 0.000000 in node 1203 and dof 3
+ largest increment of disp= 1.233302e+01
+ largest correction to disp= 5.423325e-13 in node 2 and dof 3
+
+ convergence
+
+ the increment size exceeds the remainder of the step and is decreased to 0.000000e+00
+
+ Using up to 4 cpu(s) for the stress calculation.
+
+
+ Job finished
+
+________________________________________
+
+Total CalculiX Time: 12.147011
+________________________________________
+

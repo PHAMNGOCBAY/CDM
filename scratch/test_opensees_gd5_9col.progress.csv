@@ -1,0 +1,10 @@
+global_step,elapsed_s,stage_name,load_frac,ux_mm,ok
+1,139.72,GD2 - Dap lop 1 (doi xung),0.0500,-0.042133,0
+2,278.23,GD2 - Dap lop 1 (doi xung),0.1000,-0.084266,0
+3,483.32,GD2 - Dap lop 1 (doi xung),0.1500,-0.126369,0
+4,858.34,GD2 - Dap lop 1 (doi xung),0.2000,-0.169352,0
+5,1966.94,GD2 - Dap lop 1 (doi xung),0.2500,-0.215478,0
+6,6256.58,GD2 - Dap lop 1 (doi xung),0.3000,-0.261724,0
+7,6520.42,GD2 - Dap lop 1 (doi xung),0.3500,-0.307856,0
+8,6791.84,GD2 - Dap lop 1 (doi xung),0.4000,-0.354544,0
+9,7049.55,GD2 - Dap lop 1 (doi xung),0.4500,-0.402530,0

@@ -1,0 +1,380 @@
+=========== PAGE 265 ===========
+6.8
+Materials
+265
+6.8.8
+Incremental (visco)plasticity: multiplicative decomposition
+The implementation of incremental plasticity for nonlinear geometrical calcu-
+lations in CalculiX (routine incplas.f) follows the algorithms in [92] and [93]
+and is based on the notion of an intermediate stress-free conﬁguration. The
+deformation is viewed as a plastic ﬂow due to dislocation motion followed by
+elastic stretching and rotation of the crystal lattice. This is synthesized by a
+local multiplicative decomposition of the deformation gradient F = FeFp where
+FkK = xk,K in Cartesian coordinates.
+In the present implementation, the elastic response is isotropic and is de-
+duced from a stored-energy function (hyperelastic response). Furthermore, the
+plastic ﬂow is isochoric (the volume is conserved) and the classical von Mises-
+Huber yield condition applies. This condition can be visualized as a sphere in
+principal deviatoric stress space.
+The hardening can consist of isotropic hardening, resulting in an expansion
+or contraction of the yield surface, of kinematic hardening, resulting in a trans-
+lation of the yield surface, or of a combination of both. The hardening curve
+should yield the von Mises true stress versus the equivalent plastic logarithmic
+strain (cf. deformation plasticity for its deﬁnition).
+Incremental plasticity is deﬁned by the *PLASTIC card, followed by the
+isotropic hardening curve for isotropic hardening or the kinematic hardening
+curve for kinematic and combined hardening.
+For combined hardening, the
+isotropic hardening curve is deﬁned by the *CYCLIC HARDENING card. The
+*PLASTIC card should be preceded within the same material deﬁnition by an
+*ELASTIC card, deﬁning the isotropic elastic properties of the material.
+By allowing the stress to leave the yield surface temporarily in order to
+regain it with time, creep eﬀects can be modeled [90]. The viscous part of the
+viscoplastic law is deﬁned by the *CREEP card. Default is a Norton type law.
+However, the user can also deﬁne his own law in user subroutine creep.f. If
+the *CREEP card is not preceded by a *PLASTIC card, a zero yield surface
+without any hardening eﬀects is assumed. The *CREEP card must be preceded
+by an *ELASTIC card deﬁning the isotropic elastic properties of the material.
+Notice that creep behavior is switched oﬀin a *STATIC step.
+For this model, there are 13 internal state variables:
+• the accumulated equivalent plastic strain ¯ep (1)
+• the unit tensor minus the inverse plastic right Cauchy-Green tensor and
+divided by two (I −Cp−1)/2. For small deformations the resulting tensor
+coincides with the inﬁnitesimal plastic strain tensor ǫp (6)
+• the back stress Γ (6)
+These variables are accessible through the *EL PRINT (.dat ﬁle) and *EL FILE
+(.frd ﬁle) keywords in exactly this order (label SDV).
+By using the *CHANGE MATERIAL, *CHANGE PLASTIC, *STATIC and
+*VISCO cards the user can switch between a purely plastic and creep behavior.
+The viscoplastic model implemented in CalculiX is an overstress model, i.e.
+
+
+=========== PAGE 266 ===========
+266
+6
+THEORY
+creep only occurs above the yield stress. For a lot of materials this is not realistic.
+At high temperatures creep is frequently observed well below the yield stress. To
+simulate this behavior one can set the yield stress to zero. In order to simulate
+an initial large plastic deformation (e.g.
+due to forging or other machining
+operations) followed by creep at high temperature at operation conditions one
+can proceed as follows: one deﬁnes the material as a viscoplastic material using
+the *PLASTIC and *CREEP card. To switch oﬀthe creep behavior in the
+machining step one uses the *STATIC procedure.
+In a subsequent step at
+operating conditions the viscous behavior is switched on using the *VISCO
+procedure whereas the yield stress is set to zero by means of a *CHANGE
+MATERIAL and *CHANGE PLASTIC card.
+6.8.9
+Incremental (visco)plasticity: additive decomposition
+The implementation of incremental plasticity for linear geometrical calculations
+in CalculiX (routine: incplas lin.f) follows the algorithms in [24], section 5.3
+and is based on an additive decomposition of the strain tensor into an elastic
+and a plastic part.
+In CalculiX, it is used in the absence of the NLGEOM
+parameter on the *STEP card. The internal variables are the same as for the
+multiplicative decomposition (cf. previous section) in their inﬁnitesimal limit.
+It seems that the additive decomposition exhibits less convergence issues than
+the multiplicative decomposition (although this may also be attributable to the
+general nonlinear geometrical setup).
+6.8.10
+Plasticity with Johnson-Cook hardening.
+In some sense this is a special case of the previous section, however, since it has
+been implemented as a Abaqus Material User Subroutine in CalculiX (in rou-
+tine umat abaqusnl total), establishing a relationship between the corotational
+Cauchy stress and the corotational logarithmic strain it can also be used for
+large deformations.
+In principal, the Johnson-Cook model [43] proposes a yield curve for a con-
+ventional plasticity model with isotropic hardening in the form:
+σvm =
+
+A + Bǫn
+p
+ 
+1 + C ln
+ ˙ǫp
+˙ǫ0
+
+[1 −(T ∗)m] ,
+(404)
+where
+T ∗
+=
+0
+for T < T0
+T ∗
+=
+ T −T0
+Tm −T0
+
+for T0 ≤T ≤Tm
+T ∗
+=
+1
+for T > Tm
+(405)
+Here, A, B, C, n, m, ˙ǫ0, T0 and Tm are material constants. The constant T0
+has the physical meaning of transition temperature, i.e. the temperature above
+
+
+=========== PAGE 267 ===========
+6.8
+Materials
+267
+which the yield surface starts to shrink and Tm has the physical meaning of
+melt temperature, i.e. the temperature above which the yield surface is reduced
+to zero. The model is meant to describe highly dynamical phenomena such as
+explosions, bird strike in a jet engine etc.
+For ˙ǫp < ˙ǫ0 the logarithm becomes negative and also for small ǫp convergence
+seems more diﬃcult. Therefore, Bernhardi and co-workers [57] have modiﬁed
+the above law for the following special ranges of ǫp and ˙ǫp to:
+σvm
+=
+
+A + Bǫpδn−1 
+1 + C ln
+ ˙ǫp
+˙ǫ0
+
+f(T ∗)
+˙ǫp ≥˙ǫ0, ǫp ≤δ
+σvm
+=
+
+A + Bǫn
+p
+ 
+1 + C
+ ˙ǫp
+˙ǫ0
+−1
+
+f(T ∗)
+˙ǫp < ˙ǫ0, ǫp > δ
+σvm
+=
+
+A + Bǫpδn−1 
+1 + C
+ ˙ǫp
+˙ǫ0
+−1
+
+f(T ∗)
+˙ǫp < ˙ǫ0, ǫp ≤δ (406)
+where f(T ∗) := 1−(T ∗)m and δ is some small number. In CalculiX δ = 10−4
+was taken.
+In the input deck the Johnson-Cook model is activated by the HARDEN-
+ING=JOHNSON COOK parameter on the *PLASTIC card. Underneath this
+card the rate-independent terms are deﬁned, i.e. the parameters A, B, n, m, Tm
+and T0. If Tm = T0 no temperature dependence is taken into account. The rate
+dependence has to be deﬁned using a *RATE DEPENDENT card with the pa-
+rameter TYPE=JOHNSON COOK, listing underneath the parameters C and
+˙ǫ0.
+The name of a material with Johnson-Cook hardening is not allowed to
+contain more than 69 characters.
+6.8.11
+Mohr-Coulomb plasticity.
+The theory and algorithms used to code the classical Mohr-Coulomb plasticity
+model are primarily taken from [100] and [21] and the references therein.
+The Mohr-Coulomb plasticity is non-associative with a piecewise linear yield
+surface f an a piecewise linear plastic potential g. The basic idea is that the
+shear stress at which plastic ﬂow occurs increases with increasing pressure, sim-
+ilar to contact sliding. This is illustrated in Figure 141 showing the shear stress
+τ versus normal stress σn. σ1 ≥σ2 ≥σ3 are the principal stresses.
+The yield surface satisﬁes:
+τ = c −σn tan ϕ,
+(407)
+where c is the cohesion. This is equivalent to (cf. Figure 141)
+σ1
+1 + sin ϕ
+1 −sin ϕ
+
+−σ3 −2c
+cos ϕ
+1 −sin ϕ = 0,
+(408)
+or
+
+
+=========== PAGE 268 ===========
+268
+6
+THEORY
+σ
+σ
+σ
+σ
+σ
+τ
+ϕ
+σ
+n
+n
+n
+τn
+3
+3
+3
+1
+σ1
+−
++
+σ1
+2
+2
+ϕ
+c
+Figure 141: Mohr-Coulomb yield surface
+kσ1 −σ3 −2c
+√
+k = 0,
+(409)
+where
+k = 1 + sin ϕ
+1 −sin ϕ.
+(410)
+ϕ is called the friction angle. Similarly, the plastic potential is deﬁned by:
+g = mσ1 −σ3,
+(411)
+where
+m = 1 + sin ψ
+1 −sin ψ .
+(412)
+ψ is called the dilation angle. It describes to what extent the volume of the
+material changes due to shear motion. For a positive value of ψ the volume
+increases, as for dense sand. For a negative value the volume decreases, as for
+loose sand. In the latter case the grains ﬁt better due to the motion. You can
+easily illustrate this by pouring suger in a bowl. Shaking the bowl the volume
+will decrease and more sugar will ﬁt.
+As mentioned, the yield surface is piecewise linear, so the gradient of the
+surface is not continuous. This complicates matters. Now, looking at the yield
+surface and plastic potential it can be observed that it contains only principal
+stresses. Assuming the material to be elastically isotropic, this allows us to
+perform all operations in principal stress space, thereby reducing the tensors to
+vectors. This was ﬁrst proposed in [20].
+Replacing σ1, σ2, σ3 by x, y, z for simplicity, the yield surface as deﬁned in
+Equation (409) deﬁnes in three-dimensional space one of six faces of a irregular
+
+
+=========== PAGE 269 ===========
+6.8
+Materials
+269
+x>z>y
+y=z
+x=y
+3
+4
+5
+6
+1
+2
+y>z
+x
+y
+z
+x<y
+x>y
+x<z
+x>z
+y<z
+B
+A
+x>y>z
+y>x>z
+x=z
+0
+Figure 142: Section plane ⊥(1,1,1) through (0,0,0)
+pyramid with central axis in (1, 1, 1) direction. The other faces correspond to
+sectors in which the order of σ1, σ2, σ3 is diﬀerent.
+Figure 142 shown a view on a plane orthogonal to the (1, 1, 1) axis and
+through the origin. The six sectors are bordered by planes going through the
+x-, y- and z- axes and containing the (1, 1, 1)-axis. The cross section of this
+plane with the yield surface is an irregular hexagon (dashed line). Since the
+principal stresses can always be rearranged such that x ≥y ≥z it is suﬃcient
+to look at that sector (labeled 1) and the neighboring ones (labeled 6 and 2).
+Figure 143 shows the yield surface viewed from the apex and looking in the
+direction of (−1, −1, −1). In the sectors of interest the normal to the surface a
+is shown. For sector 1 this is immediately clear from Equation (409) which can
+be written as (k, 0, −1) · (σ1, σ2, σ3) −2c
+√
+k = 0. A vector along the interection
+lines of the pyramid faces is obtained by taking the cross product of the normal
+of the neighboring faces,e.g. r6 = a6 ×a1. The apex of the pyramid is obtained
+by substituting σ1 = σ3 in Equation (409): it yields
+sa := σ1 = σ2 = σ3 = 2c
+√
+k
+k −1 =
+c
+tan ϕ.
+(413)
+Therefore, the equation of the intersection line between section 6 and 1
+satisﬁed (sa, sa, sa) + λ(1, k, k). Its intersection with the plane x + y + z = 0
+leads to
+
+
+=========== PAGE 270 ===========
+270
+6
+THEORY
+x
+y
+z
+ϕ
+(0,k,−1)
+a2
+(k,0,−1)
+a1
+(1,1,k)
+(1,k,k)
+r
+a
+(k,−1,0)
+6
+r6
+1
+sector 6
+sector 1
+sector 2
+apex
+1
+1
+6
+s
+s x r
+ϕ
+(c/tan   ,c/tan   ,c/tan   )
+ϕ
+1
+x r
+Figure 143: Pressure distribution in the lid-driven cavity
+λ =
+3sa
+1 + 2k,
+(414)
+yielding the location of point A in Figure 142. For point B one gets
+λ =
+3sa
+2 + k,
+(415)
+which is farther away from the origin since k ≥1. The normal to the plastic
+potential surface is labeled b and amounts for sector 1 to (m, 0, −1). Similar
+expressions apply to the other sectors.
+The governing equations of an elastic material with Mohr-Coulomb plasticity
+read:
+(i) Elastic stress-strain relations
+σ = D · ǫe
+(416)
+(ii) Internal variable relationship
+c(ǫpeq)
+(417)
+(iii) Yield surface
+f(σ, c) = 0 ⇔a · σ −2c
+√
+k = 0
+(418)
+
+

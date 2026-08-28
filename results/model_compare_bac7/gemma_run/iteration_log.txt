@@ -1,0 +1,9 @@
+model=gemma4:26b
+total_time_s=183.9
+success=True
+iterations_used=1
+
+--- Vong 1 ---
+time_s=183.6
+ok=True
+

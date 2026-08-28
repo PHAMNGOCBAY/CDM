@@ -1,0 +1,3 @@
+iterations=1
+total_time_s=0.247
+success_on_first_try=True

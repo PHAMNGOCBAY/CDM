@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
+	<Collection>
+		<DataSet file="test_ccx_mc_9col_gd5only.01.vtu" timestep="0.25"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.02.vtu" timestep="0.3125"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.03.vtu" timestep="0.375"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.04.vtu" timestep="0.398438"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.05.vtu" timestep="0.399902"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.06.vtu" timestep="0.400269"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.07.vtu" timestep="0.40036"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.08.vtu" timestep="0.400452"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.09.vtu" timestep="0.400486"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.10.vtu" timestep="0.40052"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.11.vtu" timestep="0.400572"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.12.vtu" timestep="0.400573"/>
+		<DataSet file="test_ccx_mc_9col_gd5only.13.vtu" timestep="0.400574"/>
+	</Collection>
+</VTKFile>

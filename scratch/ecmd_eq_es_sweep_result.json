@@ -1,0 +1,50 @@
+{
+  "3450.0": {
+    "ux_by_depth": {
+      "0.0": 0.234334,
+      "5.0": 0.284172,
+      "10.0": 0.35292
+    },
+    "vtu": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\ecmd_Es3450_load.vtu"
+  },
+  "1500.0": {
+    "ux_by_depth": {
+      "0.0": 0.287854,
+      "5.0": 0.646448,
+      "10.0": 0.818833
+    },
+    "vtu": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\ecmd_Es1500_load.vtu"
+  },
+  "800.0": {
+    "ux_by_depth": {
+      "0.0": 0.298167,
+      "5.0": 1.20075,
+      "10.0": 1.54205
+    },
+    "vtu": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\ecmd_Es800_load.vtu"
+  },
+  "400.0": {
+    "ux_by_depth": {
+      "0.0": 0.262574,
+      "5.0": 2.37257,
+      "10.0": 3.08862
+    },
+    "vtu": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\ecmd_Es400_load.vtu"
+  },
+  "200.0": {
+    "ux_by_depth": {
+      "0.0": 0.166055,
+      "5.0": 4.67026,
+      "10.0": 6.16199
+    },
+    "vtu": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\ecmd_Es200_load.vtu"
+  },
+  "100.0": {
+    "ux_by_depth": {
+      "0.0": 0.0058465,
+      "5.0": 9.14331,
+      "10.0": 12.2472
+    },
+    "vtu": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\ecmd_Es100_load.vtu"
+  }
+}

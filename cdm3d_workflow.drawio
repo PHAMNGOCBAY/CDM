@@ -1,0 +1,116 @@
+<mxfile host="app.diagrams.net" modified="2026-08-27T00:00:00.000Z" agent="Claude Code" version="24.0.0" type="device">
+  <diagram name="CDM3D Workflow" id="cdm3d-workflow">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="CDM3D — Workflow triển khai (cập nhật 2026-08-27): mô hình 3D Trụ CDM &#8211; Đất nền (Gmsh + CalculiX + OpenSeesPy)" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="1900" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Data sources -->
+        <mxCell id="data1" value="SQLite TTHC.sqlite&lt;br&gt;lab_tests, vane_shear_tests&lt;br&gt;(Es, Su, &#947; thực đo)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="260" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="data2" value="data/cdm3d_params.json&lt;br&gt;config + assumed_defaults&lt;br&gt;(GIẢ ĐỊNH, cảnh báo rõ)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="190" width="260" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="paramsio" value="params_io.build_default_params(zone)&lt;br&gt;&#8594; ModelParams&lt;br&gt;(&#947; hiệu dụng + MNN, stages GD2..GD5)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="360" y="130" width="260" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Lane: BONDED -->
+        <mxCell id="lane1" value="NHÁNH BONDED — CalculiX (production, đã hoàn thiện)" style="text;html=1;fontSize=14;fontStyle=1;align=left;verticalAlign=middle;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="60" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="geom1" value="geometry.py&lt;br&gt;build_geometry()&lt;br&gt;occ.fragment() — lưới CHUNG nút" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="100" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="mesh1" value="mesh_gmsh.py&lt;br&gt;generate_mesh()&lt;br&gt;tứ diện C3D4/C3D10" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="950" y="100" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ccxinput1" value="ccx_input.py&lt;br&gt;write_ccx_inp()&lt;br&gt;GD0&#8594;GD1 MODEL CHANGE&lt;br&gt;+ tải lệch tâm" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="100" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ccxsolve1" value="CalculiX&lt;br&gt;ccx_static.exe" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="100" width="190" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="post1" value="postprocess.py&lt;br&gt;PNG / GIF (pyvista)&lt;br&gt;xoay 360° + tải tăng dần" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="100" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Lane: OpenSeesPy plastic -->
+        <mxCell id="lane2" value="NHÁNH DẺO — OpenSeesPy (đất yếu, dùng lại lưới Bonded)" style="text;html=1;fontSize=14;fontStyle=1;align=left;verticalAlign=middle;fontColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="220" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="opsinput" value="OpenSeesPy trực tiếp&lt;br&gt;FourNodeTetrahedron&lt;br&gt;PressureIndependMultiYield&lt;br&gt;+ updateMaterialStage(stage=1)&lt;br&gt;[gotcha đã sửa 2026-08-27]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="950" y="260" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="opssolve" value="ops.analyze()&lt;br&gt;Newton + LoadControl" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="260" width="200" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="post2" value="ops.nodeDisp() đọc trực tiếp&lt;br&gt;(không cần .frd/.vtu/ccx2paraview)&lt;br&gt;so sánh Ux dẻo vs đàn hồi" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1460" y="260" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="opsnote" value="Đã kiểm chứng: Ux đàn hồi khớp CalculiX bonded&lt;br&gt;(5,0211mm vs 5,0210mm, sai lệch &lt;0,02%)&lt;br&gt;Dẻo: tỷ lệ Ux_dẻo/Ux_đàn_hồi tăng dần theo tải&lt;br&gt;(1,003 &#8594; 1,144 khi tải &#215;80) — đúng định tính" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="950" y="390" width="470" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="opsclosed" value="Contact OpenSeesPy (zeroLengthContact3D /&lt;br&gt;SimpleContact3D): KHÔNG KHẢ THI cho cọc tròn&lt;br&gt;(pháp tuyến cố định trục / cần mặt quad) — đã đóng nhánh" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1460" y="390" width="470" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Lane: CONTACT -->
+        <mxCell id="lane3" value="NHÁNH CONTACT — CalculiX (đang gỡ lỗi, vừa xác nhận fix hoạt động ở mô hình nhỏ)" style="text;html=1;fontSize=14;fontStyle=1;align=left;verticalAlign=middle;fontColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="680" y="500" width="1220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="geom2" value="contact_geometry.py&lt;br&gt;mesh_soil_with_holes()&lt;br&gt;+ mesh_columns_standalone()&lt;br&gt;(2 phiên gmsh ĐỘC LẬP, non-conformal)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="550" width="250" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="fixbox" value="FIX 2026-08-27&lt;br&gt;_tag_soil_boundary():&lt;br&gt;loại đĩa artifact OCC&lt;br&gt;(tàn dư fragment+cut tại&lt;br&gt;ranh giới lớp z=0, z=-23),&lt;br&gt;tách SOIL_TIP riêng" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="960" y="550" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ccxinput2" value="contact_ccx_input.py&lt;br&gt;write_ccx_inp_contact()&lt;br&gt;*CONTACT PAIR&lt;br&gt;&#945;-Tomlinson &#8594; &#956;_equiv" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="550" width="230" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="ccxsolve2" value="CalculiX (contact)&lt;br&gt;1 cọc + 3 lớp thật + tải đứng:&lt;br&gt;PHÂN KỲ &#8594; SỬA &#8594; HỘI TỤ ✓&lt;br&gt;9 cọc (production, cùng fix): VẪN PHÂN KỲ ✗" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1490" y="550" width="250" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="contactnote" value="Cô lập nguyên nhân qua 4 phép thử: 1 cọc 3 lớp + tải NGANG &#8594; hội tụ | 1 cọc 3 lớp + tải ĐỨNG &#8594; phân kỳ bùng nổ | sau fix (loại đĩa artifact) + 1 cọc 3 lớp + tải ĐỨNG &#8594; HỘI TỤ | sau CÙNG fix + 9 cọc (production) + tải ĐỨNG &#8594; VẪN PHÂN KỲ.&lt;br&gt;Kết luận: đĩa artifact OCC là 1 nguyên nhân THẬT (đã sửa xong), nhưng CHƯA ĐỦ — 9 cọc còn vấn đề riêng (nghi ngờ tương tác giữa các cọc/mặt trụ liền kề) CHƯA xác định — đang điều tra tiếp." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;align=left;" vertex="1" parent="1">
+          <mxGeometry x="680" y="680" width="1060" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Compare / goal -->
+        <mxCell id="compare" value="MỤC TIÊU — so sánh với quan trắc thực tế Ux ≈ 80cm tại GD5&#10;&#8226; Bonded đàn hồi tuyến tính: ~5mm (thiếu ~180 lần — đã loại trừ domain/Es/Ecdm phi vật lý qua 20 kịch bản hiệu chỉnh, xem mục 0 tài liệu 76-cdm3d-fem-gmsh-calculix.md)&#10;&#8226; OpenSeesPy dẻo (PressureIndependMultiYield): mềm hơn đàn hồi, tỷ lệ tăng theo tải — đúng định tính, chưa test ở quy mô GD5 thật&#10;&#8226; Contact CalculiX: vừa xác nhận hội tụ ở mô hình nhỏ sau fix — đang chạy lại quy mô 9 cọc để so sánh chuyển vị đất/cọc với bonded" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="680" y="800" width="1220" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="data1" target="paramsio"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="data2" target="paramsio"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="paramsio" target="geom1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="geom1" target="mesh1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="mesh1" target="ccxinput1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="ccxinput1" target="ccxsolve1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="ccxsolve1" target="post1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;" edge="1" parent="1" source="mesh1" target="opsinput"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="opsinput" target="opssolve"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="opssolve" target="post2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="paramsio" target="geom2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="geom2" target="fixbox"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="fixbox" target="ccxinput2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="ccxinput2" target="ccxsolve2"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="post1" target="compare"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="post2" target="compare"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="ccxsolve2" target="compare"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

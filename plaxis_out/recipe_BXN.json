@@ -1,0 +1,345 @@
+{
+  "zone_code": "BXN",
+  "design_elev_fill_m": 2.7,
+  "source_db": "C:\\Users\\bayng\\TTHC_local\\TTHC.sqlite",
+  "created_at": "2026-05-29 16:56:11",
+  "n_boreholes": 9,
+  "n_global_layers": 12,
+  "n_materials": 12,
+  "boreholes": [
+    {
+      "name": "BXN-CV-HK6",
+      "nat_elev_m": 2.183,
+      "E": 605951.807,
+      "N": 1191573.853,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.183,
+        "1": -0.21700000000000008,
+        "2": -19.517,
+        "3a": null,
+        "3b": -28.817,
+        "4": -35.017,
+        "5": -41.417,
+        "TK6b": null,
+        "6": -60.817,
+        "TK6a": null,
+        "7": null,
+        "8": -67.81700000000001
+      }
+    },
+    {
+      "name": "BXN-CV-HK17",
+      "nat_elev_m": 2.112,
+      "E": 605966.866,
+      "N": 1191633.615,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.112,
+        "1": 1.112,
+        "2": -16.887999999999998,
+        "3a": null,
+        "3b": -24.887999999999998,
+        "4": null,
+        "5": -36.687999999999995,
+        "TK6b": null,
+        "6": -44.888,
+        "TK6a": -54.888,
+        "7": null,
+        "8": -67.888
+      }
+    },
+    {
+      "name": "BXN-CV-HK5",
+      "nat_elev_m": 2.193,
+      "E": 605968.022,
+      "N": 1191537.283,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.193,
+        "1": 1.093,
+        "2": -18.607,
+        "3a": -19.807,
+        "3b": -26.807,
+        "4": -34.807,
+        "5": -40.407000000000004,
+        "TK6b": null,
+        "6": -48.907000000000004,
+        "TK6a": null,
+        "7": null,
+        "8": -67.807
+      }
+    },
+    {
+      "name": "BXN-CV-HK14",
+      "nat_elev_m": 2.185,
+      "E": 605979.066,
+      "N": 1191629.624,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.185,
+        "1": 0.885,
+        "2": -19.215,
+        "3a": null,
+        "3b": -28.515,
+        "4": -31.015000000000004,
+        "5": -42.714999999999996,
+        "TK6b": null,
+        "6": -57.214999999999996,
+        "TK6a": null,
+        "7": null,
+        "8": -67.815
+      }
+    },
+    {
+      "name": "BXN-CV-HK15",
+      "nat_elev_m": 2.311,
+      "E": 606002.554,
+      "N": 1191683.77,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.311,
+        "1": 1.311,
+        "2": -19.189,
+        "3a": -22.689,
+        "3b": -26.289,
+        "4": -32.689,
+        "5": -39.789,
+        "TK6b": -48.889,
+        "6": -45.189,
+        "TK6a": -46.689,
+        "7": null,
+        "8": -67.689
+      }
+    },
+    {
+      "name": "BXN-CV-HK16",
+      "nat_elev_m": 2.642,
+      "E": 606039.124,
+      "N": 1191770.009,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.642,
+        "1": 0.1419999999999999,
+        "2": -19.858,
+        "3a": null,
+        "3b": -30.358,
+        "4": null,
+        "5": -40.358,
+        "TK6b": null,
+        "6": -48.358,
+        "TK6a": -52.358,
+        "7": -60.558,
+        "8": -67.358
+      }
+    },
+    {
+      "name": "BXN-CV-HK12",
+      "nat_elev_m": 2.708,
+      "E": 606052.169,
+      "N": 1191662.015,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.708,
+        "1": 0.40800000000000036,
+        "2": -19.292,
+        "3a": null,
+        "3b": -29.292,
+        "4": -33.292,
+        "5": -39.292,
+        "TK6b": -51.292,
+        "6": -47.492000000000004,
+        "TK6a": null,
+        "7": null,
+        "8": -67.292
+      }
+    },
+    {
+      "name": "BXN-CV-HK10",
+      "nat_elev_m": 3.07,
+      "E": 606098.186,
+      "N": 1191638.68,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 3.07,
+        "1": -0.03000000000000025,
+        "2": -20.83,
+        "3a": null,
+        "3b": -31.93,
+        "4": null,
+        "5": -39.33,
+        "TK6b": null,
+        "6": -46.43,
+        "TK6a": -47.73,
+        "7": null,
+        "8": -66.93
+      }
+    },
+    {
+      "name": "BXN-CV-HK1",
+      "nat_elev_m": 2.899,
+      "E": 606114.279,
+      "N": 1191602.053,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 2.899,
+        "1": 0.19899999999999984,
+        "2": -17.401,
+        "3a": null,
+        "3b": -22.101,
+        "4": null,
+        "5": -36.601,
+        "TK6b": null,
+        "6": -48.101,
+        "TK6a": null,
+        "7": null,
+        "8": -67.101
+      }
+    }
+  ],
+  "global_layers": [
+    "__FILL__",
+    "1",
+    "2",
+    "3a",
+    "3b",
+    "4",
+    "5",
+    "TK6b",
+    "6",
+    "TK6a",
+    "7",
+    "8"
+  ],
+  "materials": {
+    "__FILL__": {
+      "symbol": "__FILL__",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "phi_deg": 32.0,
+      "psi_deg": 2.0,
+      "cRef_kPa": 1.0,
+      "ERef_kPa": 25000.0,
+      "nu": 0.3,
+      "Identification": "FILL_dap_2.7m",
+      "source": "Standard fill material"
+    },
+    "1": {
+      "symbol": "1",
+      "model": "SoftSoil",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "2": {
+      "symbol": "2",
+      "model": "MC_undrained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "3a": {
+      "symbol": "3a",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "3b": {
+      "symbol": "3b",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "4": {
+      "symbol": "4",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "5": {
+      "symbol": "5",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "TK6b": {
+      "symbol": "TK6b",
+      "model": "MC_undrained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "6": {
+      "symbol": "6",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "TK6a": {
+      "symbol": "TK6a",
+      "model": "MC_undrained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "7": {
+      "symbol": "7",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "8": {
+      "symbol": "8",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    }
+  },
+  "notes": [
+    "Recipe đầy đủ để re-create model PLAXIS không cần GUI mở.",
+    "Y monotonic giảm xuống dưới (Y dương lên).",
+    "Layer __FILL__ là layer 0 (đất đắp), Bottom = nat_elev.",
+    "Per-BH: layer absent → bottom = bottom layer trên (zero thickness).",
+    "Materials: SoftSoil cho lớp 1/1b/XMD, MC drained cho cát, MC undrained cho sét khác."
+  ]
+}

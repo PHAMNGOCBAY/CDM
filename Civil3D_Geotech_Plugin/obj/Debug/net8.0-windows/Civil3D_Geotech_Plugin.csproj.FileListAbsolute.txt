@@ -1,0 +1,4 @@
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net8.0-windows\Civil3D_Geotech_Plugin.csproj.AssemblyReference.cache
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net8.0-windows\Civil3D_Geotech_Plugin.GeneratedMSBuildEditorConfig.editorconfig
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net8.0-windows\Civil3D_Geotech_Plugin.csproj.CoreCompileInputs.cache
+G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Civil3D_Geotech_Plugin\obj\Debug\net8.0-windows\Civil3D_Geotech_Plugin.sourcelink.json

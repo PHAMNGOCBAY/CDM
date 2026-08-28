@@ -1,0 +1,15 @@
+model=nemotron-3.5-lightning
+total_time_s=399.6
+success=True
+iterations_used=2
+
+--- Vong 1 ---
+time_s=314.5
+ok=False
+error:
+Code chay xong nhung KHONG tao ra file 'output.png' nhu yeu cau.
+
+--- Vong 2 ---
+time_s=84.0
+ok=True
+

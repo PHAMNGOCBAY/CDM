@@ -1,0 +1,82 @@
+{
+  "standard": "TCVN 11823-5:2017",
+  "title": "THIẾT KẾ CẦU ĐƯỜNG BỘ - PHẦN 5: KẾT CẤU BÊ TÔNG",
+  "inputs": {
+    "material": {
+      "fc_prime": 30,
+      "fc_unit": "MPa",
+      "fc_note": "C30 - TCVN 11823-2017",
+      "fy": 300,
+      "fy_unit": "MPa",
+      "fy_note": "CB300-V - TCVN 1651-2"
+    },
+    "geometry": {
+      "h": 200,
+      "h_unit": "mm",
+      "b": 1000,
+      "b_unit": "mm/m",
+      "c": 40,
+      "c_unit": "mm",
+      "c_note": "Lớp bảo vệ bê tông",
+      "phi_assumed": 14,
+      "phi_unit": "mm",
+      "d": 153,
+      "d_unit": "mm",
+      "d_note": "h - c - phi/2"
+    },
+    "loads": {
+      "Mu": 9.15,
+      "Mu_unit": "kN.m",
+      "Qu": 15.80,
+      "Qu_unit": "kN"
+    }
+  },
+  "factors": {
+    "beta_1": 0.836,
+    "phi_f": 0.90,
+    "phi_v": 0.90,
+    "beta_shear": 2.0,
+    "lambda_shear": 1.0
+  },
+  "results": {
+    "bending_reinforcement": {
+      "Rn": 0.434,
+      "Rn_unit": "MPa",
+      "rho": 0.001459,
+      "Ast_calc": 223,
+      "Ast_calc_unit": "mm2/m"
+    },
+    "min_reinforcement": {
+      "fr": 3.45,
+      "fr_unit": "MPa",
+      "Mcr": 23.0,
+      "Mcr_unit": "kN.m",
+      "1_2_Mcr": 27.6,
+      "1_33_Mu": 12.17,
+      "M_min_control": 12.17,
+      "Rn_min": 0.578,
+      "rho_min": 0.001949,
+      "Ast_min": 298,
+      "Ast_min_unit": "mm2/m"
+    },
+    "shear": {
+      "dv": 144.0,
+      "dv_unit": "mm",
+      "Vc": 130.9,
+      "Vc_unit": "kN",
+      "phi_Vc": 117.8,
+      "phi_Vc_unit": "kN",
+      "check_shear_capacity": "Qu < phi_Vc (OK)",
+      "check_min_shear_reinf": "Qu < 0.5 * phi_Vc (No need for stirrups)"
+    },
+    "conclusion": {
+      "Ast_design": 298,
+      "Ast_design_unit": "mm2/m",
+      "chosen_rebar": "Phi 12 a 350",
+      "Ast_chosen": 323,
+      "Ast_chosen_unit": "mm2/m",
+      "phi_Mn": 13.18,
+      "phi_Mn_unit": "kN.m"
+    }
+  }
+}

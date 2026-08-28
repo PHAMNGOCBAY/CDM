@@ -1,0 +1,51 @@
+============================================================
+Wave 2 + Task M — ALL ZONES
+============================================================
+
+DB: TTHC_local
+  Task M (QTT grid 6 ΔS): 972 rows in 153s
+
+  Zone QTT:
+    PA-A (ΔS=10): 90 rows in 8s
+    PA-B (L=30,ΔS=30): 6 rows in 14s
+
+  Zone BXN:
+    PA-A (ΔS=10): 135 rows in 24s
+    PA-B (L=30,ΔS=30): 9 rows in 45s
+
+  Zone NHC:
+    PA-A (ΔS=10): 105 rows in 27s
+    PA-B (L=30,ΔS=30): 7 rows in 50s
+
+  Zone KE_park:
+    PA-A (ΔS=10): 75 rows in 9s
+    PA-B (L=30,ΔS=30): 5 rows in 19s
+
+  Zone KE_levee:
+    PA-A (ΔS=10): 90 rows in 11s
+    PA-B (L=30,ΔS=30): 6 rows in 21s
+
+DB: data
+  Task M (QTT grid 6 ΔS): 972 rows in 577s
+
+  Zone QTT:
+    PA-A (ΔS=10): 90 rows in 28s
+    PA-B (L=30,ΔS=30): 6 rows in 56s
+
+  Zone BXN:
+    PA-A (ΔS=10): 135 rows in 80s
+    PA-B (L=30,ΔS=30): 9 rows in 151s
+
+  Zone NHC:
+    PA-A (ΔS=10): 105 rows in 94s
+    PA-B (L=30,ΔS=30): 7 rows in 208s
+
+  Zone KE_park:
+    PA-A (ΔS=10): 75 rows in 31s
+    PA-B (L=30,ΔS=30): 5 rows in 61s
+
+  Zone KE_levee:
+    PA-A (ΔS=10): 90 rows in 36s
+    PA-B (L=30,ΔS=30): 6 rows in 69s
+
+DONE all 5 zones × 2 DBs

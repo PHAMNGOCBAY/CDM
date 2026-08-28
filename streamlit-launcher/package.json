@@ -1,0 +1,95 @@
+{
+  "name": "streamlit-launcher",
+  "displayName": "Streamlit Launcher",
+  "description": "Khởi động, dừng và restart Streamlit app trực tiếp từ VS Code status bar",
+  "version": "1.0.0",
+  "publisher": "phamngocbay",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "streamlit",
+    "python",
+    "launcher",
+    "run"
+  ],
+  "icon": "images/icon.png",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "streamlitLauncher.toggle",
+        "title": "Streamlit: Start / Stop App",
+        "icon": "$(play)"
+      },
+      {
+        "command": "streamlitLauncher.restart",
+        "title": "Streamlit: Restart App",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "streamlitLauncher.openBrowser",
+        "title": "Streamlit: Open in Browser",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "streamlitLauncher.configure",
+        "title": "Streamlit: Configure",
+        "icon": "$(settings-gear)"
+      }
+    ],
+    "configuration": {
+      "title": "Streamlit Launcher",
+      "properties": {
+        "streamlitLauncher.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Đường dẫn tới Python executable"
+        },
+        "streamlitLauncher.scriptPath": {
+          "type": "string",
+          "default": "scripts/app_cdm.py",
+          "description": "File Python chạy Streamlit (tương đối với workspace root)"
+        },
+        "streamlitLauncher.port": {
+          "type": "number",
+          "default": 8503,
+          "description": "Cổng Streamlit server"
+        },
+        "streamlitLauncher.dbPath": {
+          "type": "string",
+          "default": "",
+          "description": "Đường dẫn TTHC_DB_PATH (để trống = dùng default)"
+        },
+        "streamlitLauncher.extraArgs": {
+          "type": "string",
+          "default": "--server.runOnSave true",
+          "description": "Tham số thêm vào lệnh streamlit run"
+        },
+        "streamlitLauncher.autoOpenBrowser": {
+          "type": "boolean",
+          "default": true,
+          "description": "Tự động mở trình duyệt khi start"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "echo pre-compiled",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "npx @vscode/vsce package --no-dependencies --skip-license"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.9.3"
+  },
+  "license": "MIT"
+}

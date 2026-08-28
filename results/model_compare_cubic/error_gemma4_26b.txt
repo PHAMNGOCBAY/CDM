@@ -1,0 +1,11 @@
+SyntaxError: invalid syntax (model_code_gemma4_26b.py, line 7)
+
+Traceback:
+Traceback (most recent call last):
+  File "G:\My Drive\AI-SUC TAI COC THEO DAT NEN\results\model_compare_cubic\run_model_code.py", line 20, in <module>
+    compiled = compile(code, code_path, "exec")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "model_code_gemma4_26b.py", line 7
+    return x**3 - 6*x** import x**2 + 11*x - 6 # Note: Fixed typo in thought, writing actual code below
+                        ^^^^^^
+SyntaxError: invalid syntax

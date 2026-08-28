@@ -440,11 +440,6 @@ _L: dict[str, tuple[str, str]] = {
     "p_cdm_bvt":    ("TKBVTC CDM",                  "CDM Detail Design"),
     "p_cdm_tien_do":("Tiến độ & Thí nghiệm CDM",   "CDM Progress & Testing"),
     "p_tvtk_prep":  ("Thống nhất đầu vào TVTK",    "TVTK Input Unification"),
-    "p_soil_stats": ("Thống kê cơ lý đất",         "Soil Property Statistics"),
-    "p_lk2":        ("Móng trụ CDM (LK2)",          "CDM Pier Footing (LK2)"),
-    "p_no_treat":   ("Lún nền chưa xử lý",          "Untreated Ground Settlement"),
-    "p_cushion":    ("Đệm cát - xi măng",           "Sand-Cement Cushion"),
-    "p_qtt":        ("Khu QTT (Quảng Trường)",      "QTT Zone (Plaza)"),
     "p_tkcs_sw":    ("TKCS Cọc ván",                "Sheet Pile Prelim Design"),
     "p_ke_sw":      ("Cọc ván SW (Kè)",             "Sheet Pile SW (Ke)"),
     "p_sw_bvt":     ("TKBVTC Cọc SW",              "Sheet Pile Detail Design"),
@@ -3421,17 +3416,12 @@ if st.session_state.get("_page") in ("compare", "export"):
 
 st.sidebar.markdown("**Chuẩn bị họp**")
 _nav(_t("p_tvtk_prep"), "tvtk_prep")
-_nav(_t("p_soil_stats"), "soil_stats")
-_nav(_t("p_qtt"), "qtt")
 st.sidebar.markdown("---")
 _nav(_t("p_geology"),      "geology")
 _nav(_t("p_sample_check"), "sample_check")
 st.sidebar.markdown(f"**{_t('p_tkcs_cdm')}**")
 _nav(_t("p_params"),    "params",     indent=True)   # gộp: Thông số + Kết quả CDM + Xuất kết quả
 _nav(_t("p_settlement"),"settlement", indent=True)
-_nav(_t("p_lk2"),       "lk2",        indent=True)
-_nav(_t("p_no_treat"),  "no_treat",   indent=True)
-_nav(_t("p_cushion"),   "cushion",    indent=True)
 _nav(_t("p_cdm_bvt"),   "cdm_bvt")
 _nav(_t("p_cdm_tien_do"), "cdm_tien_do", indent=True)
 st.sidebar.markdown(f"**{_t('p_tkcs_sw')}**")
@@ -4552,23 +4542,28 @@ if _page == "geology":
                                   "e₀", "Cc", "Cs", "PC (kPa)", "Cv (cm²/s)"]
                 _desc_col = "Description"
 
-            # Định dạng bảng chuẩn dự án (header đậm navy, 12pt, zebra, lưới) — đồng bộ Word
-            from core.report_style import df_to_report_html, html_css_block
+            # Format Cv scientific notation
             _cv_col = "Cv (cm²/s)"
-            _disp = df_lay.copy()
-            _fmt = {"γ (kN/m³)": "{:.2f}", "c (kPa)": "{:.1f}", "φ (°)": "{:.1f}",
-                    "e₀": "{:.3f}", "Cc": "{:.4f}", "Cs": "{:.4f}", "PC (kPa)": "{:.1f}"}
-            for _c, _f in _fmt.items():
-                if _c in _disp.columns:
-                    _disp[_c] = _disp[_c].apply(
-                        lambda v, ff=_f: ff.format(v) if pd.notna(v) and v is not None else "—")
-            for _c in _disp.columns[2:5]:   # Đỉnh / Đáy / Dày (m)
-                _disp[_c] = _disp[_c].apply(
-                    lambda v: f"{v:.1f}" if pd.notna(v) and v is not None else "—")
-            _disp[_cv_col] = df_lay[_cv_col].apply(
-                lambda x: f"{x:.2e}" if pd.notna(x) and x is not None else "—")
-            st.markdown(html_css_block(), unsafe_allow_html=True)
-            st.markdown(df_to_report_html(_disp), unsafe_allow_html=True)
+            df_lay[_cv_col] = df_lay[_cv_col].apply(
+                lambda x: f"{x:.2e}" if pd.notna(x) and x is not None else "–"
+            )
+
+            st.dataframe(
+                df_lay,
+                use_container_width=True,
+                height=310,
+                column_config={
+                    _desc_col:    st.column_config.TextColumn(width="medium"),
+                    "γ (kN/m³)":  st.column_config.NumberColumn(format="%.2f"),
+                    "c (kPa)":    st.column_config.NumberColumn(format="%.1f"),
+                    "φ (°)":      st.column_config.NumberColumn(format="%.1f"),
+                    "e₀":         st.column_config.NumberColumn(format="%.3f"),
+                    "Cc":         st.column_config.NumberColumn(format="%.4f"),
+                    "Cs":         st.column_config.NumberColumn(format="%.4f"),
+                    "PC (kPa)":   st.column_config.NumberColumn(format="%.1f"),
+                    _cv_col:      st.column_config.TextColumn(width="small"),
+                },
+            )
         else:
             st.info(_t("no_strat"))
 
@@ -18354,48 +18349,5 @@ if _page == "tvtk_prep":
         st.error(f"Lỗi module phân vùng CDM: {_exc_z}")
 
     _cv.close()
-
-
-# ── Trang dạng module (scripts/pages/*.py) — gọi render() khi trang được chọn ──
-# Mỗi module tự chứa toàn bộ UI + tính toán; chỉ chạy khi đúng _page.
-if _page == "soil_stats":
-    try:
-        from pages.soil_stats_page import render as _render_soil_stats
-        _render_soil_stats()
-    except Exception as _e_ss:
-        st.error(f"Lỗi trang Thống kê cơ lý đất: {_e_ss}")
-        st.exception(_e_ss)
-
-if _page == "lk2":
-    try:
-        from pages.lk2_page import render as _render_lk2
-        _render_lk2()
-    except Exception as _e_lk2:
-        st.error(f"Lỗi trang Móng trụ CDM (LK2): {_e_lk2}")
-        st.exception(_e_lk2)
-
-if _page == "no_treat":
-    try:
-        from pages.no_treat_page import render as _render_no_treat
-        _render_no_treat()
-    except Exception as _e_nt:
-        st.error(f"Lỗi trang Lún nền chưa xử lý: {_e_nt}")
-        st.exception(_e_nt)
-
-if _page == "cushion":
-    try:
-        from pages.cushion_page import render as _render_cushion
-        _render_cushion()
-    except Exception as _e_cu:
-        st.error(f"Lỗi trang Đệm cát - xi măng: {_e_cu}")
-        st.exception(_e_cu)
-
-if _page == "qtt":
-    try:
-        from pages.qtt_page import render as _render_qtt_zone
-        _render_qtt_zone()
-    except Exception as _e_qtt:
-        st.error(f"Lỗi trang Khu QTT: {_e_qtt}")
-        st.exception(_e_qtt)
 
 

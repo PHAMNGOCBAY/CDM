@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>RevitGeotechPlugin</Name>
+    <Assembly>G:\My Drive\AI-SUC TAI COC THEO DAT NEN\Revit_Geotech_Plugin\bin\Debug\net10.0-windows\RevitGeotechPlugin_v3.dll</Assembly>
+    <ClientId>A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D</ClientId>
+    <FullClassName>RevitGeotechPlugin.App</FullClassName>
+    <VendorId>AI_TAI_COC</VendorId>
+    <VendorDescription>AI Geotech</VendorDescription>
+  </AddIn>
+</RevitAddIns>

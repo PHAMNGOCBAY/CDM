@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
+	<Collection>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.01.vtu" timestep="0.25"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.02.vtu" timestep="0.3125"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.03.vtu" timestep="0.375"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.04.vtu" timestep="0.398438"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.05.vtu" timestep="0.421875"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.06.vtu" timestep="0.424072"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.07.vtu" timestep="0.42627"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.08.vtu" timestep="0.427094"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.09.vtu" timestep="0.427917"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.10.vtu" timestep="0.428226"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.11.vtu" timestep="0.428535"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.12.vtu" timestep="0.428651"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.13.vtu" timestep="0.428767"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.14.vtu" timestep="0.428941"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.15.vtu" timestep="0.428945"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.16.vtu" timestep="0.428949"/>
+		<DataSet file="test_ccx_mc_9col_gd5_wideXneg.17.vtu" timestep="0.428951"/>
+	</Collection>
+</VTKFile>

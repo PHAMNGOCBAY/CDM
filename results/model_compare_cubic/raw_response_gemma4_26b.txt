@@ -1,0 +1,51 @@
+Các nghiệm thực của phương trình là: **x = 1, x = 2, x = 3**.
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+def solve_and_plot():
+    # 1. Định nghĩa hàm số và các nghiệm
+    def f(x):
+        return x**3 - 6*x** import x**2 + 11*x - 6 # Note: Fixed typo in thought, writing actual code below
+
+    # Chỉnh sửa lại hàm đúng chuẩn để tránh lỗi logic
+    f = lambda x: x**3 - 6*x**2 + 11*x - 6
+    roots = [1, 2, 3]
+
+    # 2. Tạo dữ liệu cho đồ thị
+    x_values = np.linspace(-1, 5, 400)
+    y_values = f(x_values)
+
+    # 3. Khởi tạo đồ thị
+    plt.figure(figsize=(10, 6))
+    plt.plot(x_values, y_values, label='y = x³ - 6x² + 11x - 6', color='blue', linewidth=2)
+
+    # 4. Đánh dấu các nghiệm trên trục hoành (y=0)
+    roots_x = np.array(roots)
+    roots_y = np.zeros(len(roots))
+    plt.scatter(roots_x, roots_y, color='red', s=100, zorder=5, label='Nghiem (Roots)')
+
+    # Thêm chú thích text cho từng điểm nghiệm
+    for r in roots:
+        plt.annotate(f'({r}, 0)', (r, 0), textcoords="offset points", xytext=(0,10), ha='center', fontsize=10, color='red')
+
+    # 5. Vẽ trục tọa độ Oxy
+    plt.axhline(0, color='black', linewidth=1.5) # Trục Ox
+    plt.axvline(0, color='black', linewidth=1.5) # Trục Oy
+
+    # 6. Cấu hình đồ thị (Tiêu đề, nhãn, lưới)
+    plt.title('Do thi ham so bac 3: y = x³ - 6x² + 11x - 6', fontsize=14)
+    plt.xlabel('x', fontsize=12)
+    plt.ylabel('y', fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend(loc='upper left')
+
+    # 7. Lưu ảnh và hiển thị
+    plt.savefig('output.png')
+    print("Da luu do thi vao file 'output.png'")
+    plt.show()
+
+if __name__ == "__main__":
+    solve_and_plot()
+```

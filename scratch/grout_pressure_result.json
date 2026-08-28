@@ -1,0 +1,15 @@
+{
+  "x_target_row_m": 0.0,
+  "Ux0_mm_at_P0": 10.4214,
+  "P1_kPa": 300.0,
+  "Ux1_mm": 59.0274,
+  "slope_mm_per_kPa": 0.16202,
+  "P_target_kPa": 4873.340328354524,
+  "Ux_target_cm": 80.0,
+  "Ux_validated_cm": 106.118,
+  "error_pct": 32.647499999999994,
+  "vtu_validated": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\grout_base_Ptarget.vtu",
+  "D_m": 0.8,
+  "H_col_m": 24.8,
+  "n_col_per_row": 3
+}

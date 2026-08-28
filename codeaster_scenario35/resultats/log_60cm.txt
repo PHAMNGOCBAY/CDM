@@ -1,0 +1,1293 @@
+
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4>echo OFF 
+Active code page: 65001
+The system cannot find the drive specified.
+
+# ------------------------------------------------------------------------------
+Execution of code_aster
+
+# ------------------------------------------------------------------------------
+Prepare environment in C:\Users\bayng\AppData\Local\Temp\run_aster__mzkbdlx
+
+# ------------------------------------------------------------------------------
+Command file #1 / 1
+
+Content of the file to execute:
+# coding=utf-8
+# Kich ban 3.5 (kiem toan coc CDM that Ec=40000kPa) — GD5 + ap luc vua hang x=0,
+# muc P=P_tuong_ungkPa (tuong duong muc tieu Ux_dinh=80cm da tinh bang CalculiX) —
+# CROSS-CHECK bang Code_Aster, luoi + nhom dung tu Salome-Meca (khong qua gmsh).
+#
+# Vat lieu dat yeu: MOHR_COULOMB, PHI=0 (Tresca, giong quy uoc CalculiX), Su=5000kPa
+# khong bind (muc dich co lap anh huong do cung, giong CalculiX truoc do).
+
+from code_aster.Commands import *
+
+DEBUT(CODE="OUI", ERREUR=_F(ALARME="EXCEPTION"), DEBUG=_F(SDVERI="OUI"))
+
+MA = LIRE_MAILLAGE(FORMAT="MED", UNITE=20)
+
+MA = MODI_MAILLAGE(
+    reuse=MA, MAILLAGE=MA,
+    ORIE_PEAU=_F(GROUP_MA_PEAU=(
+        "BASE", "SIDE_XMIN", "SIDE_XMAX", "SIDE_YMIN", "SIDE_YMAX",
+        "TOP_SOIL_NEGX", "TOP_SOIL_POSX", "TOP_COLUMN_NEGX", "TOP_COLUMN_POSX",
+    )),
+)
+
+MO = AFFE_MODELE(MAILLAGE=MA, AFFE=_F(TOUT="OUI", PHENOMENE="MECANIQUE", MODELISATION="3D"))
+
+# ================== Vat lieu ==================
+MAT_DAP = DEFI_MATERIAU(ELAS=_F(E=8000.0, NU=0.30, RHO=19.0 / 9.81))
+MAT_CUNG = DEFI_MATERIAU(ELAS=_F(E=27600.0, NU=0.35, RHO=19.0 / 9.81))
+MAT_COL = DEFI_MATERIAU(ELAS=_F(E=40000.0, NU=0.25, RHO=18.0 / 9.81))
+MAT_YEU = DEFI_MATERIAU(
+    ELAS=_F(E=3450.0, NU=0.35, RHO=15.291 / 9.81),
+    MOHR_COULOMB=_F(PHI=0.001, ANGDIL=0.0, COHESION=5000.0),
+)
+
+CHMAT = AFFE_MATERIAU(
+    MAILLAGE=MA,
+    AFFE=(
+        _F(GROUP_MA="SOIL_dat_dap", MATER=MAT_DAP),
+        _F(GROUP_MA="SOIL_lop_cung", MATER=MAT_CUNG),
+        _F(GROUP_MA="CDM_COLUMN", MATER=MAT_COL),
+        _F(GROUP_MA="SOIL_dat_yeu", MATER=MAT_YEU),
+    ),
+)
+
+# ================== Dieu kien bien (giong CalculiX *BOUNDARY) ==================
+DEPL = AFFE_CHAR_CINE(
+    MODELE=MO,
+    MECA_IMPO=(
+        _F(GROUP_MA="BASE", DX=0.0, DY=0.0, DZ=0.0),
+        _F(GROUP_MA="SIDE_XMIN", DX=0.0),
+        _F(GROUP_MA="SIDE_XMAX", DX=0.0),
+        _F(GROUP_MA="SIDE_YMIN", DY=0.0),
+        _F(GROUP_MA="SIDE_YMAX", DY=0.0),
+    ),
+)
+
+# ================== Tai GD5 — ap luc mat THAT tren nua mien +X (q=40.8kPa nen) ==================
+CHAR_GD5 = AFFE_CHAR_MECA(
+    MODELE=MO,
+    PRES_REP=(
+        _F(GROUP_MA="TOP_SOIL_POSX", PRES=40.8),
+        _F(GROUP_MA="TOP_COLUMN_POSX", PRES=40.8),
+    ),
+)
+
+# ================== Tai vua hang x=0 — luc khoi tuong duong (kN/m3), huong +X ==================
+# P=P_tuong_ung kPa, D=0.8m -> FX = 4P/(pi.D) = 7039.36 kN/m3 (xem doc string ccx tuong duong)
+CHAR_VUA = AFFE_CHAR_MECA(MODELE=MO, FORCE_INTERNE=_F(GROUP_MA="CDM_COLUMN_ROW_X0", FX=7039.36))
+
+# ================== Giai STAT_NON_LINE (Mohr-Coulomb dat yeu) ==================
+LINST = DEFI_LIST_REEL(DEBUT=0.0, INTERVALLE=_F(JUSQU_A=1.0, NOMBRE=10))
+DEFLIST = DEFI_LIST_INST(
+    DEFI_LIST=_F(LIST_INST=LINST),
+    ECHEC=_F(EVENEMENT="ERREUR", ACTION="DECOUPE", SUBD_METHODE="MANUEL", SUBD_PAS=4, SUBD_NIVEAU=5),
+)
+
+RESU = STAT_NON_LINE(
+    MODELE=MO,
+    CHAM_MATER=CHMAT,
+    EXCIT=(_F(CHARGE=CHAR_GD5), _F(CHARGE=CHAR_VUA), _F(CHARGE=DEPL)),
+    COMPORTEMENT=(
+        _F(RELATION="MOHR_COULOMB", GROUP_MA="SOIL_dat_yeu"),
+        _F(RELATION="ELAS", GROUP_MA=("SOIL_dat_dap", "SOIL_lop_cung", "CDM_COLUMN")),
+    ),
+    NEWTON=_F(MATRICE="TANGENTE", REAC_ITER=1),
+    CONVERGENCE=_F(RESI_GLOB_RELA=1.0e-4, ITER_GLOB_MAXI=20),
+    INCREMENT=_F(LIST_INST=DEFLIST, INST_FIN=1.0),
+    SOLVEUR=_F(METHODE="MUMPS"),
+)
+
+RESU = CALC_CHAMP(reuse=RESU, CONTRAINTE=("SIGM_ELNO",), RESULTAT=RESU)
+RESU = CALC_CHAMP(reuse=RESU, CONTRAINTE="SIGM_NOEU", RESULTAT=RESU)
+
+# ================== Trich Ux tai dinh hang x=0 (nut GAN NHAT (0,0,0.8), khong loc nguong) ==================
+# Dung POST_RELEVE_T (da xac nhan qua ssnv232b.comm) — AN TOAN hon goi truc tiep
+# API doi tuong Python (RESU.getField) CHUA tung kiem chung trong du an nay.
+MA_PY = MA.getCoordinates().getValues()
+n_nodes = len(MA_PY) // 3
+best_i, best_d2 = 0, 1e18
+for i in range(n_nodes):
+    x, y, z = MA_PY[3 * i], MA_PY[3 * i + 1], MA_PY[3 * i + 2]
+    d2 = x * x + y * y + (z - 0.8) ** 2
+    if d2 < best_d2:
+        best_d2, best_i = d2, i
+print("NUT DINH HANG X0 (0-idx):", best_i, "toa do:", MA_PY[3*best_i:3*best_i+3], "khoang_cach2:", best_d2)
+
+node_name = "N%d" % (best_i + 1)  # quy uoc N<n> 1-indexed, cung thu tu getCoordinates()
+MA = DEFI_GROUP(reuse=MA, MAILLAGE=MA, CREA_GROUP_NO=_F(NOM="PT_DINH_X0", NOEUD=node_name))
+
+TAB_UX = POST_RELEVE_T(
+    ACTION=_F(
+        INTITULE="UX_DINH_X0", GROUP_NO="PT_DINH_X0", RESULTAT=RESU,
+        NOM_CHAM="DEPL", TOUT_CMP="OUI", OPERATION="EXTRACTION",
+    )
+)
+IMPR_TABLE(TABLE=TAB_UX)
+
+IMPR_RESU(FORMAT="MED", UNITE=80, RESU=_F(RESULTAT=RESU, NOM_CHAM=("DEPL", "SIGM_NOEU")))
+
+FIN()
+
+
+
+# ------------------------------------------------------------------------------
+Command line #1:
+    ( C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\bin\..\Python311\python.exe "G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/comm/scenario35_60cm.comm" --last --link="F::mmed::G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/geometrie/ke_scenario35.med::D::20" --memory 4096.0 --tpmax 1800 --numthreads 1 & echo %errorlevel% > _exit_code_ ) | tee -a fort.6
+setting '--memory' value to 3686.40 MB (keyword RESERVE_MEMOIRE)
+copying 'G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/geometrie/ke_scenario35.med' to 'fort.20'...
+Ouverture en écriture du fichier ./vola.1
+
+<INFO> Démarrage de l'exécution.
+
+                                                                                   
+   ___         _         _       _            __      ___         _                
+  / __|___  __| |___    /_\   __| |_ ___ _ _  \ \    / (_)_ _  __| |_____ __ _____ 
+ | (__/ _ \/ _` / -_)  / _ \ (_-<  _/ -_) '_|  \ \/\/ /| | ' \/ _` / _ \ V  V (_-< 
+  \___\___/\__,_\___| /_/ \_\/__/\__\___|_|     \_/\_/ |_|_||_\__,_\___/\_/\_//__/ 
+                                                 https://code-aster-windows.com    
+                  -- CODE_ASTER -- VERSION : DÉVELOPPEMENT STABILISÉE (testing) --                  
+                               Version 17.4.0 modifiée le 22/01/2026                                
+                          révision 03b95c288047 - branche 'windows-draft'                           
+                                   Copyright EDF R&D 1991 - 2026                                    
+                                                                                                    
+                              Exécution du : Fri Aug 28 12:45:22 2026                               
+                                        Nom de la machine :                                         
+                                          DESKTOP-Q5HMNN9                                           
+                                        Architecture : 64bit                                        
+                                     Type de processeur : AMD64                                     
+                                      Système d'exploitation :                                      
+                                     Windows-10-10.0.26200-SP0                                      
+                                 Langue des messages : en (cp1252)                                  
+                                     Version de Python : 3.11.9                                     
+                                     Version de NumPy : 1.26.4                                      
+                                     Parallélisme MPI : inactif                                     
+                                    Parallélisme OpenMP : actif                                     
+                              Nombre de processus OpenMP utilisés : 1                               
+                               Version de la librairie HDF5 : 1.10.9                                
+                                Version de la librairie MED : 4.2.0                                 
+                                 Librairie MFront : non disponible                                  
+                               Version de la librairie MUMPS : 5.6.2                                
+                                  Librairie PETSc : non disponible                                  
+                               Version de la librairie SCOTCH : 7.0.3                               
+
+starting the execution...
+Les alarmes ne sont pas **encore** aggravées en Erreur sur cette plate-forme.
+Débogage SDVERI demandé
+
+
+ ╔════════════════════════════════════════════════════════════════════════════════════════════════╗
+ ║ <I> <SUPERVIS_22>                                                                              ║
+ ║                                                                                                ║
+ ║ Les mots-clés CODE et DEBUG dans DEBUT/POURSUITE sont réservés aux cas-tests.                  ║
+ ║ De même pour                                                                                   ║
+ ║ l'option, "--test" de CA.init().                                                               ║
+ ║ Il ne faut pas les utiliser dans les études car ils modifient                                  ║
+ ║ certaines valeurs par                                                                          ║
+ ║ défaut des commandes DEBUT/POURSUITE qui ont des conséquences sur le                           ║
+ ║ comportement                                                                                   ║
+ ║ en cas d'erreur ou sur les performances.                                                       ║
+ ╚════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+Valeur initiale du temps CPU maximum =   1800 secondes
+  Valeur du temps CPU maximum passé aux
+commandes =   1790 secondes
+  Réserve CPU prévue = 10 secondes
+
+Ouverture en écriture du fichier ./glob.1
+
+Ouverture en écriture du fichier ./vola.1
+
+Ouverture en lecture du fichier
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\bin\..\lib\aster/elem.1
+
+Nom de la base                          :  ELEMBASE
+     Créée avec la version                   : 
+17.04.00
+     Nombre d'enregistrements utilisés       :  46
+     Nombre d'enregistrements maximum   
+    :  512
+     Nombre d'enregistrements par fichier    :  512
+     Longueur d'enregistrement
+(octets)      :  819200
+     Nombre d'identificateurs utilisés       :  123
+     Taille maximum du
+répertoire            :  300
+     Pourcentage d'utilisation du répertoire :  41 %
+
+Ouverture en lecture du fichier
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\bin\..\lib\aster/elem.1
+
+Nom de la base                          :  ELEMBASE
+     Nombre d'enregistrements utilisés       : 
+46
+     Nombre d'enregistrements maximum        :  512
+     Nombre d'enregistrements par fichier   
+:  512
+     Longueur d'enregistrement (octets)      :  819200
+     Nombre total d'accès en lecture  
+      :  64
+     Volume des accès en lecture             :         50.00 Mo.
+     Nombre total
+d'accès en écriture        :  0
+     Volume des accès en écriture            :          0.00 Mo.
+   
+ Nombre d'identificateurs utilisés       :  123
+     Taille maximum du répertoire            :  300
+
+    Pourcentage d'utilisation du répertoire :  41 %
+
+Relecture des catalogues des éléments faite.
+
+Fin de lecture (durée  0.000000  s.) 
+
+                      Mémoire limite pour l'allocation dynamique : 4198.98 Mo                       
+                              ajouté à l'initialisation du processus :                              
+                                             290.22 Mo                                              
+                               Limite cible du processus : 4489.21 Mo                               
+                         Taille limite des fichiers d'échange : 2048.00 Go                          
+# Mémoire (Mo) :   290.22 /   283.20 /   207.61 /   183.67 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0001   user+syst:        0.06s (syst:        0.06s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt13
+# ----------------------------------------------------------------------------------------------
+# Commande #0002 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 13
+MA = LIRE_MAILLAGE(FORMAT='MED',
+                   INFO=1,
+                   INFO_MED=0,
+                   PARTITIONNEUR='SANS',
+                   UNITE=20,
+                   VERI_MAIL=_F(APLAT=0.001,
+                                VERIF='OUI'))
+
+Nom MED du maillage : KE_scenario35
+
+
+------------ MAILLAGE 00000001 - IMPRESSIONS NIVEAU  1 ------------
+
+
+NOMBRE DE NOEUDS                       54524
+
+NOMBRE DE MAILLES                     361380
+                              SEG2                 2650
+                              TRIA3               42722
+                              TETRA4             316008
+
+NOMBRE DE GROUPES DE MAILLES              16
+
+--------------------------------------------------------------------------------
+
+Vérification du maillage.
+
+# Résultat commande #0002 (LIRE_MAILLAGE): MA ('<00000001>') de type <Mesh>
+# Mémoire (Mo) :   356.81 /   343.70 /   240.75 /   210.12 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0002   user+syst:        1.95s (syst:        0.05s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt15
+# ----------------------------------------------------------------------------------------------
+# Commande #0003 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 15
+MA = MODI_MAILLAGE(INFO=1,
+                   MAILLAGE=MA,
+                   ORIE_PEAU=_F(GROUP_MA_PEAU=('BASE', 'SIDE_XMIN', 'SIDE_XMAX', 'SIDE_YMIN', 'SIDE_YMAX', 'TOP_SOIL_NEGX', 'TOP_SOIL_POSX', 'TOP_COLUMN_NEGX', 'TOP_COLUMN_POSX')),
+                   reuse=MA)
+
+TRAITEMENT DU GROUP_MA: BASE                     DE      86 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_XMIN                DE     275 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_XMAX                DE     289 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_YMIN                DE     250 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_YMAX                DE     252 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_SOIL_NEGX            DE     611 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_SOIL_POSX            DE     597 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_COLUMN_NEGX          DE     114 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_COLUMN_POSX          DE     108 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+# Résultat commande #0003 (MODI_MAILLAGE): MA ('<00000001>') de type <Mesh>
+# Mémoire (Mo) :   357.25 /   344.08 /   240.78 /   210.12 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0003   user+syst:        0.73s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt23
+# ----------------------------------------------------------------------------------------------
+# Commande #0004 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 23
+MO = AFFE_MODELE(AFFE=_F(MODELISATION='3D',
+                         PHENOMENE='MECANIQUE',
+                         TOUT='OUI'),
+                 DISTRIBUTION=_F(METHODE='SOUS_DOMAINE',
+                                 PARTITIONNEUR='METIS'),
+                 INFO=1,
+                 MAILLAGE=MA,
+                 VERI_FORMULATION_IFS='OUI',
+                 VERI_JACOBIEN='OUI',
+                 VERI_NORM_IFS='OUI',
+                 VERI_PLAN='OUI')
+
+Sur les 361380 mailles du maillage 00000001, on a demandé l'affectation de 361380, on a pu en
+affecter 361380.
+Modélisation     Formulation      Type maille  Élément fini     Nombre
+_                _                SEG2         MECA_ARETE2      2650
+_                _                TRIA3        MECA_FACE3       42722
+3D               _                TETRA4       MECA_TETRA4      316008
+#2      Calculs elementaires et assemblages               CPU (USER+SYST/SYST/ELAPS):      0.08      0.00      0.00
+# Résultat commande #0004 (AFFE_MODELE): MO ('<00000002>') de type <Model>
+# Mémoire (Mo) :   376.02 /   361.79 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0004   user+syst:        1.28s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt26
+# ----------------------------------------------------------------------------------------------
+# Commande #0005 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 26
+MAT_DAP = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                COEF_AMOR=1.0,
+                                E=8000.0,
+                                K_DESSIC=0.0,
+                                NU=0.3,
+                                RHO=1.9367991845056065),
+                        INFO=1)
+
+# Résultat commande #0005 (DEFI_MATERIAU): MAT_DAP ('<00000003>') de type <Material>
+# Mémoire (Mo) :   376.02 /   361.94 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0005   user+syst:        0.03s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt27
+# ----------------------------------------------------------------------------------------------
+# Commande #0006 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 27
+MAT_CUNG = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                 COEF_AMOR=1.0,
+                                 E=27600.0,
+                                 K_DESSIC=0.0,
+                                 NU=0.35,
+                                 RHO=1.9367991845056065),
+                         INFO=1)
+
+# Résultat commande #0006 (DEFI_MATERIAU): MAT_CUNG ('<00000004>') de type <Material>
+# Mémoire (Mo) :   376.02 /   361.94 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0006   user+syst:        0.03s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt28
+# ----------------------------------------------------------------------------------------------
+# Commande #0007 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 28
+MAT_COL = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                COEF_AMOR=1.0,
+                                E=40000.0,
+                                K_DESSIC=0.0,
+                                NU=0.25,
+                                RHO=1.8348623853211008),
+                        INFO=1)
+
+# Résultat commande #0007 (DEFI_MATERIAU): MAT_COL ('<00000005>') de type <Material>
+# Mémoire (Mo) :   376.02 /   361.94 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0007   user+syst:        0.02s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt29
+# ----------------------------------------------------------------------------------------------
+# Commande #0008 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 29
+MAT_YEU = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                COEF_AMOR=1.0,
+                                E=3450.0,
+                                K_DESSIC=0.0,
+                                NU=0.35,
+                                RHO=1.5587155963302752),
+                        INFO=1,
+                        MOHR_COULOMB=_F(ANGDIL=0.0,
+                                        COHESION=5000.0,
+                                        PHI=0.001))
+
+# Résultat commande #0008 (DEFI_MATERIAU): MAT_YEU ('<00000006>') de type <Material>
+# Mémoire (Mo) :   376.02 /   361.95 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0008   user+syst:        0.03s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt34
+# ----------------------------------------------------------------------------------------------
+# Commande #0009 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 34
+CHMAT = AFFE_MATERIAU(AFFE=(_F(GROUP_MA='SOIL_dat_dap',
+                               MATER=MAT_DAP),
+                            _F(GROUP_MA='SOIL_lop_cung',
+                               MATER=MAT_CUNG),
+                            _F(GROUP_MA='CDM_COLUMN',
+                               MATER=MAT_COL),
+                            _F(GROUP_MA='SOIL_dat_yeu',
+                               MATER=MAT_YEU)),
+                      INFO=1,
+                      MAILLAGE=MA)
+
+# Résultat commande #0009 (AFFE_MATERIAU): CHMAT ('<00000007>') de type <MaterialField>
+# Mémoire (Mo) :   376.02 /   364.74 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0009   user+syst:        0.03s (syst:        0.02s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt45
+# ----------------------------------------------------------------------------------------------
+# Commande #0010 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 45
+DEPL = AFFE_CHAR_CINE(INFO=1,
+                      MECA_IMPO=(_F(DX=0.0,
+                                    DY=0.0,
+                                    DZ=0.0,
+                                    GROUP_MA='BASE'),
+                                 _F(DX=0.0,
+                                    GROUP_MA='SIDE_XMIN'),
+                                 _F(DX=0.0,
+                                    GROUP_MA='SIDE_XMAX'),
+                                 _F(DY=0.0,
+                                    GROUP_MA='SIDE_YMIN'),
+                                 _F(DY=0.0,
+                                    GROUP_MA='SIDE_YMAX')),
+                      MODELE=MO,
+                      SYNTAXE='NON')
+
+# Résultat commande #0010 (AFFE_CHAR_CINE): DEPL ('<00000008>') de type <MechanicalDirichletBC>
+# Mémoire (Mo) :   376.02 /   365.02 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0010   user+syst:        0.05s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt57
+# ----------------------------------------------------------------------------------------------
+# Commande #0011 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 57
+CHAR_GD5 = AFFE_CHAR_MECA(DOUBLE_LAGRANGE='OUI',
+                          INFO=1,
+                          MODELE=MO,
+                          PRES_REP=(_F(GROUP_MA='TOP_SOIL_POSX',
+                                       PRES=40.8),
+                                    _F(GROUP_MA='TOP_COLUMN_POSX',
+                                       PRES=40.8)),
+                          SYNTAXE='NON',
+                          VERI_AFFE='OUI',
+                          VERI_NORM='OUI')
+
+# Résultat commande #0011 (AFFE_CHAR_MECA): CHAR_GD5 ('<00000009>') de type <MechanicalLoadReal>
+# Mémoire (Mo) :   381.48 /   365.90 /   261.63 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0011   user+syst:        0.14s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt67
+# ----------------------------------------------------------------------------------------------
+# Commande #0012 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 67
+CHAR_VUA = AFFE_CHAR_MECA(DOUBLE_LAGRANGE='OUI',
+                          FORCE_INTERNE=_F(FX=7039.36,
+                                           GROUP_MA='CDM_COLUMN_ROW_X0'),
+                          INFO=1,
+                          MODELE=MO,
+                          SYNTAXE='NON',
+                          VERI_AFFE='OUI',
+                          VERI_NORM='OUI')
+
+# Résultat commande #0012 (AFFE_CHAR_MECA): CHAR_VUA ('<0000000a>') de type <MechanicalLoadReal>
+# Mémoire (Mo) :   432.17 /   368.94 /   309.87 /   263.32 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0012   user+syst:        0.30s (syst:        0.02s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt70
+# ----------------------------------------------------------------------------------------------
+# Commande #0013 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 70
+LINST = DEFI_LIST_REEL(DEBUT=0.0,
+                       INFO=1,
+                       INTERVALLE=_F(JUSQU_A=1.0,
+                                     NOMBRE=10))
+
+# Résultat commande #0013 (DEFI_LIST_REEL): LINST ('<0000000b>') de type <ListOfFloats>
+# Mémoire (Mo) :   432.17 /   369.01 /   309.87 /   263.32 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0013   user+syst:        0.00s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt71
+# ----------------------------------------------------------------------------------------------
+# Commande #0014 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 71
+DEFLIST = DEFI_LIST_INST(DEFI_LIST=_F(LIST_INST=LINST),
+                         ECHEC=_F(ACTION='DECOUPE',
+                                  EVENEMENT='ERREUR',
+                                  SUBD_METHODE='MANUEL',
+                                  SUBD_NIVEAU=5,
+                                  SUBD_PAS=4,
+                                  SUBD_PAS_MINI=0.0),
+                         INFO=1,
+                         METHODE='MANUEL')
+
+Gestion manuelle de la liste d'instants.
+La liste d'instants contient 11 pas de temps et le pas de temps minimum vaut           0.1.
+Il y a 1 événements.
+L'événement 1 est pour capturer les erreurs.
+Si cet événement se déclenche, on découpe le pas de temps.
+La découpe du pas de temps est manuelle.
+On découpe le pas de temps en 4 incréments jusqu'à ce que le niveau atteigne 5.
+# Résultat commande #0014 (DEFI_LIST_INST): DEFLIST ('<0000000c>') de type <TimesList>
+# Dépend de :
+# - LINST ('<0000000b>') de type <ListOfFloats>
+# Mémoire (Mo) :   432.17 /   369.20 /   309.87 /   263.32 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0014   user+syst:        0.02s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt76
+# ----------------------------------------------------------------------------------------------
+# Commande #0015 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 76
+RESU = STAT_NON_LINE(AFFICHAGE=_F(INFO_RESIDU='NON',
+                                  INFO_TEMPS='NON'),
+                     ARCHIVAGE=_F(CHAM_EXCLU=('RESI_NOEU', 'RESI_RELA_NOEU'),
+                                  PAS_ARCH=1),
+                     CHAM_MATER=CHMAT,
+                     COMPORTEMENT=(_F(DEFORMATION='PETIT',
+                                      GROUP_MA='SOIL_dat_yeu',
+                                      ITER_CPLAN_MAXI=10,
+                                      ITER_INTE_MAXI=20,
+                                      ITER_INTE_PAS=0,
+                                      PARM_THETA=1.0,
+                                      REGU_VISC='NON',
+                                      RELATION='MOHR_COULOMB',
+                                      RESI_CPLAN_RELA=1e-06,
+                                      RESI_INTE=1e-06),
+                                   _F(DEFORMATION='PETIT',
+                                      GROUP_MA=('SOIL_dat_dap', 'SOIL_lop_cung', 'CDM_COLUMN'),
+                                      ITER_CPLAN_MAXI=10,
+                                      ITER_INTE_MAXI=20,
+                                      ITER_INTE_PAS=0,
+                                      PARM_THETA=1.0,
+                                      REGU_VISC='NON',
+                                      RELATION='ELAS',
+                                      RESI_CPLAN_RELA=1e-06,
+                                      RESI_INTE=1e-06)),
+                     CONVERGENCE=_F(ARRET='OUI',
+                                    ITER_GLOB_ELAS=25,
+                                    ITER_GLOB_MAXI=20,
+                                    RESI_GLOB_RELA=0.0001,
+                                    VERIF='TOUT'),
+                     EXCIT=(_F(CHARGE=CHAR_GD5,
+                               TYPE_CHARGE='FIXE_CSTE'),
+                            _F(CHARGE=CHAR_VUA,
+                               TYPE_CHARGE='FIXE_CSTE'),
+                            _F(CHARGE=DEPL,
+                               TYPE_CHARGE='FIXE_CSTE')),
+                     INCREMENT=_F(CRITERE='RELATIF',
+                                  INST_FIN=1.0,
+                                  LIST_INST=DEFLIST,
+                                  NUME_INST_INIT=0,
+                                  PRECISION=1e-06),
+                     MESURE=_F(TABLE='NON'),
+                     METHODE='NEWTON',
+                     MODELE=MO,
+                     NEWTON=_F(MATRICE='TANGENTE',
+                               MATR_RIGI_SYME='NON',
+                               REAC_INCR=1,
+                               REAC_ITER=1,
+                               REAC_ITER_ELAS=0),
+                     SOLVEUR=_F(ACCELERATION='AUTO',
+                                ELIM_LAGR='LAGR2',
+                                FILTRAGE_MATRICE=-1.0,
+                                GESTION_MEMOIRE='AUTO',
+                                LOW_RANK_SEUIL=0.0,
+                                MATR_DISTRIBUEE='NON',
+                                METHODE='MUMPS',
+                                MIXER_PRECISION='NON',
+                                NB_RHS=1,
+                                NPREC=8,
+                                PCENT_PIVOT=35,
+                                POSTTRAITEMENTS='AUTO',
+                                PRETRAITEMENTS='AUTO',
+                                REDUCTION_MPI=0,
+                                RENUM='AUTO',
+                                RESI_RELA=-1.0,
+                                STOP_SINGULIER='OUI',
+                                TYPE_RESOL='AUTO'))
+
+Liste des comportements
+
+Affecté sur 45372 éléments
+Relation                             : ELAS
+Déformation                          : PETIT
+Pas de régularisation visqueuse
+Pas de post-traitement à la fin du pas de temps
+Nombre total de variables internes   : 1
+V1 : VIDE
+Affecté sur 230970 éléments
+Relation                             : MOHR_COULOMB
+Déformation                          : PETIT
+Pas de régularisation visqueuse
+Pas de post-traitement à la fin du pas de temps
+Nombre total de variables internes   : 3
+V1 : EPSPVOL
+V2 : EPSPEQ
+V3 : INDIPLAS
+Affecté sur 85038 éléments
+Relation                             : ELAS
+Déformation                          : PETIT
+Pas de régularisation visqueuse
+Pas de post-traitement à la fin du pas de temps
+Nombre total de variables internes   : 1
+V1 : VIDE
+Le système linéaire à résoudre a 163572 degrés de liberté:
+   - 163572 sont des degrés de liberté
+physiques
+     (ils sont portés par 54524 noeuds du maillage)
+   - 0 sont les couples de paramètres
+de Lagrange associés
+     aux 0 relations linéaires dualisées.
+La matrice est de taille 163572 équations.
+  Elle contient 3673542 termes non nuls si elle est
+symétrique et 7183512 termes non nuls si elle n'est pas symétrique.
+  Soit un taux de remplissage de
+  0.027 %.
+Il n'y a pas d'état initial défini. On prend un état initial nul.
+Le champ <DEPL> est initialisé a zéro
+Le champ <SIEF_ELGA> est initialisé a zéro
+Le champ <VARI_ELGA> est initialisé a zéro
+Archivage de l'état initial
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  0.000000000000e+00 pour le numéro d'ordre 0
+Champ stocké <SIEF_ELGA> à l'instant  0.000000000000e+00 pour le numéro d'ordre 0
+Champ stocké <VARI_ELGA> à l'instant  0.000000000000e+00 pour le numéro d'ordre 0
+Champ stocké <COMPORTEMENT> à l'instant  0.000000000000e+00 pour le numéro d'ordre 0
+---------------------------------------------------------------------
+Instant de calcul:  1.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 1.14665E-14    | 3.51950E-11    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  1.146647887176e-14 au noeud et degré de liberté <4560   
+DX>
+Temps CPU consommé dans ce pas de temps    : 23.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 1.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3313.98 /  3297.38 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  1.000000000000e-01 pour le numéro d'ordre 1
+Champ stocké <SIEF_ELGA> à l'instant  1.000000000000e-01 pour le numéro d'ordre 1
+Champ stocké <VARI_ELGA> à l'instant  1.000000000000e-01 pour le numéro d'ordre 1
+Champ stocké <COMPORTEMENT> à l'instant  1.000000000000e-01 pour le numéro d'ordre 1
+[ 10%] Instant calculé : 1.00000e-01, dernier instant archivé : 1.00000e-01, au numéro d'ordre :    
+1
+---------------------------------------------------------------------
+Instant de calcul:  2.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 1.38896E-16    | 4.26326E-13    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  1.388964280636e-16 au noeud et degré de liberté <41741  
+DX>
+Temps CPU consommé dans ce pas de temps    : 23.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 5.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 1.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 3.000 s
+Mémoire (Mo) :  3410.71 /  3296.38 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  2.000000000000e-01 pour le numéro d'ordre 2
+Champ stocké <SIEF_ELGA> à l'instant  2.000000000000e-01 pour le numéro d'ordre 2
+Champ stocké <VARI_ELGA> à l'instant  2.000000000000e-01 pour le numéro d'ordre 2
+Champ stocké <COMPORTEMENT> à l'instant  2.000000000000e-01 pour le numéro d'ordre 2
+[ 20%] Instant calculé : 2.00000e-01, dernier instant archivé : 2.00000e-01, au numéro d'ordre :    
+2
+---------------------------------------------------------------------
+Instant de calcul:  3.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 1.63898E-15    | 5.03064E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  1.638977851150e-15 au noeud et degré de liberté <10306  
+DX>
+Temps CPU consommé dans ce pas de temps    : 22.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 0.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3410.71 /  3296.20 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  3.000000000000e-01 pour le numéro d'ordre 3
+Champ stocké <SIEF_ELGA> à l'instant  3.000000000000e-01 pour le numéro d'ordre 3
+Champ stocké <VARI_ELGA> à l'instant  3.000000000000e-01 pour le numéro d'ordre 3
+Champ stocké <COMPORTEMENT> à l'instant  3.000000000000e-01 pour le numéro d'ordre 3
+[ 30%] Instant calculé : 3.00000e-01, dernier instant archivé : 3.00000e-01, au numéro d'ordre :    
+3
+---------------------------------------------------------------------
+Instant de calcul:  4.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 4.39260E-16    | 1.34825E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  4.392599537510e-16 au noeud et degré de liberté <6486   
+DX>
+Temps CPU consommé dans ce pas de temps    : 22.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 0.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3410.71 /  3296.73 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  4.000000000000e-01 pour le numéro d'ordre 4
+Champ stocké <SIEF_ELGA> à l'instant  4.000000000000e-01 pour le numéro d'ordre 4
+Champ stocké <VARI_ELGA> à l'instant  4.000000000000e-01 pour le numéro d'ordre 4
+Champ stocké <COMPORTEMENT> à l'instant  4.000000000000e-01 pour le numéro d'ordre 4
+[ 40%] Instant calculé : 4.00000e-01, dernier instant archivé : 4.00000e-01, au numéro d'ordre :    
+4
+---------------------------------------------------------------------
+Instant de calcul:  5.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 1.48446E-15    | 4.55636E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  1.484455574929e-15 au noeud et degré de liberté <6488   
+DX>
+Temps CPU consommé dans ce pas de temps    : 23.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 0.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 3.000 s
+Mémoire (Mo) :  3410.71 /  3297.67 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  5.000000000000e-01 pour le numéro d'ordre 5
+Champ stocké <SIEF_ELGA> à l'instant  5.000000000000e-01 pour le numéro d'ordre 5
+Champ stocké <VARI_ELGA> à l'instant  5.000000000000e-01 pour le numéro d'ordre 5
+Champ stocké <COMPORTEMENT> à l'instant  5.000000000000e-01 pour le numéro d'ordre 5
+[ 50%] Instant calculé : 5.00000e-01, dernier instant archivé : 5.00000e-01, au numéro d'ordre :    
+5
+---------------------------------------------------------------------
+Instant de calcul:  6.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 4.91925E-16    | 1.50990E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  4.919248493918e-16 au noeud et degré de liberté <6486   
+DX>
+Temps CPU consommé dans ce pas de temps    : 23.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 0.000 s
+* Temps total résolution K.U=F                      : 1.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3411.04 /  3298.50 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  6.000000000000e-01 pour le numéro d'ordre 6
+Champ stocké <SIEF_ELGA> à l'instant  6.000000000000e-01 pour le numéro d'ordre 6
+Champ stocké <VARI_ELGA> à l'instant  6.000000000000e-01 pour le numéro d'ordre 6
+Champ stocké <COMPORTEMENT> à l'instant  6.000000000000e-01 pour le numéro d'ordre 6
+[ 60%] Instant calculé : 6.00000e-01, dernier instant archivé : 6.00000e-01, au numéro d'ordre :    
+6
+---------------------------------------------------------------------
+Instant de calcul:  7.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 1.46160E-15    | 4.48619E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  1.461595537810e-15 au noeud et degré de liberté <6241   
+DX>
+Temps CPU consommé dans ce pas de temps    : 22.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 0.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3411.81 /  3299.43 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  7.000000000000e-01 pour le numéro d'ordre 7
+Champ stocké <SIEF_ELGA> à l'instant  7.000000000000e-01 pour le numéro d'ordre 7
+Champ stocké <VARI_ELGA> à l'instant  7.000000000000e-01 pour le numéro d'ordre 7
+Champ stocké <COMPORTEMENT> à l'instant  7.000000000000e-01 pour le numéro d'ordre 7
+[ 70%] Instant calculé : 7.00000e-01, dernier instant archivé : 7.00000e-01, au numéro d'ordre :    
+7
+---------------------------------------------------------------------
+Instant de calcul:  8.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 4.30434E-16    | 1.32117E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  4.304342432178e-16 au noeud et degré de liberté <18995  
+DX>
+Temps CPU consommé dans ce pas de temps    : 23.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 1.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3411.84 /  3299.45 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  8.000000000000e-01 pour le numéro d'ordre 8
+Champ stocké <SIEF_ELGA> à l'instant  8.000000000000e-01 pour le numéro d'ordre 8
+Champ stocké <VARI_ELGA> à l'instant  8.000000000000e-01 pour le numéro d'ordre 8
+Champ stocké <COMPORTEMENT> à l'instant  8.000000000000e-01 pour le numéro d'ordre 8
+[ 80%] Instant calculé : 8.00000e-01, dernier instant archivé : 8.00000e-01, au numéro d'ordre :    
+8
+---------------------------------------------------------------------
+Instant de calcul:  9.000000000000e-01 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 1.39063E-15    | 4.26836E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  1.390628144097e-15 au noeud et degré de liberté <6488   
+DX>
+Temps CPU consommé dans ce pas de temps    : 23.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 15.000 s (1 factorisations)
+* Temps construction second membre                  : 0.000 s
+* Temps total résolution K.U=F                      : 0.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3412.10 /  3299.97 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  9.000000000000e-01 pour le numéro d'ordre 9
+Champ stocké <SIEF_ELGA> à l'instant  9.000000000000e-01 pour le numéro d'ordre 9
+Champ stocké <VARI_ELGA> à l'instant  9.000000000000e-01 pour le numéro d'ordre 9
+Champ stocké <COMPORTEMENT> à l'instant  9.000000000000e-01 pour le numéro d'ordre 9
+[ 89%] Instant calculé : 9.00000e-01, dernier instant archivé : 9.00000e-01, au numéro d'ordre :    
+9
+---------------------------------------------------------------------
+Instant de calcul:  1.000000000000e+00 - Niveau de découpe: 1
+
+---------------------------------------------------------------------
+|     NEWTON     |     RESIDU     |     RESIDU     |     OPTION     |
+|    ITERATION   |     RELATIF    |     ABSOLU     |   ASSEMBLAGE   |
+|                | RESI_GLOB_RELA | RESI_GLOB_MAXI |(+ TYPE MATRICE)|
+---------------------------------------------------------------------
+|     0          | 6.29664E-16    | 1.93268E-12    |TANGENTE (NOSYM)|
+---------------------------------------------------------------------
+Critère(s) de convergence atteint(s)
+
+Le résidu de type <RESI_GLOB_RELA> vaut  6.296638072214e-16 au noeud et degré de liberté <19284  
+DX>
+Temps CPU consommé dans ce pas de temps    : 24.000 s
+
+* Nombre d'itérations de Newton                     : 1
+* Temps total intégration comportement              : 6.000 s (2 intégrations)
+* Temps total factorisation matrice                 : 14.000 s (1 factorisations)
+* Temps construction second membre                  : 1.000 s
+* Temps total résolution K.U=F                      : 1.000 s (1 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+* Temps autres opérations                           : 2.000 s
+Mémoire (Mo) :  3414.45 /  3301.56 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+
+Archivage des champs
+
+Champ stocké <DEPL> à l'instant  1.000000000000e+00 pour le numéro d'ordre 10
+Champ stocké <SIEF_ELGA> à l'instant  1.000000000000e+00 pour le numéro d'ordre 10
+Champ stocké <VARI_ELGA> à l'instant  1.000000000000e+00 pour le numéro d'ordre 10
+Champ stocké <COMPORTEMENT> à l'instant  1.000000000000e+00 pour le numéro d'ordre 10
+[100%] Instant calculé : 1.00000e+00, dernier instant archivé : 1.00000e+00, au numéro d'ordre :   
+10
+Temps CPU consommé dans le calcul          : 3 min 52 s
+
+dont temps CPU "perdu" dans les découpes            : 0.000 s
+* Nombre de pas de temps                            : 10
+* Nombre d'itérations de Newton                     : 10
+* Temps dans l'archivage                            : 1.000 s
+* Temps dans le post-traitement                     : 0.000 s
+* Temps total intégration comportement              : 59.000 s (20 intégrations)
+* Temps total factorisation matrice                 : 2 min 21 s (10 factorisations)
+* Temps construction second membre                  : 4.000 s
+* Temps total résolution K.U=F                      : 2.000 s (10 résolutions)
+* Temps assemblage matrice                          : 0.000 s
+#1      Resolution des systemes lineaires                 CPU (USER+SYST/SYST/ELAPS):    143.07      0.00    144.00
+#2      Calculs elementaires et assemblages               CPU (USER+SYST/SYST/ELAPS):     85.36      0.00     77.00
+#3      Dechargement de la memoire sur disque             CPU (USER+SYST/SYST/ELAPS):      3.97      0.00      7.00
+# Résultat commande #0015 (STAT_NON_LINE): RESU ('<0000000d>') de type <NonLinearResult>
+# Mémoire (Mo) :  3414.45 /   955.20 /  1563.69 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0015   user+syst:      235.11s (syst:       12.73s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt90
+# ----------------------------------------------------------------------------------------------
+# Commande #0016 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 90
+RESU = CALC_CHAMP(CONTRAINTE='SIGM_ELNO',
+                  CRITERE='RELATIF',
+                  INFO=1,
+                  PARALLELISME_TEMPS='NON',
+                  PRECISION=1e-06,
+                  RESULTAT=RESU,
+                  reuse=RESU)
+
+#2      Calculs elementaires et assemblages               CPU (USER+SYST/SYST/ELAPS):      4.11      0.00      5.00
+# Résultat commande #0016 (CALC_CHAMP): RESU ('<0000000d>') de type <NonLinearResult>
+# Mémoire (Mo) :  3414.45 /  1698.23 /  1704.80 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0016   user+syst:        4.42s (syst:        0.20s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt91
+# ----------------------------------------------------------------------------------------------
+# Commande #0017 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 91
+RESU = CALC_CHAMP(CONTRAINTE='SIGM_NOEU',
+                  CRITERE='RELATIF',
+                  INFO=1,
+                  PARALLELISME_TEMPS='NON',
+                  PRECISION=1e-06,
+                  RESULTAT=RESU,
+                  reuse=RESU)
+
+# Résultat commande #0017 (CALC_CHAMP): RESU ('<0000000d>') de type <NonLinearResult>
+# Mémoire (Mo) :  3414.45 /  1740.41 /  1704.80 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0017   user+syst:        3.88s (syst:        0.16s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+NUT DINH HANG X0 (0-idx): 19203 toa do: [0.0, 0.15043449551074595, 0.8] khoang_cach2: 0.02263053743957264
+
+.. _stg1_txt107
+# ----------------------------------------------------------------------------------------------
+# Commande #0018 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 107
+MA = DEFI_GROUP(ALARME='OUI',
+                CREA_GROUP_NO=_F(NOEUD='N19204',
+                                 NOM='PT_DINH_X0'),
+                MAILLAGE=MA,
+                reuse=MA)
+
+
+
+NOMBRE  DE GROUPES DE NOEUDS CREES :      1
+=======================================
+
+               ------------------------------------------------------
+               !         NOM DU GROUPE         ! NBRE DE NOEUDS DU  !
+               !            NOEUDS             !      GROUPE_NO     !
+               ------------------------------------------------------
+               !  PT_DINH_X0                   !         1          !
+               ------------------------------------------------------
+
+# Résultat commande #0018 (DEFI_GROUP): MA ('<00000001>') de type <Mesh>
+# Mémoire (Mo) :  3414.45 /  1743.34 /  1704.80 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0018   user+syst:        0.00s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt109
+# ----------------------------------------------------------------------------------------------
+# Commande #0019 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 109
+TAB_UX = POST_RELEVE_T(ACTION=_F(CRITERE='RELATIF',
+                                 FORMAT_C='MODULE',
+                                 GROUP_NO='PT_DINH_X0',
+                                 INTITULE='UX_DINH_X0',
+                                 MOYE_NOEUD='OUI',
+                                 NOM_CHAM='DEPL',
+                                 OPERATION='EXTRACTION',
+                                 PRECISION=1e-06,
+                                 REPERE='GLOBAL',
+                                 RESULTAT=RESU,
+                                 TOUT_CMP='OUI'),
+                       INFO=1)
+
+# Résultat commande #0019 (POST_RELEVE_T): TAB_UX ('<0000000e>') de type <Table>
+# Mémoire (Mo) :  3414.45 /  1743.74 /  1704.80 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0019   user+syst:        0.59s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt115
+# ----------------------------------------------------------------------------------------------
+# Commande #0020 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 115
+IMPR_TABLE(COMMENTAIRE='#',
+           COMM_PARA='',
+           DEBUT_LIGNE='',
+           FIN_LIGNE='\n',
+           FIN_TABLE='',
+           FORMAT='TABLEAU',
+           FORMAT_R='E12.5',
+           IMPR_FONCTION='NON',
+           INFO=1,
+           SEPARATEUR=' ',
+           TABLE=TAB_UX,
+           UNITE=8)
+
+# Mémoire (Mo) :  3414.45 /  1743.79 /  1704.80 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0020   user+syst:        0.02s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt117
+# ----------------------------------------------------------------------------------------------
+# Commande #0023 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\scenario35_60cm.comm, ligne 117
+IMPR_RESU(FICHIER_UNIQUE='NON',
+          FORMAT='MED',
+          INFO=1,
+          PROC0='OUI',
+          RESU=_F(IMPR_NOM_VARI='OUI',
+                  INFO_MAILLAGE='NON',
+                  NOM_CHAM=('DEPL', 'SIGM_NOEU'),
+                  NOM_CHAM_MED=('RESU____DEPL', 'RESU____SIGM_NOEU'),
+                  RESULTAT=RESU),
+          UNITE=80,
+          VERSION_MED='3.3.1')
+
+Création du fichier au format MED 3.3.1.
+
+# Mémoire (Mo) :  3414.45 /  1744.75 /  1704.80 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0023   user+syst:        0.27s (syst:        0.11s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt76
+# ----------------------------------------------------------------------------------------------
+# Commande #0024 de
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\lib\aster\code_aster\CodeCommands\fin.py, ligne
+76
+FIN(INFO_RESU='NON',
+    RETASSAGE='NON')
+
+No database in results, objects not saved on processor #0
+
+ ╔════════════════════════════════════════════════════════════════════════════════════════════════╗
+ ║ <I> <CATAMESS_89>                                                                              ║
+ ║                                                                                                ║
+ �Deleting './glob.1': Permission denied
+� Liste des alarmes émises lors de l'exécution du calcul.                                        ║
+ ║                                                                                                ║
+ ║     Les alarmes que vous avez                                                                  ║
+ ║ choisies d'ignorer sont précédées de (*).                                                      ║
+ ║     Nombre d'occurrences pour chacune des alarmes :                                  Deleting './vola.1': Permission denied
+          ║
+ ║                                                                                                ║
+ ║           aucune alarme                                                                        ║
+ ╚════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+<I> <FIN> ARRET NORMAL DANS "FIN" PAR APPEL A "JEFINI".
+  
+ <I> <FIN> MEMOIRE JEVEUX MINIMALE REQUISE POUR L'EXECUTION :                     530.66 Mo
+ <I> <FIN> MEMOIRE JEVEUX OPTIMALE REQUISE POUR L'EXECUTION :                    1704.80 Mo
+ <I> <FIN> MAXIMUM DE MEMOIRE UTILISEE PAR LE PROCESSUS LORS DE L'EXECUTION :    3414.45 Mo
+  
+ <I>       FERMETURE DES BASES EFFECTUEE
+  
+   STATISTIQUES CONCERNANT L'ALLOCATION DYNAMIQUE :
+     TAILLE CUMULEE MAXIMUM            :                 1705  Mo.
+     TAILLE CUMULEE LIBEREE            :                 5601  Mo.
+     NOMBRE TOTAL D'ALLOCATIONS        :             18520643
+     NOMBRE TOTAL DE LIBERATIONS       :             18519914
+     APPELS AU MECANISME DE LIBERATION :                   10
+     TAILLE MEMOIRE CUMULEE RECUPEREE  :                10157  Mo.
+     VOLUME DES LECTURES               :                    0  Mo.
+     VOLUME DES ECRITURES              :                11791  Mo.
+  
+   MEMOIRE JEVEUX MINIMALE REQUISE POUR L'EXECUTION :     530.66 Mo
+     - IMPOSE DE NOMBREUX ACCES DISQUE
+     - RALENTIT LA VITESSE D'EXECUTION
+   MEMOIRE JEVEUX OPTIMALE REQUISE POUR L'EXECUTION :    1704.80 Mo
+     - LIMITE LES ACCES DISQUE
+     - AMELIORE LA VITESSE D'EXECUTION
+   MAXIMUM DE MEMOIRE UTILISEE PAR LE PROCESSUS     :    3414.45 Mo
+     - COMPREND LA MEMOIRE CONSOMMEE PAR  JEVEUX, 
+       LE SUPERVISEUR PYTHON, LES LIBRAIRIES EXTERNES
+  
+ <I>       FIN D'EXECUTION LE : VE-28-AOUT-2026 12:49:45
+
+ ********************************************************************************
+ * COMMAND                  :       USER :     SYSTEM :   USER+SYS :    ELAPSED *
+ ********************************************************************************
+ * DEBUT                    :       0.06 :       0.06 :       0.12 :       0.00 *
+ * LIRE_MAILLAGE            :       1.95 :       0.05 :       2.00 :       0.00 *
+ * MODI_MAILLAGE            :       0.73 :       0.00 :       0.73 :       0.00 *
+ * AFFE_MODELE              :       1.28 :       0.00 :       1.28 :       0.00 *
+ * DEFI_MATERIAU            :       0.03 :       0.00 :       0.03 :       0.00 *
+ * DEFI_MATERIAU            :       0.03 :       0.00 :       0.03 :       0.00 *
+ * DEFI_MATERIAU            :       0.02 :       0.00 :       0.02 :       0.00 *
+ * DEFI_MATERIAU            :       0.03 :       0.00 :       0.03 :       0.00 *
+ * AFFE_MATERIAU            :       0.03 :       0.02 :       0.05 :       0.00 *
+ * AFFE_CHAR_CINE           :       0.05 :       0.00 :       0.05 :       0.00 *
+ * AFFE_CHAR_MECA           :       0.14 :       0.00 :       0.14 :       0.00 *
+ * AFFE_CHAR_MECA           :       0.30 :       0.02 :       0.31 :       0.00 *
+ * DEFI_LIST_REEL           :       0.00 :       0.00 :       0.00 :       0.00 *
+ * DEFI_LIST_INST           :       0.02 :       0.00 :       0.02 :       0.00 *
+ * STAT_NON_LINE            :     235.11 :      12.73 :     247.84 :       0.00 *
+ * CALC_CHAMP               :       4.42 :       0.20 :       4.62 :       0.00 *
+ * CALC_CHAMP               :       3.88 :       0.16 :       4.03 :       0.00 *
+ * DEFI_GROUP               :       0.00 :       0.00 :       0.00 :       0.00 *
+ * POST_RELEVE_T            :       0.59 :       0.00 :       0.59 :       0.00 *
+ * IMPR_TABLE               :       0.02 :       0.00 :       0.02 :       0.00 *
+ * IMPR_RESU                :       0.27 :       0.11 :       0.38 :       0.00 *
+ * FIN                      :       0.00 :       0.02 :       0.02 :       0.00 *
+ *  . check syntax          :       0.02 :       0.00 :       0.02 :       0.00 *
+ *  . fortran               :     246.52 :      13.11 :     259.62 :       0.00 *
+ *  . sdveri                :       0.33 :       0.03 :       0.36 :       0.00 *
+ *  . cleanup               :       0.12 :       0.02 :       0.14 :       0.00 *
+ ********************************************************************************
+ * TOTAL_JOB                :     249.02 :      13.36 :     262.38 :       0.00 *
+ ********************************************************************************
+
+# Mémoire (Mo) :  3414.45 /  1744.77 /  1704.80 /   530.66 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0024   user+syst:        0.00s (syst:        0.02s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+End of the Code_Aster execution
+Exited
+
+EXECUTION_CODE_ASTER_EXIT_21620=0
+
+
+execution ended (command file #1): OK
+
+# ------------------------------------------------------------------------------
+Content of C:\Users\bayng\AppData\Local\Temp\run_aster__mzkbdlx after execution:
+ Volume in drive C has no label.
+ Volume Serial Number is 704D-72AD
+
+ Directory of C:\Users\bayng\AppData\Local\Temp\run_aster__mzkbdlx
+
+08/28/2026  12:49 PM    <DIR>          .
+08/28/2026  12:48 PM    <DIR>          ..
+08/28/2026  12:45 PM               508 21620.export
+08/28/2026  12:49 PM         1,994,672 fort.15
+08/28/2026  12:12 PM        19,165,516 fort.20
+08/28/2026  12:49 PM            62,824 fort.6
+08/28/2026  12:49 PM             2,214 fort.8
+08/28/2026  12:49 PM        53,265,325 fort.80
+08/28/2026  12:45 PM                 0 fort.9
+08/28/2026  12:49 PM       648,806,408 glob.1
+08/28/2026  12:45 PM    <DIR>          REPE_IN
+08/28/2026  12:45 PM    <DIR>          REPE_OUT
+08/28/2026  12:49 PM     1,690,009,608 vola.1
+               9 File(s)  2,413,307,075 bytes
+
+ Directory of C:\Users\bayng\AppData\Local\Temp\run_aster__mzkbdlx\REPE_OUT
+
+08/28/2026  12:45 PM    <DIR>          .
+08/28/2026  12:49 PM    <DIR>          ..
+               0 File(s)              0 bytes
+               2 Dir(s)  1,075,818,938,368 bytes free
+
+
+# ------------------------------------------------------------------------------
+Copying results
+copying 'fort.80' to 'G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/resultats/scenario35_60cm_resu.med'...
+
+# ------------------------------------------------------------------------------
+Execution summary
+                                      cpu     system    cpu+sys    elapsed
+--------------------------------------------------------------------------------
+Preparation of environment           0.00       0.00       0.00       0.00
+Execution of code_aster              0.00       0.00       0.00     264.50
+Copying results                      0.02       0.03       0.05       0.12
+--------------------------------------------------------------------------------
+Total                                0.02       0.03       0.05     264.62
+--------------------------------------------------------------------------------
+
+------------------------------------------------------------
+--- DIAGNOSTIC JOB : OK
+------------------------------------------------------------
+

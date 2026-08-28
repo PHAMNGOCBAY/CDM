@@ -1,0 +1,55 @@
+{
+  "_meta": {
+    "type": "config",
+    "source": "config.* va zones.* copy tu data/tvtk_cdm_202605_TTHC.json (TCVN 9403 Phu luc C). assumed_defaults.* KHONG co trong du lieu du an — kien nghi ky su xac nhan truoc khi dung ket qua mo hinh 3D.",
+    "updated": "2026-08-26",
+    "module": "cdm3d — mo hinh 3D CDM-dat nen (Gmsh + CalculiX)"
+  },
+
+  "config": {
+    "D_mm": 800,
+    "spacing_m": 1.8,
+    "pattern": "square",
+    "top_elev_m": 0.8,
+    "penetration_m": 1.0,
+    "n_columns_x": 3,
+    "n_columns_y": 3,
+    "_n_columns_note": "3x3=9 tru — kich ban minh hoa tuong tac giua cac tru lan can, khong phai toan bo luoi tru thuc te ngoai hien truong"
+  },
+
+  "zones": [
+    {"zone_code": "BXN", "q_kPa": 40.8, "H_cdm_m": 21.5, "Ec_kPa": 40000.0, "Es_kPa": 3250.0},
+    {"zone_code": "KE",  "q_kPa": 40.8, "H_cdm_m": 23.0, "Ec_kPa": 40000.0, "Es_kPa": 3450.0},
+    {"zone_code": "NHC", "q_kPa": 40.8, "H_cdm_m": 27.4, "Ec_kPa": 40000.0, "Es_kPa": 3750.0}
+  ],
+
+  "assumed_defaults": {
+    "_warning": "Cac gia tri duoi day KHONG co trong SQLite/JSON du an (TCVN 9403 khong quy dinh nu, E dat dap, gamma tru). Dung tri dia ky thuat thong thuong — PHAI ky su xac nhan.",
+    "gamma_fill_kNm3": 19.0,
+    "E_fill_kPa": 8000.0,
+    "nu_soil": 0.35,
+    "nu_fill": 0.30,
+    "nu_column": 0.25,
+    "gamma_column_kNm3": 18.0,
+    "firm_layer_stiffness_ratio": 8.0,
+    "firm_layer_extra_depth_m": 4.0
+  },
+
+  "mesh": {
+    "domain_buffer_m": 3.6,
+    "mesh_size_far_m": 2.0,
+    "mesh_size_near_column_m": 0.3,
+    "column_box_field_margin_m": 0.5
+  },
+
+  "staged_construction": {
+    "_note": "GD2..GDN — dap tang dan + lech tam tang dan. q_fraction nhan voi q_kPa cua zone (zones[].q_kPa). eccentricity_m la GIA DINH MINH HOA (mai doc/tai mot ben khi thi cong) — CHUA co khao sat thuc te, PHAI ky su xac nhan truoc khi dung ket qua chuyen vi ngang/mo men. Dieu kien: |eccentricity_m| <= domain_x_m/6 (quy tac loi giua) — ccx_input.py tu canh bao + clamp neu vuot.",
+    "ecc_axis": "x",
+    "stages": [
+      {"name": "GD2 - Dap lop 1 (doi xung)", "q_fraction": 0.4, "eccentricity_m": 0.0},
+      {"name": "GD3 - Dap lop 2 (bat dau lech tam)", "q_fraction": 0.75, "eccentricity_m": 0.7},
+      {"name": "GD4 - Hoan thien (tai thiet ke, lech tam day du)", "q_fraction": 1.0, "eccentricity_m": 1.2},
+      {"name": "GD5 - Phuong an tai chi dap nua mien +X", "q_fraction": 1.0, "load_footprint": "half_pos"}
+    ]
+  }
+}

@@ -1,0 +1,81 @@
+# coding=utf-8
+# Phan tich MODAL (tan so rieng + dang dao dong) cho he coc CDM - dat nen KE.
+# Tai su dung luoi 9 coc da dung cho kich ban 3.5 (ke_scenario35.med).
+# Vat lieu DAN HOI THUAN (khong Mohr-Coulomb — bai toan tri rieng tuyen tinh
+# khong ap dung vat lieu deo), dieu kien bien GIONG kich ban 3.5 (BASE/SIDE_*).
+
+from code_aster.Commands import *
+
+DEBUT(CODE="OUI", ERREUR=_F(ALARME="EXCEPTION"), DEBUG=_F(SDVERI="OUI"))
+
+MA = LIRE_MAILLAGE(FORMAT="MED", UNITE=20)
+
+MA = MODI_MAILLAGE(
+    reuse=MA, MAILLAGE=MA,
+    ORIE_PEAU=_F(GROUP_MA_PEAU=(
+        "BASE", "SIDE_XMIN", "SIDE_XMAX", "SIDE_YMIN", "SIDE_YMAX",
+        "TOP_SOIL_NEGX", "TOP_SOIL_POSX", "TOP_COLUMN_NEGX", "TOP_COLUMN_POSX",
+    )),
+)
+
+MO = AFFE_MODELE(MAILLAGE=MA, AFFE=_F(TOUT="OUI", PHENOMENE="MECANIQUE", MODELISATION="3D"))
+
+# ================== Vat lieu — DAN HOI THUAN (ca dat yeu, khong MC) ==================
+MAT_DAP = DEFI_MATERIAU(ELAS=_F(E=8000.0, NU=0.30, RHO=19.0 / 9.81))
+MAT_CUNG = DEFI_MATERIAU(ELAS=_F(E=27600.0, NU=0.35, RHO=19.0 / 9.81))
+MAT_COL = DEFI_MATERIAU(ELAS=_F(E=40000.0, NU=0.25, RHO=18.0 / 9.81))
+MAT_YEU = DEFI_MATERIAU(ELAS=_F(E=3450.0, NU=0.35, RHO=15.291 / 9.81))
+
+CHMAT = AFFE_MATERIAU(
+    MAILLAGE=MA,
+    AFFE=(
+        _F(GROUP_MA="SOIL_dat_dap", MATER=MAT_DAP),
+        _F(GROUP_MA="SOIL_lop_cung", MATER=MAT_CUNG),
+        _F(GROUP_MA="CDM_COLUMN", MATER=MAT_COL),
+        _F(GROUP_MA="SOIL_dat_yeu", MATER=MAT_YEU),
+    ),
+)
+
+# ================== Dieu kien bien ==================
+# LUU Y: ASSEMBLAGE() chi nhan CHARGE kieu char_meca (tu AFFE_CHAR_MECA), KHONG
+# nhan AFFE_CHAR_CINE (kieu MechanicalDirichletBC, chi dung duoc truc tiep trong
+# STAT_NON_LINE/DYNA_NON_LINE) — da phat hien qua loi thuc te (SUPERVIS_4:
+# "Unexpected type: MechanicalDirichletBC, expecting: char_meca") khi chay lan dau.
+DEPL = AFFE_CHAR_MECA(
+    MODELE=MO,
+    DDL_IMPO=(
+        _F(GROUP_MA="BASE", DX=0.0, DY=0.0, DZ=0.0),
+        _F(GROUP_MA="SIDE_XMIN", DX=0.0),
+        _F(GROUP_MA="SIDE_XMAX", DX=0.0),
+        _F(GROUP_MA="SIDE_YMIN", DY=0.0),
+        _F(GROUP_MA="SIDE_YMAX", DY=0.0),
+    ),
+)
+
+# ================== Lap ma tran khoi luong + do cung, tri rieng ==================
+ASSEMBLAGE(
+    MODELE=MO,
+    CHAM_MATER=CHMAT,
+    CHARGE=DEPL,
+    NUME_DDL=CO("NUME"),
+    MATR_ASSE=(
+        _F(MATRICE=CO("MASS"), OPTION="MASS_MECA"),
+        _F(MATRICE=CO("RIGI"), OPTION="RIGI_MECA"),
+    ),
+)
+
+MODES = CALC_MODES(
+    MATR_RIGI=RIGI,
+    MATR_MASS=MASS,
+    OPTION="PLUS_PETITE",
+    CALC_FREQ=_F(NMAX_FREQ=10),
+    SOLVEUR_MODAL=_F(METHODE="SORENSEN"),
+    VERI_MODE=_F(SEUIL=1e-4),
+)
+
+# CALC_MODES tu in bang tan so rieng ra log (khong can lenh rieng — tranh doan
+# API chua kiem chung nhu LIST_VARI_ACCES()).
+
+IMPR_RESU(FORMAT="MED", UNITE=80, RESU=_F(RESULTAT=MODES, TOUT_ORDRE="OUI", NOM_CHAM="DEPL"))
+
+FIN()

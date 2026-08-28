@@ -1,0 +1,50 @@
+{
+  "mcpServers": {
+    "sqlite-tthc": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite",
+        "C:\\Users\\bayng\\TTHC_local\\TTHC.sqlite"
+      ],
+      "env": {}
+    },
+    "sqlite-tthc-drive": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sqlite",
+        "G:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\TTHC.sqlite"
+      ],
+      "env": {}
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "G:\\My Drive\\AI-SUC TAI COC THEO DAT NEN"
+      ],
+      "env": {}
+    },
+    "fetch": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch"
+      ],
+      "env": {}
+    },
+    "civil3d": {
+      "command": "C:\\Users\\bayng\\mcp-servers\\Civil3D-mcp-python-COM-main\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-m",
+        "civil3d_mcp.server"
+      ],
+      "env": {
+        "PYTHONPATH": "C:\\Users\\bayng\\mcp-servers\\Civil3D-mcp-python-COM-main\\src",
+        "CIVIL3D_BIN_PATH": "C:\\Program Files\\Autodesk\\AutoCAD 2027"
+      }
+    }
+  }
+}

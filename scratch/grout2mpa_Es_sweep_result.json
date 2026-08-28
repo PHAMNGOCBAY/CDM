@@ -1,0 +1,12 @@
+{
+  "P_grout_kPa": 2000.0,
+  "Es_real_kPa": 3450.0,
+  "Ux_at_Es_real_cm": 27.422600000000003,
+  "Es_probe_kPa": 1200.0,
+  "Ux_at_Es_probe_cm": 35.391600000000004,
+  "Es_target_kPa": 871.3671641317997,
+  "Ux_target_cm": 40.0,
+  "Ux_validated_cm": 36.7046,
+  "error_pct": -8.238500000000009,
+  "vtu_validated": "g:\\My Drive\\AI-SUC TAI COC THEO DAT NEN\\scratch\\grout2mpa_Es871_load.vtu"
+}

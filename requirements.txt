@@ -1,38 +1,21 @@
-python-docx==1.2.0
-latex2mathml>=3.81      # LaTeX → MathML (W3C) — pure Python, Cloud compat
-math2docx>=3.1          # LaTeX → MathML → OMML embed vào python-docx (Word native equation)
-docxtpl>=0.20           # Word template Jinja2 (pure Python, Cloud compat)
-pylatex>=1.4            # LaTeX object model in Python (pure Python, Cloud compat)
-# KHÔNG cài typst (binary Rust 21MB, có thể không chạy được Cloud)
-# KHÔNG cài quarto-cli (Windows MAX_PATH fail; Cloud cần binary riêng)
-streamlit>=1.35.0
-numpy>=1.24             # Cloud có sẵn 1.26.4 (Python 3.14); local dùng 2.x cũng OK
-pandas>=2.2.2          # pandas <2.2.2 pin numpy<2
-plotly>=6.0
-narwhals>=2.0          # required by plotly 6.x
-matplotlib>=3.9        # matplotlib <3.9 pin numpy<2
-openpyxl>=3.1
-xlrd>=2.0
-jinja2>=3.1
-sympy>=1.14
-reportlab>=4.0         # PDF tier-3 fallback (programmatic, pure Python)
-xhtml2pdf>=0.2.16      # PDF tier-2 fallback: HTML+CSS → PDF (pure Python, thay weasyprint trên Cloud)
-# weasyprint không cài được trên Python 3.14 (brotli/zopfli chưa có cp314 wheel)
-# → fallback chain: weasyprint → xhtml2pdf → reportlab
-fpdf2>=2.8
-ezdxf>=1.4
-unidecode>=1.4
-shapely>=2.1
-sqlalchemy>=2.0
-geojson>=3.2
-scipy>=1.13
-geotech-staff-engineer>=4.6   # slope_stability, sheet_pile, bearing_capacity
-# GIS map deps cho tab TKBVTC CDM (2D folium + 3D pydeck + CRS chuyển đổi)
-pyproj>=3.7              # VN-2000 (EPSG:9209/9210/3405) → WGS-84
-folium>=0.20             # Leaflet map (pure Python)
-streamlit-folium>=0.27   # Streamlit wrapper cho folium
-pydeck>=0.9              # 3D bản đồ — đã có sẵn cùng streamlit
-# Chỉ dùng local (cần binary C++/GDAL/heavy) — KHÔNG đưa lên Cloud:
-# openseespy, gmsh, geopandas, PyNiteFEA, anastruct, kaleido, pdfplumber
-# contextily, rasterio (kéo GDAL nặng ~40MB)
-# Winkler solver dùng scripts/winkler_np.py (NumPy thuần) — Cloud Python 3.14 compatible
+contourpy==1.3.3
+cycler==0.12.1
+et_xmlfile==2.0.0
+fonttools==4.63.0
+kiwisolver==1.5.0
+matplotlib==3.11.0
+numpy==2.4.6
+openpyxl==3.1.5
+packaging==26.2
+pandas==3.0.3
+pillow==12.3.0
+pyparsing==3.3.2
+python-dateutil==2.9.0.post0
+scipy==1.17.1
+shapely==2.1.2
+six==1.17.0
+tzdata==2026.2
+xslope==0.1.54
+chromadb
+scikit-learn
+requests

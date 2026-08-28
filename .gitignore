@@ -11,6 +11,13 @@
 *.jpg
 *.jpeg
 
+# Heavy simulation result files & installers globally
+*.frd
+*.out
+*.med
+*.vtu
+*.msi
+
 # CDM folder (proprietary reports)
 CDM/
 
@@ -38,6 +45,17 @@ streamlit_error.log
 .env
 *.env
 
+# cdm3d — file luoi/deck/ket qua sinh tu dong (nang, tai tao lai duoc qua cdm3d_demo.py)
+results/cdm3d/*.msh
+results/cdm3d/*.inp
+results/cdm3d/*.frd
+results/cdm3d/*.dat
+results/cdm3d/*.vtu
+results/cdm3d/*.ccx_log.txt
+results/cdm3d/*.12d
+results/cdm3d/*.cvg
+results/cdm3d/*.sta
+
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
@@ -59,19 +77,6 @@ scripts/app_fem2d.py
 *.zip
 *.bak
 logs/
-
-# Corrupt / backup SQLite copies (never commit — chỉ giữ data/TTHC.sqlite chính)
-data/*.bak_corrupt
-data/*.corrupt2
-*corrupt*.sqlite
-*backup*.sqlite
-
-# Tooling / output cục bộ — không đưa vào repo
-scratch/
-claude-automator/
-plaxis_out/
-streamlit-launcher/
-.mcp.json
 
 # Duplicate SQLite at root (use data/TTHC.sqlite)
 /TTHC.sqlite

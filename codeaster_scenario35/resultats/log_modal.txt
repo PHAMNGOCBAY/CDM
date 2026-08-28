@@ -1,0 +1,755 @@
+
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4>echo OFF 
+Active code page: 65001
+The system cannot find the drive specified.
+
+# ------------------------------------------------------------------------------
+Execution of code_aster
+
+# ------------------------------------------------------------------------------
+Prepare environment in C:\Users\bayng\AppData\Local\Temp\run_aster_fjftesui
+
+# ------------------------------------------------------------------------------
+Command file #1 / 1
+
+Content of the file to execute:
+# coding=utf-8
+# Phan tich MODAL (tan so rieng + dang dao dong) cho he coc CDM - dat nen KE.
+# Tai su dung luoi 9 coc da dung cho kich ban 3.5 (ke_scenario35.med).
+# Vat lieu DAN HOI THUAN (khong Mohr-Coulomb — bai toan tri rieng tuyen tinh
+# khong ap dung vat lieu deo), dieu kien bien GIONG kich ban 3.5 (BASE/SIDE_*).
+
+from code_aster.Commands import *
+
+DEBUT(CODE="OUI", ERREUR=_F(ALARME="EXCEPTION"), DEBUG=_F(SDVERI="OUI"))
+
+MA = LIRE_MAILLAGE(FORMAT="MED", UNITE=20)
+
+MA = MODI_MAILLAGE(
+    reuse=MA, MAILLAGE=MA,
+    ORIE_PEAU=_F(GROUP_MA_PEAU=(
+        "BASE", "SIDE_XMIN", "SIDE_XMAX", "SIDE_YMIN", "SIDE_YMAX",
+        "TOP_SOIL_NEGX", "TOP_SOIL_POSX", "TOP_COLUMN_NEGX", "TOP_COLUMN_POSX",
+    )),
+)
+
+MO = AFFE_MODELE(MAILLAGE=MA, AFFE=_F(TOUT="OUI", PHENOMENE="MECANIQUE", MODELISATION="3D"))
+
+# ================== Vat lieu — DAN HOI THUAN (ca dat yeu, khong MC) ==================
+MAT_DAP = DEFI_MATERIAU(ELAS=_F(E=8000.0, NU=0.30, RHO=19.0 / 9.81))
+MAT_CUNG = DEFI_MATERIAU(ELAS=_F(E=27600.0, NU=0.35, RHO=19.0 / 9.81))
+MAT_COL = DEFI_MATERIAU(ELAS=_F(E=40000.0, NU=0.25, RHO=18.0 / 9.81))
+MAT_YEU = DEFI_MATERIAU(ELAS=_F(E=3450.0, NU=0.35, RHO=15.291 / 9.81))
+
+CHMAT = AFFE_MATERIAU(
+    MAILLAGE=MA,
+    AFFE=(
+        _F(GROUP_MA="SOIL_dat_dap", MATER=MAT_DAP),
+        _F(GROUP_MA="SOIL_lop_cung", MATER=MAT_CUNG),
+        _F(GROUP_MA="CDM_COLUMN", MATER=MAT_COL),
+        _F(GROUP_MA="SOIL_dat_yeu", MATER=MAT_YEU),
+    ),
+)
+
+# ================== Dieu kien bien ==================
+# LUU Y: ASSEMBLAGE() chi nhan CHARGE kieu char_meca (tu AFFE_CHAR_MECA), KHONG
+# nhan AFFE_CHAR_CINE (kieu MechanicalDirichletBC, chi dung duoc truc tiep trong
+# STAT_NON_LINE/DYNA_NON_LINE) — da phat hien qua loi thuc te (SUPERVIS_4:
+# "Unexpected type: MechanicalDirichletBC, expecting: char_meca") khi chay lan dau.
+DEPL = AFFE_CHAR_MECA(
+    MODELE=MO,
+    DDL_IMPO=(
+        _F(GROUP_MA="BASE", DX=0.0, DY=0.0, DZ=0.0),
+        _F(GROUP_MA="SIDE_XMIN", DX=0.0),
+        _F(GROUP_MA="SIDE_XMAX", DX=0.0),
+        _F(GROUP_MA="SIDE_YMIN", DY=0.0),
+        _F(GROUP_MA="SIDE_YMAX", DY=0.0),
+    ),
+)
+
+# ================== Lap ma tran khoi luong + do cung, tri rieng ==================
+ASSEMBLAGE(
+    MODELE=MO,
+    CHAM_MATER=CHMAT,
+    CHARGE=DEPL,
+    NUME_DDL=CO("NUME"),
+    MATR_ASSE=(
+        _F(MATRICE=CO("MASS"), OPTION="MASS_MECA"),
+        _F(MATRICE=CO("RIGI"), OPTION="RIGI_MECA"),
+    ),
+)
+
+MODES = CALC_MODES(
+    MATR_RIGI=RIGI,
+    MATR_MASS=MASS,
+    OPTION="PLUS_PETITE",
+    CALC_FREQ=_F(NMAX_FREQ=10),
+    SOLVEUR_MODAL=_F(METHODE="SORENSEN"),
+    VERI_MODE=_F(SEUIL=1e-4),
+)
+
+# CALC_MODES tu in bang tan so rieng ra log (khong can lenh rieng — tranh doan
+# API chua kiem chung nhu LIST_VARI_ACCES()).
+
+IMPR_RESU(FORMAT="MED", UNITE=80, RESU=_F(RESULTAT=MODES, TOUT_ORDRE="OUI", NOM_CHAM="DEPL"))
+
+FIN()
+
+
+
+# ------------------------------------------------------------------------------
+Command line #1:
+    ( C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\bin\..\Python311\python.exe "G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/comm/modal_analysis.comm" --last --link="F::mmed::G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/geometrie/ke_scenario35.med::D::20" --memory 4096.0 --tpmax 1800 --numthreads 1 & echo %errorlevel% > _exit_code_ ) | tee -a fort.6
+setting '--memory' value to 3686.40 MB (keyword RESERVE_MEMOIRE)
+copying 'G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/geometrie/ke_scenario35.med' to 'fort.20'...
+Ouverture en écriture du fichier ./vola.1
+
+<INFO> Démarrage de l'exécution.
+
+                                                                                   
+   ___         _         _       _            __      ___         _                
+  / __|___  __| |___    /_\   __| |_ ___ _ _  \ \    / (_)_ _  __| |_____ __ _____ 
+ | (__/ _ \/ _` / -_)  / _ \ (_-<  _/ -_) '_|  \ \/\/ /| | ' \/ _` / _ \ V  V (_-< 
+  \___\___/\__,_\___| /_/ \_\/__/\__\___|_|     \_/\_/ |_|_||_\__,_\___/\_/\_//__/ 
+                                                 https://code-aster-windows.com    
+                  -- CODE_ASTER -- VERSION : DÉVELOPPEMENT STABILISÉE (testing) --                  
+                               Version 17.4.0 modifiée le 22/01/2026                                
+                          révision 03b95c288047 - branche 'windows-draft'                           
+                                   Copyright EDF R&D 1991 - 2026                                    
+                                                                                                    
+                              Exécution du : Fri Aug 28 13:20:15 2026                               
+                                        Nom de la machine :                                         
+                                          DESKTOP-Q5HMNN9                                           
+                                        Architecture : 64bit                                        
+                                     Type de processeur : AMD64                                     
+                                      Système d'exploitation :                                      
+                                     Windows-10-10.0.26200-SP0                                      
+                                 Langue des messages : en (cp1252)                                  
+                                     Version de Python : 3.11.9                                     
+                                     Version de NumPy : 1.26.4                                      
+                                     Parallélisme MPI : inactif                                     
+                                    Parallélisme OpenMP : actif                                     
+                              Nombre de processus OpenMP utilisés : 1                               
+                               Version de la librairie HDF5 : 1.10.9                                
+                                Version de la librairie MED : 4.2.0                                 
+                                 Librairie MFront : non disponible                                  
+                               Version de la librairie MUMPS : 5.6.2                                
+                                  Librairie PETSc : non disponible                                  
+                               Version de la librairie SCOTCH : 7.0.3                               
+
+starting the execution...
+Les alarmes ne sont pas **encore** aggravées en Erreur sur cette plate-forme.
+Débogage SDVERI demandé
+
+
+ ╔════════════════════════════════════════════════════════════════════════════════════════════════╗
+ ║ <I> <SUPERVIS_22>                                                                              ║
+ ║                                                                                                ║
+ ║ Les mots-clés CODE et DEBUG dans DEBUT/POURSUITE sont réservés aux cas-tests.                  ║
+ ║ De même pour                                                                                   ║
+ ║ l'option, "--test" de CA.init().                                                               ║
+ ║ Il ne faut pas les utiliser dans les études car ils modifient                                  ║
+ ║ certaines valeurs par                                                                          ║
+ ║ défaut des commandes DEBUT/POURSUITE qui ont des conséquences sur le                           ║
+ ║ comportement                                                                                   ║
+ ║ en cas d'erreur ou sur les performances.                                                       ║
+ ╚════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+Valeur initiale du temps CPU maximum =   1800 secondes
+  Valeur du temps CPU maximum passé aux
+commandes =   1790 secondes
+  Réserve CPU prévue = 10 secondes
+
+Ouverture en écriture du fichier ./glob.1
+
+Ouverture en écriture du fichier ./vola.1
+
+Ouverture en lecture du fichier
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\bin\..\lib\aster/elem.1
+
+Nom de la base                          :  ELEMBASE
+     Créée avec la version                   : 
+17.04.00
+     Nombre d'enregistrements utilisés       :  46
+     Nombre d'enregistrements maximum   
+    :  512
+     Nombre d'enregistrements par fichier    :  512
+     Longueur d'enregistrement
+(octets)      :  819200
+     Nombre d'identificateurs utilisés       :  123
+     Taille maximum du
+répertoire            :  300
+     Pourcentage d'utilisation du répertoire :  41 %
+
+Ouverture en lecture du fichier
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\bin\..\lib\aster/elem.1
+
+Nom de la base                          :  ELEMBASE
+     Nombre d'enregistrements utilisés       : 
+46
+     Nombre d'enregistrements maximum        :  512
+     Nombre d'enregistrements par fichier   
+:  512
+     Longueur d'enregistrement (octets)      :  819200
+     Nombre total d'accès en lecture  
+      :  64
+     Volume des accès en lecture             :         50.00 Mo.
+     Nombre total
+d'accès en écriture        :  0
+     Volume des accès en écriture            :          0.00 Mo.
+   
+ Nombre d'identificateurs utilisés       :  123
+     Taille maximum du répertoire            :  300
+
+    Pourcentage d'utilisation du répertoire :  41 %
+
+Relecture des catalogues des éléments faite.
+
+Fin de lecture (durée  0.000000  s.) 
+
+                      Mémoire limite pour l'allocation dynamique : 4198.93 Mo                       
+                              ajouté à l'initialisation du processus :                              
+                                             290.09 Mo                                              
+                               Limite cible du processus : 4489.02 Mo                               
+                         Taille limite des fichiers d'échange : 2048.00 Go                          
+# Mémoire (Mo) :   290.09 /   283.07 /   207.61 /   183.67 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0001   user+syst:        0.09s (syst:        0.05s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt11
+# ----------------------------------------------------------------------------------------------
+# Commande #0002 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 11
+MA = LIRE_MAILLAGE(FORMAT='MED',
+                   INFO=1,
+                   INFO_MED=0,
+                   PARTITIONNEUR='SANS',
+                   UNITE=20,
+                   VERI_MAIL=_F(APLAT=0.001,
+                                VERIF='OUI'))
+
+Nom MED du maillage : KE_scenario35
+
+
+------------ MAILLAGE 00000001 - IMPRESSIONS NIVEAU  1 ------------
+
+
+NOMBRE DE NOEUDS                       54524
+
+NOMBRE DE MAILLES                     361380
+                              SEG2                 2650
+                              TRIA3               42722
+                              TETRA4             316008
+
+NOMBRE DE GROUPES DE MAILLES              16
+
+--------------------------------------------------------------------------------
+
+Vérification du maillage.
+
+# Résultat commande #0002 (LIRE_MAILLAGE): MA ('<00000001>') de type <Mesh>
+# Mémoire (Mo) :   356.18 /   343.09 /   240.75 /   210.12 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0002   user+syst:        1.89s (syst:        0.03s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt13
+# ----------------------------------------------------------------------------------------------
+# Commande #0003 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 13
+MA = MODI_MAILLAGE(INFO=1,
+                   MAILLAGE=MA,
+                   ORIE_PEAU=_F(GROUP_MA_PEAU=('BASE', 'SIDE_XMIN', 'SIDE_XMAX', 'SIDE_YMIN', 'SIDE_YMAX', 'TOP_SOIL_NEGX', 'TOP_SOIL_POSX', 'TOP_COLUMN_NEGX', 'TOP_COLUMN_POSX')),
+                   reuse=MA)
+
+TRAITEMENT DU GROUP_MA: BASE                     DE      86 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_XMIN                DE     275 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_XMAX                DE     289 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_YMIN                DE     250 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: SIDE_YMAX                DE     252 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_SOIL_NEGX            DE     611 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_SOIL_POSX            DE     597 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_COLUMN_NEGX          DE     114 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+TRAITEMENT DU GROUP_MA: TOP_COLUMN_POSX          DE     108 MAILLES
+                              0 MAILLE(S) ONT ETE ORIENTEE(S)
+# Résultat commande #0003 (MODI_MAILLAGE): MA ('<00000001>') de type <Mesh>
+# Mémoire (Mo) :   356.66 /   343.41 /   240.78 /   210.12 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0003   user+syst:        0.66s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt21
+# ----------------------------------------------------------------------------------------------
+# Commande #0004 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 21
+MO = AFFE_MODELE(AFFE=_F(MODELISATION='3D',
+                         PHENOMENE='MECANIQUE',
+                         TOUT='OUI'),
+                 DISTRIBUTION=_F(METHODE='SOUS_DOMAINE',
+                                 PARTITIONNEUR='METIS'),
+                 INFO=1,
+                 MAILLAGE=MA,
+                 VERI_FORMULATION_IFS='OUI',
+                 VERI_JACOBIEN='OUI',
+                 VERI_NORM_IFS='OUI',
+                 VERI_PLAN='OUI')
+
+Sur les 361380 mailles du maillage 00000001, on a demandé l'affectation de 361380, on a pu en
+affecter 361380.
+Modélisation     Formulation      Type maille  Élément fini     Nombre
+_                _                SEG2         MECA_ARETE2      2650
+_                _                TRIA3        MECA_FACE3       42722
+3D               _                TETRA4       MECA_TETRA4      316008
+#2      Calculs elementaires et assemblages               CPU (USER+SYST/SYST/ELAPS):      0.08      0.00      0.00
+# Résultat commande #0004 (AFFE_MODELE): MO ('<00000002>') de type <Model>
+# Mémoire (Mo) :   375.34 /   361.12 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0004   user+syst:        1.23s (syst:        0.02s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt24
+# ----------------------------------------------------------------------------------------------
+# Commande #0005 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 24
+MAT_DAP = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                COEF_AMOR=1.0,
+                                E=8000.0,
+                                K_DESSIC=0.0,
+                                NU=0.3,
+                                RHO=1.9367991845056065),
+                        INFO=1)
+
+# Résultat commande #0005 (DEFI_MATERIAU): MAT_DAP ('<00000003>') de type <Material>
+# Mémoire (Mo) :   375.34 /   361.27 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0005   user+syst:        0.03s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt25
+# ----------------------------------------------------------------------------------------------
+# Commande #0006 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 25
+MAT_CUNG = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                 COEF_AMOR=1.0,
+                                 E=27600.0,
+                                 K_DESSIC=0.0,
+                                 NU=0.35,
+                                 RHO=1.9367991845056065),
+                         INFO=1)
+
+# Résultat commande #0006 (DEFI_MATERIAU): MAT_CUNG ('<00000004>') de type <Material>
+# Mémoire (Mo) :   375.34 /   361.27 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0006   user+syst:        0.03s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt26
+# ----------------------------------------------------------------------------------------------
+# Commande #0007 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 26
+MAT_COL = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                COEF_AMOR=1.0,
+                                E=40000.0,
+                                K_DESSIC=0.0,
+                                NU=0.25,
+                                RHO=1.8348623853211008),
+                        INFO=1)
+
+# Résultat commande #0007 (DEFI_MATERIAU): MAT_COL ('<00000005>') de type <Material>
+# Mémoire (Mo) :   375.34 /   361.27 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0007   user+syst:        0.02s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt27
+# ----------------------------------------------------------------------------------------------
+# Commande #0008 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 27
+MAT_YEU = DEFI_MATERIAU(ELAS=_F(B_ENDOGE=0.0,
+                                COEF_AMOR=1.0,
+                                E=3450.0,
+                                K_DESSIC=0.0,
+                                NU=0.35,
+                                RHO=1.5587155963302752),
+                        INFO=1)
+
+# Résultat commande #0008 (DEFI_MATERIAU): MAT_YEU ('<00000006>') de type <Material>
+# Mémoire (Mo) :   375.34 /   361.27 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0008   user+syst:        0.03s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt29
+# ----------------------------------------------------------------------------------------------
+# Commande #0009 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 29
+CHMAT = AFFE_MATERIAU(AFFE=(_F(GROUP_MA='SOIL_dat_dap',
+                               MATER=MAT_DAP),
+                            _F(GROUP_MA='SOIL_lop_cung',
+                               MATER=MAT_CUNG),
+                            _F(GROUP_MA='CDM_COLUMN',
+                               MATER=MAT_COL),
+                            _F(GROUP_MA='SOIL_dat_yeu',
+                               MATER=MAT_YEU)),
+                      INFO=1,
+                      MAILLAGE=MA)
+
+# Résultat commande #0009 (AFFE_MATERIAU): CHMAT ('<00000007>') de type <MaterialField>
+# Mémoire (Mo) :   375.34 /   364.07 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0009   user+syst:        0.05s (syst:        0.00s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt44
+# ----------------------------------------------------------------------------------------------
+# Commande #0010 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 44
+DEPL = AFFE_CHAR_MECA(DDL_IMPO=(_F(DX=0.0,
+                                   DY=0.0,
+                                   DZ=0.0,
+                                   GROUP_MA='BASE'),
+                                _F(DX=0.0,
+                                   GROUP_MA='SIDE_XMIN'),
+                                _F(DX=0.0,
+                                   GROUP_MA='SIDE_XMAX'),
+                                _F(DY=0.0,
+                                   GROUP_MA='SIDE_YMIN'),
+                                _F(DY=0.0,
+                                   GROUP_MA='SIDE_YMAX')),
+                      DOUBLE_LAGRANGE='OUI',
+                      INFO=1,
+                      MODELE=MO,
+                      SYNTAXE='NON',
+                      VERI_AFFE='OUI',
+                      VERI_NORM='OUI')
+
+# Résultat commande #0010 (AFFE_CHAR_MECA): DEPL ('<00000008>') de type <MechanicalLoadReal>
+# Mémoire (Mo) :   375.34 /   369.76 /   258.96 /   243.73 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0010   user+syst:        0.00s (syst:        0.03s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt56
+# ----------------------------------------------------------------------------------------------
+# Commande #0011 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 56
+ASSEMBLAGE(CHAM_MATER=CHMAT,
+           CHARGE=DEPL,
+           INFO=1,
+           INST=0.0,
+           MATR_ASSE=(_F(MATRICE=CO('MASS'),
+                         OPTION='MASS_MECA'),
+                      _F(MATRICE=CO('RIGI'),
+                         MODE_FOURIER=0,
+                         OPTION='RIGI_MECA')),
+           MODELE=MO,
+           NUME_DDL=CO('NUME'))
+
+Le système linéaire à résoudre a 165144 degrés de liberté:
+   - 163572 sont des degrés de liberté
+physiques
+     (ils sont portés par 54524 noeuds du maillage)
+   - 1572 sont les couples de
+paramètres de Lagrange associés
+     aux 786 relations linéaires dualisées.
+La matrice est de taille 165144 équations.
+  Elle contient 3680616 termes non nuls si elle est
+symétrique et 7196088 termes non nuls si elle n'est pas symétrique.
+  Soit un taux de remplissage de
+  0.026 %.
+# Résultat commande #0011 (ASSEMBLAGE): NUME ('<00000011>') de type <DOFNumbering>
+# Résultat commande #0011 (ASSEMBLAGE): MASS ('<00000019>') de type <AssemblyMatrixDisplacementReal>
+# Résultat commande #0011 (ASSEMBLAGE): RIGI ('<00000013>') de type <AssemblyMatrixDisplacementReal>
+# Mémoire (Mo) :   831.72 /   455.30 /   708.03 /   259.25 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0011   user+syst:        4.31s (syst:        0.17s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt67
+# ----------------------------------------------------------------------------------------------
+# Commande #0017 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 67
+MODES = CALC_MODES(AMELIORATION='NON',
+                   CALC_FREQ=_F(NMAX_FREQ=10,
+                                NMAX_ITER_SHIFT=3,
+                                PREC_SHIFT=0.05,
+                                SEUIL_FREQ=0.01),
+                   INFO=1,
+                   MATR_MASS=MASS,
+                   MATR_RIGI=RIGI,
+                   OPTION='PLUS_PETITE',
+                   SOLVEUR=_F(ACCELERATION='FR',
+                              ELIM_LAGR='LAGR2',
+                              GESTION_MEMOIRE='AUTO',
+                              LOW_RANK_SEUIL=0.0,
+                              METHODE='MUMPS',
+                              NB_RHS=1,
+                              NPREC=8,
+                              PCENT_PIVOT=35,
+                              POSTTRAITEMENTS='AUTO',
+                              PRETRAITEMENTS='AUTO',
+                              RENUM='AUTO',
+                              RESI_RELA=-1.0,
+                              TYPE_RESOL='AUTO'),
+                   SOLVEUR_MODAL=_F(APPROCHE='REEL',
+                                    METHODE='SORENSEN',
+                                    NMAX_ITER_SOREN=20,
+                                    PARA_ORTHO_SOREN=0.717,
+                                    PREC_SOREN=0.0),
+                   STOP_BANDE_VIDE='OUI',
+                   TYPE_RESU='DYNAMIQUE',
+                   VERI_MODE=_F(PREC_SHIFT=0.005,
+                                SEUIL=0.0001,
+                                STOP_ERREUR='OUI',
+                                STURM='OUI'))
+
+Le nombre total de DDL est       :     165144
+  Le nombre de DDL de Lagrange est :       1572
+  Le
+nombre de DDL actifs est      :     162786
+
+L'option choisie est : PLUS_PETITE
+
+La valeur de décalage en fréquence est :  0.00000E+00
+
+------------------------------------------------------------------------
+
+Informations sur le calcul demandé:
+
+  Nombre de modes recherchés  : 10
+
+
+La dimension de l'espace réduit est : 0
+
+Elle est inférieure au nombre de modes, on la prend égale à : 20
+
+=============================================
+     =       Méthode de Sorensen (code ARPACK)   =
+   
+ =       Version :  2.4                      =
+     =          Date :  07/31/96                 =
+  
+  =============================================
+
+     Nombre de redémarrages                     =  
+  7
+     Nombre de produits OP*X                    =    57
+     Nombre de produits B*X             
+       =   175
+     Nombre de réorthogonalisations  (étape 1)  =    56
+     Nombre de
+réorthogonalisations  (étape 2)  =     0
+     Nombre de redémarrages du a un V0 nul      =     0
+
+
+------------------------------------------------------------------------
+Les fréquences calculées sont comprises entre :
+      Fréquence inférieure :  6.59417E-01
+     
+Fréquence supérieure :  2.04194E+00
+
+
+------------------------------------------------------------------------
+Calcul modal : Méthode d'itération simultanée
+                    Méthode de Sorensen
+
+numéro   
+fréquence (HZ)     norme d'erreur
+
+1       6.59417E-01        9.40406E-13
+
+2       1.24839E+00        2.13868E-13
+
+3       1.24890E+00        1.87140E-13
+
+4       1.63691E+00        2.11455E-13
+
+5       1.63768E+00        1.88969E-13
+
+6       1.71703E+00        8.48733E-14
+
+7       1.83098E+00        2.69462E-13
+
+8       1.93798E+00        2.04239E-13
+
+9       2.03922E+00        5.75309E-14
+
+10       2.04194E+00        1.90720E-13
+
+Norme d'erreur moyenne   :  2.54866E-13
+
+------------------------------------------------------------------------
+
+Vérification à posteriori des modes
+
+
+Dans l'intervalle ( 6.57766E-01 , 2.04704E+00 ) il y a bien 10 fréquence(s).
+
+------------------------------------------------------------------------
+
+#1      Resolution des systemes lineaires                 CPU (USER+SYST/SYST/ELAPS):     42.05      0.00     43.00
+# Résultat commande #0017 (CALC_MODES): MODES ('<0000001a>') de type <ModeResult>
+# Mémoire (Mo) :  1751.13 /   466.21 /   708.03 /   309.17 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0017   user+syst:       40.94s (syst:        2.64s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt79
+# ----------------------------------------------------------------------------------------------
+# Commande #0019 de G:\My Drive\AI-SUC TAI COC THEO DAT
+NEN\codeaster_scenario35\comm\modal_analysis.comm, ligne 79
+IMPR_RESU(FICHIER_UNIQUE='NON',
+          FORMAT='MED',
+          INFO=1,
+          PROC0='OUI',
+          RESU=_F(IMPR_NOM_VARI='OUI',
+                  INFO_MAILLAGE='NON',
+                  NOM_CHAM='DEPL',
+                  NOM_CHAM_MED='MODES___DEPL',
+                  RESULTAT=MODES,
+                  TOUT_ORDRE='OUI'),
+          UNITE=80,
+          VERSION_MED='3.3.1')
+
+Création du fichier au format MED 3.3.1.
+
+# Mémoire (Mo) :  1751.13 /   470.94 /   708.03 /   309.17 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0019   user+syst:        0.16s (syst:        0.05s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+
+.. _stg1_txt76
+# ----------------------------------------------------------------------------------------------
+# Commande #0020 de
+C:\Users\bayng\AppData\Local\code_aster\v2025\17.4\lib\aster\code_aster\CodeCommands\fin.py, ligne
+76
+FIN(INFO_RESU='NON',
+    RETASSAGE='NON')
+
+No database in results, objects not saved on processor #0
+
+ ╔════════════════════════════════════════════════════════════════════════════════════════════════╗
+ ║ <I> <CATAMESS_89>                                                                              ║
+ ║                                                                                                ║
+ ║ Liste des alarmes émises lors de l'exécution du calcul.                                        ║
+ ║                                                                                                ║
+ ║     Les alarmes que vous avez                                                                  ║
+ ║ choisies d'ignorer sont précédées de (*).                                                      ║
+ ║     Nombre d'occurrences pour chacune des alarmes :                                            ║
+ ║                                                                                                ║
+ ║           aucune alarme                                                                        ║
+ ╚════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+<I> <FIN> ARRET NORMAL DANS "FIN" PAR APPEL A "JEFINI".
+  
+ <I> <FIN> MEMOIRE JEVEUX MINIMALE REQUISE POUR L'EXECUTION :                     309.17 Mo
+ <I> <FIN> MEMOIRE JEVEUX OPTIMALE REQUISE POUR L'EXECUTION :                     708.03 Mo
+ <I> <FIN> MAXIMUM DE MEMOIRE UTILISEE PAR LE PROCESSUS LORS DE L'EXECUTION :    1751.13 Mo
+  
+ <I>       FERMETURE DES BASES EFFECTUEE
+  
+   STATISTIQUES CONCERNANT L'ALLOCATION DYNAMIQUE :
+     TAILLE CUMULEE MAXIMUM            :                  708  Mo.
+     TAILLE CUMULEE LIBEREE            :                  877  Mo.
+     NOMBRE TOTAL D'ALLOCATIONS        :              7315700
+     NOMBRE TOTAL DE LIBERATIONS       :              7315229
+     APPELS AU MECANISME DE LIBERATION :                    0
+     TAILLE MEMOIRE CUMULEE RECUPEREE  :                  129  Mo.
+     VOLUME DES LECTURES               :                    0  Mo.
+     VOLUME DES ECRITURES              :                  100  Mo.
+  
+   MEMOIRE JEVEUX MINIMALE REQUISE PDeleting './glob.1': Permission denied
+OUR L'EXECUTION :     309.17 Mo
+     - IMPOSE DE NOMBREUX ACCES DISQUE
+     - RALENTIT LA VITESSE D'EXECUTION
+   MEMOIRE JEVEUX OPTIMALE REQUISE POUR L'EXECUTION :     708.03 Mo
+     - LIMITE LES ACCES DISQUE
+     - AMELIORE LA VITESSE D'EXECUTION
+   MAXIMUM DE MEMOIRE UTILISEE PAR LE PROCESSUS     :    1751.13 Mo
+     - COMPREND LA MEMOIRE CONSOMMEE PAR  JEVEUX, 
+       LE SUPERVISEUR PYTHON, LES LIBRAIRIES EXTERNES
+  
+ <I>       FIN D'EXECUTION LE : VE-28-AOUT-2026 13:21:08
+Deleting './vola.1': Permission denied
+
+ ********************************************************************************
+ * COMMAND                  :       USER :     SYSTEM :   USER+SYS :    ELAPSED *
+ ********************************************************************************
+ * DEBUT                    :       0.09 :       0.05 :       0.14 :       0.00 *
+ * LIRE_MAILLAGE            :       1.89 :       0.03 :       1.92 :       0.00 *
+ * MODI_MAILLAGE            :       0.66 :       0.00 :       0.66 :       0.00 *
+ * AFFE_MODELE              :       1.23 :       0.02 :       1.25 :       0.00 *
+ * DEFI_MATERIAU            :       0.03 :       0.00 :       0.03 :       0.00 *
+ * DEFI_MATERIAU            :       0.03 :       0.00 :       0.03 :       0.00 *
+ * DEFI_MATERIAU            :       0.02 :       0.00 :       0.02 :       0.00 *
+ * DEFI_MATERIAU            :       0.03 :       0.00 :       0.03 :       0.00 *
+ * AFFE_MATERIAU            :       0.05 :       0.00 :       0.05 :       0.00 *
+ * AFFE_CHAR_MECA           :       0.00 :       0.03 :       0.03 :       0.00 *
+ * ASSEMBLAGE               :       4.31 :       0.17 :       4.48 :       0.00 *
+ * CALC_MODES               :      40.94 :       2.64 :      43.58 :       0.00 *
+ * IMPR_RESU                :       0.16 :       0.05 :       0.20 :       0.00 *
+ * FIN                      :       0.02 :       0.02 :       0.03 :       0.00 *
+ *  . check syntax          :       0.02 :       0.00 :       0.02 :       0.00 *
+ *  . fortran               :      43.02 :       2.77 :      45.78 :       0.00 *
+ *  . sdveri                :       0.16 :       0.06 :       0.22 :       0.00 *
+ *  . cleanup               :       0.19 :       0.02 :       0.20 :       0.00 *
+ ********************************************************************************
+ * TOTAL_JOB                :      49.52 :       3.02 :      52.53 :       0.00 *
+ ********************************************************************************
+
+# Mémoire (Mo) :  1751.13 /   466.82 /   708.03 /   309.17 (VmPeak / VmSize / Optimum / Minimum)
+# Fin commande #0020   user+syst:        0.02s (syst:        0.02s, elaps:        0.00s)
+# ----------------------------------------------------------------------------------------------
+End of the Code_Aster execution
+Exited
+
+EXECUTION_CODE_ASTER_EXIT_29044=0
+
+
+execution ended (command file #1): OK
+
+# ------------------------------------------------------------------------------
+Content of C:\Users\bayng\AppData\Local\Temp\run_aster_fjftesui after execution:
+ Volume in drive C has no label.
+ Volume Serial Number is 704D-72AD
+
+ Directory of C:\Users\bayng\AppData\Local\Temp\run_aster_fjftesui
+
+08/28/2026  01:21 PM    <DIR>          .
+08/28/2026  01:20 PM    <DIR>          ..
+08/28/2026  01:20 PM               506 29044.export
+08/28/2026  01:21 PM            97,066 fort.15
+08/28/2026  12:12 PM        19,165,516 fort.20
+08/28/2026  01:21 PM            32,161 fort.6
+08/28/2026  01:20 PM                 0 fort.8
+08/28/2026  01:21 PM        22,920,878 fort.80
+08/28/2026  01:20 PM                 0 fort.9
+08/28/2026  01:20 PM       104,038,408 glob.1
+08/28/2026  01:20 PM    <DIR>          REPE_IN
+08/28/2026  01:20 PM    <DIR>          REPE_OUT
+08/28/2026  01:20 PM       117,145,608 vola.1
+               9 File(s)    263,400,143 bytes
+
+ Directory of C:\Users\bayng\AppData\Local\Temp\run_aster_fjftesui\REPE_OUT
+
+08/28/2026  01:20 PM    <DIR>          .
+08/28/2026  01:21 PM    <DIR>          ..
+               0 File(s)              0 bytes
+               2 Dir(s)  1,077,555,736,576 bytes free
+
+
+# ------------------------------------------------------------------------------
+Copying results
+copying 'fort.80' to 'G:/My Drive/AI-SUC TAI COC THEO DAT NEN/codeaster_scenario35/resultats/modal_analysis_resu.med'...
+
+# ------------------------------------------------------------------------------
+Execution summary
+                                      cpu     system    cpu+sys    elapsed
+--------------------------------------------------------------------------------
+Preparation of environment           0.00       0.00       0.00       0.00
+Execution of code_aster              0.00       0.02       0.02      54.15
+Copying results                      0.00       0.02       0.02       0.07
+--------------------------------------------------------------------------------
+Total                                0.00       0.03       0.03      54.22
+--------------------------------------------------------------------------------
+
+------------------------------------------------------------
+--- DIAGNOSTIC JOB : OK
+------------------------------------------------------------
+

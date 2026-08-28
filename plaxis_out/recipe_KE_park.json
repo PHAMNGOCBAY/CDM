@@ -1,0 +1,245 @@
+{
+  "zone_code": "KE_park",
+  "design_elev_fill_m": 2.7,
+  "source_db": "C:\\Users\\bayng\\TTHC_local\\TTHC.sqlite",
+  "created_at": "2026-05-29 16:56:11",
+  "n_boreholes": 5,
+  "n_global_layers": 11,
+  "n_materials": 11,
+  "boreholes": [
+    {
+      "name": "KE-HK1",
+      "nat_elev_m": 1.83,
+      "E": 605877.216,
+      "N": 1191494.989,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 1.83,
+        "F": null,
+        "1": -22.97,
+        "1b": null,
+        "2b": null,
+        "2a": -27.369999999999997,
+        "3": -35.17,
+        "4": null,
+        "5": -48.17,
+        "6": null,
+        "7": null
+      }
+    },
+    {
+      "name": "KE-HK6",
+      "nat_elev_m": -0.16,
+      "E": 606004.52,
+      "N": 1191971.117,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": -0.16,
+        "F": null,
+        "1": -17.16,
+        "1b": -19.16,
+        "2b": -31.16,
+        "2a": null,
+        "3": null,
+        "4": -33.76,
+        "5": -40.16,
+        "6": null,
+        "7": null
+      }
+    },
+    {
+      "name": "KE-HK12",
+      "nat_elev_m": -1.058,
+      "E": 606075.287,
+      "N": 1192085.504,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": -1.058,
+        "F": null,
+        "1": -24.96,
+        "1b": -28.058,
+        "2b": null,
+        "2a": null,
+        "3": -32.058,
+        "4": -37.058,
+        "5": null,
+        "6": null,
+        "7": null
+      }
+    },
+    {
+      "name": "KE-HK5",
+      "nat_elev_m": 0.883,
+      "E": 606111.803,
+      "N": 1191991.551,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 0.883,
+        "F": -0.21700000000000008,
+        "1": -20.317,
+        "1b": null,
+        "2b": -22.117,
+        "2a": null,
+        "3": null,
+        "4": null,
+        "5": -40.817,
+        "6": -42.516999999999996,
+        "7": -84.117
+      }
+    },
+    {
+      "name": "KE-HK4",
+      "nat_elev_m": 1.824,
+      "E": 606118.657,
+      "N": 1191862.312,
+      "head_m": 2.7,
+      "layer_bottoms_m": {
+        "__FILL__": 1.824,
+        "F": null,
+        "1": -19.476,
+        "1b": null,
+        "2b": -27.176,
+        "2a": null,
+        "3": null,
+        "4": -35.876000000000005,
+        "5": -38.176,
+        "6": null,
+        "7": null
+      }
+    }
+  ],
+  "global_layers": [
+    "__FILL__",
+    "F",
+    "1",
+    "1b",
+    "2b",
+    "2a",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7"
+  ],
+  "materials": {
+    "__FILL__": {
+      "symbol": "__FILL__",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "phi_deg": 32.0,
+      "psi_deg": 2.0,
+      "cRef_kPa": 1.0,
+      "ERef_kPa": 25000.0,
+      "nu": 0.3,
+      "Identification": "FILL_dap_2.7m",
+      "source": "Standard fill material"
+    },
+    "F": {
+      "symbol": "F",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "1": {
+      "symbol": "1",
+      "model": "SoftSoil",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "1b": {
+      "symbol": "1b",
+      "model": "SoftSoil",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "2b": {
+      "symbol": "2b",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "2a": {
+      "symbol": "2a",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "3": {
+      "symbol": "3",
+      "model": "MC_undrained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "4": {
+      "symbol": "4",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "5": {
+      "symbol": "5",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "6": {
+      "symbol": "6",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    },
+    "7": {
+      "symbol": "7",
+      "model": "MC_drained",
+      "gamma_kNm3": 18.0,
+      "Cu_kPa": 11.0,
+      "phi_deg": 22.0,
+      "Cc": 0.5,
+      "e0": 1.5,
+      "source": "DEFAULT (no lab data)"
+    }
+  },
+  "notes": [
+    "Recipe đầy đủ để re-create model PLAXIS không cần GUI mở.",
+    "Y monotonic giảm xuống dưới (Y dương lên).",
+    "Layer __FILL__ là layer 0 (đất đắp), Bottom = nat_elev.",
+    "Per-BH: layer absent → bottom = bottom layer trên (zero thickness).",
+    "Materials: SoftSoil cho lớp 1/1b/XMD, MC drained cho cát, MC undrained cho sét khác."
+  ]
+}

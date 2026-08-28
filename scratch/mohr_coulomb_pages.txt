@@ -1,0 +1,371 @@
+=========== PAGE 290 ===========
+290
+6
+THEORY
+λM
+i
+can be obtained from the eigenvalues of the mechanical Lagrange tensor
+EM = (F M,T · F M −I)/2 and its eigenvectors are N i.
+The Cauchy tensor satisﬁes
+σ = J−1R · U · S · U T · RT ,
+(510)
+and consequently the corotational Cauchy tensor amounts to
+ˆσ = RT · σ · R = J−1U · S · U T .
+(511)
+Here, J is the Jacobian determinant, S is the Piola-Kirchhoﬀstress of the
+second kind and U is the right-stretch tensor. The latter is the square root
+of the Cauchy-Green tensor C and therefore it can also be derived from the
+Lagrange tensor. However, in routine umat abaqusnl.f the mechanical Lagrange
+tensor is available and not the total one. So a relationship is needed between
+the total right-stretch tensor and the mechanical right-stretch tensor.
+Since
+U has the same eigenvalues as F and the multiplicative decomposition of the
+deformation gradient in a mechanical and thermal deformation gradient leads
+to λ = λM(1 + α∆T ) one obtains:
+ˆσ = J−1U M · S · (U M)T (1 + α∆T )2.
+(512)
+The latter equation assumes that the thermal expansion is isotropic.
+In
+routine umat abaqusnl.f S is known, U M can be obtained from EM and (1 +
+α∆T ) results from
+(1 + α∆T ) =
+s
+(F T · F )11
+2EM
+11 + 1
+,
+(513)
+where the index 11 refers to element (1,1) of the corresponding matrix. In
+this way the corotational Cauchy stress is obtained from the Piola-Kirchhoﬀ
+stress of the second kind. The inverse relationship is used after returning from
+the Abaqus material user subroutine:
+S = JU −1 · ˆσ · U −T .
+(514)
+Now, ∂S/∂EM is needed in CalculiX (i.e.
+total Lagrangian approach),
+however, the Abaqus routine returns ∂ˆσ/∂ˆeM
+ln . Now, taking into account the
+following considerations:
+• U = U M(1 + α∆T ) from which U −1 = U M−1(1 + α∆T )−1.
+• U M−1 = 1/
+p
+CM.
+• ˆeM
+ln = ln
+p
+CM
+•
+∂I3
+∂C = I3C−1 and I3 = J2, from which
+∂JM
+∂CM = JM
+2 CM−1
+(515)
+
+
+=========== PAGE 291 ===========
+6.8
+Materials
+291
+• J = JM(1 + α∆T )3.
+and writing the expression for the Piola-Kirchhoﬀstress of the second kind
+in a rectangular coordinate system:
+SKL = JU −1
+KM ˆσMNU −1
+NL
+(516)
+straightforward diﬀerentation yields:
+ 
+∂SKL
+∂EM
+P Q
+!
+= JM 
+CM−1
+P Q
+ 
+U M−1
+KM
+
+ˆσMN
+
+U M−1
+NL
+
+(1 + α∆T )
++ 2JM
+ 
+∂U M−1
+KM
+∂CM
+P Q
+!
+ˆσMN
+
+U M−1
+NL
+
+(1 + α∆T )
++ 2JM 
+U M−1
+KM
+ 
+∂ˆσMN
+∂ˆeM
+ln,ST
+! 
+∂
+ˆ
+eM
+ln,ST
+∂CM
+P Q
+! 
+U M−1
+NL
+
+(1 + α∆T )
++ 2JM 
+U M−1
+KM
+
+ˆσMN
+ 
+∂U M−1
+NL
+∂CM
+P Q
+!
+(1 + α∆T )
+(517)
+The ﬁrst term in brackets on the second line, the third term in brackets on
+the third line and the second term in brackets on the fourth line are special cases
+of the derivative of a function of C w.r.t C. Expressions for such a diﬀerentation
+based on the eigenvalues and structural tensors of C were derived by Itskov [42]
+and are summarized in the Appendix of [25]. The second term in brackets on
+the third line is the tangent returned by the Abaqus UMAT routine.
+Notice that the above equation is symmetric in (KL) and (PQ), i.e. switching
+K and L and/or P and Q. In particular, switching K and L in the second term
+leads to the fourth term. This symmetry is to be expected, since S and EM
+are symmetric tensors. However, it is not clear whether the symmetry obtained
+by replacing KL by PQ is preserved. Therefore, in CalculiX a symmetrization
+of the resulting tangent matrix is performed, leading to 21 constants instead
+of 36 constants.
+The above procedure was implemented in umat abaqusnl.f
+and umat abaqusnl total.f. It is used for those material models, which were
+only formulated for small strains, such as isotropic plasticity for an elastically
+orthotropic material, Johnson-Cook plasticity and Mohr-Coulomb plasticity.
+6.8.19
+Damage initiation models
+These are models which predict the onset of damage based on the accumu-
+lated equivalent plastic strain. They can only be used for models for which the
+equivalent plastic strain is calculated, i.e. *DEFORMATION PLASTICITY,
+*PLASTIC (with isotropic or orthotropic elasticity, including Johnson-Cook
+hardening), *CREEP and *MOHR COULOMB. Damage is initiated if the dam-
+age initiation criterion ωD reaches a limit provided by the user,usually 1. ωD is
+
+
+=========== PAGE 292 ===========
+292
+6
+THEORY
+calculated as the sum of the change in equivalent plastic strain in each increment
+divided by the equivalent plastic strain at the onset of damage ǫpeq
+D :
+ωD =
+X ∆ǫpeq
+ǫpeq
+D
+.
+(518)
+According to the Rice-Tracey model ǫpeq
+D
+satisﬁes:
+ǫpeq
+D
+= 1.65ǫRT
+0
+exp
+
+−3σhy
+2σvm
+
+,
+(519)
+where σhy is the hydrostatic stress and σvm the von Mises stress. The ratio of
+both is called the triaxiality η = σhy/σvm. For a one-dimensional tensile test it
+takes the value 1/3.
+According to the Johnson-Cook model ǫpeq
+D
+is determined by:
+ǫpeq
+D
+= (d1 + d2 exp(−d3η))(1 + d4 ln
+ ˙ǫpeq
+˙ǫ0
+
+[1 −(T ∗)m] ,
+(520)
+where
+T ∗
+=
+0
+for T < T0
+T ∗
+=
+ T −T0
+Tm −T0
+
+for T0 ≤T ≤Tm
+T ∗
+=
+1
+for T > Tm
+(521)
+Here, d1, d2, d3, d4, d5, ˙ǫ0, T0 and Tm are material constants. The constant
+T0 has the physical meaning of transition temperature, i.e. the temperature
+above which the equivalent strain at the onset of damage starts to increase and
+Tm has the physical meaning of melt temperature, i.e. the temperature above
+which ǫpeq
+D
+remains constant. The model is meant to describe highly dynamic
+phenomena.
+As soon as the damage initiation criterion reaches the user-deﬁned limit in
+any integration point within this element, the element is deleted.
+6.9
+Types of analysis
+An analysis type applies to a complete step, which starts with a *STEP card
+and ends with an *END STEP card. The analysis type, the loading and ﬁeld
+output requests must be deﬁned in between.
+6.9.1
+Static analysis
+In a static analysis the time dimension is not involved. The loading is assumed
+to be applied in a quasi-static way, i.e.
+so slow that inertia eﬀects can be
+neglected. A static analysis is deﬁned by the key word *STATIC. A static step
+can be geometrically linear or nonlinear. In both cases a Lagrangian point of
+
+
+=========== PAGE 557 ===========
+7.90
+*MOHR COULOMB
+557
+Example:
+*MODEL CHANGE,TYPE=CONTACT PAIR,REMOVE
+dep,ind
+deactivates contact between the surfaces dep and ind.
+Example ﬁles: modelchel,modelchel2
+7.90
+*MOHR COULOMB
+Keyword type: model deﬁnition, material
+This keyword is used to deﬁne the friction angle and dilation angle for the
+yield surface and the ﬂow rule, respectively, of a Mohr-Coulomb material. The
+theory for this plasticity model is described in Section 6.8.11. There are no
+parameters for this keyword.
+The temperature dependence is taken into account in a piecewise linear way
+based on the data at discrete temperature points.
+The use of a *MOHR COULOMB card requires a *MOHR COULOMB
+HARDENING card within the same material deﬁnition in order to deﬁne the
+cohesion stress c.
+Notice that for φ = ψ one obtains associative plasticity and for φ = ψ = 0
+the model reduces to Tresca plasticity.
+First line:
+• *MOHR COULOMB
+Following line:
+• Friction angle φ in degrees.
+• Dilation angle ψ in degrees.
+• Temperature.
+Repeat this line if needed to deﬁne complete temperature dependence.
+Example:
+*MOHR COULOMB
+20.,10.,294.
+deﬁnes a Mohr-Coulomb material for temperature T=294. Since the deﬁni-
+tion includes values for only one temperature, they are valid for all temperatures.
+Example ﬁles: mohr1, mohr2.
+
+
+=========== PAGE 558 ===========
+558
+7
+INPUT DECK FORMAT
+7.91
+*MOHR COULOMB HARDENING
+Keyword type: model deﬁnition, material
+This keyword is used to deﬁne the (isotropic) hardening behavior of a Mohr-
+Coulomb material. The theory for this plasticity model is described in Section
+6.8.11. There are no parameters for this keyword.
+The temperature dependence is taken into account in a piecewise linear
+way based on the data at discrete temperature points.
+These temperature
+points should be identical to those used underneath the *MOHR COULOMB
+card. The use of a *MOHR COULOMB HARDENING card requires a *MOHR
+COULOMB card within the same material deﬁnition.
+First line:
+• *MOHR COULOMB HARDENING
+Following sets of lines deﬁne the isotropic hardening curve: First line in the
+ﬁrst set:
+• Cohesion yield stress c.
+• Equivalent plastic strain.
+• Temperature.
+Use as many lines in the ﬁrst set as needed to deﬁne the complete hardening
+curve for this temperature.
+Use as many sets as needed to deﬁne complete temperature dependence.
+Example:
+*MOHR COULOMB HARDENING
+10.,0.,294.
+100.,1.,294.
+deﬁnes the hardening curve for a Mohr-Coulomb material for temperature
+T=294. The cohesion stress c is 10. for zero equivalent plastic strain and 100.
+for an equivalent plastic strain of 1 (= 100 %). In between linear interpolation
+is applied. Since the deﬁnition includes values for only one temperature, they
+are valid for all temperatures.
+Example ﬁles: mohr1, mohr2.
+7.92
+*MPC
+Keyword type: model deﬁnition
+With this keyword card a multiple point constraint is deﬁned, usually a
+nonlinear one. Right now, four diﬀerent MPC’s can be selected.
+
+
+=========== PAGE 559 ===========
+7.92
+*MPC
+559
+• A plane MPC (name PLANE). This MPC speciﬁes that all nodes listed
+within this MPC card should stay in a plane. The ﬁrst three nodes are
+the deﬁning nodes and should not lie on a line. For all subsequent nodes
+a nonlinear MPC is generated expressing that they stay within the plane.
+Notice that the plane can move during deformation, depending on the
+motion of the deﬁning nodes.
+• A straight line MPC (name STRAIGHT). This MPC expresses that all
+nodes listed within this MPC card should stay on a straight line. The
+ﬁrst two nodes are the deﬁning nodes and should not coincide. For all
+subsequent nodes two nonlinear MPC’s are generated expressing that they
+stay on the straight line. Notice that the straight line can move during
+deformation, depending on the motion of its deﬁning nodes.
+• A beam MPC (name BEAM). This MPC involves exactly two nodes the
+distance between which is kept constant during the calculation.
+• A user MPC (name to be deﬁned by the user). With this option the user
+can deﬁne new nonlinear MPC’s. Examples are given in Section 8.7, e.g.
+the mean rotation MPC.
+Since the 3-D expansion of standard beam, shell, plane stress, plane strain
+and axisymmetric elements frequently involves the use of extra linear equations
+and/or nonlinear MPC’s such as knots, the additional application of nonlinear
+MPC’s to such elements is problematic. Therefore, it is not allowed to apply
+STRAIGHT, PLANE, BEAM and MEANROT MPC’s to any node belonging
+to such elements.
+A *MPC card automatically triggers the NLGEOM parameter, i.e. a ge-
+ometrically nonlinear calculation is performed, except if the MPC is a mean
+rotation MPC.
+There are no parameters for this keyword card.
+First line:
+• *MPC
+Second line:
+• MPC name
+• list of nodes participating in the MPC: maximum 15 entries. Zero entries
+are discarded.
+Following lines (as many as needed):
+• list of nodes participating in the MPC: maximum 16 entries. Zero entries
+are discarded.
+
+

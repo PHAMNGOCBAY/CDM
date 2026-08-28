@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
+	<Collection>
+		<DataSet file="test_ccx_mc_nomc.01.vtu" timestep="0.25"/>
+		<DataSet file="test_ccx_mc_nomc.02.vtu" timestep="0.3125"/>
+		<DataSet file="test_ccx_mc_nomc.03.vtu" timestep="0.375"/>
+		<DataSet file="test_ccx_mc_nomc.04.vtu" timestep="0.398438"/>
+		<DataSet file="test_ccx_mc_nomc.05.vtu" timestep="0.421875"/>
+		<DataSet file="test_ccx_mc_nomc.06.vtu" timestep="0.430664"/>
+		<DataSet file="test_ccx_mc_nomc.07.vtu" timestep="0.439453"/>
+		<DataSet file="test_ccx_mc_nomc.08.vtu" timestep="0.440277"/>
+		<DataSet file="test_ccx_mc_nomc.09.vtu" timestep="0.441101"/>
+		<DataSet file="test_ccx_mc_nomc.10.vtu" timestep="0.441178"/>
+		<DataSet file="test_ccx_mc_nomc.11.vtu" timestep="0.441198"/>
+		<DataSet file="test_ccx_mc_nomc.12.vtu" timestep="0.441202"/>
+		<DataSet file="test_ccx_mc_nomc.13.vtu" timestep="0.441204"/>
+	</Collection>
+</VTKFile>

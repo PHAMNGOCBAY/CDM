@@ -1,0 +1,412 @@
+﻿##~ running Plaxis2DXInput.exe 2024.2.0.1144
+gotosoil
+borehole 0.0
+set Borehole_1.Head -0.381
+soillayer Borehole_1 25.0
+soillayer Borehole_1 2.0
+soillayer Borehole_1 1.8000000000000007
+soillayer Borehole_1 1.3000000000000007
+soillayer Borehole_1 4.0
+soillayer Borehole_1 6.899999999999999
+soillayer Borehole_1 5.0
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK10_L1_1"
+set KEHK10_L1_1.gammaUnsat 14.855833333333335
+set KEHK10_L1_1.gammaSat 14.855833333333335
+set KEHK10_L1_1.nu 0.35
+set KEHK10_L1_1.phi 0.0
+set KEHK10_L1_1.psi 0.0
+set KEHK10_L1_1.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK10_L2_1b"
+set KEHK10_L2_1b.gammaUnsat 19.08
+set KEHK10_L2_1b.gammaSat 20.08
+set KEHK10_L2_1b.nu 0.3
+set KEHK10_L2_1b.phi 29.1
+set KEHK10_L2_1b.psi 0.0
+set KEHK10_L2_1b.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK10_L3_2b"
+set KEHK10_L3_2b.gammaUnsat 19.0
+set KEHK10_L3_2b.gammaSat 20.0
+set KEHK10_L3_2b.nu 0.3
+set KEHK10_L3_2b.phi 29.4
+set KEHK10_L3_2b.psi 0.0
+set KEHK10_L3_2b.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK10_L4_3"
+set KEHK10_L4_3.gammaUnsat 18.34
+set KEHK10_L4_3.gammaSat 19.34
+set KEHK10_L4_3.nu 0.3
+set KEHK10_L4_3.phi 9.5333
+set KEHK10_L4_3.psi 0.0
+set KEHK10_L4_3.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK10_L5_3"
+set KEHK10_L5_3.gammaUnsat 18.4
+set KEHK10_L5_3.gammaSat 18.4
+set KEHK10_L5_3.nu 0.35
+set KEHK10_L5_3.phi 12.866700000000002
+set KEHK10_L5_3.psi 0.0
+set KEHK10_L5_3.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK10_L6_4"
+set KEHK10_L6_4.gammaUnsat 19.0
+set KEHK10_L6_4.gammaSat 20.0
+set KEHK10_L6_4.nu 0.3
+set KEHK10_L6_4.phi 31.8
+set KEHK10_L6_4.psi 1.8000000000000007
+set KEHK10_L6_4.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK10_L7_5"
+set KEHK10_L7_5.gammaUnsat 20.53
+set KEHK10_L7_5.gammaSat 20.53
+set KEHK10_L7_5.nu 0.35
+set KEHK10_L7_5.phi 21.14165
+set KEHK10_L7_5.psi 0.0
+set KEHK10_L7_5.DrainageType "undrainedb"
+setmaterial Soillayer_1 KEHK10_L1_1
+setmaterial Soillayer_2 KEHK10_L2_1b
+setmaterial Soillayer_3 KEHK10_L3_2b
+setmaterial Soillayer_4 KEHK10_L4_3
+setmaterial Soillayer_5 KEHK10_L5_3
+setmaterial Soillayer_6 KEHK10_L6_4
+setmaterial Soillayer_7 KEHK10_L7_5
+gotosoil
+borehole 63.29599999997299
+set Borehole_2.Head -2.25
+soillayer Borehole_2 21.0
+soillayer Borehole_2 2.5
+soillayer Borehole_2 3.5
+soillayer Borehole_2 2.5
+soillayer Borehole_2 2.0
+soillayer Borehole_2 5.100000000000001
+soillayer Borehole_2 10.399999999999999
+soillayer Borehole_2 6.0
+soillayer Borehole_2 9.100000000000001
+soillayer Borehole_2 1.0
+soillayer Borehole_2 6.899999999999999
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L1_1"
+set KEHK9_L1_1.gammaUnsat 14.451666666666666
+set KEHK9_L1_1.gammaSat 14.451666666666666
+set KEHK9_L1_1.nu 0.35
+set KEHK9_L1_1.phi 0.0
+set KEHK9_L1_1.psi 0.0
+set KEHK9_L1_1.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L2_1b"
+set KEHK9_L2_1b.gammaUnsat 18.72
+set KEHK9_L2_1b.gammaSat 19.72
+set KEHK9_L2_1b.nu 0.3
+set KEHK9_L2_1b.phi 29.1
+set KEHK9_L2_1b.psi 0.0
+set KEHK9_L2_1b.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L3_2b"
+set KEHK9_L3_2b.gammaUnsat 19.0
+set KEHK9_L3_2b.gammaSat 20.0
+set KEHK9_L3_2b.nu 0.3
+set KEHK9_L3_2b.phi 28.5
+set KEHK9_L3_2b.psi 0.0
+set KEHK9_L3_2b.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L4_3"
+set KEHK9_L4_3.gammaUnsat 17.81
+set KEHK9_L4_3.gammaSat 17.81
+set KEHK9_L4_3.nu 0.35
+set KEHK9_L4_3.phi 0.0
+set KEHK9_L4_3.psi 0.0
+set KEHK9_L4_3.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L5_3"
+set KEHK9_L5_3.gammaUnsat 19.0
+set KEHK9_L5_3.gammaSat 20.0
+set KEHK9_L5_3.nu 0.3
+set KEHK9_L5_3.phi 28.0
+set KEHK9_L5_3.psi 0.0
+set KEHK9_L5_3.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L6_4"
+set KEHK9_L6_4.gammaUnsat 19.0
+set KEHK9_L6_4.gammaSat 20.0
+set KEHK9_L6_4.nu 0.3
+set KEHK9_L6_4.phi 34.2
+set KEHK9_L6_4.psi 4.200000000000003
+set KEHK9_L6_4.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L7_5"
+set KEHK9_L7_5.gammaUnsat 19.386666666666667
+set KEHK9_L7_5.gammaSat 19.386666666666667
+set KEHK9_L7_5.nu 0.35
+set KEHK9_L7_5.phi 16.0167
+set KEHK9_L7_5.psi 0.0
+set KEHK9_L7_5.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L8_6"
+set KEHK9_L8_6.gammaUnsat 18.875
+set KEHK9_L8_6.gammaSat 18.875
+set KEHK9_L8_6.nu 0.35
+set KEHK9_L8_6.phi 17.875
+set KEHK9_L8_6.psi 0.0
+set KEHK9_L8_6.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L9_6"
+set KEHK9_L9_6.gammaUnsat 19.540000000000003
+set KEHK9_L9_6.gammaSat 19.540000000000003
+set KEHK9_L9_6.nu 0.35
+set KEHK9_L9_6.phi 18.6611
+set KEHK9_L9_6.psi 0.0
+set KEHK9_L9_6.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L10_7"
+set KEHK9_L10_7.gammaUnsat 19.0
+set KEHK9_L10_7.gammaSat 20.0
+set KEHK9_L10_7.nu 0.3
+set KEHK9_L10_7.phi 40.0
+set KEHK9_L10_7.psi 10.0
+set KEHK9_L10_7.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK9_L11_7"
+set KEHK9_L11_7.gammaUnsat 19.483333333333334
+set KEHK9_L11_7.gammaSat 19.483333333333334
+set KEHK9_L11_7.nu 0.35
+set KEHK9_L11_7.phi 21.705533333333335
+set KEHK9_L11_7.psi 0.0
+set KEHK9_L11_7.DrainageType "undrainedb"
+setmaterial Soillayer_1 KEHK9_L1_1
+setmaterial Soillayer_2 KEHK9_L2_1b
+setmaterial Soillayer_3 KEHK9_L3_2b
+setmaterial Soillayer_4 KEHK9_L4_3
+setmaterial Soillayer_5 KEHK9_L5_3
+setmaterial Soillayer_6 KEHK9_L6_4
+setmaterial Soillayer_7 KEHK9_L7_5
+setmaterial Soillayer_8 KEHK9_L8_6
+setmaterial Soillayer_9 KEHK9_L9_6
+setmaterial Soillayer_10 KEHK9_L10_7
+setmaterial Soillayer_11 KEHK9_L11_7
+gotosoil
+borehole 126.26100000005681
+set Borehole_3.Head -0.561
+soillayer Borehole_3 21.0
+soillayer Borehole_3 9.8
+soillayer Borehole_3 2.1999999999999993
+soillayer Borehole_3 2.0
+soillayer Borehole_3 5.0
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK7_L1_1"
+set KEHK7_L1_1.gammaUnsat 14.588333333333333
+set KEHK7_L1_1.gammaSat 14.588333333333333
+set KEHK7_L1_1.nu 0.35
+set KEHK7_L1_1.phi 0.0
+set KEHK7_L1_1.psi 0.0
+set KEHK7_L1_1.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK7_L2_2b"
+set KEHK7_L2_2b.gammaUnsat 18.59
+set KEHK7_L2_2b.gammaSat 19.59
+set KEHK7_L2_2b.nu 0.3
+set KEHK7_L2_2b.phi 29.22
+set KEHK7_L2_2b.psi 0.0
+set KEHK7_L2_2b.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK7_L3_3"
+set KEHK7_L3_3.gammaUnsat 18.79
+set KEHK7_L3_3.gammaSat 18.79
+set KEHK7_L3_3.nu 0.35
+set KEHK7_L3_3.phi 14.8
+set KEHK7_L3_3.psi 0.0
+set KEHK7_L3_3.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK7_L4_4"
+set KEHK7_L4_4.gammaUnsat 19.0
+set KEHK7_L4_4.gammaSat 20.0
+set KEHK7_L4_4.nu 0.3
+set KEHK7_L4_4.phi 39.0
+set KEHK7_L4_4.psi 9.0
+set KEHK7_L4_4.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK7_L5_5"
+set KEHK7_L5_5.gammaUnsat 19.853333333333335
+set KEHK7_L5_5.gammaSat 19.853333333333335
+set KEHK7_L5_5.nu 0.35
+set KEHK7_L5_5.phi 15.827800000000002
+set KEHK7_L5_5.psi 0.0
+set KEHK7_L5_5.DrainageType "undrainedb"
+setmaterial Soillayer_1 KEHK7_L1_1
+setmaterial Soillayer_2 KEHK7_L2_2b
+setmaterial Soillayer_3 KEHK7_L3_3
+setmaterial Soillayer_4 KEHK7_L4_4
+setmaterial Soillayer_5 KEHK7_L5_5
+gotosoil
+borehole 199.2149999999674
+set Borehole_4.Head 2.034
+soillayer Borehole_4 2.1
+soillayer Borehole_4 20.0
+soillayer Borehole_4 5.599999999999998
+soillayer Borehole_4 5.900000000000002
+soillayer Borehole_4 9.0
+soillayer Borehole_4 3.3999999999999986
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK2_L1_F"
+set KEHK2_L1_F.gammaUnsat 19.0
+set KEHK2_L1_F.gammaSat 20.0
+set KEHK2_L1_F.nu 0.3
+set KEHK2_L1_F.phi 30.0
+set KEHK2_L1_F.psi 0.0
+set KEHK2_L1_F.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK2_L2_1"
+set KEHK2_L2_1.gammaUnsat 15.621666666666668
+set KEHK2_L2_1.gammaSat 15.621666666666668
+set KEHK2_L2_1.nu 0.35
+set KEHK2_L2_1.phi 0.0
+set KEHK2_L2_1.psi 0.0
+set KEHK2_L2_1.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK2_L3_2a"
+set KEHK2_L3_2a.gammaUnsat 19.0
+set KEHK2_L3_2a.gammaSat 20.0
+set KEHK2_L3_2a.nu 0.3
+set KEHK2_L3_2a.phi 29.8
+set KEHK2_L3_2a.psi 0.0
+set KEHK2_L3_2a.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK2_L4_3"
+set KEHK2_L4_3.gammaUnsat 18.075000000000003
+set KEHK2_L4_3.gammaSat 18.075000000000003
+set KEHK2_L4_3.nu 0.35
+set KEHK2_L4_3.phi 10.25
+set KEHK2_L4_3.psi 0.0
+set KEHK2_L4_3.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK2_L5_4"
+set KEHK2_L5_4.gammaUnsat 19.0
+set KEHK2_L5_4.gammaSat 20.0
+set KEHK2_L5_4.nu 0.3
+set KEHK2_L5_4.phi 33.84
+set KEHK2_L5_4.psi 3.8400000000000034
+set KEHK2_L5_4.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK2_L6_5"
+set KEHK2_L6_5.gammaUnsat 19.659999999999997
+set KEHK2_L6_5.gammaSat 19.659999999999997
+set KEHK2_L6_5.nu 0.35
+set KEHK2_L6_5.phi 16.125
+set KEHK2_L6_5.psi 0.0
+set KEHK2_L6_5.DrainageType "undrainedb"
+setmaterial Soillayer_1 KEHK2_L1_F
+setmaterial Soillayer_2 KEHK2_L2_1
+setmaterial Soillayer_3 KEHK2_L3_2a
+setmaterial Soillayer_4 KEHK2_L4_3
+setmaterial Soillayer_5 KEHK2_L5_4
+setmaterial Soillayer_6 KEHK2_L6_5
+gotosoil
+borehole 285.4010000000708
+set Borehole_5.Head 1.256
+soillayer Borehole_5 1.0
+soillayer Borehole_5 19.2
+soillayer Borehole_5 8.8
+soillayer Borehole_5 2.0
+soillayer Borehole_5 4.0
+soillayer Borehole_5 5.299999999999997
+soillayer Borehole_5 5.700000000000003
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK3_L1_F"
+set KEHK3_L1_F.gammaUnsat 19.0
+set KEHK3_L1_F.gammaSat 20.0
+set KEHK3_L1_F.nu 0.3
+set KEHK3_L1_F.phi 30.0
+set KEHK3_L1_F.psi 0.0
+set KEHK3_L1_F.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK3_L2_1"
+set KEHK3_L2_1.gammaUnsat 14.65
+set KEHK3_L2_1.gammaSat 14.65
+set KEHK3_L2_1.nu 0.35
+set KEHK3_L2_1.phi 0.0
+set KEHK3_L2_1.psi 0.0
+set KEHK3_L2_1.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK3_L3_2b"
+set KEHK3_L3_2b.gammaUnsat 19.0
+set KEHK3_L3_2b.gammaSat 20.0
+set KEHK3_L3_2b.nu 0.3
+set KEHK3_L3_2b.phi 29.7
+set KEHK3_L3_2b.psi 0.0
+set KEHK3_L3_2b.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK3_L4_3"
+set KEHK3_L4_3.gammaUnsat 14.84
+set KEHK3_L4_3.gammaSat 14.84
+set KEHK3_L4_3.nu 0.35
+set KEHK3_L4_3.phi 0.0
+set KEHK3_L4_3.psi 0.0
+set KEHK3_L4_3.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK3_L5_3"
+set KEHK3_L5_3.gammaUnsat 19.25
+set KEHK3_L5_3.gammaSat 19.25
+set KEHK3_L5_3.nu 0.35
+set KEHK3_L5_3.phi 15.7
+set KEHK3_L5_3.psi 0.0
+set KEHK3_L5_3.DrainageType "undrainedb"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK3_L6_4"
+set KEHK3_L6_4.gammaUnsat 19.0
+set KEHK3_L6_4.gammaSat 20.0
+set KEHK3_L6_4.nu 0.3
+set KEHK3_L6_4.phi 32.85
+set KEHK3_L6_4.psi 2.8500000000000014
+set KEHK3_L6_4.DrainageType "drained"
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE-HK3_L7_5"
+set KEHK3_L7_5.gammaUnsat 19.165
+set KEHK3_L7_5.gammaSat 19.165
+set KEHK3_L7_5.nu 0.35
+set KEHK3_L7_5.phi 16.475
+set KEHK3_L7_5.psi 0.0
+set KEHK3_L7_5.DrainageType "undrainedb"
+setmaterial Soillayer_1 KEHK3_L1_F
+setmaterial Soillayer_2 KEHK3_L2_1
+setmaterial Soillayer_3 KEHK3_L3_2b
+setmaterial Soillayer_4 KEHK3_L4_3
+setmaterial Soillayer_5 KEHK3_L5_3
+setmaterial Soillayer_6 KEHK3_L6_4
+setmaterial Soillayer_7 KEHK3_L7_5

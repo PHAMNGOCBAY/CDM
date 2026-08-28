@@ -1,0 +1,205 @@
+=========== PAGE 475 ===========
+7.44
+*DLOAD
+475
+7.44
+*DLOAD
+Keyword type: step
+This option allows the speciﬁcation of distributed loads. These include con-
+stant pressure loading on element faces, edge loading on shells and mass loading
+(load per unit mass) either by gravity forces or by centrifugal forces.
+For surface loading the faces of the elements are numbered as follows (for
+the node numbering of the elements see Section 3.1):
+for hexahedral elements:
+• face 1: 1-2-3-4
+• face 2: 5-8-7-6
+• face 3: 1-5-6-2
+• face 4: 2-6-7-3
+• face 5: 3-7-8-4
+• face 6: 4-8-5-1
+for tetrahedral elements:
+• Face 1: 1-2-3
+• Face 2: 1-4-2
+• Face 3: 2-4-3
+• Face 4: 3-4-1
+for wedge elements:
+• Face 1: 1-2-3
+• Face 2: 4-5-6
+• Face 3: 1-2-5-4
+• Face 4: 2-3-6-5
+• Face 5: 3-1-4-6
+for quadrilateral plane stress, plane strain and axisymmetric elements:
+• Face 1: 1-2
+• Face 2: 2-3
+• Face 3: 3-4
+• Face 4: 4-1
+
+
+=========== PAGE 476 ===========
+476
+7
+INPUT DECK FORMAT
+for triangular plane stress, plane strain and axisymmetric elements:
+• Face 1: 1-2
+• Face 2: 2-3
+• Face 3: 3-1
+for beam elements:
+• Face 1: pressure in 1-direction
+• Face 2: pressure in 2-direction
+For shell elements no face number is needed since there is only one kind of
+loading: pressure in the direction of the normal on the shell.
+The surface loading is entered as a uniform pressure with distributed load
+type label Px where x is the number of the face. Thus, for pressure loading the
+magnitude of the load is positive, for tension loading it is negative. For nonuni-
+form pressure the label takes the form PxNUy, and the user subroutine dload.f
+must be provided. The label can be up to 20 characters long. In particular,
+y can be used to distinguish diﬀerent nonuniform loading patterns (maximum
+16 characters). A typical example of a nonuniform loading is the hydrostatic
+pressure. Another option is to assign the pressure of a ﬂuid node to an element
+side. In that case the label takes the form PxNP, where NP stands for network
+pressure. The ﬂuid node must be an corner node of a network element. Instead
+of a concrete pressure value the user must provide the ﬂuid node number.
+Edge loading is only provided for shell elements. Its units are force per unit
+length. The label is EDNORx where x can take a value between one and three
+for triangular shells and between one and four for quadrilateral shells. This
+type of loading is locally orthogonal to the edge. Internally, it is replaced by
+a pressure load, since shell elements in CalculiX are expanded into volumetric
+elements. The numbering is as follows:
+for triangular shell elements:
+• Edge 1: 1-2
+• Edge 2: 2-3
+• Edge 3: 3-1
+for quadrilateral shell elements:
+• Edge 1: 1-2
+• Edge 2: 2-3
+• Edge 3: 3-4
+• Edge 4: 4-1
+
+
+=========== PAGE 477 ===========
+7.44
+*DLOAD
+477
+For centrifugal loading (label CENTRIF) the rotational speed square (ω2)
+and two points on the rotation axis are required, for gravity loading with known
+gravity vector (label GRAV) the size and direction of the gravity vector are to be
+given. Whereas more than one centrifugal load for one and the same set is not
+allowed, several gravity loads can be deﬁned, provided the direction of the load
+varies. If the gravity vector is not known it can be calculated based on the mo-
+mentaneous mass distribution of the system (label NEWTON). This requires the
+value of the Newton gravity constant by means of a *PHYSICAL CONSTANTS
+card.
+The limit of one centrifugal load per set does not apply to linear dynamic
+(*MODAL DYNAMIC) and steady state (*STEADY STATE DYNAMICS) cal-
+culations. Here, the limit is two. In this way a rotating eccentricity can be
+modeled. Prerequisite for the centrifugal loads to be interpreted as distinct is
+the choice of distinct rotation axes.
+Optional parameters are OP, AMPLITUDE, TIME DELAY, LOAD CASE
+and SECTOR. OP takes the value NEW or MOD. OP=MOD is default. For
+surface loads it implies that the loads on diﬀerent faces are kept from the pre-
+vious step. Specifying a distributed load on a face for which such a load was
+deﬁned in a previous step replaces this value, if a load was deﬁned on the same
+face within the same step it is added.
+OP=NEW implies that all previous
+surface loading is removed. For mass loading the eﬀect is similar. If multiple
+*DLOAD cards are present in a step this parameter takes eﬀect for the ﬁrst
+*DLOAD card only.
+The AMPLITUDE parameter allows for the speciﬁcation of an amplitude
+by which the force values are scaled (mainly used for dynamic calculations).
+Thus, in that case the values entered on the *DLOAD card are interpreted as
+reference values to be multiplied with the (time dependent) amplitude value to
+obtain the actual value. At the end of the step the reference value is replaced
+by the actual value at that time. In subsequent steps this value is kept constant
+unless it is explicitly redeﬁned or the amplitude is deﬁned using TIME=TOTAL
+TIME in which case the amplitude keeps its validity. For nonuniform loading
+the AMPLITUDE parameter has no eﬀect.
+The TIME DELAY parameter modiﬁes the AMPLITUDE parameter. As
+such, TIME DELAY must be preceded by an AMPLITUDE name.
+TIME
+DELAY is a time shift by which the AMPLITUDE deﬁnition it refers to is
+moved in positive time direction. For instance, a TIME DELAY of 10 means
+that for time t the amplitude is taken which applies to time t-10. The TIME
+DELAY parameter must only appear once on one and the same keyword card.
+The LOAD CASE parameter is only active in *STEADY STATE DYNAMICS
+calculations with harmonic loading. LOAD CASE = 1 means that the loading
+is real or in-phase. LOAD CASE = 2 indicates that the load is imaginary or
+equivalently phase-shifted by 90◦. Default is LOAD CASE = 1.
+The SECTOR parameter can only be used in *MODAL DYNAMIC and
+*STEADY STATE DYNAMICS calculations with cyclic symmetry. The datum
+sector (the sector which is modeled) is sector 1. The other sectors are numbered
+in increasing order in the rotational direction going from the slave surface to
+
+
+=========== PAGE 478 ===========
+478
+7
+INPUT DECK FORMAT
+the master surface as speciﬁed by the *TIE card. Consequently, the SECTOR
+parameters allows to apply a distributed load to any element face in any sector.
+Notice that in case an element set is used on any line following *DLOAD
+this set should not contain elements from more than one of the following groups:
+{plane stress, plane strain, axisymmetric elements}, {beams, trusses}, {shells,
+membranes}, {volumetric elements}.
+If more than one *DLOAD card occurs within the input deck, or a *DLOAD
+and at least one *DSLOAD card, the following rules apply:
+If a *DLOAD or *DSLOAD with label P1 up to P6 or EDNOR1 up to
+EDNOR4 or BF is applied to an element for which a *DLOAD or *DSLOAD
+with the SAME label was already applied before, then
+• if the previous application was in the same step the load value is added,
+else it is replaced
+• the new amplitude (including none) overwrites the previous amplitude
+If a *DLOAD with label CENTRIF is applied to the same set AND with
+the same rotation axis as in a previous application, then
+• If the prevous application was in the same step, the CENTRIF value is
+added, else it is replaced
+• the new amplitude (including none) overwrites the previous amplitude
+If a *DLOAD with label GRAV is applied to the same set AND with the
+same gravity direction vector as in a previous application, then
+• If the prevous application was in the same step, the GRAV value is added,
+else it is replaced
+• the new amplitude (including none) overwrites the previous amplitude
+First line:
+• *DLOAD
+• Enter any needed parameters and their value
+Following line for surface loading:
+• Element number or element set label.
+• Distributed load type label.
+• Actual magnitude of the load (for Px type labels) or ﬂuid node number
+(for PxNU type labels)
+Repeat this line if needed.
+
+
+=========== PAGE 479 ===========
+7.44
+*DLOAD
+479
+Example:
+*DLOAD,AMPLITUDE=A1
+Se1,P3,10.
+assigns a pressure loading with magnitude 10. times the amplitude curve of
+amplitude A1 to face number three of all elements belonging to set Se1.
+Example ﬁles: beamd.
+Following line for centrifugal loading:
+• Element number or element set label.
+• CENTRIF
+• rotational speed square (ω2)
+• Coordinate 1 of a point on the rotation axis
+• Coordinate 2 of a point on the rotation axis
+• Coordinate 3 of a point on the rotation axis
+• Component 1 of the normalized direction of the rotation axis
+• Component 2 of the normalized direction of the rotation axis
+• Component 3 of the normalized direction of the rotation axis
+Repeat this line if needed.
+Example:
+*DLOAD
+Eall,CENTRIF,100000.,0.,0.,0.,1.,0.,0.
+Example ﬁles: achtelc, disk2.
+assigns centrifugal loading with ω2 = 100000. about an axis through the
+point (0.,0.,0.) and with direction (1.,0.,0.) to all elements.
+Following line for gravity loading with known gravity vector:
+• Element number or element set label.
+• GRAV
+• Actual magnitude of the gravity vector.
+• Coordinate 1 of the normalized gravity vector
+
+

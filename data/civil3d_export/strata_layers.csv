@@ -1,0 +1,384 @@
+borehole_id,borehole_name,symbol,description,depth_top_m,depth_bot_m,thickness_m
+13,BXN-CV-HK1,1,Đất san lấp,0.0,2.7,2.7
+13,BXN-CV-HK1,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.7,20.3,17.6
+13,BXN-CV-HK1,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",20.3,25.0,4.7
+13,BXN-CV-HK1,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",25.0,39.5,14.5
+13,BXN-CV-HK1,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",39.5,43.0,3.5
+13,BXN-CV-HK1,6,"Sét cứng ít – dẻo cứng màu nâu vàng, trạng thái nửa cứng",43.0,51.0,8.0
+13,BXN-CV-HK1,6,"Sét cứng ít – dẻo cứng màu nâu vàng, trạng thái nửa cứng",51.0,60.3,9.3
+13,BXN-CV-HK1,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",60.3,70.0,9.7
+20,BXN-CV-HK2,1,Đất san lấp,0.0,2.5,2.5
+20,BXN-CV-HK2,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.5,19.5,17.0
+20,BXN-CV-HK2,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",19.5,27.5,8.0
+20,BXN-CV-HK2,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",27.5,35.5,8.0
+20,BXN-CV-HK2,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",35.5,43.0,7.5
+20,BXN-CV-HK2,6,Sét cứng ít – dẻo cứng màu nâu vàng,43.0,55.0,12.0
+20,BXN-CV-HK2,6,Sét cứng ít – dẻo cứng màu nâu vàng,55.0,59.0,4.0
+20,BXN-CV-HK2,7,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",59.0,67.0,8.0
+20,BXN-CV-HK2,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",67.0,70.0,3.0
+21,BXN-CV-HK3,1,Đất san lấp,0.0,2.0,2.0
+21,BXN-CV-HK3,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.0,21.0,19.0
+21,BXN-CV-HK3,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",21.0,27.2,6.2
+21,BXN-CV-HK3,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",27.2,31.0,3.8
+21,BXN-CV-HK3,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",31.0,42.5,11.5
+21,BXN-CV-HK3,6,Sét cứng ít – dẻo cứng màu nâu vàng,42.5,47.0,4.5
+21,BXN-CV-HK3,TK6a,"Cát lẫn bụi, màu xám nâu (thấu kính 6a)",46.5,48.9,2.4
+21,BXN-CV-HK3,7,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",48.9,59.0,10.1
+21,BXN-CV-HK3,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",59.0,70.0,11.0
+22,BXN-CV-HK4,1,Đất san lấp,0.0,1.1,1.1
+22,BXN-CV-HK4,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",1.1,21.0,19.9
+22,BXN-CV-HK4,3a,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp",21.0,23.9,2.9
+22,BXN-CV-HK4,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",23.9,27.0,3.1
+22,BXN-CV-HK4,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",27.0,35.0,8.0
+22,BXN-CV-HK4,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",35.0,43.0,8.0
+22,BXN-CV-HK4,6,Sét cứng ít – dẻo cứng màu nâu vàng,43.0,47.0,4.0
+22,BXN-CV-HK4,TK6a,"Cát vừa lẫn bụi, màu xám nâu (thấu kính 6a)",47.22,51.0,3.78
+22,BXN-CV-HK4,7,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",51.0,59.0,8.0
+22,BXN-CV-HK4,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",59.0,70.0,11.0
+23,BXN-CV-HK5,1,Đất san lấp,0.0,1.1,1.1
+23,BXN-CV-HK5,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",1.1,20.8,19.7
+23,BXN-CV-HK5,3a,"Cát lẫn sét, bụi màu xám xanh",20.8,22.0,1.2
+23,BXN-CV-HK5,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",22.0,29.0,7.0
+23,BXN-CV-HK5,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",29.0,37.0,8.0
+23,BXN-CV-HK5,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",37.0,42.6,5.6
+23,BXN-CV-HK5,6,Sét cứng ít – dẻo cứng màu nâu vàng,42.6,51.1,8.5
+23,BXN-CV-HK5,6,Sét cứng ít – dẻo cứng màu nâu vàng,51.1,60.9,9.8
+23,BXN-CV-HK5,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",60.9,70.0,9.1
+24,BXN-CV-HK6,1,Đất san lấp,0.0,2.4,2.4
+24,BXN-CV-HK6,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.4,21.7,19.3
+24,BXN-CV-HK6,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",21.7,31.0,9.3
+24,BXN-CV-HK6,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",31.0,37.2,6.2
+24,BXN-CV-HK6,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",37.2,43.6,6.4
+24,BXN-CV-HK6,6,Sét cứng ít – dẻo cứng màu nâu vàng,43.6,63.0,19.4
+24,BXN-CV-HK6,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",63.0,70.0,7.0
+25,BXN-CV-HK7,1,Đất san lấp,0.0,2.2,2.2
+25,BXN-CV-HK7,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.2,22.1,19.9
+25,BXN-CV-HK7,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",22.1,31.0,8.9
+25,BXN-CV-HK7,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",31.0,32.2,1.2
+25,BXN-CV-HK7,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",32.2,41.3,9.1
+25,BXN-CV-HK7,6,Sét cứng ít – dẻo cứng màu nâu vàng,41.3,51.3,10.0
+25,BXN-CV-HK7,7,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",51.3,59.5,8.2
+25,BXN-CV-HK7,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",59.5,70.0,10.5
+26,BXN-CV-HK8,1,Đất san lấp,0.0,3.0,3.0
+26,BXN-CV-HK8,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",3.0,22.7,19.7
+26,BXN-CV-HK8,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",22.7,27.0,4.3
+26,BXN-CV-HK8,3c,Cát lẫn sét bụi màu xám xanh (lớp 3c),27.0,31.0,4.0
+26,BXN-CV-HK8,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",31.0,34.7,3.7
+26,BXN-CV-HK8,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",34.7,41.7,7.0
+26,BXN-CV-HK8,6,Sét cứng ít – dẻo cứng màu nâu vàng,41.7,46.5,4.8
+26,BXN-CV-HK8,TK6a,Sét cứng ít – thấu kính 6a,46.5,49.0,2.5
+26,BXN-CV-HK8,TK6b,"Cát lẫn sét, màu nâu vàng – thấu kính 6b",49.0,51.5,2.5
+26,BXN-CV-HK8,6,Sét cứng ít – dẻo cứng màu nâu vàng,51.5,56.6,5.1
+26,BXN-CV-HK8,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",56.6,70.0,13.4
+27,BXN-CV-HK9,1,Đất san lấp,0.0,3.0,3.0
+27,BXN-CV-HK9,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",3.0,22.6,19.6
+27,BXN-CV-HK9,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",22.6,29.0,6.4
+27,BXN-CV-HK9,3c,Cát lẫn sét bụi màu xám xanh (lớp 3c),29.0,31.2,2.2
+27,BXN-CV-HK9,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",31.2,35.0,3.8
+27,BXN-CV-HK9,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",35.0,38.8,3.8
+27,BXN-CV-HK9,6,Sét cứng ít – dẻo cứng màu nâu vàng,38.8,61.0,22.2
+27,BXN-CV-HK9,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",61.0,70.0,9.0
+28,BXN-CV-HK10,1,Đất san lấp,0.0,3.1,3.1
+28,BXN-CV-HK10,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",3.1,23.9,20.8
+28,BXN-CV-HK10,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",23.9,35.0,11.1
+28,BXN-CV-HK10,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",35.0,42.4,7.4
+28,BXN-CV-HK10,6,Sét cứng ít – dẻo cứng màu nâu vàng,42.4,49.5,7.1
+28,BXN-CV-HK10,TK6a,"Cát lẫn bụi, màu xám nâu (thấu kính 6a)",49.5,50.8,1.3
+28,BXN-CV-HK10,6,Sét cứng ít – dẻo cứng màu nâu vàng,50.8,56.1,5.3
+28,BXN-CV-HK10,TK6a,"Cát lẫn bụi, màu xám nâu (thấu kính 6a) – lần 2",53.03,59.0,5.97
+28,BXN-CV-HK10,6,Sét cứng ít – dẻo cứng màu nâu vàng,59.0,63.2,4.2
+28,BXN-CV-HK10,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",63.2,70.0,6.8
+14,BXN-CV-HK11,1,Đất san lấp,0.0,3.3,3.3
+14,BXN-CV-HK11,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",3.3,20.2,16.9
+14,BXN-CV-HK11,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",20.2,29.0,8.8
+14,BXN-CV-HK11,3c,Cát lẫn sét bụi màu xám xanh (lớp 3c),29.0,35.0,6.0
+14,BXN-CV-HK11,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",35.0,37.5,2.5
+14,BXN-CV-HK11,6,Sét cứng ít – dẻo cứng màu nâu vàng,37.5,65.0,27.5
+14,BXN-CV-HK11,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",65.0,70.0,5.0
+29,BXN-CV-HK12,1,Đất san lấp,0.0,2.3,2.3
+29,BXN-CV-HK12,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.3,22.0,19.7
+29,BXN-CV-HK12,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",22.0,32.0,10.0
+29,BXN-CV-HK12,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",32.0,36.0,4.0
+29,BXN-CV-HK12,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",36.0,42.0,6.0
+29,BXN-CV-HK12,6,Sét cứng ít – dẻo cứng màu nâu vàng,42.0,50.2,8.2
+29,BXN-CV-HK12,TK6b,"Cát lẫn sét, màu nâu vàng (thấu kính 6b)",50.2,54.0,3.8
+29,BXN-CV-HK12,6,Sét cứng ít – dẻo cứng màu nâu vàng,54.0,58.0,4.0
+29,BXN-CV-HK12,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",58.0,70.0,12.0
+15,BXN-CV-HK13,1,Đất san lấp,0.0,2.6,2.6
+15,BXN-CV-HK13,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.6,21.5,18.9
+15,BXN-CV-HK13,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",21.5,27.0,5.5
+15,BXN-CV-HK13,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",27.0,40.9,13.9
+15,BXN-CV-HK13,6,Sét cứng ít – dẻo cứng màu nâu vàng,40.9,57.4,16.5
+15,BXN-CV-HK13,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",57.4,70.0,12.6
+16,BXN-CV-HK14,1,Đất san lấp,0.0,1.3,1.3
+16,BXN-CV-HK14,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",1.3,21.4,20.1
+16,BXN-CV-HK14,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",21.4,30.7,9.3
+16,BXN-CV-HK14,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",30.7,33.2,2.5
+16,BXN-CV-HK14,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",33.2,44.9,11.7
+16,BXN-CV-HK14,6,Sét cứng ít – dẻo cứng màu nâu vàng,44.9,59.4,14.5
+16,BXN-CV-HK14,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",59.4,70.0,10.6
+17,BXN-CV-HK15,1,Đất san lấp,0.0,1.0,1.0
+17,BXN-CV-HK15,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",1.0,21.5,20.5
+17,BXN-CV-HK15,3a,"Cát lẫn sét, bụi màu xám xanh",21.5,25.0,3.5
+17,BXN-CV-HK15,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",25.0,28.6,3.6
+17,BXN-CV-HK15,4,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm – dẻo cứng",28.6,35.0,6.4
+17,BXN-CV-HK15,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",35.0,42.1,7.1
+17,BXN-CV-HK15,6,Sét cứng ít – dẻo cứng màu nâu vàng,42.1,47.5,5.4
+17,BXN-CV-HK15,TK6a,"Cát lẫn bụi, màu xám nâu (thấu kính 6a)",45.19,49.0,3.81
+17,BXN-CV-HK15,TK6b,"Cát lẫn sét, màu nâu vàng (thấu kính 6b)",46.69,51.2,4.51
+17,BXN-CV-HK15,6,Sét cứng ít – dẻo cứng màu nâu vàng,51.2,57.5,6.3
+17,BXN-CV-HK15,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",57.5,70.0,12.5
+18,BXN-CV-HK16,1,Đất san lấp,0.0,2.5,2.5
+18,BXN-CV-HK16,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",2.5,22.5,20.0
+18,BXN-CV-HK16,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",22.5,33.0,10.5
+18,BXN-CV-HK16,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",33.0,43.0,10.0
+18,BXN-CV-HK16,6,Sét cứng ít – dẻo cứng màu nâu vàng,43.0,51.0,8.0
+18,BXN-CV-HK16,TK6a,"Cát lẫn bụi, màu xám nâu (thấu kính 6a)",48.36,55.0,6.64
+18,BXN-CV-HK16,6,Sét cứng ít – dẻo cứng màu nâu vàng,55.0,59.0,4.0
+18,BXN-CV-HK16,7,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",59.0,63.2,4.2
+18,BXN-CV-HK16,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",63.2,70.0,6.8
+19,BXN-CV-HK17,1,Đất san lấp,0.0,1.0,1.0
+19,BXN-CV-HK17,2,"Sét chảy rất dẻo màu xám xanh, trạng thái chảy",1.0,19.0,18.0
+19,BXN-CV-HK17,3b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",19.0,27.0,8.0
+19,BXN-CV-HK17,5,"Cát chặt lẫn vừa sét bụi, màu xám xanh",27.0,38.8,11.8
+19,BXN-CV-HK17,6,Sét cứng ít – dẻo cứng màu nâu vàng,38.8,47.0,8.2
+19,BXN-CV-HK17,6,Sét cứng ít – dẻo cứng màu nâu vàng,47.0,55.0,8.0
+19,BXN-CV-HK17,TK6a,"Cát lẫn bụi, màu xám nâu (thấu kính 6a)",54.89,57.0,2.11
+19,BXN-CV-HK17,6,Sét cứng ít – dẻo cứng màu nâu vàng,57.0,63.0,6.0
+19,BXN-CV-HK17,8,"Cát lẫn bụi màu xám nâu, kết cấu chặt",63.0,70.0,7.0
+55,ND-02,F,"Đá san lấp, đá đổ lẫn sét",0.0,2.8,2.8
+55,ND-02,1,"Bùn sét màu xám xanh, trạng thái chảy",2.8,25.0,22.2
+55,ND-02,3,"Sét pha màu xám xanh, trạng thái dẻo",25.0,27.2,2.2
+55,ND-02,4,Cát màu xám trắng kết cấu chặt vừa,27.2,31.0,3.8
+56,ND-03,F,"Đá san lấp, đá đổ lẫn sét",0.0,3.0,3.0
+56,ND-03,1,"Bùn sét màu xám xanh, trạng thái chảy U10",3.0,22.8,19.8
+56,ND-03,3,"Sét pha màu nâu đỏ, trạng thái cứng U16",22.8,27.8,5.0
+57,ND-05,F,"Đá san lấp, đá đổ lẫn sét",0.0,2.9,2.9
+57,ND-05,1,"Bùn sét màu xám xanh, trạng thái chảy",2.9,31.0,28.1
+57,ND-05,?,cứng U17,31.0,32.2,1.2
+58,ND-06,F,"Đá san lấp, đá đổ lẫn sét",0.0,2.6,2.6
+58,ND-06,1,"Bùn sét màu xám xanh, trạng thái chảy U5",2.6,31.5,28.9
+58,ND-06,3,"Sét pha màu xám đen, xám xanh, trạng",31.5,36.0,4.5
+59,ND-07,F,"Đá san lấp, đá đổ lẫn sét",0.0,3.0,3.0
+59,ND-07,?,3.00,3.0,3.47,0.47
+59,ND-07,3,"Sét pha màu xám đen, xám xanh, trạng",3.47,6.27,2.8
+32,NHC-BH-03,1,Lớp 1 — Đất lấp / bùn sét yếu,10.6,29.1,
+32,NHC-BH-03,2,Lớp 2 — Sét / sét pha dẻo mềm,29.1,36.0,
+32,NHC-BH-03,3,Lớp 3 — Sét pha dẻo cứng,36.0,39.8,
+32,NHC-BH-03,4,Lớp 4 — Cát pha / cát mịn,39.8,56.8,
+32,NHC-BH-03,5,Lớp 5 — Sét / sét pha nửa cứng,56.8,70.0,
+32,NHC-BH-03,6,Lớp 6 — Cát vừa – thô chặt,70.0,76.0,
+32,NHC-BH-03,7,Lớp 7 — Sét cứng / cuội sỏi,76.0,99.3,
+32,NHC-BH-03,8,Lớp 8 — Đá phong hóa / đá cứng,99.3,100.0,
+33,NHC-BH-05,1,Lớp 1 — Đất lấp / bùn sét yếu,0.7,10.9,
+33,NHC-BH-05,2,Lớp 2 — Sét / sét pha dẻo mềm,10.9,25.5,
+33,NHC-BH-05,3,Lớp 3 — Sét pha dẻo cứng,25.5,32.0,
+33,NHC-BH-05,4,Lớp 4 — Cát pha / cát mịn,32.0,39.0,
+33,NHC-BH-05,5,Lớp 5 — Sét / sét pha nửa cứng,39.0,55.8,
+33,NHC-BH-05,6,Lớp 6 — Cát vừa – thô chặt,55.8,71.0,
+33,NHC-BH-05,7,Lớp 7 — Sét cứng / cuội sỏi,71.0,76.8,
+33,NHC-BH-05,8,Lớp 8 — Đá phong hóa / đá cứng,76.8,100.0,
+42,NHC-BH-20,1,Lớp 1 — Đất lấp / bùn sét yếu,0.8,11.0,
+42,NHC-BH-20,2,Lớp 2 — Sét / sét pha dẻo mềm,11.0,31.4,
+42,NHC-BH-20,3,Lớp 3 — Sét pha dẻo cứng,31.4,37.0,
+42,NHC-BH-20,4,Lớp 4 — Cát pha / cát mịn,37.0,58.0,
+42,NHC-BH-20,5,Lớp 5 — Sét / sét pha nửa cứng,58.0,61.0,
+42,NHC-BH-20,6,Lớp 6 — Cát vừa – thô chặt,61.0,71.0,
+42,NHC-BH-20,7,Lớp 7 — Sét cứng / cuội sỏi,71.0,100.0,
+43,NHC-BH-25,1,Lớp 1 — Đất lấp / bùn sét yếu,1.7,11.3,
+43,NHC-BH-25,2,Lớp 2 — Sét / sét pha dẻo mềm,11.3,19.9,
+43,NHC-BH-25,3,Lớp 3 — Sét pha dẻo cứng,19.9,28.4,
+43,NHC-BH-25,4,Lớp 4 — Cát pha / cát mịn,28.4,31.6,
+43,NHC-BH-25,5,Lớp 5 — Sét / sét pha nửa cứng,31.6,37.1,
+43,NHC-BH-25,6,Lớp 6 — Cát vừa – thô chặt,37.1,57.1,
+43,NHC-BH-25,7,Lớp 7 — Sét cứng / cuội sỏi,57.1,99.7,
+43,NHC-BH-25,8,Lớp 8 — Đá phong hóa / đá cứng,99.7,100.0,
+48,NHC-BH-26,1,Lớp 1 — Đất lấp / bùn sét yếu,1.4,11.6,
+48,NHC-BH-26,2,Lớp 2 — Sét / sét pha dẻo mềm,11.6,26.1,
+48,NHC-BH-26,3,Lớp 3 — Sét pha dẻo cứng,26.1,27.9,
+48,NHC-BH-26,4,Lớp 4 — Cát pha / cát mịn,27.9,31.9,
+48,NHC-BH-26,5,Lớp 5 — Sét / sét pha nửa cứng,31.9,36.1,
+48,NHC-BH-26,6,Lớp 6 — Cát vừa – thô chặt,36.1,38.9,
+48,NHC-BH-26,7,Lớp 7 — Sét cứng / cuội sỏi,38.9,56.9,
+48,NHC-BH-26,8,Lớp 8 — Đá phong hóa / đá cứng,56.9,59.9,
+48,NHC-BH-26,9,Lớp 9,59.9,66.1,
+48,NHC-BH-26,10,Lớp 10,66.1,73.8,
+48,NHC-BH-26,11,Lớp 11,73.8,93.6,
+48,NHC-BH-26,12,Lớp 12,93.6,100.0,
+49,NHC-BH-27,1,Lớp 1 — Đất lấp / bùn sét yếu,0.7,10.9,
+49,NHC-BH-27,2,Lớp 2 — Sét / sét pha dẻo mềm,10.9,29.8,
+49,NHC-BH-27,3,Lớp 3 — Sét pha dẻo cứng,29.8,34.8,
+49,NHC-BH-27,4,Lớp 4 — Cát pha / cát mịn,34.8,39.0,
+49,NHC-BH-27,5,Lớp 5 — Sét / sét pha nửa cứng,39.0,56.2,
+49,NHC-BH-27,6,Lớp 6 — Cát vừa – thô chặt,56.2,58.9,
+49,NHC-BH-27,7,Lớp 7 — Sét cứng / cuội sỏi,58.9,71.1,
+49,NHC-BH-27,8,Lớp 8 — Đá phong hóa / đá cứng,71.1,100.0,
+50,NHC-BH-28,1,Lớp 1 — Đất lấp / bùn sét yếu,0.7,10.9,
+50,NHC-BH-28,2,Lớp 2 — Sét / sét pha dẻo mềm,10.9,29.8,
+50,NHC-BH-28,3,Lớp 3 — Sét pha dẻo cứng,29.8,34.8,
+50,NHC-BH-28,4,Lớp 4 — Cát pha / cát mịn,34.8,39.0,
+50,NHC-BH-28,5,Lớp 5 — Sét / sét pha nửa cứng,39.0,56.2,
+50,NHC-BH-28,6,Lớp 6 — Cát vừa – thô chặt,56.2,58.9,
+50,NHC-BH-28,7,Lớp 7 — Sét cứng / cuội sỏi,58.9,71.1,
+50,NHC-BH-28,8,Lớp 8 — Đá phong hóa / đá cứng,71.1,100.0,
+51,NHC-BH-29,1,Lớp 1 — Đất lấp / bùn sét yếu,0.7,10.9,
+51,NHC-BH-29,2,Lớp 2 — Sét / sét pha dẻo mềm,10.9,29.1,
+51,NHC-BH-29,3,Lớp 3 — Sét pha dẻo cứng,29.1,33.3,
+51,NHC-BH-29,4,Lớp 4 — Cát pha / cát mịn,33.3,38.0,
+51,NHC-BH-29,5,Lớp 5 — Sét / sét pha nửa cứng,38.0,56.1,
+51,NHC-BH-29,6,Lớp 6 — Cát vừa – thô chặt,56.1,58.1,
+51,NHC-BH-29,7,Lớp 7 — Sét cứng / cuội sỏi,58.1,59.9,
+51,NHC-BH-29,8,Lớp 8 — Đá phong hóa / đá cứng,59.9,70.8,
+51,NHC-BH-29,9,Lớp 9,70.8,92.6,
+51,NHC-BH-29,10,Lớp 10,92.6,100.0,
+35,NHC-BH-30,1,Lớp 1 — Đất lấp / bùn sét yếu,0.7,10.9,
+35,NHC-BH-30,2,Lớp 2 — Sét / sét pha dẻo mềm,10.9,34.2,
+35,NHC-BH-30,3,Lớp 3 — Sét pha dẻo cứng,34.2,40.0,
+35,NHC-BH-30,4,Lớp 4 — Cát pha / cát mịn,40.0,54.1,
+35,NHC-BH-30,5,Lớp 5 — Sét / sét pha nửa cứng,54.1,57.9,
+35,NHC-BH-30,6,Lớp 6 — Cát vừa – thô chặt,57.9,100.0,
+44,NHC-BH-32,1,Lớp 1 — Đất lấp / bùn sét yếu,0.7,10.9,
+44,NHC-BH-32,2,Lớp 2 — Sét / sét pha dẻo mềm,10.9,26.6,
+44,NHC-BH-32,3,Lớp 3 — Sét pha dẻo cứng,26.6,34.2,
+44,NHC-BH-32,4,Lớp 4 — Cát pha / cát mịn,34.2,39.2,
+44,NHC-BH-32,5,Lớp 5 — Sét / sét pha nửa cứng,39.2,41.9,
+44,NHC-BH-32,6,Lớp 6 — Cát vừa – thô chặt,41.9,47.9,
+44,NHC-BH-32,7,Lớp 7 — Sét cứng / cuội sỏi,47.9,54.1,
+44,NHC-BH-32,8,Lớp 8 — Đá phong hóa / đá cứng,54.1,56.1,
+44,NHC-BH-32,9,Lớp 9,56.1,57.9,
+44,NHC-BH-32,10,Lớp 10,57.9,59.6,
+44,NHC-BH-32,11,Lớp 11,59.6,100.0,
+37,NHC-BH-33,1,Lớp 1 — Đất lấp / bùn sét yếu,1.4,7.0,
+37,NHC-BH-33,2,Lớp 2 — Sét / sét pha dẻo mềm,7.0,16.0,
+37,NHC-BH-33,3,Lớp 3 — Sét pha dẻo cứng,16.0,26.9,
+37,NHC-BH-33,4,Lớp 4 — Cát pha / cát mịn,26.9,31.1,
+37,NHC-BH-33,5,Lớp 5 — Sét / sét pha nửa cứng,31.1,35.4,
+37,NHC-BH-33,6,Lớp 6 — Cát vừa – thô chặt,35.4,39.0,
+37,NHC-BH-33,7,Lớp 7 — Sét cứng / cuội sỏi,39.0,49.1,
+37,NHC-BH-33,8,Lớp 8 — Đá phong hóa / đá cứng,49.1,56.5,
+37,NHC-BH-33,9,Lớp 9,56.5,59.0,
+37,NHC-BH-33,10,Lớp 10,59.0,100.0,
+52,NHC-BH-34,1,Lớp 1 — Đất lấp / bùn sét yếu,0.7,10.9,
+52,NHC-BH-34,2,Lớp 2 — Sét / sét pha dẻo mềm,10.9,37.8,
+52,NHC-BH-34,3,Lớp 3 — Sét pha dẻo cứng,37.8,49.0,
+52,NHC-BH-34,4,Lớp 4 — Cát pha / cát mịn,49.0,57.0,
+52,NHC-BH-34,5,Lớp 5 — Sét / sét pha nửa cứng,57.0,59.9,
+52,NHC-BH-34,6,Lớp 6 — Cát vừa – thô chặt,59.9,71.8,
+52,NHC-BH-34,7,Lớp 7 — Sét cứng / cuội sỏi,71.8,100.0,
+45,NHC-BH-35,1,Lớp 1 — Đất lấp / bùn sét yếu,0.8,11.1,
+45,NHC-BH-35,2,Lớp 2 — Sét / sét pha dẻo mềm,11.1,28.6,
+45,NHC-BH-35,3,Lớp 3 — Sét pha dẻo cứng,28.6,38.8,
+45,NHC-BH-35,4,Lớp 4 — Cát pha / cát mịn,38.8,42.3,
+45,NHC-BH-35,5,Lớp 5 — Sét / sét pha nửa cứng,42.3,50.0,
+45,NHC-BH-35,6,Lớp 6 — Cát vừa – thô chặt,50.0,57.9,
+45,NHC-BH-35,7,Lớp 7 — Sét cứng / cuội sỏi,57.9,59.9,
+45,NHC-BH-35,8,Lớp 8 — Đá phong hóa / đá cứng,59.9,89.6,
+45,NHC-BH-35,9,Lớp 9,89.6,100.0,
+53,NHC-BH-36,1,Lớp 1 — Đất lấp / bùn sét yếu,0.6,10.8,
+53,NHC-BH-36,2,Lớp 2 — Sét / sét pha dẻo mềm,10.8,30.8,
+53,NHC-BH-36,3,Lớp 3 — Sét pha dẻo cứng,30.8,33.8,
+53,NHC-BH-36,4,Lớp 4 — Cát pha / cát mịn,33.8,37.6,
+53,NHC-BH-36,5,Lớp 5 — Sét / sét pha nửa cứng,37.6,48.0,
+53,NHC-BH-36,6,Lớp 6 — Cát vừa – thô chặt,48.0,55.4,
+53,NHC-BH-36,7,Lớp 7 — Sét cứng / cuội sỏi,55.4,58.4,
+53,NHC-BH-36,8,Lớp 8 — Đá phong hóa / đá cứng,58.4,100.0,
+54,NHC-BH-37,1,Lớp 1 — Đất lấp / bùn sét yếu,0.8,11.1,
+54,NHC-BH-37,2,Lớp 2 — Sét / sét pha dẻo mềm,11.1,27.6,
+54,NHC-BH-37,3,Lớp 3 — Sét pha dẻo cứng,27.6,28.6,
+54,NHC-BH-37,4,Lớp 4 — Cát pha / cát mịn,28.6,29.6,
+54,NHC-BH-37,5,Lớp 5 — Sét / sét pha nửa cứng,29.6,33.8,
+54,NHC-BH-37,6,Lớp 6 — Cát vừa – thô chặt,33.8,39.0,
+54,NHC-BH-37,7,Lớp 7 — Sét cứng / cuội sỏi,39.0,41.7,
+54,NHC-BH-37,8,Lớp 8 — Đá phong hóa / đá cứng,41.7,48.5,
+54,NHC-BH-37,9,Lớp 9,48.5,57.6,
+54,NHC-BH-37,10,Lớp 10,57.6,89.2,
+54,NHC-BH-37,11,Lớp 11,89.2,89.8,
+54,NHC-BH-37,12,Lớp 12,89.8,100.0,
+46,NHC-BH-38,1,Lớp 1 — Đất lấp / bùn sét yếu,1.1,11.3,
+46,NHC-BH-38,2,Lớp 2 — Sét / sét pha dẻo mềm,11.3,31.1,
+46,NHC-BH-38,3,Lớp 3 — Sét pha dẻo cứng,31.1,37.7,
+46,NHC-BH-38,4,Lớp 4 — Cát pha / cát mịn,37.7,48.1,
+46,NHC-BH-38,5,Lớp 5 — Sét / sét pha nửa cứng,48.1,50.4,
+46,NHC-BH-38,6,Lớp 6 — Cát vừa – thô chặt,50.4,56.0,
+46,NHC-BH-38,7,Lớp 7 — Sét cứng / cuội sỏi,56.0,100.0,
+1,KE-HK1,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,24.8,24.8
+1,KE-HK1,2a,"Cát lẫn sét, bụi màu xám xanh, kết cấu chặt vừa",24.8,29.2,4.4
+1,KE-HK1,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",29.2,37.0,7.8
+1,KE-HK1,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",37.0,50.0,13.0
+2,KE-HK2,F,Lớp san lấp,0.0,2.1,2.1
+2,KE-HK2,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",2.1,22.1,20.0
+2,KE-HK2,2a,"Cát lẫn sét, bụi màu xám xanh, kết cấu chặt vừa",22.1,27.7,5.6
+2,KE-HK2,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",27.7,33.6,5.9
+2,KE-HK2,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",33.6,42.6,9.0
+2,KE-HK2,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",42.6,46.0,3.4
+3,KE-HK3,F,Lớp san lấp,0.0,1.0,1.0
+3,KE-HK3,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",1.0,20.2,19.2
+3,KE-HK3,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",20.2,29.0,8.8
+3,KE-HK3,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",29.0,31.0,2.0
+3,KE-HK3,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",31.0,35.0,4.0
+3,KE-HK3,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",35.0,40.3,5.3
+3,KE-HK3,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",40.3,46.0,5.7
+4,KE-HK4,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,21.3,21.3
+4,KE-HK4,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",21.3,29.0,7.7
+4,KE-HK4,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",29.0,37.7,8.7
+4,KE-HK4,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",37.7,40.0,2.3
+5,KE-HK5,F,Lớp san lấp,0.0,1.1,1.1
+5,KE-HK5,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",1.1,21.2,20.1
+5,KE-HK5,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",21.2,23.0,1.8
+5,KE-HK5,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",23.0,29.3,6.3
+5,KE-HK5,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",29.3,36.8,7.5
+5,KE-HK5,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",36.8,41.7,4.9
+5,KE-HK5,6,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",41.7,43.4,1.7
+5,KE-HK5,6,"Cát lẫn bụi, màu xám nâu, kết cấu chặt",43.4,51.5,8.1
+5,KE-HK5,6,"Cát lẫn bụi, màu xám nâu, kết cấu chặt",51.5,55.6,4.1
+5,KE-HK5,6,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",55.6,57.2,1.6
+5,KE-HK5,6,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",57.2,61.2,4.0
+5,KE-HK5,6,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",61.2,71.5,10.3
+5,KE-HK5,7,"Cát lẫn bụi màu xám nâu, kết cấu chặt",71.5,85.0,13.5
+6,KE-HK6,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,17.0,17.0
+6,KE-HK6,1b,"Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, xám ghi, trạng thái dẻo chảy - dẻo mềm",17.0,19.0,2.0
+6,KE-HK6,1b,"Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, xám ghi, trạng thái dẻo chảy - dẻo mềm",19.0,23.5,4.5
+6,KE-HK6,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",23.5,31.0,7.5
+6,KE-HK6,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",31.0,33.6,2.6
+6,KE-HK6,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",33.6,40.0,6.4
+7,KE-HK7,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,21.0,21.0
+7,KE-HK7,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",21.0,30.8,9.8
+7,KE-HK7,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",30.8,33.0,2.2
+7,KE-HK7,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",33.0,35.0,2.0
+7,KE-HK7,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",35.0,40.0,5.0
+8,KE-HK8,F,Lớp san lấp,0.0,2.9,2.9
+8,KE-HK8,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",2.9,6.7,3.8
+8,KE-HK8,XMD,Xi măng đất,6.7,22.4,15.7
+8,KE-HK8,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",22.4,27.0,4.6
+8,KE-HK8,1b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",27.0,28.8,1.8
+8,KE-HK8,2c,"Cát lẫn sét, bụi màu xám xanh, kết cấu chặt vừa",28.8,32.0,3.2
+8,KE-HK8,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",32.0,40.0,8.0
+9,KE-HK9,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,21.0,21.0
+9,KE-HK9,1b,"Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",21.0,23.5,2.5
+9,KE-HK9,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",23.5,27.0,3.5
+9,KE-HK9,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",27.0,29.5,2.5
+9,KE-HK9,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",29.5,31.5,2.0
+9,KE-HK9,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",31.5,36.6,5.1
+9,KE-HK9,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",36.6,47.0,10.4
+9,KE-HK9,6,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",47.0,53.0,6.0
+9,KE-HK9,6,"Cát lẫn sét, màu nâu vàng, kết cấu chặt",53.0,62.1,9.1
+9,KE-HK9,7,"Cát lẫn bụi màu xám nâu, kết cấu chặt",62.1,63.1,1.0
+9,KE-HK9,7,"Cát lẫn bụi màu xám nâu, kết cấu chặt",63.1,70.0,6.9
+10,KE-HK10,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,25.0,25.0
+10,KE-HK10,1b,"Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",25.0,27.0,2.0
+10,KE-HK10,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",27.0,28.8,1.8
+10,KE-HK10,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",28.8,30.1,1.3
+10,KE-HK10,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",30.1,34.1,4.0
+10,KE-HK10,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",34.1,41.0,6.9
+10,KE-HK10,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",41.0,46.0,5.0
+11,KE-HK11,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,24.2,24.2
+11,KE-HK11,1b,"Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",24.2,25.2,1.0
+11,KE-HK11,2b,"Cát lẫn sét, bụi màu xám xanh, kết cấu xốp xen kẹp chặt vừa",25.2,29.0,3.8
+11,KE-HK11,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",29.0,30.1,1.1
+11,KE-HK11,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",30.1,41.2,11.1
+11,KE-HK11,5,"Sét ít dẻo màu nâu vàng, trạng thái nửa cứng - cứng",41.2,46.0,4.8
+12,KE-HK12,1,"Sét rất dẻo màu xám xanh, trạng thái chảy",0.0,23.902,23.902
+12,KE-HK12,1b,"Sét ít dẻo xen kẹp cát lẫn sét, bụi màu xám xanh, trạng thái dẻo chảy - dẻo mềm",23.902,27.0,3.098
+12,KE-HK12,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",27.0,31.0,4.0
+12,KE-HK12,3,"Sét rất dẻo màu xám xanh, trạng thái dẻo mềm - dẻo cứng",31.0,35.0,4.0
+12,KE-HK12,4,"Cát lẫn sét bụi, màu xám xanh, kết cấu chặt vừa",35.0,36.0,1.0

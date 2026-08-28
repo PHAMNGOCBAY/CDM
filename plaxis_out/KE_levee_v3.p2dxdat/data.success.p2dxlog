@@ -1,0 +1,202 @@
+﻿##~ running Plaxis2DXInput.exe 2024.2.0.1144
+gotosoil
+borehole 0.0
+set Borehole_1.Head 2.7
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soillayer 0
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "FILL_dap_2.7m"
+set FILL_dap_27m.gammaUnsat 18.0
+set FILL_dap_27m.gammaSat 20.0
+set FILL_dap_27m.DrainageType "drained"
+set FILL_dap_27m.nu 0.3
+set FILL_dap_27m.ERef 25000.0
+set FILL_dap_27m.cRef 1.0
+set FILL_dap_27m.phi 32.0
+set FILL_dap_27m.psi 2.0
+setmaterial Soillayer_1 FILL_dap_27m
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_F"
+set KE_levee_F.gammaUnsat 19.0
+set KE_levee_F.gammaSat 20.0
+set KE_levee_F.DrainageType "drained"
+set KE_levee_F.nu 0.3
+set KE_levee_F.ERef 20000.0
+set KE_levee_F.cRef 0.1
+set KE_levee_F.phi 30.0
+set KE_levee_F.psi 0.0
+setmaterial Soillayer_2 KE_levee_F
+soilmat
+set SoilMat_1.SoilModel "Soft Soil"
+set SoilMat_1.Identification "KE_levee_1"
+set KE_levee_1.gammaUnsat 14.8335
+set KE_levee_1.gammaSat 15.3335
+set KE_levee_1.DrainageType "undraineda"
+set KE_levee_1.nuUR 0.15
+set KE_levee_1.lambdaModified 0.1185646618063569
+set KE_levee_1.kappaModified 0.015777480596217544
+set KE_levee_1.OCR 1.0
+set KE_levee_1.POP 0.0
+set KE_levee_1.cRef 13.819999999999999
+set KE_levee_1.phi 4.57916
+setmaterial Soillayer_3 KE_levee_1
+soilmat
+set SoilMat_1.SoilModel "Soft Soil"
+set SoilMat_1.Identification "KE_levee_1b"
+set KE_levee_1b.gammaUnsat 18.9
+set KE_levee_1b.gammaSat 19.4
+set KE_levee_1b.DrainageType "undraineda"
+set KE_levee_1b.nuUR 0.15
+set KE_levee_1b.lambdaModified 0.03635680563456828
+set KE_levee_1b.kappaModified 0.006137071518770675
+set KE_levee_1b.OCR 1.0
+set KE_levee_1b.POP 0.0
+set KE_levee_1b.cRef 25.85
+set KE_levee_1b.phi 18.95835
+setmaterial Soillayer_4 KE_levee_1b
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_2a"
+set KE_levee_2a.gammaUnsat 19.0
+set KE_levee_2a.gammaSat 20.0
+set KE_levee_2a.DrainageType "drained"
+set KE_levee_2a.nu 0.3
+set KE_levee_2a.ERef 18666.666666666668
+set KE_levee_2a.cRef 0.1
+set KE_levee_2a.phi 29.8
+set KE_levee_2a.psi 0.0
+setmaterial Soillayer_5 KE_levee_2a
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_2b"
+set KE_levee_2b.gammaUnsat 18.59
+set KE_levee_2b.gammaSat 19.59
+set KE_levee_2b.DrainageType "drained"
+set KE_levee_2b.nu 0.3
+set KE_levee_2b.ERef 14700.0
+set KE_levee_2b.cRef 10.075
+set KE_levee_2b.phi 29.205
+set KE_levee_2b.psi 0.0
+setmaterial Soillayer_6 KE_levee_2b
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_3"
+set KE_levee_3.gammaUnsat 17.929285714285715
+set KE_levee_3.gammaSat 18.929285714285715
+set KE_levee_3.DrainageType "undrainedb"
+set KE_levee_3.nu 0.35
+set KE_levee_3.ERef 5140.116666666666
+setmaterial Soillayer_7 KE_levee_3
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_4"
+set KE_levee_4.gammaUnsat 19.0
+set KE_levee_4.gammaSat 20.0
+set KE_levee_4.DrainageType "drained"
+set KE_levee_4.nu 0.3
+set KE_levee_4.ERef 48920.0
+set KE_levee_4.cRef 0.1
+set KE_levee_4.phi 34.338
+set KE_levee_4.psi 4.338000000000001
+setmaterial Soillayer_8 KE_levee_4
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_5"
+set KE_levee_5.gammaUnsat 19.719
+set KE_levee_5.gammaSat 20.719
+set KE_levee_5.DrainageType "undrainedb"
+set KE_levee_5.nu 0.35
+set KE_levee_5.ERef 8017.013333333333
+setmaterial Soillayer_9 KE_levee_5
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_6"
+set KE_levee_6.gammaUnsat 19.207500000000003
+set KE_levee_6.gammaSat 20.207500000000003
+set KE_levee_6.DrainageType "undrainedb"
+set KE_levee_6.nu 0.35
+set KE_levee_6.ERef 10453.041666666668
+setmaterial Soillayer_10 KE_levee_6
+soilmat
+set SoilMat_1.SoilModel "Mohr-Coulomb"
+set SoilMat_1.Identification "KE_levee_7"
+set KE_levee_7.gammaUnsat 19.483333333333334
+set KE_levee_7.gammaSat 20.483333333333334
+set KE_levee_7.DrainageType "undrainedb"
+set KE_levee_7.nu 0.35
+set KE_levee_7.ERef 11214.800000000001
+setmaterial Soillayer_11 KE_levee_7
+set Soillayer_1.Zones[0].Bottom -0.381
+set Soillayer_2.Zones[0].Bottom -0.381
+set Soillayer_3.Zones[0].Bottom -25.381
+set Soillayer_4.Zones[0].Bottom -27.381
+set Soillayer_5.Zones[0].Bottom -27.381
+set Soillayer_6.Zones[0].Bottom -29.181
+set Soillayer_7.Zones[0].Bottom -34.481
+set Soillayer_8.Zones[0].Bottom -41.381
+set Soillayer_9.Zones[0].Bottom -46.381
+set Soillayer_10.Zones[0].Bottom -46.381
+set Soillayer_11.Zones[0].Bottom -46.381
+borehole 63.29599999997299
+set Borehole_2.Head 2.7
+set Soillayer_1.Zones[1].Bottom -2.25
+set Soillayer_2.Zones[1].Bottom -2.25
+set Soillayer_3.Zones[1].Bottom -23.25
+set Soillayer_4.Zones[1].Bottom -25.75
+set Soillayer_5.Zones[1].Bottom -25.75
+set Soillayer_6.Zones[1].Bottom -29.25
+set Soillayer_7.Zones[1].Bottom -33.75
+set Soillayer_8.Zones[1].Bottom -38.85
+set Soillayer_9.Zones[1].Bottom -49.25
+set Soillayer_10.Zones[1].Bottom -64.35
+set Soillayer_11.Zones[1].Bottom -72.25
+borehole 126.26100000005681
+set Borehole_3.Head 2.7
+set Soillayer_1.Zones[2].Bottom -0.561
+set Soillayer_2.Zones[2].Bottom -0.561
+set Soillayer_3.Zones[2].Bottom -21.561
+set Soillayer_4.Zones[2].Bottom -21.561
+set Soillayer_5.Zones[2].Bottom -21.561
+set Soillayer_6.Zones[2].Bottom -31.361
+set Soillayer_7.Zones[2].Bottom -33.561
+set Soillayer_8.Zones[2].Bottom -35.561
+set Soillayer_9.Zones[2].Bottom -40.561
+set Soillayer_10.Zones[2].Bottom -40.561
+set Soillayer_11.Zones[2].Bottom -40.561
+borehole 199.2149999999674
+set Borehole_4.Head 2.7
+set Soillayer_1.Zones[3].Bottom 2.034
+set Soillayer_2.Zones[3].Bottom -0.06600000000000028
+set Soillayer_3.Zones[3].Bottom -20.066000000000003
+set Soillayer_4.Zones[3].Bottom -20.066000000000003
+set Soillayer_5.Zones[3].Bottom -25.666
+set Soillayer_6.Zones[3].Bottom -25.666
+set Soillayer_7.Zones[3].Bottom -31.566000000000003
+set Soillayer_8.Zones[3].Bottom -40.566
+set Soillayer_9.Zones[3].Bottom -43.966
+set Soillayer_10.Zones[3].Bottom -43.966
+set Soillayer_11.Zones[3].Bottom -43.966
+borehole 285.4010000000708
+set Borehole_5.Head 2.7
+set Soillayer_1.Zones[4].Bottom 1.256
+set Soillayer_2.Zones[4].Bottom 0.256
+set Soillayer_3.Zones[4].Bottom -18.944
+set Soillayer_4.Zones[4].Bottom -18.944
+set Soillayer_5.Zones[4].Bottom -18.944
+set Soillayer_6.Zones[4].Bottom -27.744
+set Soillayer_7.Zones[4].Bottom -33.744
+set Soillayer_8.Zones[4].Bottom -39.044
+set Soillayer_9.Zones[4].Bottom -44.744
+set Soillayer_10.Zones[4].Bottom -44.744
+set Soillayer_11.Zones[4].Bottom -44.744
